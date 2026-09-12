@@ -80,6 +80,19 @@ function loadPackGroups(orchestratorUrl) {
 }
 
 /**
+ * Fetch the ACTIVE pack's declared game clock block (A3 slice 5): the
+ * phases table drives the phase-label assertions — a pack declaring >= 2
+ * phases shows the current phase's label beside the admin clock (the
+ * degenerate/absent case renders NO label; ALN byte-identical). Null when
+ * the pack ships no game.json/gameClock.
+ * @param {string} orchestratorUrl
+ * @returns {Promise<Object|null>} game.json `gameClock` block or null
+ */
+function loadPackClock(orchestratorUrl) {
+  return _fetchGameJsonField(orchestratorUrl, 'gameClock');
+}
+
+/**
  * Fetch the ACTIVE pack's display strings sidecar (A3 slice 3a): read
  * game.json's `strings` pointer, then fetch that pack file. Null when
  * the pack declares no sidecar — assertions fall back to the baked
@@ -263,6 +276,7 @@ module.exports = {
   formatMoneyExpected,
   parseMoneyText,
   loadPackModes,
+  loadPackClock,
   loadPackGroups,
   loadPackStrings,
   expectedModeLabels,

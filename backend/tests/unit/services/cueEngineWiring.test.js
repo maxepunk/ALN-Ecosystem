@@ -40,9 +40,12 @@ describe('cueEngineWiring', () => {
       const mockVideoQueueService = new EventEmitter();
       mockVideoQueueService.registerPrePlayHook = jest.fn();
 
+      const mockGameClockService = new EventEmitter();
+      mockGameClockService.handlePhaseTrigger = jest.fn();
+
       setupCueEngineForwarding({
         listenerRegistry,
-        gameClockService: new EventEmitter(),
+        gameClockService: mockGameClockService,
         transactionService: new EventEmitter(),
         videoQueueService: mockVideoQueueService,
         sessionService: new EventEmitter(),
@@ -64,9 +67,12 @@ describe('cueEngineWiring', () => {
       mockVideoQueueService.registerPrePlayHook = jest.fn();
 
       expect(() => {
+        const mockGameClockService = new EventEmitter();
+        mockGameClockService.handlePhaseTrigger = jest.fn();
+
         setupCueEngineForwarding({
           listenerRegistry,
-          gameClockService: new EventEmitter(),
+          gameClockService: mockGameClockService,
           transactionService: new EventEmitter(),
           videoQueueService: mockVideoQueueService,
           sessionService: new EventEmitter(),
@@ -89,9 +95,12 @@ describe('cueEngineWiring', () => {
       const videoQueueService = new EventEmitter();
       videoQueueService.registerPrePlayHook = jest.fn((fn) => { prePlayHook = fn; });
 
+      const gameClockService = new EventEmitter();
+      gameClockService.handlePhaseTrigger = jest.fn();
+
       services = {
         listenerRegistry,
-        gameClockService: new EventEmitter(),
+        gameClockService,
         transactionService: new EventEmitter(),
         videoQueueService,
         sessionService: new EventEmitter(),
@@ -192,6 +201,36 @@ describe('cueEngineWiring', () => {
 
       services.musicService.emit('playlist:changed', { id: 'p1' });
       expect(cueEngineService.handleGameEvent).toHaveBeenCalledWith('music:playlist:changed', { id: 'p1' });
+    });
+
+    // ── A3 slice 5: phase machinery rides the SAME wiring ──
+
+    it('forwards phase:changed from the clock to the cue engine (B11 trigger event)', () => {
+      const data = { phaseId: 'the-job', previousPhaseId: 'casing', label: 'The Job', elapsed: 1800, via: 'time' };
+      services.gameClockService.emit('phase:changed', data);
+      expect(cueEngineService.handleGameEvent).toHaveBeenCalledWith('phase:changed', data);
+      // ...but phase:changed is NOT itself fed back as a phase trigger
+      expect(services.gameClockService.handlePhaseTrigger).not.toHaveBeenCalledWith('phase:changed');
+    });
+
+    it('every standing-cue trigger event ALSO reaches handlePhaseTrigger (one dispatcher, two consumers)', () => {
+      services.transactionService.emit('group:completed', { group: 'Vault Set' });
+      expect(services.gameClockService.handlePhaseTrigger).toHaveBeenCalledWith('group:completed');
+
+      services.videoQueueService.emit('video:completed', { a: 1 });
+      expect(services.gameClockService.handlePhaseTrigger).toHaveBeenCalledWith('video:completed');
+
+      services.musicService.emit('track:changed', { track: {} });
+      expect(services.gameClockService.handlePhaseTrigger).toHaveBeenCalledWith('music:track:changed');
+
+      cueEngineService.emit('cue:completed', { cueId: 'c1' });
+      expect(services.gameClockService.handlePhaseTrigger).toHaveBeenCalledWith('cue:completed');
+    });
+
+    it('the video:loading pre-play hook feeds the phase trigger too', () => {
+      prePlayHook({ tokenId: 'abc' });
+      expect(services.gameClockService.handlePhaseTrigger).toHaveBeenCalledWith('video:loading');
+      expect(cueEngineService.fireEventCuesAndWait).toHaveBeenCalledWith('video:loading', { tokenId: 'abc' });
     });
   });
 });

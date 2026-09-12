@@ -2008,6 +2008,19 @@ components:
             expectedDuration:
               type: integer
               description: Expected session duration in seconds (default 7200)
+            phase:
+              type: object
+              nullable: true
+              description: >-
+                Current game phase from the pack's declared gameClock.phases
+                table (A3 slice 5 / B11). null when the pack declares no phase
+                structure (absent or degenerate single phase) or the clock has
+                not started.
+              properties:
+                id:
+                  type: string
+                label:
+                  type: string
         cueEngine:
           type: object
           description: Cue engine state (Phase 1-2). Contains loaded cues, active compound cues, and disabled standing cues.

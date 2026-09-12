@@ -399,6 +399,21 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     expect(finalScore).toBe(expectedTotal);
 
     console.log(`✓ Networked mode: Group completed, bonus applied, $${expectedTotal.toLocaleString()} total`);
+
+    // A3 slice 5 (dual-pack pin, pack-derived): a TRIGGER-started phase
+    // declared on group:completed must have LANDED — the toy declares
+    // the-getaway on exactly this event (and, being declared after the
+    // un-entered the-job@1800, this also exercises skip-forward live).
+    // ALN declares no trigger phases — the guard self-skips, keeping the
+    // assertion honest on both legs.
+    const { loadPackClock } = require('../helpers/scoring');
+    const packClock = await loadPackClock(orchestratorInfo.url);
+    const triggerPhase = (packClock?.phases || []).find(p => p.start?.trigger === 'group:completed');
+    if (triggerPhase) {
+      await scanner.adminTab.click();
+      await scanner.waitForGamePhaseLabel(triggerPhase.label, 10000);
+      console.log(`✓ Trigger-started phase landed on group:completed: ${triggerPhase.label}`);
+    }
   });
 
   // ========================================

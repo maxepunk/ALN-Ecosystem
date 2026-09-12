@@ -196,6 +196,9 @@ function assertSyncFullStructure(syncData) {
   expect(syncData).toHaveProperty('environment');
   expect(syncData).toHaveProperty('gameClock');
   expect(syncData.gameClock).toHaveProperty('status');
+  // A3 slice 5: phase is required-nullable — the scanner's sync:full restore
+  // is a wholesale replace, so an absent key would wipe it client-side
+  expect(syncData.gameClock).toHaveProperty('phase');
   expect(syncData).toHaveProperty('cueEngine');
   expect(syncData).toHaveProperty('music');
   expect(syncData.music).toHaveProperty('playlists');

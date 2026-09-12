@@ -32,26 +32,46 @@ function setupCueEngineForwarding({
   soundService,
   musicService
 }) {
+  // A3 slice 5: every standing-cue trigger event is ALSO a potential
+  // phase-start trigger — the activation gate validates gameClock.phases
+  // start.trigger against the SAME EVENT_NORMALIZERS vocabulary, so one
+  // dispatcher keeps the two consumers from drifting. Phase advance runs
+  // FIRST: a cue evaluated for this event that also fires on phase:changed
+  // sees the phase context already updated. phase:changed itself is
+  // cue-only (a phase cannot start on phase machinery's own event —
+  // gate-refused).
+  const forwardGameEvent = (eventName, payload) => {
+    gameClockService.handlePhaseTrigger(eventName);
+    cueEngineService.handleGameEvent(eventName, payload);
+  };
+
   // Game clock tick → cue engine clock trigger evaluation + compound cue advancement
   listenerRegistry.addTrackedListener(gameClockService, 'gameclock:tick', (data) => {
     cueEngineService.handleClockTick(data.elapsed);
     cueEngineService._tickActiveCompoundCues(data.elapsed); // Advance clock-driven compound cues
   }, 'gameClockService->cueEngineService');
 
+  // Phase transitions → standing cue trigger event (A3 slice 5 / B11:
+  // "phase:changed becomes a cue trigger event")
+  listenerRegistry.addTrackedListener(gameClockService, 'phase:changed', (data) => {
+    cueEngineService.handleGameEvent('phase:changed', data);
+  }, 'gameClockService->phase:changed->cueEngineService');
+
   // Transaction events
   listenerRegistry.addTrackedListener(transactionService, 'transaction:accepted', (payload) => {
-    cueEngineService.handleGameEvent('transaction:accepted', payload);
+    forwardGameEvent('transaction:accepted', payload);
   }, 'transactionService->cueEngineService');
 
   listenerRegistry.addTrackedListener(transactionService, 'group:completed', (data) => {
-    cueEngineService.handleGameEvent('group:completed', data);
+    forwardGameEvent('group:completed', data);
   }, 'transactionService->cueEngineService');
 
   // Pre-play hook: fire video:loading cues BEFORE video starts (blocking)
   // video:loading is NOT in the EventEmitter forwarding list below — it's handled via hook
-  videoQueueService.registerPrePlayHook(data =>
-    cueEngineService.fireEventCuesAndWait('video:loading', data)
-  );
+  videoQueueService.registerPrePlayHook(data => {
+    gameClockService.handlePhaseTrigger('video:loading');
+    return cueEngineService.fireEventCuesAndWait('video:loading', data);
+  });
 
   // Video events (for standing cue evaluation)
   // video:paused and video:resumed ALSO route to the explicit lifecycle
@@ -59,7 +79,7 @@ function setupCueEngineForwarding({
   // evaluation and timeline control are independent consumers (F-TOOL-09/E6)
   for (const event of ['video:started', 'video:completed', 'video:paused', 'video:resumed']) {
     listenerRegistry.addTrackedListener(videoQueueService, event, (data) => {
-      cueEngineService.handleGameEvent(event, data);
+      forwardGameEvent(event, data);
     }, `videoQueueService->${event}->cueEngineService`);
   }
 
@@ -93,35 +113,35 @@ function setupCueEngineForwarding({
 
   // Session events
   listenerRegistry.addTrackedListener(sessionService, 'session:created', (session) => {
-    cueEngineService.handleGameEvent('session:created', { sessionId: session.id });
+    forwardGameEvent('session:created', { sessionId: session.id });
   }, 'sessionService->cueEngineService');
 
   listenerRegistry.addTrackedListener(sessionService, 'player-scan:added', (data) => {
-    cueEngineService.handleGameEvent('player:scan', data);
+    forwardGameEvent('player:scan', data);
   }, 'sessionService->cueEngineService');
 
   // Sound events (for cue chaining)
   if (soundService) {
     listenerRegistry.addTrackedListener(soundService, 'sound:completed', (data) => {
-      cueEngineService.handleGameEvent('sound:completed', data);
+      forwardGameEvent('sound:completed', data);
     }, 'soundService->cueEngineService');
   }
 
   // Cue events (for cue chaining)
   listenerRegistry.addTrackedListener(cueEngineService, 'cue:completed', (data) => {
-    cueEngineService.handleGameEvent('cue:completed', data);
+    forwardGameEvent('cue:completed', data);
   }, 'cueEngineService->cueEngineService');
 
   // Game clock events
   listenerRegistry.addTrackedListener(gameClockService, 'gameclock:started', (data) => {
-    cueEngineService.handleGameEvent('gameclock:started', data);
+    forwardGameEvent('gameclock:started', data);
   }, 'gameClockService->cueEngineService');
 
   // Music events — enables standing cues that trigger on music state/track/playlist changes
   if (musicService) {
     for (const ev of ['track:changed', 'playback:changed', 'playlist:changed']) {
       listenerRegistry.addTrackedListener(musicService, ev, (data) => {
-        cueEngineService.handleGameEvent(`music:${ev}`, data);
+        forwardGameEvent(`music:${ev}`, data);
       }, `musicService->${ev}->cueEngineService`);
     }
   }

@@ -566,8 +566,11 @@ function setupBroadcastListeners(io, services) {
   }
 
   // Game Clock → service:state { domain: 'gameclock' }
+  // phase:changed (A3 slice 5): a phase boundary is the one clock change that
+  // is not a lifecycle event — it needs its own push or clients never see it
+  // (the gameclock domain is deliberately never pushed on tick)
   if (gameClockService) {
-    for (const event of ['gameclock:started', 'gameclock:paused', 'gameclock:resumed', 'gameclock:stopped']) {
+    for (const event of ['gameclock:started', 'gameclock:paused', 'gameclock:resumed', 'gameclock:stopped', 'phase:changed']) {
       addTrackedListener(gameClockService, event, () => pushServiceState('gameclock', gameClockService));
     }
   }

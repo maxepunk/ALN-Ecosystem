@@ -357,28 +357,101 @@ function _gateCheck(manifest, gameConfig) {
         );
       }
     }
-    // Phases drivability (A3 slice 2 §2g, owner ruling D1s2): the engine
-    // reads gameClock.duration/overtimeAt but drives NO phase machinery —
-    // anything beyond the degenerate single-phase-at-0 is declared
-    // headroom the doctrine refuses. Flavor-ii family: a NAMED retirement
-    // ("see slice 5" — program §3: phases + trigger-starts land there),
-    // never "incoherent". Absent/empty phases declare nothing and pass.
+    // Phases coherence + drivability (A3 slice 5 — the D1s2 refusal retired
+    // on schedule: the engine now DRIVES multi-phase and trigger-started
+    // clocks via gameClockService's derived "latest satisfied start" rule).
+    // Residual refusals: (i) structural incoherence — duplicate ids, a
+    // time-started phase no later than an earlier-declared one (unreachable
+    // under declared-order phasing), malformed entries — worded
+    // "self-contradictory"; (ii) drivability — a start.trigger outside the
+    // engine's cue trigger vocabulary (the matrix-2.22 authoring contract;
+    // phase:changed itself is excluded — a phase cannot start on phase
+    // machinery's own event). Absent/empty phases declare nothing and pass.
     const phases = gameConfig.gameClock && gameConfig.gameClock.phases;
     if (Array.isArray(phases) && phases.length > 0) {
-      // Null/malformed entries are NOT degenerate (they refuse with the
-      // named message below, never a raw TypeError — review finding)
-      const p = phases[0];
-      const degenerate =
-        phases.length === 1 &&
-        !!p && !!p.start && p.start.at === 0 &&
-        p.start.trigger === undefined;
-      if (!degenerate) {
+      // A declared phases table needs a usable duration or getClockRules'
+      // legacy branch silently discards it (review C: gate-validated phases
+      // running phase-less would be exactly the silently-absorbed class).
+      // Schema already requires duration whenever gameClock exists — only
+      // hand-authored PACK_PATH packs can reach this.
+      const declaredDuration = gameConfig.gameClock.duration;
+      if (!(typeof declaredDuration === 'number' && declaredDuration > 0)) {
         problems.push(
-          `gameClock.phases (${phases.length} phase${phases.length === 1 ? '' : 's'}) — ` +
-          'multi-phase and trigger-started clocks are not driveable by this engine yet (see slice 5); ' +
-          'the engine drives only the degenerate single-phase-at-0'
+          'gameClock.phases declared without a usable gameClock.duration — the clock cannot serve a ' +
+          'phase table it will never run (schema requires duration); self-contradictory'
         );
       }
+      // Lazy require: standingEvaluator is a pure evaluation table (logger +
+      // gameRules/cueVocabulary only) — acyclic; lazy keeps load order moot.
+      // eslint-disable-next-line global-require
+      const { EVENT_NORMALIZERS } = require('./cue/standingEvaluator');
+      // Excluded from the phase-trigger vocabulary (review B):
+      // - phase:changed: phase machinery cannot start on its own event
+      // - session:created: its ONLY emission happens while the clock is
+      //   stopped (createSession precedes startGame), and handlePhaseTrigger
+      //   gates on a running clock — a phase declared on it is silently dead,
+      //   the exact class this gate exists to refuse
+      const PHASE_TRIGGER_EXCLUDED = new Set(['phase:changed', 'session:created']);
+      const triggerVocabulary = new Set(
+        Object.keys(EVENT_NORMALIZERS).filter(name => !PHASE_TRIGGER_EXCLUDED.has(name))
+      );
+      const seenIds = new Set();
+      let latestAt = null;
+      phases.forEach((p, i) => {
+        // Null/malformed entries refuse with a named message, never a raw
+        // TypeError (carried over from the D1s2 gate — review finding).
+        // Non-EMPTY id/label enforced here for schema-bypassing packs
+        // (review E: an id '' persists as phaseId '' which restore's
+        // truthiness check reads as absent — the E1 re-seat silently fails)
+        if (!p || typeof p !== 'object'
+            || typeof p.id !== 'string' || p.id.length === 0
+            || typeof p.label !== 'string' || p.label.length === 0
+            || !p.start || typeof p.start !== 'object') {
+          problems.push(
+            `gameClock.phases[${i}] — malformed phase entry (non-empty id, non-empty label, and start are required); self-contradictory`
+          );
+          return;
+        }
+        if (seenIds.has(p.id)) {
+          problems.push(
+            `gameClock.phases — duplicate phase id '${p.id}' is self-contradictory (phases must be uniquely identifiable)`
+          );
+        }
+        seenIds.add(p.id);
+        const { at, trigger } = p.start;
+        if (typeof at === 'number' && trigger === undefined) {
+          // Finite non-negative only (review F): schema says integer >= 0,
+          // but hand-authored packs can carry -300 (satisfied before the
+          // game starts, reordering the initial phase) or 1e999 → Infinity
+          // (a phase the engine can literally never enter)
+          if (!Number.isFinite(at) || at < 0) {
+            problems.push(
+              `gameClock.phases['${p.id}'] — start.at ${at} is not a finite non-negative number of seconds; self-contradictory`
+            );
+            return;
+          }
+          if (latestAt !== null && at <= latestAt) {
+            problems.push(
+              `gameClock.phases['${p.id}'] — start.at ${at} is not after the previous time-started phase (${latestAt}); ` +
+              'a later-declared phase starting no later is unreachable under declared-order phasing — self-contradictory'
+            );
+          }
+          latestAt = latestAt === null ? at : Math.max(latestAt, at);
+        } else if (typeof trigger === 'string' && trigger.length > 0 && at === undefined) {
+          if (!triggerVocabulary.has(trigger)) {
+            problems.push(
+              `gameClock.phases['${p.id}'] — start.trigger '${trigger}' is not an event this engine emits ` +
+              'while the clock runs ' +
+              `(phase-trigger vocabulary: ${[...triggerVocabulary].sort().join(', ')}); ` +
+              'not driveable by this engine yet'
+            );
+          }
+        } else {
+          problems.push(
+            `gameClock.phases['${p.id}'] — start must be exactly one of {at: seconds} or {trigger: event}; self-contradictory`
+          );
+        }
+      });
     }
     // Type coverage (A3 slice 2b, D2b): with exact-case lookup, a token
     // whose SF_MemoryType is absent from the pack's own typeMultipliers
@@ -746,7 +819,12 @@ let warnedLegacyClock = false;
  * gameClock block falls back to config.session.sessionTimeout (minutes,
  * env-tunable) for BOTH values — the pre-pack behavior, where overtime
  * fires exactly at expected duration — with a LOUD once-per-process warn.
- * @returns {{durationSeconds: number, overtimeAtSeconds: number}}
+ * A3 slice 5 (B11): also serves the DECLARED phases table verbatim
+ * (defensive copy), or null when the pack declares none / the legacy
+ * fallback is active — the degenerate-inert rule lives clock-side
+ * (gameClockService.setPhases), not here.
+ * @returns {{durationSeconds: number, overtimeAtSeconds: number,
+ *   phases: Array<{id: string, label: string, start: Object}>|null}}
  */
 let warnedIgnoredSessionTimeout = false;
 
@@ -776,6 +854,9 @@ function getClockRules() {
       overtimeAtSeconds: (typeof clock.overtimeAt === 'number' && clock.overtimeAt > 0)
         ? clock.overtimeAt
         : clock.duration,
+      phases: Array.isArray(clock.phases) && clock.phases.length > 0
+        ? clock.phases.map(p => ({ id: p.id, label: p.label, start: { ...(p.start || {}) } }))
+        : null,
     };
   }
   if (!warnedLegacyClock) {
@@ -790,7 +871,7 @@ function getClockRules() {
   // lazy keeps module-load order irrelevant.
   const config = require('../config');
   const fallbackSeconds = config.session.sessionTimeout * 60;
-  return { durationSeconds: fallbackSeconds, overtimeAtSeconds: fallbackSeconds };
+  return { durationSeconds: fallbackSeconds, overtimeAtSeconds: fallbackSeconds, phases: null };
 }
 
 /**

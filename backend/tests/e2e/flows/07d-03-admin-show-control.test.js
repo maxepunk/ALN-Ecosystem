@@ -187,6 +187,23 @@ test.describe('GM Scanner - Show Control', () => {
       expect(time2).toBeGreaterThan(time1);
       console.log(`Clock advanced from ${time1}s to ${time2}s`);
 
+      // A3 slice 5 (dual-pack pin): the phase label beside the clock is
+      // PACK-DERIVED. A pack declaring >= 2 phases shows the initial
+      // phase's label (toy: "Casing the Joint"); the degenerate/absent
+      // declaration shows NO label (ALN: byte-identical to pre-slice-5).
+      const { loadPackClock } = require('../helpers/scoring');
+      const packClock = await loadPackClock(orchestratorInfo.url);
+      const phases = packClock && Array.isArray(packClock.phases) ? packClock.phases : [];
+      if (phases.length >= 2) {
+        const initialTimePhases = phases.filter(p => typeof p.start?.at === 'number' && p.start.at === 0);
+        expect(initialTimePhases.length).toBe(1); // both real packs start a phase at 0
+        await gmScanner.waitForGamePhaseLabel(initialTimePhases[0].label);
+        console.log(`Phase label shows pack-declared initial phase: ${initialTimePhases[0].label}`);
+      } else {
+        expect(await gmScanner.getGamePhaseLabel()).toBeNull();
+        console.log('Degenerate/absent phase declaration — no phase label (correct)');
+      }
+
     } finally {
       await context.close();
     }

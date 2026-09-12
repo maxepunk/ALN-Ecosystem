@@ -164,17 +164,22 @@ function buildGameClockState(gameClockService) {
   const expectedDuration = require('../services/packService').getClockRules().durationSeconds;
   try {
     if (!gameClockService) {
-      return { status: 'stopped', elapsed: 0, expectedDuration };
+      return { status: 'stopped', elapsed: 0, expectedDuration, phase: null };
     }
     const state = gameClockService.getState();
     return {
       status: state.status,
       elapsed: state.elapsed,
-      expectedDuration
+      expectedDuration,
+      // A3 slice 5 (B11): current phase {id, label} | null — required-nullable
+      // on the wire; reconnecting clients restore it via store.replace, so it
+      // MUST ride the snapshot (the scanner's sync:full path is a wholesale
+      // replace that drops absent keys)
+      phase: state.phase ?? null
     };
   } catch (err) {
     logger.warn('Failed to gather game clock state for sync:full', { error: err.message });
-    return { status: 'stopped', elapsed: 0, expectedDuration };
+    return { status: 'stopped', elapsed: 0, expectedDuration, phase: null };
   }
 }
 

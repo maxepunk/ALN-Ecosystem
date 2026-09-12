@@ -141,7 +141,7 @@
   },
   "./src/services/cue/standingEvaluator.js": {
     "branches": 70,
-    "functions": 60,
+    "functions": 65,
     "lines": 75
   },
   "./src/services/cue/timelineRuntime.js": {
@@ -170,7 +170,7 @@
     "lines": 90
   },
   "./src/services/gameClockService.js": {
-    "branches": 85,
+    "branches": 90,
     "functions": 100,
     "lines": 95
   },

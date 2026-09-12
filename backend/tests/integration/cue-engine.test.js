@@ -425,4 +425,82 @@ describe('Cue Engine Integration', () => {
       expect(transaction.data.transaction.teamId).toBe('Team Alpha');
     });
   });
+
+  // ── A3 slice 5 (B11): phase machinery through the REAL wiring ──
+  //
+  // The repo's ALN pack declares the degenerate single phase (inert), so
+  // these tests inject a table directly on the real gameClockService — the
+  // events, wiring (cueEngineWiring dispatcher), broadcasts (service:state
+  // gameclock push on phase:changed), and standing-cue path are all real.
+
+  describe('phase machinery (A3 slice 5)', () => {
+    it('a trigger-started phase advances on a REAL wired game event and the phase rides service:state', async () => {
+      await createAndStartSession(gm1, 'Phase Advance Test', ['Team Alpha']);
+
+      gameClockService.setPhases([
+        { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+        { id: 'the-getaway', label: 'The Getaway', start: { trigger: 'group:completed' } },
+      ]);
+
+      // Injected mid-run: the next real 1s tick enters 'casing' (at 0 already
+      // satisfied) and phase:changed pushes the gameclock domain
+      const casingState = await waitForServiceState(
+        gm1, 'gameclock', (state) => state.phase && state.phase.id === 'casing'
+      );
+      expect(casingState.data.state.phase).toEqual({ id: 'casing', label: 'Casing the Joint' });
+
+      // Fire the REAL trigger event on the real emitter the wiring listens to
+      const getawayPromise = waitForServiceState(
+        gm1, 'gameclock', (state) => state.phase && state.phase.id === 'the-getaway'
+      );
+      transactionService.emit('group:completed', { teamId: 'Team Alpha', groupId: 'Vault Set', multiplier: 2, bonus: 100 });
+
+      const getawayState = await getawayPromise;
+      expect(getawayState.data.state.phase).toEqual({ id: 'the-getaway', label: 'The Getaway' });
+      expect(gameClockService.getCurrentPhase()).toEqual({ id: 'the-getaway', label: 'The Getaway' });
+    });
+
+    it('a standing cue triggers on phase:changed with a phaseId condition (B11 end-to-end)', async () => {
+      cueEngineService.loadCues([
+        {
+          id: 'getaway-phase-cue',
+          label: 'Fires when the getaway begins',
+          trigger: {
+            event: 'phase:changed',
+            conditions: [{ field: 'phaseId', op: 'eq', value: 'the-getaway' }],
+          },
+          commands: [],
+        },
+        {
+          // Negative-match decoy: a phase:changed for any OTHER phase must not fire it
+          id: 'decoy-phase-cue',
+          trigger: {
+            event: 'phase:changed',
+            conditions: [{ field: 'phaseId', op: 'eq', value: 'NEVER_MATCHES' }],
+          },
+          commands: [],
+        },
+      ]);
+
+      await createAndStartSession(gm1, 'Phase Cue Test', ['Team Alpha']);
+      cueEngineService.activate();
+
+      gameClockService.setPhases([
+        { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+        { id: 'the-getaway', label: 'The Getaway', start: { trigger: 'group:completed' } },
+      ]);
+
+      const cueFiredPromise = waitForEvent(gm1, 'cue:fired', (data) => {
+        const payload = data.data || data;
+        return payload.cueId === 'getaway-phase-cue';
+      });
+
+      transactionService.emit('group:completed', { teamId: 'Team Alpha', groupId: 'Vault Set', multiplier: 2, bonus: 100 });
+
+      const cueFired = await cueFiredPromise;
+      expect(cueFired.data.cueId).toBe('getaway-phase-cue');
+      expect(cueFired.data.trigger).toBe('event:phase:changed');
+      expect(cueFired.data.source).toBe('cue');
+    });
+  });
 });

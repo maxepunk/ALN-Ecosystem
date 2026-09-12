@@ -1681,6 +1681,29 @@ class GMScannerPage {
   }
 
   /**
+   * Current phase label beside the clock (A3 slice 5 — #game-clock-phase,
+   * a SEPARATE element so #game-clock-display keeps its MM:SS contract).
+   * Returns null when the label is absent or hidden (degenerate/absent
+   * phase declarations render NO label — the ALN leg asserts null).
+   * @returns {Promise<string|null>}
+   */
+  async getGamePhaseLabel() {
+    const el = this.page.locator('#game-clock-phase');
+    if (await el.count() === 0) return null;
+    if (!(await el.isVisible())) return null;
+    const text = await el.textContent();
+    return text && text.length > 0 ? text : null;
+  }
+
+  /**
+   * Wait until the phase label shows the given text (A3 slice 5).
+   * @param {string} label - expected pack-declared phase label
+   */
+  async waitForGamePhaseLabel(label, timeout = 5000) {
+    await this.page.locator('#game-clock-phase', { hasText: label }).waitFor({ state: 'visible', timeout });
+  }
+
+  /**
    * Get locator for a specific active cue item by cue ID
    * @param {string} cueId
    * @returns {import('@playwright/test').Locator}

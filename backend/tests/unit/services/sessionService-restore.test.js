@@ -120,6 +120,25 @@ describe('SessionService restart restore (F-SHOW-01)', () => {
     expect(gameClockService.overtimeThreshold).toBe(7200);
   });
 
+  it('injects the ACTIVE pack phase table into the clock BEFORE restore (A3 slice 5)', async () => {
+    // Without setPhases-before-restore the persisted phaseId can never be
+    // re-seated (restore()'s phase block no-ops when this.phases is null) —
+    // this pin catches deleting the injection line in init().
+    const packService = require('../../../src/services/packService');
+    const setPhasesSpy = jest.spyOn(gameClockService, 'setPhases');
+    const restoreSpy = jest.spyOn(gameClockService, 'restore');
+
+    persistenceService.load.mockImplementation(async (key) =>
+      key === 'session:current' ? buildSessionJSON() : null
+    );
+
+    await sessionService.init();
+
+    expect(setPhasesSpy).toHaveBeenCalledWith(packService.getClockRules().phases);
+    expect(setPhasesSpy.mock.invocationCallOrder[0])
+      .toBeLessThan(restoreSpy.mock.invocationCallOrder[0]);
+  });
+
   it('marks past clock cues as fired without firing them (E1 mark-don\'t-fire)', async () => {
     persistenceService.load.mockImplementation(async (key) =>
       key === 'session:current' ? buildSessionJSON() : null

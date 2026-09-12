@@ -474,6 +474,39 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(setOvertimeThresholdSpy).toHaveBeenCalledWith(7200);
     });
 
+    it('phase:changed queues a session persist so a trigger-landed phase survives a crash (review D)', async () => {
+      const gameClockService = require('../../../src/services/gameClockService');
+      const saveSpy = jest.spyOn(sessionService, 'saveCurrentSession').mockResolvedValue(undefined);
+
+      await sessionService.createSession({ name: 'Phase Persist Test', teams: ['Team Alpha'] });
+      saveSpy.mockClear();
+
+      gameClockService.emit('phase:changed', {
+        phaseId: 'the-getaway', label: 'The Getaway', previousPhaseId: 'casing', elapsed: 60, via: 'trigger',
+      });
+
+      // At-least-once (not exactly-once): the unit helper's resetAllServices
+      // re-registers the tracked listeners each beforeEach without a registry
+      // cleanup, so registrations accumulate across THIS FILE's tests — a
+      // pre-existing pattern the overtime listener shares (its tests use
+      // .once() and never notice). Production registers once per boot/reset.
+      expect(saveSpy).toHaveBeenCalled();
+      saveSpy.mockRestore();
+    });
+
+    it('startGame injects the pack phase table into the clock (A3 slice 5)', async () => {
+      const gameClockService = require('../../../src/services/gameClockService');
+      const packService = require('../../../src/services/packService');
+      const setPhasesSpy = jest.spyOn(gameClockService, 'setPhases');
+
+      await sessionService.createSession({ name: 'Phases Test', teams: ['Team Alpha'] });
+      await sessionService.startGame();
+
+      // Injected VERBATIM from getClockRules (ALN in this checkout: the
+      // degenerate main@0 table — inert clock-side, but the seam is the pin)
+      expect(setPhasesSpy).toHaveBeenCalledWith(packService.getClockRules().phases);
+    });
+
     it('should emit session:overtime when game clock exceeds threshold', async () => {
       const gameClockService = require('../../../src/services/gameClockService');
       const handler = jest.fn();

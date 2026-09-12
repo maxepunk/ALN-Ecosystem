@@ -723,11 +723,19 @@ components:
               gameClock:
                 type: object
                 description: Game clock state (buildGameClockState)
-                required: [status, elapsed, expectedDuration]
+                required: [status, elapsed, expectedDuration, phase]
                 properties:
                   status: { type: string }
                   elapsed: { type: number }
                   expectedDuration: { type: number }
+                  # A3 slice 5 (B11): current phase from the pack's declared
+                  # phases table; null when no phase structure is declared
+                  # (absent/degenerate) or the clock has not started.
+                  phase:
+                    type: [object, "null"]
+                    properties:
+                      id: { type: string }
+                      label: { type: string }
               cueEngine:
                 type: object
                 description: Cue engine state (buildCueEngineState)
@@ -2321,7 +2329,7 @@ components:
                   - **audio**: `{routes, defaultSink, ducking, availableSinks, volumes}`
                   - **lighting**: `{connected, activeScene, scenes[]}`
                   - **sound**: `{playing[]}`
-                  - **gameclock**: `{status, elapsed, startTime, totalPausedMs}`
+                  - **gameclock**: `{status, elapsed, startTime, totalPausedMs, phase}`
                   - **cueengine**: `{cues[], activeCues[], disabledCues[]}`
                   - **held**: `{items[]}`
           timestamp:
@@ -2591,12 +2599,20 @@ components:
         playing: { type: array }
     DomainStateGameclock:
       type: object
-      required: [status, elapsed, startTime, totalPausedMs]
+      required: [status, elapsed, startTime, totalPausedMs, phase]
       properties:
         status: { type: string, enum: [stopped, running, paused] }
         elapsed: { type: number, minimum: 0 }
         startTime: { type: [number, string, "null"] }
         totalPausedMs: { type: number, minimum: 0 }
+        # A3 slice 5 (B11): current phase {id, label} from the pack's declared
+        # gameClock.phases table. null when the pack declares no phase structure
+        # (absent or the degenerate single phase) or before the clock starts.
+        phase:
+          type: [object, "null"]
+          properties:
+            id: { type: string }
+            label: { type: string }
     DomainStateCueengine:
       type: object
       required: [cues, activeCues, disabledCues]

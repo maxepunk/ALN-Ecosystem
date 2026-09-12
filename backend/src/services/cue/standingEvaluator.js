@@ -47,6 +47,17 @@ const ENGINE_EVENT_NORMALIZERS = {
     loop: payload.loop,
   }),
   'gameclock:started': payload => ({ gameStartTime: payload.gameStartTime }),
+  // A3 slice 5 (B11): phase transitions are cue trigger events + conditions
+  // (e.g. {field: 'phaseId', op: 'eq', value: 'the-job'}). Emitted by
+  // gameClockService; phase ids are pack-declared values, but the EVENT is
+  // clock machinery — engine table, like gameclock:started.
+  'phase:changed': payload => ({
+    phaseId: payload.phaseId,
+    previousPhaseId: payload.previousPhaseId,
+    label: payload.label,
+    elapsed: payload.elapsed,
+    via: payload.via,
+  }),
 };
 
 /**

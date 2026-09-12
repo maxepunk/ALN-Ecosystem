@@ -107,6 +107,10 @@ jobs:
         working-directory: aln-memory-scanner
         run: npm ci && npm test
 
+      - name: Install backend dependencies (cue-vocabulary linkage test requires backend modules)
+        working-directory: backend
+        run: npm ci
+
       - name: Config Tool unit tests
         working-directory: config-tool
         run: npm ci && npm test

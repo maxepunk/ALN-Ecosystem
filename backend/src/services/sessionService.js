@@ -80,6 +80,21 @@ class SessionService extends EventEmitter {
         overtimeDuration: 0 // Will be calculated by listener
       });
     }, 'sessionService->gameClockService:gameclock:overtime');
+
+    // A3 slice 5 (review D): a trigger-landed phase must not wait for the
+    // next unrelated session write to be persisted — a crash in that window
+    // restores a STALE phaseId (regressing the live game) and, because the
+    // trigger-fired set is empty after restore, a repeat of the trigger
+    // re-lands the phase and RE-FIRES its cues. _persistCurrentSession
+    // refreshes session.gameClock from the live clock, so a queued save is
+    // the whole fix. (Time-started phases self-heal on restore via the
+    // elapsed derivation — this listener still persists them promptly.)
+    listenerRegistry.addTrackedListener(gameClockService, 'phase:changed', () => {
+      if (!this.currentSession) return;
+      this.saveCurrentSession().catch((err) => {
+        logger.error('Failed to persist session after phase change', { error: err.message });
+      });
+    }, 'sessionService->gameClockService:phase:changed');
   }
 
   /**
@@ -128,8 +143,14 @@ class SessionService extends EventEmitter {
         // into live TeamScore instances — the single canonical store that
         // transactionService reads and mutates directly.
 
-        // Restore game clock from session data (if session was active/paused)
+        // Restore game clock from session data (if session was active/paused).
+        // A3 slice 5: inject the ACTIVE pack's phase table BEFORE restore()
+        // so the persisted phaseId can be re-seated (E1 mark-don't-fire;
+        // a stamped-pack mismatch already loud-warns above — the phase
+        // table, like all rules, comes from the pack now on disk)
         if (this.currentSession.gameClock && this.currentSession.status !== 'ended') {
+          const packService = require('./packService');
+          gameClockService.setPhases(packService.getClockRules().phases);
           gameClockService.restore(this.currentSession.gameClock);
           logger.info('Game clock restored from session', {
             sessionId: this.currentSession.id,
@@ -249,11 +270,14 @@ class SessionService extends EventEmitter {
     // Record game start time on the session
     this.currentSession.gameStartTime = new Date().toISOString();
 
-    // Set overtime threshold before starting the clock (A3 slice 2: the
-    // ACTIVE pack's gameClock.overtimeAt; SESSION_TIMEOUT only as the
-    // packless fallback inside getClockRules)
+    // Set overtime threshold + phase table before starting the clock
+    // (A3 slice 2: the ACTIVE pack's gameClock.overtimeAt; SESSION_TIMEOUT
+    // only as the packless fallback inside getClockRules. A3 slice 5: the
+    // declared phases table — inert clock-side when absent/degenerate)
     const packService = require('./packService');
-    gameClockService.setOvertimeThreshold(packService.getClockRules().overtimeAtSeconds);
+    const clockRules = packService.getClockRules();
+    gameClockService.setOvertimeThreshold(clockRules.overtimeAtSeconds);
+    gameClockService.setPhases(clockRules.phases);
 
     // Start the game clock
     gameClockService.start();

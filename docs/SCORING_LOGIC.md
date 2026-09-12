@@ -211,9 +211,14 @@ yet), so non-consuming claims are invisible to BOTH group currencies
 depth by driving the combination with `countsTowardGroups: false` when a
 never-gated bundled pack ships it.
 
-## Phases (gate only — slice 2 closer D1s2)
+## Phases (driven since A3 slice 5)
 
-`gameClock.phases` beyond the degenerate single-phase-at-0 refuses at
-activation ("not driveable by this engine yet (see slice 5)"). Phases do
-not touch scoring today; recorded here because the same activation gate
-family protects the scoring blocks above.
+The engine DRIVES `gameClock.phases` — multi-phase time starts and
+trigger-started phases (ruling R-5-1: the current phase is derived as
+the last declared phase whose start is satisfied; `phase:changed` is a
+cue trigger event). The slice-2 D1s2 refusal retired on schedule; the
+gate now applies only residual rules (duplicate ids, non-monotonic time
+starts, non-finite `at`, unknown/pre-clock trigger events, phases
+without a usable duration). Phases still do not touch scoring; recorded
+here because the same activation-gate family protects the scoring
+blocks above. Design: `docs/plans/2026-08-21-phase3-a3-slice5-clock-phases.md`.
