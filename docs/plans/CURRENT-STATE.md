@@ -5,24 +5,23 @@ in place, updated whenever execution state changes: what's done,
 what's next, and who each open item waits on. The full frame is
 `ROADMAP.md` (r4); the deep archive is `PHASE3-STATUS.md`.
 
-**RESUME HERE (2026-09-12, Block 2 at the "before any code"
-checkpoint).** The Block 2 plan is red-teamed and every finding is
-ruled: `2026-09-12-block2-hardening-plan.md` (16 design pins, tasks
-T1b → T1a → T3‖T3b‖T4‖T5 → T6 → T7a → T7b, §7 stop points, §8
-checkpoints) and `2026-09-12-block2-redteam-adjudication.md` (99
-findings; the twelve ★ rulings are the owner-visible ones). The
-censuses (`2026-09-12-block2-reopen-census.md`,
-`2026-09-12-block3-truth-sweep-census.md`) and the container baseline
-(`briefs/2026-09-12-container-baseline.md`) are in the tree. **Owner
-decision pending:** start round 1 (T1b, then T1a). No task brief is
-written yet; on the go, T1b's brief lands in `docs/plans/briefs/` and
-one Sonnet implementer runs it in a worktree on a task branch, reviewed
-and merged to `claude/nice-curie-hescfv` (the designated branch in all
-five repos). No agents are running. The rung-1 rig IS provisioned in this
-container (owner-directed at checkpoint 1; live-flow audit 13/13 —
-recipe and caveats in `2026-09-12-container-baseline.md` §7; a
-container restart loses it). Kit network values were found
-in the repo and folded as plan R11. Blue containment rules (handoff §3)
+**RESUME HERE (2026-09-12, Block 2 at checkpoint 2, "after the dormancy
+core lands").** T1b and T1a are reviewed, merged and pushed on the
+designated branch `claude/nice-curie-hescfv` (parent `c222dbe`; ALNScanner
+`be0d701`; ALN-TokenData `6f9bc30`); draft PRs: ALN-Ecosystem #35,
+ALN-TokenData #8 (ALNScanner's opens with the T1a merge). What the GM has
+now: the three health words with dormant grey and its door, the display
+as the ninth service, cues silenced by absent equipment, the
+session-start require gate with the typed override, the preflight stamp,
+the profile identity in `sync:full` and `/health`. Records: plan §9
+(execution record through T1a), the ledger at
+`.superpowers/sdd/2026-09-12-block2-hardening-plan/progress.md` (rulings
+1–24, deferred minors), briefs under `docs/plans/briefs/`. **Owner
+decision pending (checkpoint 2):** continue into round 3 (T3b → T3 ‖ T5
+→ T4, per ruling 6), stop here as "Block 2a" and turn to the green
+machine, or change the order. No agents are running. The rung-1 rig is
+provisioned in this container (recipe in `2026-09-12-container-baseline.md`
+§7); a container restart loses it. Blue containment rules (handoff §3)
 stand.
 
 **Last updated: 2026-09-12 — THE MERGE TRAIN IS WALKED.** All 22

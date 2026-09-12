@@ -615,3 +615,14 @@ ruled method.
 - Owner-visible carries: `aln-full-kit.json` declares `audio.sinks: [hdmi]` only (routing.json names one target) and `stations.count: 3` (the manifest's recommended count) — both corrected at Stage B; `orchestratorName` absent until the owner names it.
 - T1a brief: `briefs/2026-09-12-t1a-dormancy-core.md` (Opus implementer; reader fact sheet brief beside it). Next: T1a.
 
+### 2026-09-12 — T1a CLOSED (dormancy core, health enum, require gate, render-safe scanner) — the dormancy core has landed
+
+- Commits `95d69c6..c222dbe` (22 parent commits, fast-forwarded into the designated branch); ALNScanner `cb5395c` + `be0d701` on its `claude/nice-curie-hescfv` (the scanner's nested `data` pin at `6f9bc30`); base `04a94b9`.
+- Tests: backend unit + contract 3104/3104 (150 suites), ratchet 85/85, lint clean, integration 348/348; scanner 1717/1717 (90 suites), ratchet, lint, `dist` rebuilt; rung-1 audit 13/13 with the 8-real-services line including `display`; all four Tier L legs ZERO failures locally (144/143/141/141), both new flows (`30-dormancy-lighting`, `31-preflight-require-gate`) 16/16 on every leg. The orchestrator re-ran the backend and scanner suites fresh before merging.
+- Review (Opus, four passes over 81 files): spec ✅, quality Approved; one Important (plan-mandated: `familyInstalled` for `stations`/`personal`) and two test-hygiene minors fixed in round 1 with three rulings; scoped re-review: all addressed. Eight Minor findings deferred to the close review (ledger).
+- Three real defects surfaced by the Tier L legs and fixed inside the task: a runtime E2E fixture bound a lighting role without declaring the family (P2 made it bite); four ALN-pinned flows never pinned the ALN profile; ruling 15's override reached one of three `session:start` seams (now one shared `startGameOnSocket` helper).
+- Rulings 21–24 (ledger holds the long form): `dormancyWording` lives in `gameRules/` (pure); `service:check` gains a read-only `display` probe; profile schema validation at boot is a real gap → T4; `stations` installed iff `count >= 1`, `personal` iff `expected === true`. Ruling 9 amended: with the log storm capped the container runs all four legs clean, so the local bar is zero failures.
+- Findings carried: (i) a Winston EPIPE loop fills `backend/logs` at ~40 MB/s when a Playwright worker dies with an orchestrator alive (T7a rig hygiene: guard stdout errors; per-orchestrator LOGS_DIR); (ii) the scanner has no CSS for `health-service--down/--ok` — the dashboard never rendered red before this task (Block 3 truth sweep); (iii) `display` reads `down` on any host without a kiosk (honest; a dev profile omitting `display.main` makes it dormant); (iv) health `message` maxLength 300 is contracted but not enforced (T3).
+- Docs updated in this record's commit: root and backend CLAUDE.md say nine services and the three health words.
+- Checkpoint 2 ("after the dormancy core lands") reached; report sent to the owner.
+
