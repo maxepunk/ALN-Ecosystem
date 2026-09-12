@@ -15,6 +15,15 @@ Thursday. Every plan and every priority call below serves this goal;
 where a document says the run opens on blue unless the gate is met,
 that is the fallback, not the plan.
 
+**HOW THE VENUE RUNS TODAY (owner, 2026-09-12):** the GM tablets reach
+the orchestrator at the fixed address 192.168.0.191 on the kit WiFi,
+with the browser's certificate warning accepted once per tablet. Player
+phones are not used; the only player scanners are the ESP32 devices.
+There are no QR codes. The NFC tags carry a plain token id plus an IP
+address, and the address is not used in the game as run so far. DNS,
+removing the certificate warning, and non-Android player phones are
+planned quality-of-life work, not a priority before this run.
+
 **RESUME HERE (2026-09-12, Block 2 at checkpoint 2, "after the dormancy
 core lands"; T1a's follow-ups closed).** T1b, T1a and T1a's three
 follow-ups (CI kiosk launch, scanner review-bot fixes, display exit
