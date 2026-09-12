@@ -52,6 +52,62 @@ hardware, "rung 2"). Open: whether the deployment guide is ready for a
 fresh operating system on green (research in progress, to be committed
 as `docs/plans/2026-09-12-green-fresh-install-research.md`).
 
+**IF A COMPACTION LANDS HERE, RESUME FROM THIS BLOCK (written
+2026-09-12 evening, owner-ruled; nothing below is a proposal):**
+
+Lane policy (owner): parallel lanes may edit different functions of a
+shared file; the orchestrator merges in a fixed order and runs the full
+suite after each merge. Two same-section collisions, from the tree
+(`.superpowers/sdd/2026-09-12-block2-hardening-plan/collision-matrix.md`):
+the command executor's switch and the contract's action enum are shared
+by the supervisor and the preflight's run command, so the supervisor
+merges before that wiring; the scanner router's sync:full case is
+shared by the self-heal and the panel, so the self-heal merges first.
+The operator-only room join in the socket authentication file was in no
+piece's list; it goes to the supervisor lane. The preflight arms and the
+command-line tool run as a fourth lane; only the run command, its enum
+entry and the display row's Restart button wait for the wiring step.
+
+The sequence (owner: "go" pending on this exact list):
+1. Documents, alone, to the end, pushed: rulings rows in the plan; the
+   plan's task section replaced with this order; this page cut to one
+   screen with a line per lane; process rule 6 amended to "state page
+   first, then its pointers, check summary claims against git and the
+   records before acting"; the post-walk handoff retired into this page;
+   the scratch progress file no longer called the ledger.
+2. Together, right after: readers for the supervisor, credentials and
+   the self-heal (fact sheets, conclusions section first); the truth
+   sweep's audit as reading; Thursday's runbook committed from
+   `token-sync-workflow.md` for the owner's review; when
+   `2026-09-12-green-fresh-install-research.md` lands, a guide-repair
+   task with review, BEFORE the owner starts on green.
+3. The two held plans (harness minimum; profile check) revised from
+   their reviews, one scoped re-review each.
+4. Harness minimum (log guard + per-worker data directory) built in the
+   main checkout, reviewed, gated, merged; then three worktrees cut and
+   provisioned (npm ci, submodules, scanner dist).
+5. Profile check built, reviewed, gated, merged; the preflight-arms
+   worktree cut from that merge.
+6. Lane briefs as fact sheets land, each reviewed against the plan;
+   supervisor, credentials, self-heal dispatched after 4; preflight
+   arms after 5.
+7. Merges in order with the full suite after each: credentials,
+   supervisor, self-heal, preflight arms; then the panel; then the
+   wiring; then the sweep's fixes.
+8. Pre-rehearsal review and report = the handover point: every lane
+   merged or pushed, tree pushed, this page current; development moves
+   to green.
+9. After the rehearsal: the delta with its own review; the owner's go
+   at Thursday's preflight.
+Step 1 done-marks: [ ] rulings rows  [ ] task section  [ ] page cut
+[ ] rule 6  [ ] handoff retired  [ ] progress file renamed.
+
+Running now: the fresh-install researcher → `docs/plans/2026-09-12-green-fresh-install-research.md`.
+Done and on disk (scratch): `p1-plan-brief-review.md` + `p1-plan-brief-rereview.md`
+(DISPATCH, two wording items), `p2-plan-brief-review.md` (REVISE, six
+blocking), `p1-factsheet.md`, `p2-factsheet.md`, `token-sync-workflow.md`,
+`collision-matrix.md`. Held: no implementer runs until step 4.
+
 **RESUME HERE (2026-09-12, Block 2 at checkpoint 2, "after the dormancy
 core lands"; T1a's follow-ups closed).** T1b, T1a and T1a's three
 follow-ups (CI kiosk launch, scanner review-bot fixes, display exit
