@@ -172,3 +172,42 @@ the truth sweep"). Binding mechanics:
 6. **The stale top-level clones** `/home/user/ALNScanner` and
    `/home/user/ALN-TokenData` (this container only) mislead
    sessions — prefer the submodule paths under ALN-Ecosystem.
+
+## 7. Container-only assets audit (2026-09-12, post-walk)
+
+What a fresh clone does and does not inherit, checked file-by-file:
+
+- **Everything process-critical is tracked**: all of `.claude/`
+  (skills, agents, the session-start hook, settings INCLUDING
+  settings.local.json), every `docs/plans/` document, the design
+  system HTML. Plugin skills (mattpocock-skills, anthropic-skills)
+  and the esp32-skill (tracked in the arduino repo) arrive via the
+  owner's account/plugin config, independent of any clone. The
+  global git hooks (`stop-hook-git-check.sh`,
+  `session-start-git-identity.sh`) are CCR launcher-provisioned —
+  fresh remote sessions get them automatically.
+- **Deliberately gitignored, regenerable, documented**:
+  `backend/.env` (env template + deployment guide), `ALNScanner/
+  dist` (`npm run build`), logs, node_modules, the rung-1 runtime
+  state under `/tmp/rung1` and the witness HA container
+  (provisionForRun rebuilds all of it from nothing — that is what
+  S5b proved).
+- **Genuinely lost with this container, conclusions preserved**:
+  the walking session's workflow journals and scratchpad (raw
+  adversarial-review outputs — every surviving finding and verdict
+  is in the execution records), the harness task list (state lives
+  in CURRENT-STATE + this doc), and the whole-train-review
+  session's unpushed evidence bundle (§6 item 5).
+- **The three PS1 design mock PNGs**
+  (`docs/design/pages/ps1/ps1-variant-{A,B,C}.png`) are gitignored
+  by rule (`.gitignore:67`, `docs/design/pages/**/*.png`) while the
+  tracked `candidates.html` references them — a fresh clone renders
+  that page with broken images. They are regenerable by
+  screenshotting the tracked HTML (webapp-testing skill); the
+  Block-5 pages work should either commit its chosen-variant
+  renders (small, stable artifacts — the iteration-bloat rationale
+  for the ignore rule no longer applies to FINAL picks) or make
+  candidates.html self-contained. Decision belongs to the pages
+  unit; recorded here so it isn't rediscovered.
+- **CONTEXT-MAP.md was a dead reference** (cited by CLAUDE.md and
+  domain.md, never created) — a stub now exists at the repo root.
