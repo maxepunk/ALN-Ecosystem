@@ -18,10 +18,12 @@ decision pending:** start round 1 (T1b, then T1a). No task brief is
 written yet; on the go, T1b's brief lands in `docs/plans/briefs/` and
 one Sonnet implementer runs it in a worktree on a task branch, reviewed
 and merged to `claude/nice-curie-hescfv` (the designated branch in all
-five repos). No agents are running. The rung-1 rig is NOT provisioned in
-this container (`backend/tests/rung1/up.sh` needs apt installs, dockerd,
-the HA image); it is needed before DoD (e) and before Block 3. Blue
-containment rules (handoff §3) stand.
+five repos). No agents are running. The rung-1 rig IS provisioned in this
+container (owner-directed at checkpoint 1; live-flow audit 13/13 —
+recipe and caveats in `briefs/2026-09-12-container-baseline.md`
+addendum; a container restart loses it). Kit network values were found
+in the repo and folded as plan R11. Blue containment rules (handoff §3)
+stand.
 
 **Last updated: 2026-09-12 — THE MERGE TRAIN IS WALKED.** All 22
 PRs merged across the five repos; `main` is the deployable truth
