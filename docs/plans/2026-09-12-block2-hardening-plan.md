@@ -778,14 +778,14 @@ delivers and whether the tree is a coherent stopping point after it.
 
 | Task | Delivers (observable) | Depends on | Stop point? What the GM has |
 |---|---|---|---|
-| T1b | Equipment interior pinned; both packs declare their families; toy fixtures for dormant and require; endpoint map; two more Tier L legs | — | Yes. No behavior change yet. |
-| T1a | Three health words end to end incl. the display; sticky dormant with its door; cues silenced when their equipment is absent, rendered as such; the session-start refusal with the typed override dialog; the stamp; profile identity | the equipment families and fixtures | **Yes — the Block 2a candidate.** Uninstalled equipment never shows red; a session cannot start with required equipment missing, and the GM has the door. No supervisor, no verbs, no preflight panel. |
+| the equipment families and fixtures | Equipment interior pinned; both packs declare their families; toy fixtures for dormant and require; endpoint map; two more Tier L legs | — | Yes. No behavior change yet. |
+| the dormancy core | Three health words end to end incl. the display; sticky dormant with its door; cues silenced when their equipment is absent, rendered as such; the session-start refusal with the typed override dialog; the stamp; profile identity | the equipment families and fixtures | **Yes — the Block 2a candidate.** Uninstalled equipment never shows red; a session cannot start with required equipment missing, and the GM has the door. No supervisor, no verbs, no preflight panel. |
 | the supervisor and the fault buttons (+credentials on every connection) | Bounded restart with escalation for services, unbounded for observers; host config; the three service verbs with their buttons; holds expire; display supervised; every connection credentialed | the dormancy core | Yes. |
-| T4 | The preflight arms, the operator-only domain, the CLI, pack integrity | the dormancy core | Yes; the panel waits for the preflight panel. |
-| T5 | The scanner heals its stale pack at a boundary; the two owed tests | the dormancy core | Yes. |
-| T6 | The preflight panel with its limits footer | the preflight arms and the command line, the scanner's pack self-heal | Yes. |
-| T7a | The enumerated sweep rows | the preflight panel | Yes. |
-| T7b | Close | the sweep rows | Required before ANY merge, wherever the owner stops. |
+| the preflight arms and the command line | The preflight arms, the operator-only domain, the CLI, pack integrity | the dormancy core | Yes; the panel waits for the preflight panel. |
+| the scanner's pack self-heal | The scanner heals its stale pack at a boundary; the two owed tests | the dormancy core | Yes. |
+| the preflight panel | The preflight panel with its limits footer | the preflight arms and the command line, the scanner's pack self-heal | Yes. |
+| the sweep rows | The enumerated sweep rows | the preflight panel | Yes. |
+| the close review | Close | the sweep rows | Required before ANY merge, wherever the owner stops. |
 
 Dependency rounds: the equipment families and fixtures → the dormancy core → the supervisor and the fault buttons‖credentials on every connection‖the preflight arms and the command line‖the scanner's pack self-heal → the preflight panel → the sweep rows → the close review.
 
