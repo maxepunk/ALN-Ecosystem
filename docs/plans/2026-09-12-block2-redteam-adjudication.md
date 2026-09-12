@@ -49,6 +49,8 @@ DEFER (with the home). Owner-visible rulings are marked ★ for the
 
 ## Security and host-boundaries lens (26 findings: 3 blocking, 14 major, 6 minor, 3 notes)
 
+(Count correction, checkpoint 1: the report's own header says 3/14/6/3 = 26; its table holds 25 rows, 13 MAJOR. All 25 ids are ruled below. Three-lens total 99, not 100.)
+
 | id | sev | ruling | what changes in the plan |
 |---|---|---|---|
 | SEC-01 | BLOCKING | ACCEPT ★ | P7: the gate consults only unresolved `require`-class needs. `resolve()` computes `rollup.blocking` that only the require rule can populate; no arm T4 adds may widen it; the thrown message lists blocking reasons only; DoD (f) restated against `rollup.blocking`. |

@@ -9,7 +9,7 @@ what's next, and who each open item waits on. The full frame is
 checkpoint).** The Block 2 plan is red-teamed and every finding is
 ruled: `2026-09-12-block2-hardening-plan.md` (16 design pins, tasks
 T1b → T1a → T3‖T3b‖T4‖T5 → T6 → T7a → T7b, §7 stop points, §8
-checkpoints) and `2026-09-12-block2-redteam-adjudication.md` (100
+checkpoints) and `2026-09-12-block2-redteam-adjudication.md` (99
 findings; the twelve ★ rulings are the owner-visible ones). The
 censuses (`2026-09-12-block2-reopen-census.md`,
 `2026-09-12-block3-truth-sweep-census.md`) and the container baseline
@@ -20,8 +20,8 @@ one Sonnet implementer runs it in a worktree on a task branch, reviewed
 and merged to `claude/nice-curie-hescfv` (the designated branch in all
 five repos). No agents are running. The rung-1 rig IS provisioned in this
 container (owner-directed at checkpoint 1; live-flow audit 13/13 —
-recipe and caveats in `briefs/2026-09-12-container-baseline.md`
-addendum; a container restart loses it). Kit network values were found
+recipe and caveats in `2026-09-12-container-baseline.md` §7; a
+container restart loses it). Kit network values were found
 in the repo and folded as plan R11. Blue containment rules (handoff §3)
 stand.
 

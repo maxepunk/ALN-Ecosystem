@@ -1,6 +1,6 @@
 # Block 2 (the hardening block) — re-open plan and task ledger
 
-**Status: RED-TEAMED (three lenses, 100 findings, every one ruled in
+**Status: RED-TEAMED (three lenses, 99 findings, every one ruled in
 `2026-09-12-block2-redteam-adjudication.md`); awaiting the owner's
 "before any code" decision (2026-09-12).** Governs CS.2–CS.5 of the
 ratified C2+C3 design. Spec (binding authority):
@@ -41,9 +41,9 @@ Schedule decisions are the owner's at the §8 checkpoints.
 | R6 | The restart supervisor ships ENABLED; the host config file carries the off switch | owner, 2026-09-12 (Q6r) |
 | R7 | Block 3 fixes reach the producer side | owner, Q8 |
 | R8 | Schedule, pauses, and the go-to-green decision are the owner's, taken at the §8 checkpoints on observable reports; no time pricing in this plan | owner, 2026-09-12 |
-| R9 | The pre-build red team's 100 findings are ruled in the adjudication record; the twelve owner-visible rulings (★ there) are reported at the "before any code" checkpoint | orchestrator, 2026-09-12 |
+| R9 | The pre-build red team's 99 findings are ruled in the adjudication record (first recorded as 100 from the three lens headers; the security report's count line says 14 MAJOR where its table holds 13 — recounted from the tables at checkpoint 1, every id present in the adjudication); the twelve owner-visible rulings (★ there) are reported at the "before any code" checkpoint | orchestrator, 2026-09-12 |
 | R10 | Re-slice recorded: dormant's operator door rides T3 with the verb commands (ratified CS.2 text put both doors in CS.2) | orchestrator, 2026-09-12 (D-26) |
-| R11 | The kit's network values were already in the repo (owner, checkpoint 1: "don't you have the ssid, ip, dns name in our repos already?"); T1b authors the ALN profile's `network` block: SSID `aboutlastnetwork`, IP `192.168.0.191` (owner-stated production values; the ESP32 sample config's `Sidewinder` / `10.0.0.177` is a dev network), the name from the July profile design, dnsmasq posture from CONTEXT.md §5. SEC-25's "owner task" is closed; the certificate spike at Stage B confirms the name | owner + orchestrator, 2026-09-12 |
+| R11 | The kit's network values were already in the repo (owner, checkpoint 1: "don't you have the ssid, ip, dns name in our repos already?"); T1b authors the ALN profile's `network` block: SSID `aboutlastnetwork`, IP `192.168.0.191` (owner-stated production values; the ESP32 sample config's `Sidewinder` / `10.0.0.177` are not the production values), `localDnsOverride: true` per CONTEXT.md §5. The DNS name is NOT in the repo as a decision (the July design's `play.aboutlastnightgame.com` sits beside placeholder SSID/IP values) — `orchestratorName` stays omitted until the owner states it. SEC-25's "owner task" narrows to that one value | owner + orchestrator, 2026-09-12 |
 
 ## 2. Census delta that changes the design (from the re-open census)
 
@@ -295,14 +295,17 @@ Files: `backend/config/profiles/installation-profile.schema.json`
 (P1 interior, `additionalProperties: false`); `backend/config/profiles/aln-full-kit.json`
 (endpoints: all families installed; `network` authored per R11:
 `mode: kit-network`, `kitNetwork: {ssid: "aboutlastnetwork",
-orchestratorIp: "192.168.0.191", orchestratorName:
-"play.aboutlastnightgame.com", localDnsOverride: true}` — SSID and IP
+orchestratorIp: "192.168.0.191", localDnsOverride: true}` — SSID and IP
 are the owner's stated production values (2026-09-12; the ESP32
-`sample_config.txt` values `Sidewinder` / `10.0.0.177` are a dev
-network, NOT production), the name from
-`2026-07-09-phase3-1-installation-profile.md`, the dnsmasq posture from
-`CONTEXT.md` §5 "Kit network"; the certificate spike confirms the name
-at Stage B); `ALN-TokenData/pack-manifest.json` (`hardware.endpoints`
+`sample_config.txt` values `Sidewinder` / `10.0.0.177` are not the
+production values); `localDnsOverride: true` is the ratified posture
+(`CONTEXT.md` §5 "Kit network": the Pi answers the name on the LAN);
+`orchestratorName` is OMITTED until the owner states the kit's DNS name
+— the only value in the repo, `play.aboutlastnightgame.com`, is an
+example in `2026-07-09-phase3-1-installation-profile.md` beside the
+placeholders `ALN-GAME` / `10.11.0.2`, not a recorded decision; the
+schema allows the omission and the T4 network row then reports the
+name as `unknown`); `ALN-TokenData/pack-manifest.json` (`hardware.endpoints`
 gains `audio.sinks` and `lighting.instruments`, degrade; manifest
 rebuilt; parent pin bumped); `backend/tests/e2e/fixtures/packs/toy-heist/`
 (manifest gains `lighting.instruments` and `audio.sinks` degrade; cues

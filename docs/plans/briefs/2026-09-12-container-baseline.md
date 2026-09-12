@@ -17,33 +17,3 @@ Read every exit code directly from the command; a pipe into `tail` or `head` hid
 
 Write `/tmp/claude-0/-home-user/84692604-1422-5e48-a295-cc91e6bc4a0e/scratchpad/2026-09-12-container-baseline.md` with one heading per step. Final message: one line per suite (counts, exit code), every failure, and every toolchain gap.
 
-
-## Addendum (checkpoint 1, owner-directed): the rung-1 rig is provisioned in this container
-
-Owner asked for the tools to be installed. Done 2026-09-12, recipe =
-`.github/workflows/rung1.yml` + `bluez` (for `bluetoothctl`):
-
-```
-apt-get install -y vlc-bin vlc-plugin-base mpd mpc pipewire pipewire-pulse \
-  wireplumber pulseaudio-utils xvfb xdotool wmctrl dbus python3-dbusmock \
-  bluez bluez-test-tools
-bash backend/tests/rung1/up.sh        # dockerd, witness HA (pulled through the proxy), bus, Xvfb, pipewire, BT mock
-bash backend/tests/rung1/probe.sh
-bash backend/tests/rung1/engine.sh start && node backend/tests/rung1/audit-flows.js
-```
-
-Result: `up.sh` exit 0, all five shared arms up (bus, display,
-pulseServer, ha, bt=mock). Live-flow audit **13/13 PASS** (real VLC
-played `kai001.mp4`, real pw-play on the null sink, engine-spawned MPD,
-HA witness register one-hot through both standing cues). Engine stopped
-afterwards; the harness arms and the HA container stay up for the Tier L
-legs. Probe manifest: docker ok, ha ok, dbusmock ok (python3.12), btvirt
-NOT ok (`/dev/vhci` container wall — expected; the dbusmock arm is the
-ceiling here as in hosted CI), pipewire reported NOT ok **as root only**:
-the probe runs `pactl` as root while the arm runs as `rung1vlc`; as the
-harness user `pactl info` answers (PipeWire 1.0.5, sinks `rung1_hdmi`,
-`rung1_bt`). A root-only false negative of the probe, not of the arm.
-
-A container restart loses all of this (packages, dockerd, the HA image,
-`/tmp/rung1`); re-run the recipe above. `pio` is still absent (ESP32
-native tests remain unrun in this container).
