@@ -610,6 +610,11 @@ function getServerStatus() {
 }
 
 module.exports = {
+  // Read-only: the closed-output-pipe reproduction
+  // (tests/integration/logger-epipe-guard.test.js) boots its orchestrator with
+  // the SAME environment the harness uses, so the storm it reproduces is the
+  // harness's storm and not a lookalike.
+  TEST_ENV,
   startOrchestrator,
   stopOrchestrator,
   restartOrchestrator,
