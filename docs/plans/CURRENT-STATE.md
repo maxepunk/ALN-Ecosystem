@@ -78,22 +78,32 @@ Thursday preflight.
 
 ## 6. Running, and on disk
 
-- Researcher (fresh install vs the guide) → `docs/plans/2026-09-12-green-fresh-install-research.md`.
+- The container restarted about 18:49Z on 2026-09-12 (uptime): the rig's
+  daemons died, the files survived (packages, node_modules, scratch,
+  `/tmp/rung1`). The fresh-install researcher and the green-setup-gaps
+  reader died with it, no report written. The researcher is re-dispatched
+  from its committed brief → `docs/plans/2026-09-12-green-fresh-install-research.md`.
+- The rig is being brought back (`backend/tests/rung1/down.sh` then
+  `up.sh`, log `/tmp/rung1/up-after-restart.log`; recipe
+  `2026-09-12-container-baseline.md` §7). Needed before any Tier L leg.
+- Fact sheets on disk (scratch dir), each opening with a Conclusions
+  section — read only that: `credentials-factsheet.md`,
+  `self-heal-factsheet.md`, `sweep-audit-producers.md`,
+  `sweep-audit-renderers.md`, `sweep-audit-restore.md`. Still running:
+  the supervisor reader → `supervisor-factsheet.md`.
 - Scratch, `.superpowers/sdd/2026-09-12-block2-hardening-plan/`: the
-  progress file (append-only recovery notes); fact sheets `p1-`, `p2-`,
-  `token-sync-workflow.md`, `collision-matrix.md`; reviews
-  `p1-plan-brief-review.md` + `-rereview.md` (DISPATCH), `p2-plan-brief-review.md`
-  (REVISE, six blocking). Scratch survives compaction, not a restart.
-- The test rig is provisioned in this container (recipe:
-  `2026-09-12-container-baseline.md` §7); a restart loses it.
-- Readers running (all sonnet, read-only; reports under the scratch dir):
-  supervisor → `supervisor-factsheet.md`; credentials → `credentials-factsheet.md`;
-  self-heal → `self-heal-factsheet.md`; sweep audit A/B/C →
-  `sweep-audit-producers.md`, `sweep-audit-renderers.md`, `sweep-audit-restore.md`.
+  progress file (append-only recovery notes, live-state lines at its
+  end); fact sheets `p1-`, `p2-`, `token-sync-workflow.md`,
+  `collision-matrix.md`; reviews `p1-plan-brief-review.md` +
+  `-rereview.md` (DISPATCH), `p2-plan-brief-review.md` (REVISE),
+  `harness-minimum-rereview.md` (DISPATCH). Scratch survived this restart.
 - Thursday's runbook committed for the owner's review:
   `docs/runbooks/2026-09-thursday-token-sync.md`.
-- Lanes: none dispatched. Format when one is: name | worktree | branch |
-  brief | report path | agent | state.
+- Lanes (name | where | branch | brief | report | state):
+  harness minimum | main checkout | `claude/nice-curie-hescfv-harness-minimum`
+  | `docs/plans/briefs/2026-09-12-harness-minimum.md` | scratch
+  `harness-minimum-report.md` | implementer (opus) running; the three
+  precisions from the re-review handed at dispatch.
 
 ## 7. Pointers (open when)
 
