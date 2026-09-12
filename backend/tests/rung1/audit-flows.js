@@ -25,7 +25,13 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const HA = 'http://127.0.0.1:8123';
 // Committed dev credential (backend/.env) — rung-1 is a local harness.
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '@LN-c0nn3ct';
-const haToken = require(path.join(RUNG1, 'ha-auth.json')).access_token;
+// Prefer the LONG-LIVED token, exactly as up.sh does for the engine: the
+// login-flow `access_token` expires in ~30 minutes, so reading it made the
+// audit runnable only inside a half-hour window of provisioning HA — after
+// that every witness read got a 401 whose plain-text body surfaced as
+// "Unexpected non-whitespace character after JSON at position 3".
+const haAuth = require(path.join(RUNG1, 'ha-auth.json'));
+const haToken = haAuth.long_lived_token || haAuth.access_token;
 
 const results = [];
 function record(name, ok, detail) {
@@ -89,8 +95,11 @@ async function main() {
   const health = syncFull.serviceHealth || {};
   const healthy = Object.entries(health)
     .filter(([, v]) => v.status === 'healthy').map(([k]) => k).sort();
-  record('service health (7 real services)',
-    ['audio', 'cueengine', 'gameclock', 'lighting', 'music', 'sound', 'vlc']
+  // T1a D9/P16: `display` is the ninth service and the rung-1 rig runs a
+  // real kiosk under Xvfb, so it must be healthy here. `bluetooth` stays
+  // honestly absent — the rig has no adapter and never claimed one.
+  record('service health (8 real services)',
+    ['audio', 'cueengine', 'display', 'gameclock', 'lighting', 'music', 'sound', 'vlc']
       .every((s) => healthy.includes(s)),
     `healthy: ${healthy.join(',')}`);
 

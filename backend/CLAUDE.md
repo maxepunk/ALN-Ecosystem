@@ -129,7 +129,7 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `cueEngineService` | Standing + manual cue evaluation and firing | `new CueEngineService()` |
 | `soundService` | pw-play wrapper for audio playback | `new SoundService()` |
 | `musicService` | MPD control over Unix socket (mpd2 client); spawns/supervises MPD via ProcessMonitor | `new MusicService()` |
-| `serviceHealthRegistry` | Centralized health for 8 services | `new ServiceHealthRegistry()` |
+| `serviceHealthRegistry` | Centralized health for 9 services; three words `healthy | down | dormant`, sticky dormant with a `door` | `new ServiceHealthRegistry()` |
 | `scoreboardControlService` | Passthrough for GM scoreboard page-navigation commands (no server-side page state; emits `scoreboard:page:requested` → broadcast as `scoreboard:page`) | `new ScoreboardControlService()` |
 | `profileService` | Installation profile (the venue document): one profile frozen at boot via the `PROFILE_PATH` seam; `bindings.lighting` (role → HA scene) and `bindings.surfaces` (display-surface channel → media file, slice 6); a broken profile degrades loudly, never refuses boot | Function exports (no class) |
 | `commandExecutor` | Shared gm:command execution logic | Function export (`executeCommand`) |
@@ -511,7 +511,7 @@ All service domain state (cue status, held items, health, music, video) is deliv
 - `cueEngine`: `{cues, activeCues, standingCues}` via `buildCueEngineState()`
 
 **`sync:full` Phase 4 Additions:**
-- `serviceHealth`: `{vlc: {status, message}, music: {...}, ...}` via `serviceHealthRegistry.getSnapshot()` (8 services)
+- `serviceHealth`: `{vlc: {status, message}, music: {...}, ...}` via `serviceHealthRegistry.getSnapshot()` (9 services; dormant entries carry `door`)
 - `heldItems`: `[{id, type, cueId?, reason, ...}]` via `buildHeldItemsState()`
 - `sound`: `{playing: [{file, target, volume, pid}]}` via `soundService.getState()`
 

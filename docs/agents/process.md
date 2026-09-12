@@ -25,12 +25,22 @@ occurs.
 | `research` | Use for questions about external facts, for example the Cloudflare DNS-01 details for spike S2. The result is a Markdown file with cited sources, committed to the repo. |
 | `handoff` | Emergencies only: a stage must stop before it is finished. Change from the skill's default: commit the handoff file to the repo, then delete it when the next session has used it. (The skill saves to the OS temp directory; our containers erase that.) Rule 1 below, not handoff, is the normal continuity mechanism. |
 | `unslop` (repo skill at `.claude/skills/unslop/`, installed 2026-08-29 from poteto/plugins, MIT) | Applies to all new human-facing prose: docs, chat replies to the owner, commit messages, PR bodies. It removes AI writing tells and adds plain, direct voice. It pairs with the §4 plain-language standard. §4 governs structure and clarity; unslop governs voice and tells. Scope ruling (owner-confirmed 2026-08-29): the pattern sections apply in full to reference documents; the "adding soul" section applies to prose and replies, never to reference documents, because a glossary must not have opinions; glossary entries use the bold lead-in form the skill itself blesses ("**Term.** Definition."). Application is an editorial read, not search-and-replace; grep may index token-level patterns only. Committed documents are not swept without cause, but retrofit is allowed on demonstrated need (owner amendment, 2026-08-29): when work shows that a committed passage's wording causes real ambiguity or confusion, unslop that passage then and there, and treat the hit as a trigger to review the whole document for the same class of problem, since one bad passage is evidence about its neighbors. Meaning stays; the edit is noted where the document tracks its changes. |
+| `subagent-driven-development` (superpowers plugin; adopted 2026-09-12) | The delegation frame for every build task handed to an implementer subagent: one implementer per task, a file-based brief as the single source of requirements, a task review (spec and quality) after each task, fix loops under the five-round rule with model escalation, and one whole-branch review at the end. Implementers never run in parallel on shared files; coupled seams are one task; a cross-repo parity change is one task holding both sides. Inside a task the implementer follows `implement` and `tdd`. The unit's execution record is the ledger, never the skill's git-ignored scratch directory. |
+| `verification-before-completion` (superpowers plugin; adopted 2026-09-12) | Apply before every completion claim, commit, push, or pull request: run the proving command fresh, read its exit code directly, then claim. An agent's success report is checked against the diff and a fresh run, never trusted. |
+
+Plugin delivery (recorded 2026-09-12): the mattpocock skills and the
+superpowers skills ship as plugins from the official marketplace and are
+declared in `.claude/settings.json`. A remote container registers only
+that marketplace, so the session-start hook installs any declared
+official-marketplace plugin that is missing. Plugins register at session
+start: a plugin installed mid-session is readable from its cache but the
+Skill tool cannot invoke it until the next session.
 
 Not wired in, because the PHASE3-STATUS and slice-train system already
 covers their jobs (available on request): `to-tickets`, `to-spec`,
 `triage`, `wayfinder`, `ask-matt`, `teach`, `grill-me`.
 
-## 2. Sessions, compaction, and continuity (six rules)
+## 2. Sessions, compaction, and continuity (seven rules)
 
 The working reality: this is one long-running remote session. When the
 conversation grows too large, the harness replaces the history with a
@@ -40,7 +50,7 @@ erases `/tmp`.
 
 What survives all of this is the paper trail: design documents with
 execution records, PHASE3-STATUS rows, and pushed commits. The paper
-trail, not the compaction summary, is the continuity system. The six
+trail, not the compaction summary, is the continuity system. The seven
 rules:
 
 1. **The stage is the unit.** A stage ends with all tests green, the
@@ -71,18 +81,53 @@ rules:
 5. **Write for the cold agent.** The test for every execution record:
    a fresh agent, given only this record and the repo, could continue
    the work.
-6. **Reload before resuming (owner-directed 2026-09-06).** The
-   compaction summary is a pointer to the paper trail, not a working
-   context. After any compaction or container restart, and before the
-   first change to any file: read this file, the root `CONTEXT.md`,
-   `docs/plans/CURRENT-STATE.md`, and the active unit's design
-   document with its execution record, in full. Read the component
-   `CLAUDE.md` for each area the work will touch. Then check the
-   summary's claims against the repository (`git status`, `git log`,
-   the records) before acting on them. This rule exists because
-   resuming from the summary alone has caused real errors: stale
-   verdicts restated as current, and invented vocabulary in place of
-   the project's own terms.
+6. **Reload before resuming (owner-directed 2026-09-06; ordered
+   checklist adopted 2026-09-12; amended the same day, ruling R16 of
+   the hardening plan: the state page first, then its pointers).**
+   After any compaction or container restart, run these steps in this
+   order. Write the result of each step into the scratch progress file
+   before starting the next.
+   1. Read `docs/plans/CURRENT-STATE.md`, the entry point, one screen.
+      Nothing else is required reading; its pointers say what to open
+      and when.
+   2. Check every claim in the summary against the repository and the
+      page: `git status`, `git log`, the submodule pins. A claim the
+      page or the record does not back is false. Fix the page or drop
+      the claim before going on.
+   3. Reconcile live state against the page's running section. List
+      the agents, the background tasks, and the rig and test processes.
+      Stop anything that is not on the page, and record what was
+      stopped.
+   4. Follow the page's pointers for the piece in flight: its brief,
+      the plan's pins for it, the vocabulary sections it names, the
+      tail of the scratch progress file.
+   5. Send the owner a reload report in the checkpoint template.
+   Only after step 5 may the agent change a file or dispatch anything.
+   This rule exists because resuming from the summary alone has caused
+   real errors: stale verdicts restated as current, invented vocabulary
+   in place of the project's own terms, twelve dead background waits
+   left running for ten hours because no step looked for them, and a
+   decision made in conversation lost because it was never written to
+   the page.
+7. **Compact only at a checkpoint, with the tree pushed (owner-directed
+   2026-09-12).** What survives: committed and pushed files survive
+   everything; scratchpad files survive compaction but not a container
+   restart; background agents keep running and their results land in
+   files, but resuming one by name can be lost; unpushed local branches
+   die with a reclaimed container. Before compacting: (a) commit and
+   push every decision-carrying artifact: the plan with review findings
+   and rulings folded in, the execution record written to the moment,
+   and `docs/plans/CURRENT-STATE.md` naming the checkpoint reached and
+   the owner decision pending; (b) move the working files that matter
+   from the scratchpad into the repo: task briefs (each implementer's
+   single source of requirements) and review findings with their
+   adjudications; (c) end the round: every task reviewed, merged into
+   the designated branch, and pushed, so no task branch holds unmerged
+   work; (d) write a "resume here" paragraph at the top of
+   `CURRENT-STATE.md`: the next round, its briefs, any agents still
+   running and their output paths. The worst moment to compact is
+   mid-round. Compaction keeps the session, so installed skills stay as
+   they are; a new container is a new session.
 
 ## 3. Workflow-prompt standards
 

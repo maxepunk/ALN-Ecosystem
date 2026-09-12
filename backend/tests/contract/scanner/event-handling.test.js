@@ -40,6 +40,8 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
       version: '1.0.0',
       contentHash: `sha256:${'0'.repeat(64)}`,
     },
+    // Block 2 T1a D10: the installation profile frozen at boot
+    profile: { profileId: 'aln-full-kit', forPack: 'about-last-night' },
   };
 
   describe('device:connected - Device Connection Broadcast', () => {

@@ -1,3 +1,12 @@
+const { familyInstalled } = require('./endpointServices');
+// doorWording is a frozen two-entry lookup with no state and no I/O, and the
+// whole point of it is that the resolver, the executor, the cue engine and
+// the dashboard all say the SAME sentence. It used to sit among the services
+// and forced an exception to this directory's no-service-imports rule; it is
+// itself a rule, so Block 2 T1a fix round 1 (ruling 21) moved it here and the
+// exception is gone.
+const { doorWording } = require('./dormancyWording');
+
 /**
  * resolve — the ratified C1 §2 resolution table as one pure function
  * (C2+C3 design §8, 2026-09-04; CONTEXT.md "One truth, three loops").
@@ -50,6 +59,15 @@ function resolveOne(need, profile, bindings, inventory) {
   }
   switch (need.kind) {
     case 'lighting-role': {
+      // P2: a dependent need follows its FAMILY. With no lighting rig in
+      // the room, an unbound role is not a configuration hole — there is
+      // nothing to bind it to. The endpoint wins over any binding the
+      // profile still carries (dormancyService warns about those).
+      if (!familyInstalled(profile, 'lighting.instruments')) {
+        return verdict(
+          need, 'dormant', 'paper', 'lighting not installed tonight'
+        );
+      }
       const bound = (bindings.lighting || {})[need.id];
       if (bound) {
         return verdict(need, 'runs', 'paper', `bound: ${bound.ha}`);
@@ -75,8 +93,12 @@ function resolveOne(need, profile, bindings, inventory) {
       // C1 §2: an endpoint the profile declares is present; one it
       // omits is absent — dormant under degrade ("not installed
       // tonight", never red), NO-GO under require.
-      const declared = (profile && profile.endpoints) || {};
-      if (Object.prototype.hasOwnProperty.call(declared, need.id)) {
+      // T1a D2: "declared" means DECLARED INSTALLED. A family the profile
+      // names with installed:false is the same fact as one it omits — the
+      // equipment is not in the room tonight either way — so both take the
+      // same branch. familyInstalled is endpointServices' own predicate, so
+      // resolve() and the dormancy feed can never disagree about a family.
+      if (familyInstalled(profile, need.id)) {
         return verdict(need, 'runs', 'paper', 'declared by profile');
       }
       if (need.onAbsent === 'require') {
@@ -111,6 +133,13 @@ function resolveOne(need, profile, bindings, inventory) {
       );
     }
     case 'surface-channel': {
+      // P2: the display's dependent need. No main display installed =>
+      // no surface to put a channel on.
+      if (!familyInstalled(profile, 'display.main')) {
+        return verdict(
+          need, 'dormant', 'paper', 'display not installed tonight'
+        );
+      }
       const surf = (bindings.surfaces || {})[need.id];
       if (surf) {
         return verdict(need, 'runs', 'paper', `bound: ${surf.file}`);
@@ -134,18 +163,31 @@ function resolveOne(need, profile, bindings, inventory) {
     }
     case 'service': {
       // C1 §2: orchestrator present => every stack service is
-      // expected; one that is not running is a FAULT, never dormant.
-      const health = (inventory.serviceHealth || {})[need.id];
-      if (health === undefined) {
+      // expected; one that is not running is a FAULT, never dormant —
+      // UNLESS it has been latched dormant, which means somebody chose
+      // its absence (the profile did not install its equipment family, or
+      // an operator put it out of service). R16: the caller may pass the
+      // bare status string (as the older callers do) or the registry's
+      // snapshot entry {status, message, door?}; read both.
+      const raw = (inventory.serviceHealth || {})[need.id];
+      if (raw === undefined) {
         return verdict(
           need, 'runs', 'paper', `'${need.id}' expected (stack service)`
         );
       }
-      if (health === 'healthy') {
+      const status = (raw && typeof raw === 'object') ? raw.status : raw;
+      const door = (raw && typeof raw === 'object') ? raw.door : undefined;
+      if (status === 'healthy') {
         return verdict(need, 'runs', 'live', `'${need.id}' healthy`);
       }
+      if (status === 'dormant') {
+        // A bare 'dormant' string carries no door; say the plain word
+        // rather than guess which of the two doors latched it.
+        const how = door === undefined ? 'dormant' : doorWording(door);
+        return verdict(need, 'dormant', 'live', `'${need.id}' is ${how}`);
+      }
       return verdict(
-        need, 'fault', 'live', `stack service '${need.id}' is ${health}`
+        need, 'fault', 'live', `stack service '${need.id}' is ${status}`
       );
     }
     case 'capability':
@@ -172,20 +214,35 @@ function verdict(need, v, depth, reason) {
 }
 
 /**
- * D-C2.1 rollup: status + dormantServices (ids of dormant service/
- * endpoint needs — endpoint ids ARE service ids per the endpoints
- * interior pin) + problems (every fault/no-go reason, act-now list).
+ * D-C2.1 rollup (shape re-pinned by T1a ruling R18):
+ *
+ *   status        go | go-degraded | no-go
+ *   dormantNeeds  ids of dormant SERVICE and ENDPOINT needs. (Was
+ *                 `dormantServices`; the name lied — an endpoint id is an
+ *                 equipment family, not a service id.)
+ *   problems      every fault and no-go reason: the act-now list.
+ *   blocking      the reasons of `no-go` verdicts ONLY — the one list that
+ *                 REFUSES a session start (P7). Exactly two rules can
+ *                 produce a no-go today: the endpoint `onAbsent: require`
+ *                 rule and the device-class minimum. NO OTHER ARM MAY ADD
+ *                 TO IT. A fault is loud and never blocking: the show can
+ *                 run with a dead speaker, and a gate that cries wolf is a
+ *                 gate GMs learn to click through.
+ *
  * disabledCueIds is deliberately absent: its true producer is C3's
- * session-start disable walk (CS.2) — a resolve-time guess here
- * would duplicate that mechanism.
+ * session-start disable walk (cueEngineService.applyDormancy) — a
+ * resolve-time guess here would duplicate that mechanism.
  */
 function rollUp(verdicts) {
-  const dormantServices = verdicts
+  const dormantNeeds = verdicts
     .filter((v) => v.verdict === 'dormant'
       && (v.need.kind === 'service' || v.need.kind === 'endpoint'))
     .map((v) => v.need.id);
   const problems = verdicts
     .filter((v) => v.verdict === 'fault' || v.verdict === 'no-go')
+    .map((v) => v.reason);
+  const blocking = verdicts
+    .filter((v) => v.verdict === 'no-go')
     .map((v) => v.reason);
 
   let status = 'go';
@@ -196,7 +253,7 @@ function rollUp(verdicts) {
   ) {
     status = 'go-degraded';
   }
-  return { status, dormantServices, problems };
+  return { status, dormantNeeds, problems, blocking };
 }
 
 module.exports = { resolve };

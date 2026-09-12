@@ -1320,3 +1320,251 @@ describe('SessionService - pack stamping at creation (Phase 3 A2)', () => {
     expect(sessionService.currentSession.toJSON().metadata.pack).toEqual(active);
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════
+// Block 2 T1a D8 — the require gate, the stamps, the typed override
+// (plan §3 pin P7; rulings R11/R14).
+//
+// A session cannot start while a need the pack marked `onAbsent: require`
+// is unresolved — that is what "required" has to mean or the word is
+// decoration. A fault NEVER refuses: the show can run with a dead speaker,
+// and a gate that cries wolf is a gate GMs learn to click through. The way
+// past the gate is typed, logged and attributed, because the only reason
+// to override is one a human can defend afterwards.
+// ══════════════════════════════════════════════════════════════════════
+describe('SessionService - preflight gate and stamps (T1a D8)', () => {
+  const { resetAllServices } = require('../../helpers/service-reset');
+  const sessionService = require('../../../src/services/sessionService');
+  const preflightService = require('../../../src/services/preflightService');
+  const logger = require('../../../src/utils/logger');
+
+  const clean = (over = {}) => ({
+    profileId: 'toy-test-rig', forPack: 'midnight-heist',
+    packHash: `sha256:${'a'.repeat(64)}`,
+    computedAt: '2026-09-12T10:00:00.000Z', depth: 'live',
+    rows: [], rollup: { status: 'go', dormantNeeds: [], problems: [], blocking: [] },
+    blocking: [], limits: {}, ...over,
+  });
+
+  const blocked = () => clean({
+    profileId: 'toy-dormant-lighting',
+    rollup: {
+      status: 'no-go', dormantNeeds: ['lighting.instruments'],
+      problems: ["required endpoint 'lighting.instruments' not installed at this venue"],
+      blocking: ["required endpoint 'lighting.instruments' not installed at this venue"],
+    },
+    blocking: ["required endpoint 'lighting.instruments' not installed at this venue"],
+  });
+
+  beforeEach(async () => {
+    await resetAllServices();
+    jest.restoreAllMocks();
+  });
+
+  afterEach(async () => {
+    jest.restoreAllMocks();
+    if (sessionService.currentSession) await sessionService.endSession();
+    sessionService.removeAllListeners();
+  });
+
+  describe('createSession stamps the preflight projection', () => {
+    it('stamps status/computedAt/profileId/packHash/blocking/dormantNeeds and a null override', async () => {
+      jest.spyOn(preflightService, 'evaluate').mockReturnValue(blocked());
+
+      await sessionService.createSession({ name: 'Stamped', teams: [] });
+
+      expect(sessionService.currentSession.metadata.preflight).toEqual({
+        status: 'no-go',
+        computedAt: '2026-09-12T10:00:00.000Z',
+        profileId: 'toy-dormant-lighting',
+        packHash: `sha256:${'a'.repeat(64)}`,
+        blocking: ["required endpoint 'lighting.instruments' not installed at this venue"],
+        dormantNeeds: ['lighting.instruments'],
+      });
+      expect(sessionService.currentSession.metadata.preflightOverride).toBeNull();
+      // the projection, not the rows
+      expect(sessionService.currentSession.metadata.preflight.rows).toBeUndefined();
+    });
+
+    it('recomputes dormancy before stamping, so the stamp sees tonight', async () => {
+      const dormancyService = require('../../../src/services/dormancyService');
+      const order = [];
+      jest.spyOn(dormancyService, 'recompute').mockImplementation(() => {
+        order.push('dormancy'); return { dormantServiceIds: [], doorOf: {} };
+      });
+      jest.spyOn(preflightService, 'evaluate').mockImplementation(() => {
+        order.push('preflight'); return clean();
+      });
+
+      await sessionService.createSession({ name: 'Ordered', teams: [] });
+
+      expect(order).toEqual(['dormancy', 'preflight']);
+    });
+  });
+
+  describe('startGame refuses a NO-GO', () => {
+    it('throws PreflightNoGoError carrying the reasons and leaves the session in setup', async () => {
+      const { PreflightNoGoError } = preflightService;
+      jest.spyOn(preflightService, 'evaluate').mockReturnValue(blocked());
+      await sessionService.createSession({ name: 'Blocked', teams: [] });
+
+      await expect(sessionService.startGame()).rejects.toBeInstanceOf(PreflightNoGoError);
+      await expect(sessionService.startGame()).rejects.toMatchObject({
+        blocking: ["required endpoint 'lighting.instruments' not installed at this venue"],
+      });
+      expect(sessionService.currentSession.status).toBe('setup');
+      expect(sessionService.currentSession.metadata.preflightOverride).toBeNull();
+    });
+
+    it('re-stamps metadata.preflight at start, not only at create', async () => {
+      jest.spyOn(preflightService, 'evaluate').mockReturnValue(clean());
+      await sessionService.createSession({ name: 'Restamp', teams: [] });
+      preflightService.evaluate.mockReturnValue(clean({
+        computedAt: '2026-09-12T11:30:00.000Z',
+      }));
+
+      await sessionService.startGame();
+
+      expect(sessionService.currentSession.metadata.preflight.computedAt)
+        .toBe('2026-09-12T11:30:00.000Z');
+      expect(sessionService.currentSession.status).toBe('active');
+    });
+
+    it('a FAULT never refuses — only blocking does', async () => {
+      jest.spyOn(preflightService, 'evaluate').mockReturnValue(clean({
+        rollup: {
+          status: 'go-degraded', dormantNeeds: [],
+          problems: ["stack service 'music' is down"], blocking: [],
+        },
+      }));
+      await sessionService.createSession({ name: 'Faulty', teams: [] });
+
+      await sessionService.startGame();
+
+      expect(sessionService.currentSession.status).toBe('active');
+    });
+  });
+
+  describe('the typed override', () => {
+    it('refuses startAnyway with no reason at all', async () => {
+      jest.spyOn(preflightService, 'evaluate').mockReturnValue(blocked());
+      await sessionService.createSession({ name: 'NoReason', teams: [] });
+
+      await expect(sessionService.startGame({ startAnyway: true }))
+        .rejects.toThrow('startAnyway requires a reason');
+      expect(sessionService.currentSession.status).toBe('setup');
+    });
+
+    it('refuses a reason that normalizes to empty', async () => {
+      jest.spyOn(preflightService, 'evaluate').mockReturnValue(blocked());
+      await sessionService.createSession({ name: 'BlankReason', teams: [] });
+
+      await expect(sessionService.startGame({ startAnyway: true, reason: '  ||  ' }))
+        .rejects.toThrow('startAnyway requires a reason');
+    });
+
+    it('normalizes the reason: bidi control and pipes out, trimmed', async () => {
+      jest.spyOn(preflightService, 'evaluate').mockReturnValue(blocked());
+      const warn = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+      await sessionService.createSession({ name: 'Override', teams: [] });
+
+      await sessionService.startGame(
+        { startAnyway: true, reason: '  the TV is dead ‮|ok  ' },
+        { deviceId: 'GM_STATION_1', tier: 'operator' }
+      );
+
+      const stamp = sessionService.currentSession.metadata.preflightOverride;
+      expect(stamp).toEqual({
+        reason: 'the TV is dead ok',
+        at: expect.any(String),
+        blocking: ["required endpoint 'lighting.instruments' not installed at this venue"],
+        byDeviceId: 'GM_STATION_1',
+        byTier: 'operator',
+      });
+      expect(sessionService.currentSession.status).toBe('active');
+
+      const call = warn.mock.calls.find(
+        (c) => String(c[0]).includes('preflight NO-GO')
+      );
+      expect(call).toBeDefined();
+      expect(call[1]).toMatchObject({
+        reason: 'the TV is dead ok',
+        blocking: ["required endpoint 'lighting.instruments' not installed at this venue"],
+        byDeviceId: 'GM_STATION_1',
+        byTier: 'operator',
+      });
+      expect(call[1].at).toEqual(expect.any(String));
+    });
+
+    it('caps the reason at 350 code points', async () => {
+      jest.spyOn(preflightService, 'evaluate').mockReturnValue(blocked());
+      jest.spyOn(logger, 'warn').mockImplementation(() => {});
+      await sessionService.createSession({ name: 'LongReason', teams: [] });
+
+      await sessionService.startGame({ startAnyway: true, reason: 'x'.repeat(400) });
+
+      expect([...sessionService.currentSession.metadata.preflightOverride.reason])
+        .toHaveLength(350);
+    });
+
+    it('records a null actor honestly rather than inventing one', async () => {
+      jest.spyOn(preflightService, 'evaluate').mockReturnValue(blocked());
+      jest.spyOn(logger, 'warn').mockImplementation(() => {});
+      await sessionService.createSession({ name: 'Anon', teams: [] });
+
+      await sessionService.startGame({ startAnyway: true, reason: 'because' });
+
+      expect(sessionService.currentSession.metadata.preflightOverride).toMatchObject({
+        byDeviceId: null, byTier: null,
+      });
+    });
+
+    it('does NOT stamp an override when nothing was blocking', async () => {
+      jest.spyOn(preflightService, 'evaluate').mockReturnValue(clean());
+      await sessionService.createSession({ name: 'Clean', teams: [] });
+
+      await sessionService.startGame({ startAnyway: true, reason: 'not needed' });
+
+      expect(sessionService.currentSession.metadata.preflightOverride).toBeNull();
+    });
+  });
+
+  describe('restampAfterRestore (R14)', () => {
+    it('adds restoredAt and never refuses, warning loudly on a no-go', async () => {
+      jest.spyOn(preflightService, 'evaluate').mockReturnValue(clean());
+      await sessionService.createSession({ name: 'Restored', teams: [] });
+      await sessionService.startGame();
+      expect(sessionService.currentSession.status).toBe('active');
+
+      const warn = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+      preflightService.evaluate.mockReturnValue(blocked());
+
+      await sessionService.restampAfterRestore();
+
+      const stamp = sessionService.currentSession.metadata.preflight;
+      expect(stamp.status).toBe('no-go');
+      expect(stamp.restoredAt).toEqual(expect.any(String));
+      expect(sessionService.currentSession.status).toBe('active');
+      expect(warn.mock.calls.some(
+        (c) => String(c[0]).includes('restored session')
+      )).toBe(true);
+    });
+
+    it('is a no-op with no current session', async () => {
+      await expect(sessionService.restampAfterRestore()).resolves.toBeUndefined();
+    });
+
+    it('leaves an ENDED session\'s stamp alone — it describes the night it ran', async () => {
+      jest.spyOn(preflightService, 'evaluate').mockReturnValue(clean());
+      await sessionService.createSession({ name: 'Finished', teams: [] });
+      const created = sessionService.currentSession;
+      created.status = 'ended';
+      const before = { ...created.metadata.preflight };
+      preflightService.evaluate.mockReturnValue(blocked());
+
+      await sessionService.restampAfterRestore();
+
+      expect(created.metadata.preflight).toEqual(before);
+    });
+  });
+});

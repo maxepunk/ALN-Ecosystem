@@ -311,6 +311,24 @@ async function initializeServices() {
       logger.info('No previous session - ready for new game');
     }
     
+    // Block 2 T1a D4 (pin P6): every service has now had its chance to
+    // report, so this is the moment to decide what is DORMANT and push it
+    // into the registry and the cue engine — before revalidation starts, so
+    // no probe fires at equipment nobody installed.
+    // T1a D8 (ruling R14): a session restored from disk gets its preflight
+    // re-evaluated and re-stamped in the same pass, NOT in
+    // sessionService.init() — at init() time no service has started and
+    // every live fact would be a lie. A no-go warns loudly and never
+    // refuses; the show is already on. Neither of these may stop a boot,
+    // so they share one guard: a broken pack/profile pair is a loud warn,
+    // not a dark venue.
+    try {
+      require('./services/dormancyService').recompute();
+      await sessionService.restampAfterRestore();
+    } catch (err) {
+      logger.warn('Dormancy/preflight pass at boot failed — continuing', { error: err.message });
+    }
+
     // Start periodic health revalidation (catches stale services like pipewire-pulse)
     serviceHealthRegistry.startRevalidation({
       vlc: vlcService,

@@ -1,0 +1,25 @@
+{
+  "kind": "installation-profile",
+  "schemaVersion": 1,
+  "profileId": "toy-dormant-lighting",
+  "label": "Toy heist — test rig, lighting not installed",
+  "version": 1,
+  "forPack": "midnight-heist",
+  "orchestrator": true,
+  "endpoints": {
+    "audio.sinks": [
+      { "id": "rung1_hdmi", "installed": true },
+      { "id": "rung1_bt", "installed": true }
+    ]
+  },
+  "bindings": {
+    "lighting": {
+      "vault-alarm": {
+        "ha": "scene.witness_vault_alarm"
+      },
+      "all-clear": {
+        "ha": "scene.witness_all_clear"
+      }
+    }
+  }
+}

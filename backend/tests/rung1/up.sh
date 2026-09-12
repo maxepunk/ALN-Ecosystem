@@ -81,6 +81,26 @@ HA_TOKEN=""
 [ -f "$RUNG1/ha-auth.json" ] && HA_TOKEN=$(node -e "
   const a = require('$RUNG1/ha-auth.json');
   console.log(a.long_lived_token || a.access_token);" 2>/dev/null)
+
+# --- Chromium resolution (rung-1 kiosk; T1a CI follow-up) ----------
+# The dev container has /opt/pw-browsers/chromium (a symlink to
+# Playwright's own executable); a hosted runner does not, so fall
+# back to whatever Playwright itself resolves — this also respects
+# an already-set CHROMIUM_BIN (e.g. an operator override) first.
+CHROMIUM_RESOLVED="${CHROMIUM_BIN:-}"
+if [ -z "$CHROMIUM_RESOLVED" ] && [ -x /opt/pw-browsers/chromium ]; then
+  CHROMIUM_RESOLVED="/opt/pw-browsers/chromium"
+fi
+if [ -z "$CHROMIUM_RESOLVED" ]; then
+  CHROMIUM_CANDIDATE=$(cd "$BACKEND" && node -e "process.stdout.write(require('playwright').chromium.executablePath())" 2>/dev/null || true)
+  if [ -n "$CHROMIUM_CANDIDATE" ] && [ -x "$CHROMIUM_CANDIDATE" ]; then
+    CHROMIUM_RESOLVED="$CHROMIUM_CANDIDATE"
+  fi
+fi
+if [ -z "$CHROMIUM_RESOLVED" ]; then
+  note "no Chromium found — the display service will report down"
+fi
+
 cat > "$RUNG1/env.sh" <<EOF
 # source me before booting the engine against the rung-1 harness
 export DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS"
@@ -93,7 +113,7 @@ export PACK_PATH="$PACK_DIR"
 export DATA_DIR="$RUNG1/engine-data"
 export LOGS_DIR="$RUNG1/engine-logs"
 export DISPLAY="$DISPLAY"
-export CHROMIUM_BIN="/opt/pw-browsers/chromium"
+export CHROMIUM_BIN="$CHROMIUM_RESOLVED"
 EOF
 # Bluetooth: when the mock arm is live, the engine's bluetoothctl and
 # dbus-monitor children must reach the private system bus.
