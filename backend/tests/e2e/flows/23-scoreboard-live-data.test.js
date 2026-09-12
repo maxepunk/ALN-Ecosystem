@@ -30,7 +30,7 @@ const { createBrowserContext, createPage, closeAllContexts } = require('../setup
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { selectTestTokens } = require('../helpers/token-selection');
-const { calculateExpectedScore, loadPackScoring, moneySpec, formatMoneyExpected } = require('../helpers/scoring');
+const { calculateExpectedScore, loadPackScoring, loadPackModes, moneySpec, formatMoneyExpected } = require('../helpers/scoring');
 const { ScoreboardPage } = require('../helpers/page-objects/ScoreboardPage');
 
 // Tests are serial — they share one orchestrator instance and must not race each other
@@ -91,6 +91,36 @@ test.describe('Scoreboard Live Data', () => {
       expect(await scoreboard.isConnected()).toBe(true);
       expect(await scoreboard.getStatusText()).toBe('LIVE');
       console.log('Scoreboard connected, status: LIVE');
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
+
+  // ====================================================
+  // TEST 1b: Evidence view is surface-keyed (slice 3c)
+  // ====================================================
+
+  test('?mode= evidence view hides the ticker for ANY declared evidence-surface id', async () => {
+    // 3c pin: the branch keys off displayBehavior.surface, not the baked
+    // 'detective' literal — dual-pack valid ('detective' on ALN, 'tipoff'
+    // on toy-heist). Without the param the ticker stays visible.
+    const modes = await loadPackModes(orchestratorInfo.url);
+    const evidenceId = (modes || []).find(
+      (m) => m.displayBehavior && m.displayBehavior.surface === 'scoreboard-evidence'
+    )?.id || 'detective';
+
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+
+    try {
+      await page.goto(`${orchestratorInfo.url}/scoreboard?mode=${evidenceId}`, { waitUntil: 'networkidle' });
+      await expect(page.locator('body')).toHaveClass(/mode-evidence/);
+      await expect(page.locator('#scoreTicker')).toBeHidden();
+
+      await page.goto(`${orchestratorInfo.url}/scoreboard`, { waitUntil: 'networkidle' });
+      await expect(page.locator('body')).not.toHaveClass(/mode-evidence/);
+      await expect(page.locator('#scoreTicker')).toBeVisible();
     } finally {
       await page.close();
       await context.close();
