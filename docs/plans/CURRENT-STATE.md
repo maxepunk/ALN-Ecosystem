@@ -91,38 +91,52 @@ Thursday preflight.
 
 ## 6. Running, and on disk
 
-- Nothing is running (2026-09-12 20:27Z). Six agents (harness
-  implementer, researcher, three brief reviewers, arms reader) were
-  stopped at 19:59:41Z by the owner's stop button; stopped agents cannot
-  be resumed (documented). The harness implementer's two commits survive
-  on `claude/nice-curie-hescfv-harness-minimum` (`1b2cccb` P22,
-  `30d1514` P21), tree clean; no report, review or fact sheet was written.
-- Harness facts verified from the official docs (guide agent, 20:25Z):
-  a plain message never stops background agents; the stop button stops
-  every running one and they cannot be resumed; a COMPLETED agent can be
-  resumed by message with its context; compaction does not touch running
-  agents; a container restart ends all background work; workflows resume
-  from their run id with finished agents' results cached, cap on this
-  4-CPU box = 2 concurrent agents per workflow; workflows need the
-  owner's explicit "use a workflow"; auto worktrees (`.claude/worktrees/`)
-  branch from the default branch and do not init submodules, so lane
-  worktrees stay hand-cut under `.worktrees/`.
-- Main checkout is on the harness task branch; docs commits go through
-  the worktree `.worktrees/docs` (designated branch). Remove that
+- Four workflows running since 21:40Z 2026-09-12 (owner: "go";
+  resumable after any stop with `Workflow({scriptPath, resumeFromRunId})`,
+  finished agents cached; scripts copied to the scratchpad
+  `<scratchpad>/harness-minimum-build.js`, `research.js`,
+  `arms-factsheet.js`, `brief-reviews.js`):
+  harness build `wf_e025191e-511` (implementer → task review → fix
+  rounds; main checkout on `claude/nice-curie-hescfv-harness-minimum`,
+  base 33b2128, two commits carried; report `harness-minimum-report.md`);
+  research `wf_c1fcc10c-87d` (nine topic readers + a repository reader
+  → synthesis → critic; writes
+  `docs/plans/2026-09-12-green-fresh-install-research.md` in the docs
+  worktree); arms fact sheet `wf_64f7562e-cc8` (three readers → recount
+  → writer; scratch `preflight-arms-factsheet.md`); brief reviews
+  `wf_48810aa9-f35` (three reviewers → a refuter per blocking finding;
+  scratch `<lane>-lane-review.md`). A message never stops them; the
+  stop button does, and then they resume.
+- Harness facts verified from the official docs (20:25Z): a plain
+  message never stops agents; the stop button stops every running one
+  and they cannot be resumed; a COMPLETED agent resumes by message;
+  compaction leaves running agents alone; a container restart ends all
+  background work; workflows resume from their run id; cap here = 2
+  concurrent agents per workflow; the harness's own worktree tool
+  branches from the default branch and inits no submodules, so lane
+  worktrees are hand-cut under `.worktrees/`.
+- Main checkout is on the harness task branch (the workflow's
+  implementer edits there); docs commits go through the worktree
+  `.worktrees/docs` (designated branch, now a92a76a). Remove that
   worktree before checking the designated branch out in the main
   checkout again. Never commit in a checkout where an implementer edits.
-- Rig: shared arms up under `/tmp/rung1` (engine stopped); a restart
-  loses them (recipe `2026-09-12-container-baseline.md` §7).
+- Rig: shared arms up under `/tmp/rung1` (engine stopped); E2E and
+  Tier L runs take `/tmp/rung1/e2e.lock` with `flock` (lanes share the
+  rig); a restart loses the arms (recipe `2026-09-12-container-baseline.md` §7).
 - Scratch `.superpowers/sdd/2026-09-12-block2-hardening-plan/`: the
   progress file (append-only; live-state lines at its end); six fact
-  sheets (`supervisor-`, `credentials-`, `self-heal-factsheet.md`,
-  `sweep-audit-producers/-renderers/-restore.md`), each opening with a
-  Conclusions section — read only that; reviews `p1-…` (DISPATCH),
-  `p2-…` (REVISE), `harness-minimum-rereview.md` (DISPATCH).
-- Lane briefs, committed but AWAITING REWRITE after the decisions above:
+  sheets, each opening with a Conclusions section — read only that;
+  earlier reviews `p1-…` (DISPATCH), `p2-…` (REVISE),
+  `harness-minimum-rereview.md` (DISPATCH).
+- Lane briefs, rewritten to rulings R18–R25 and committed (a92a76a):
   `docs/plans/briefs/2026-09-12-<lane>-lane.md` (+ `-review.md`) for
-  credentials, supervisor, self-heal; the arms reader brief
-  `…-preflight-arms-factsheet-reader.md`.
+  credentials, supervisor, self-heal; worktrees `.worktrees/<lane>` are
+  cut after the harness minimum merges (recipe in the progress file).
+- Next, in order: the harness build's result → my fresh gate → merge →
+  cut the three lane worktrees; the reviews' verdicts → brief fixes →
+  lanes dispatched as build workflows; the profile check after the
+  merge; the arms brief from its fact sheet; the guide repair from the
+  research (then the owner's guide-ready note).
 
 ## 7. Pointers (open when)
 
