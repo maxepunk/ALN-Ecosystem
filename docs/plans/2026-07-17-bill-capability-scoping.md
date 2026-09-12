@@ -2,6 +2,10 @@
 
 **2026-07-17 · input: owner's macro design doc v0.1 · companion to the
 2026-07-17 forward audit (PHASE3-STATUS) and the Phase 3 program.**
+**§7 plan integration: ADOPTED 2026-07-17 (owner-directed)** — recorded
+same-day in program §11 and PHASE3-STATUS; this stamp added 2026-07-18 so
+the doc is self-describing (the §7 "proposed for owner ratification"
+wording below predates adoption).
 
 Purpose: walk BILL's locked machine against what the engine + pack format
 can express today, what the roadmap already covers, and what is genuinely

@@ -196,6 +196,19 @@ global.InitializationSteps = {
     global.Debug.log('Token database loaded successfully');
     return true;
   },
+  // Slice 1: persisted-mode validation against the active pack (mirrors
+  // ALNScanner initializationSteps.validateSettingsMode). The harness runs
+  // networked-mode integration against the ALN pack, where the mock
+  // settings' seed modes are always declared — a no-op pass-through that
+  // keeps App.init()'s call sequence intact.
+  validateSettingsMode: (settings) => {
+    const valid = ['blackmarket', 'detective'];
+    if (valid.includes(settings.mode)) return false;
+    global.Debug.log(`STALE MODE RESET (harness): '${settings.mode}' not declared — reset to blackmarket`);
+    settings.mode = 'blackmarket';
+    settings.save?.();
+    return true;
+  },
   // Phase 1B: URL mode override
   applyURLModeOverride: (locationSearch, settings) => {
     const urlParams = new URLSearchParams(locationSearch);

@@ -1816,8 +1816,12 @@ components:
                 example: "GM_Station_1"
               mode:
                 type: string
-                enum: [detective, blackmarket]
-                description: Scan mode
+                description: >-
+                  Game mode id. Not a closed enum (Phase 3 slice 1, open mode
+                  vocabulary): valid values are the ACTIVE pack's declared
+                  modes (game.json modes[].id), enforced at runtime by the
+                  server's wire validation. ALN wire values remain
+                  "blackmarket" and "detective" through Phase 3 (R12).
                 example: "blackmarket"
               points:
                 type: integer

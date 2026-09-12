@@ -32,6 +32,15 @@ class Transaction {
       data.points = 0;
     }
 
+    // Legacy-history default (slice 1): persisted transactions that predate
+    // the mode field hydrate as 'blackmarket' — a STABLE literal on purpose,
+    // independent of the active pack (an old ALN session restored under any
+    // pack must keep its recorded meaning). Live ingress never relies on
+    // this: processScan defaults absent mode pack-aware before construction.
+    if (!data.mode) {
+      data.mode = 'blackmarket';
+    }
+
     this.validate(data);
     Object.assign(this, data);
   }
@@ -112,8 +121,8 @@ class Transaction {
       teamId: this.teamId,
       deviceId: this.deviceId,
       deviceType: this.deviceType,  // P0.1 Correction: Include deviceType
-      mode: this.mode,  // Include mode for detective/blackmarket distinction
-      summary: this.summary || null,  // Include custom summary for detective mode
+      mode: this.mode,  // Pack-declared mode id (semantics via gameRules/modeSemantics)
+      summary: this.summary || null,  // Custom summary for evidence-surface modes
       timestamp: this.timestamp,
       sessionId: this.sessionId,
       status: this.status,
@@ -153,8 +162,11 @@ class Transaction {
       teamId: scanRequest.teamId,
       deviceId: scanRequest.deviceId,
       deviceType: scanRequest.deviceType,  // P0.1 Correction: Include deviceType
-      mode: scanRequest.mode || 'blackmarket', // AsyncAPI contract field (Decision #4)
-      summary: scanRequest.summary || null,  // Optional custom summary for detective mode
+      // Mode passes through as supplied; the pack-aware default lives in
+      // transactionService.processScan (slice 1). Absent here → the
+      // constructor's legacy-history literal applies.
+      mode: scanRequest.mode, // AsyncAPI contract field (Decision #4)
+      summary: scanRequest.summary || null,  // Optional custom summary for evidence-surface modes
       timestamp: scanRequest.timestamp || new Date().toISOString(),
       sessionId: sessionId,
       status: 'accepted',

@@ -15,37 +15,53 @@
  * channel when runtime pack loading lands (Phase 3).
  *
  * Rule decisions encoded:
- * - A1 (2026-06-09): only accepted BLACKMARKET transactions count toward
- *   group completion — detective scans are evidence, not set progress
- * - A2/B1: detective mode awards 0 points (evidence only)
+ * - A1 (2026-06-09), generalized by slice 1: only accepted transactions in
+ *   a countsTowardGroups mode count toward group completion — evidence
+ *   modes are testimony, not set progress
+ * - A2/B1, generalized by slice 1: a scoringPolicy other than 'standard'
+ *   awards 0 points
  * - Groups need 2+ member tokens to be completable
  * - Group bonus = (multiplier − 1) × Σ all member token values
+ *
+ * MODES (Phase 3 A3 slice 1): behavior branches on the pack's per-mode
+ * semantics flags via gameRules/modeSemantics — never on mode-id string
+ * equality. Every function takes the active gameConfig (callers pass
+ * packService.getGameConfig(); null rides the modeSemantics legacy shim,
+ * ledger L6). A transaction whose mode the config does not declare scores
+ * nothing and counts toward nothing (see modeSemantics header for why
+ * that is the safe reading; wire ingress makes it unreachable live).
  */
+
+const { resolveMode } = require('./modeSemantics');
 
 /**
  * Points awarded for processing a token in a given mode.
  * @param {Object} token - Token with a plain `value` field
- * @param {string} mode - 'blackmarket' | 'detective'
+ * @param {string} mode - A mode id declared by the active pack
+ * @param {Object|null} gameConfig - The active pack's game.json
  * @returns {number}
  */
-function pointsFor(token, mode) {
-  return mode === 'detective' ? 0 : token.value;
+function pointsFor(token, mode, gameConfig) {
+  const semantics = resolveMode(gameConfig, mode);
+  return semantics && semantics.scoringPolicy === 'standard' ? token.value : 0;
 }
 
 /**
- * Token IDs a team has banked: accepted blackmarket transactions only
- * (decision A1 — the group-completion currency).
+ * Token IDs a team has banked: accepted transactions in group-counting
+ * modes only (decision A1 generalized — the group-completion currency is
+ * `countsTowardGroups`, not a mode id).
  * @param {Array<Object>} transactions - Session transaction history
  * @param {string} teamId
+ * @param {Object|null} gameConfig - The active pack's game.json
  * @returns {Set<string>}
  */
-function teamBankedTokenIds(transactions, teamId) {
+function teamBankedTokenIds(transactions, teamId, gameConfig) {
   return new Set(
     (transactions || [])
       .filter(tx =>
         tx.teamId === teamId &&
         tx.status === 'accepted' &&
-        tx.mode === 'blackmarket'
+        resolveMode(gameConfig, tx.mode)?.countsTowardGroups === true
       )
       .map(tx => tx.tokenId)
   );
@@ -71,15 +87,16 @@ function groupTokens(tokens, groupId) {
  * @param {string} args.groupId
  * @param {string|null} [args.currentTokenId] - In-flight token being
  *   processed (claimed but possibly not yet in transactions)
+ * @param {Object|null} [args.gameConfig] - The active pack's game.json
  * @returns {boolean}
  */
-function isGroupComplete({ tokens, transactions, teamId, groupId, currentTokenId = null }) {
+function isGroupComplete({ tokens, transactions, teamId, groupId, currentTokenId = null, gameConfig = null }) {
   const members = groupTokens(tokens, groupId);
 
   // Groups need at least 2 tokens to be completable
   if (members.length <= 1) return false;
 
-  const banked = teamBankedTokenIds(transactions, teamId);
+  const banked = teamBankedTokenIds(transactions, teamId, gameConfig);
   if (currentTokenId) {
     banked.add(currentTokenId);
   }
@@ -132,11 +149,12 @@ function groupBonusAmount(tokens, groupId) {
  * @param {Array<Object>} args.transactions - Session transaction history
  * @param {Array<string>} args.teamIds - Team membership (teams with no
  *   transactions still get a zero row)
+ * @param {Object|null} [args.gameConfig] - The active pack's game.json
  * @returns {Array<{teamId: string, baseScore: number, bonusPoints: number,
  *   currentScore: number, tokensScanned: number, completedGroups: string[],
  *   lastTokenTime: string|null}>}
  */
-function computeTeamScores({ tokens, transactions, teamIds }) {
+function computeTeamScores({ tokens, transactions, teamIds, gameConfig = null }) {
   const rows = new Map();
   const zeroRow = (teamId) => ({
     teamId,
@@ -152,9 +170,13 @@ function computeTeamScores({ tokens, transactions, teamIds }) {
     rows.set(teamId, zeroRow(teamId));
   }
 
-  // Scoring transactions: accepted, non-detective (parity with live path)
+  // Scoring transactions: accepted, in a standard-scoring mode (parity
+  // with the live path's scoringPolicy gate)
   const scoring = (transactions || [])
-    .filter(tx => tx.status === 'accepted' && tx.mode !== 'detective');
+    .filter(tx =>
+      tx.status === 'accepted' &&
+      resolveMode(gameConfig, tx.mode)?.scoringPolicy === 'standard'
+    );
 
   for (const tx of scoring) {
     let row = rows.get(tx.teamId);
@@ -171,7 +193,7 @@ function computeTeamScores({ tokens, transactions, teamIds }) {
 
   // Group completion per team, from the same banked-token rule (A1)
   for (const row of rows.values()) {
-    const banked = teamBankedTokenIds(scoring, row.teamId);
+    const banked = teamBankedTokenIds(scoring, row.teamId, gameConfig);
     const groupIds = new Set();
     for (const tokenId of banked) {
       const token = tokens.get(tokenId);
@@ -181,7 +203,7 @@ function computeTeamScores({ tokens, transactions, teamIds }) {
     }
 
     for (const groupId of groupIds) {
-      if (isGroupComplete({ tokens, transactions: scoring, teamId: row.teamId, groupId })) {
+      if (isGroupComplete({ tokens, transactions: scoring, teamId: row.teamId, groupId, gameConfig })) {
         row.completedGroups.push(groupId);
         row.bonusPoints += groupBonusAmount(tokens, groupId);
       }

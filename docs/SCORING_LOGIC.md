@@ -2,6 +2,17 @@
 
 Last verified: 2026-03-05
 
+> **⚠ PARTIALLY SUPERSEDED (2026-07-18).** The VALUES and formulas below
+> remain correct for ALN today, but the DELIVERY architecture this doc
+> describes (build-time import of `scoring-config.json`) is DEAD: since
+> Phase 3 A2 the GM Scanner loads scoring at RUNTIME from the game pack
+> (`ALN-TokenData/game.json` `scoring` block via `src/core/packLoader.js`),
+> and the backend migrates off `scoring-config.json` in A3 slice 2. See
+> root `CLAUDE.md` "Scoring Business Logic" for the current architecture
+> and `docs/plans/PHASE3-STATUS.md` (debt ledger L1/L2/L5). **The full
+> rewrite of this document is assigned to A3 slice 2** — the commit that
+> changes scoring truth (PHASE3-STATUS "Doc-refresh obligations").
+
 ## Overview
 
 This document defines the scoring system for ALN (About Last Night) Black Market mode. This is the **authoritative source** - all implementations must match these values.
