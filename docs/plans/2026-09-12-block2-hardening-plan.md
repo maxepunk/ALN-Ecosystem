@@ -272,29 +272,47 @@ Schedule decisions are the owner's at the §8 checkpoints.
 
 ## 4. Task decomposition
 
+**Plain names (owner ruling 2026-09-12: codes retired; this table makes the older record readable).** The hardening block = the roadmap's "Block 2"; the truth sweep = "Block 3"; the test rig = "rung 1" in the vocabulary's environment ladder.
+
+| Code in older text | The piece, in plain words |
+|---|---|
+| T1b | the equipment families and fixtures (done) |
+| T1a | the dormancy core (done) |
+| T3 | the supervisor and the fault buttons |
+| T3b | credentials on every connection |
+| T4 | the preflight arms and the command line |
+| T5 | the scanner's pack self-heal |
+| T6 | the preflight panel |
+| T7a | the sweep rows |
+| T7b | the close review |
+| P1 | the profile file check at boot |
+| P2 / P2a / P2b | the test-harness repair (isolation, teardown and the merge gate; the log guard, the health timer and deterministic fixtures) |
+
+
+
 Worktrees: task branches `claude/nice-curie-hescfv-<task>` cut from the
 designated branch; each merged back by the orchestrator after its task
 review; the designated branch is the only one pushed. Scanner tasks run
 in the ALNScanner submodule on its own task branches the same way. No
 contract entry precedes its implementation (D-6): each task carries its
-own contract edits. T1b runs first; T1a after it.
+own contract edits. the equipment families and fixtures runs first; the dormancy core after it.
 
 | Task | Stage | Repos | Runs with | Model |
 |---|---|---|---|---|
-| T1b families, fixtures, endpoint map | CS.2 | backend, ALN-TokenData (manifest) | first | sonnet |
-| T1a dormancy core, enum, gate + dialog, render-safe scanner | CS.2 | backend + contracts + ALNScanner + e2e helpers | after T1b | opus |
-| T3 supervisor, host config, verbs both sides, holds, display | CS.3 | backend + contracts + ALNScanner | T4, T5 | opus |
-| T3b every connection presents a credential | CS.3 | backend + contracts | with T3 | sonnet |
-| T4 preflight arms, domain, CLI, video-file need, pack integrity | CS.4 | backend + contracts + docs | T3, T5 | opus |
-| T5 scanner self-heal + the two §8.5 tests | CS.3 | ALNScanner (+ one backend E2E flow) | T3, T4 | opus |
-| T6 scanner preflight panel | CS.4 | ALNScanner | after T4, T5 | sonnet |
-| T7a the §2.2 sweep rows | CS.5 | all | after T6 | sonnet |
-| T7b close | CS.5 | all | after T7a | sonnet + review workflow |
+| the equipment families and fixtures families, fixtures, endpoint map | CS.2 | backend, ALN-TokenData (manifest) | first | sonnet |
+| the dormancy core dormancy core, enum, gate + dialog, render-safe scanner | CS.2 | backend + contracts + ALNScanner + e2e helpers | after the equipment families and fixtures | opus |
+| the supervisor and the fault buttons supervisor, host config, verbs both sides, holds, display | CS.3 | backend + contracts + ALNScanner | the preflight arms and the command line, the scanner's pack self-heal | opus |
+| credentials on every connection every connection presents a credential | CS.3 | backend + contracts | with the supervisor and the fault buttons | sonnet |
+| the preflight arms and the command line preflight arms, domain, CLI, video-file need, pack integrity | CS.4 | backend + contracts + docs | the supervisor and the fault buttons, the scanner's pack self-heal | opus |
+| the scanner's pack self-heal scanner self-heal + the two §8.5 tests | CS.3 | ALNScanner (+ one backend E2E flow) | the supervisor and the fault buttons, the preflight arms and the command line | opus |
+| the preflight panel scanner preflight panel | CS.4 | ALNScanner | after the preflight arms and the command line, the scanner's pack self-heal | sonnet |
+| the sweep rows the §2.2 sweep rows | CS.5 | all | after the preflight panel | sonnet |
+| the close review close | CS.5 | all | after the sweep rows | sonnet + review workflow |
 
-### T1b — families, fixtures, endpoint map (CS.2)
+### the equipment families and fixtures — families, fixtures, endpoint map (CS.2)
 
 Files: `backend/config/profiles/installation-profile.schema.json`
-(P1 interior, `additionalProperties: false`); `backend/config/profiles/aln-full-kit.json`
+(the profile file check at boot interior, `additionalProperties: false`); `backend/config/profiles/aln-full-kit.json`
 (endpoints: all families installed; `network` authored per R11:
 `mode: kit-network`, `kitNetwork: {ssid: "aboutlastnetwork",
 orchestratorIp: "192.168.0.191", localDnsOverride: true}` — SSID and IP
@@ -306,7 +324,7 @@ production values); `localDnsOverride: true` is the ratified posture
 — the only value in the repo, `play.aboutlastnightgame.com`, is an
 example in `2026-07-09-phase3-1-installation-profile.md` beside the
 placeholders `ALN-GAME` / `10.11.0.2`, not a recorded decision; the
-schema allows the omission and the T4 network row then reports the
+schema allows the omission and the the preflight arms and the command line network row then reports the
 name as `unknown`); `ALN-TokenData/pack-manifest.json` (`hardware.endpoints`
 gains `audio.sinks` and `lighting.instruments`, degrade; manifest
 rebuilt; parent pin bumped); `backend/tests/e2e/fixtures/packs/toy-heist/`
@@ -336,10 +354,10 @@ bluetooth never appears. Done when both manifests regenerate, the pin
 bump is recorded, the legs appear in the matrix, tests pass
 red-then-green, lint clean.
 
-### T1a — dormancy core, enum, gate, render-safe scanner (CS.2)
+### the dormancy core — dormancy core, enum, gate, render-safe scanner (CS.2)
 
 Backend: `serviceHealthRegistry.js` (P5), `gameRules/resolution.js`
-(P2; `installed:false`; the `service` case's `dormant` branch;
+(the test-harness repair; `installed:false`; the `service` case's `dormant` branch;
 `dormantServices` → `dormantNeeds` with the stale comment fixed),
 `gameRules/grants.js` (`preflight:` prefix), `services/dormancyService.js`
 (new, P6 incl. the operator-latch set), `services/preflightService.js`
@@ -386,7 +404,7 @@ the dialog round-trip. Done when backend unit + contract + integration,
 scanner unit + L2, lint and ratchet are green in both repos and dist is
 rebuilt.
 
-### T3 — supervisor, host config, verbs both sides, holds, display (CS.3)
+### the supervisor and the fault buttons — supervisor, host config, verbs both sides, holds, display (CS.3)
 
 Backend: `utils/processMonitor.js` (P10), `config/host.example.json`,
 `config/host.schema.json`, `services/hostConfigService.js` (P11),
@@ -414,7 +432,7 @@ gains the five-kills scenario and the recovered playback. Done when
 backend suites, scanner unit + L2, lint, ratchet are green; dist
 rebuilt.
 
-### T3b — every connection presents a credential (CS.3)
+### credentials on every connection — every connection presents a credential (CS.3)
 
 Files: `websocket/socketServer.js` (P15), `server.js` and
 `tests/helpers/integration-test-server.js` (`sync:request` getter),
@@ -428,7 +446,7 @@ Files: `websocket/socketServer.js` (P15), `server.js` and
 `sync:request` leaves `scannedTokensByDevice` unchanged; the scoreboard
 E2E flow passes.
 
-### T4 — preflight arms, domain, CLI, video-file need, pack integrity (CS.4)
+### the preflight arms and the command line — preflight arms, domain, CLI, video-file need, pack integrity (CS.4)
 
 Files: `gameRules/packNeeds.js` (+ `video-file`), `gameRules/resolution.js`
 (its case), `services/preflightService.js` (arms: pack refs via
@@ -441,7 +459,7 @@ live: the host holds `orchestratorIp` on an interface and
 `unknown` with the label when the block is absent, R11); devices; host (disk,
 temperature, load, ports, PID files); certificate as `warn`; display
 liveness with `service:restart display`; pack integrity: sha1 per
-manifest file and `realpathSync` containment (F-P2-3/F-P2-7); the exec
+manifest file and `realpathSync` containment (F-the test-harness repair-3/F-the test-harness repair-7); the exec
 discipline of P8), `services/packService.js` (`resolvePackFile`
 containment), both manifest builders (skip symlinks),
 `commandExecutor.js` (`preflight:run`, rate-limited per socket),
@@ -459,7 +477,7 @@ service's; `video-file` needs for every token and cue video; integrity
 flags an edited file and a symlink escaping the pack dir; over-budget
 arms report `unknown`.
 
-### T5 — scanner self-heal + the two §8.5 tests (CS.3, ALNScanner)
+### the scanner's pack self-heal — scanner self-heal + the two §8.5 tests (CS.3, ALNScanner)
 
 Files: `src/core/packLoader.js` (`refresh({baseUrl})`, validate-then-
 flip), `src/network/networkedSession.js` / `messageRouters.js` (boundary
@@ -474,7 +492,7 @@ Plus one backend E2E flow on the toy leg restarting the orchestrator
 with a different `packPath` and asserting the reconnect with the new
 hash (DoD h).
 
-### T6 — scanner preflight panel (CS.4, ALNScanner)
+### the preflight panel — scanner preflight panel (CS.4, ALNScanner)
 
 Files: `src/ui/renderers/PreflightRenderer.js` (grouped rows, verdict
 and severity, paper/live label, profile id, computed-at, the `limits`
@@ -483,15 +501,15 @@ footer, a "Run preflight" button), `MonitoringDisplay.js`,
 null), `index.html`, tests. Done when unit and L2 are green and the rows
 render from a fixture equal to the CLI's paper output.
 
-### T7a — the §2.2 sweep rows (CS.5)
+### the sweep rows — the §2.2 sweep rows (CS.5)
 
 The 22 close-gate ids from the census §13 (S2-2, S2-3, S2-4, WE-4,
 F-P8a-1, F-P8a-3, F-P8b-1, F-P8b-3, F-P8b-4, F-P8b-5, F-P9a-1, F-P9a-2,
 F-P9a-3, P9b-2, P9b-6, P4-5, P4-6, P4-7, LA-6, WE-2, LA-7, LA-8) plus
-P1-observation, each executed or dispositioned with a reason; the
+the profile file check at boot-observation, each executed or dispositioned with a reason; the
 workflow hardening (LC-6/P9b-9); rig hygiene (P9b-4/P9b-8).
 
-### T7b — close (CS.5)
+### the close review — close (CS.5)
 
 Records (CLAUDE.md files for the enum, the ninth service, the domain,
 the verbs, host config; CONTEXT.md domain-modeling rows: flap window,
@@ -515,16 +533,16 @@ and `p2-factsheet.md` (rig hygiene; reader brief
 
 | Task | Serves | Repos | Runs with | Model |
 |---|---|---|---|---|
-| P2b log guard, health timer, fixture generation | the engineering loop only (a dead pipe can fill the disk in minutes: 7.3 GB free here) | backend + tests + rung-1 scripts | first | opus |
-| P2a worker isolation, run teardown, merge gate, probe user, PID-file test | the engineering loop only | backend tests + scripts | after P2b | opus |
-| P1 the installation profile check at boot | the one truth (a profile that lies makes every verdict wrong); the GM's loop (the NO-GO names the broken field) | backend + contracts | after P2a | opus |
+| the log guard, the health timer and deterministic fixtures log guard, health timer, fixture generation | the engineering loop only (a dead pipe can fill the disk in minutes: 7.3 GB free here) | backend + tests + rung-1 scripts | first | opus |
+| test isolation, run teardown and the merge gate worker isolation, run teardown, merge gate, probe user, PID-file test | the engineering loop only | backend tests + scripts | after the log guard, the health timer and deterministic fixtures | opus |
+| the profile file check at boot the installation profile check at boot | the one truth (a profile that lies makes every verdict wrong); the GM's loop (the NO-GO names the broken field) | backend + contracts | after test isolation, run teardown and the merge gate | opus |
 
 Sequential, all in the main checkout on task branches cut from the
 designated branch: the log guard lands before any local Tier L leg runs
-again (the disk is thin); the merge gate then gates P1's merge. No
+again (the disk is thin); the merge gate then gates the profile file check at boot's merge. No
 worktrees: nothing here is worth the node_modules cost.
 
-**Design pins for P2 (from the fact sheet; each a ruling of this plan):**
+**Design pins for the test-harness repair (from the fact sheet; each a ruling of this plan):**
 
 - **P21. One data directory and one log directory per worker.**
   `startOrchestrator` passes `DATA_DIR` and `LOGS_DIR` to the child:
@@ -591,12 +609,12 @@ worktrees: nothing here is worth the node_modules cost.
   `$RUNG1_USER` through `runuser`, the way `up.sh` does;
   `bluetoothService.test.js` gains an `afterAll` that stops the monitor
   so `/tmp/aln-pm-bluez-dbus-monitor.pid` is not left behind.
-- **Out of P2, recorded:** `forceExit` in the Jest configs; CI's Tier L
+- **Out of the test-harness repair, recorded:** `forceExit` in the Jest configs; CI's Tier L
   job has no teardown step (the runner is disposable; the local gate
   needs one, hence P25/P26); the whole set stays under the size cap by
   the split above.
 
-Red-first for P2 (seams): P22's reproduction; a unit test that a
+Red-first for the test-harness repair (seams): P22's reproduction; a unit test that a
 stdout `error` with `EPIPE` silences the console and writes one line;
 `clearSessionData` with two worker directories leaves the other
 untouched; the child env carries `DATA_DIR`/`LOGS_DIR` under the slot;
@@ -611,7 +629,7 @@ green, all four Tier L legs run locally three times with three workers
 with zero failures and zero retries, and the residue check after them
 is empty.
 
-**Design pins for P1 (from the fact sheet; each a ruling of this plan; revised 2026-09-12 after the plan-and-brief review — 18 findings, all folded):**
+**Design pins for the profile file check at boot (from the fact sheet; each a ruling of this plan; revised 2026-09-12 after the plan-and-brief review — 18 findings, all folded):**
 
 - **P17. The check.** `profileService.activateProfile()` validates the
   parsed file against `installation-profile.schema.json` with one
@@ -674,7 +692,7 @@ is empty.
   are faults. NO OTHER ARM MAY ADD TO IT." `preflightService.LIMITS.verifies`
   gains "the installation profile file against its schema (paper)" and
   `cannotVerify` gains "bindings that name roles or channels the pack
-  never declares (T4)" (P8: the honesty face moves with the arm). The
+  never declares (the preflight arms and the command line)" (P8: the honesty face moves with the arm). The
   require gate, the override, the stamp, and the scanner's typed dialog
   need no change: the NO-GO message already carries `blocking` (reasons
   only; the row id is never in the message). — cost if wrong: a venue
@@ -690,15 +708,15 @@ is empty.
   `profile` fixture at `tests/contract/scanner/event-handling.test.js:44`
   updated; the `sync:full` completeness test pins top-level keys only
   and stays untouched.
-- **Out of P1, recorded:** cross-reference errors (a binding that names
-  a role the pack never declares) are schema-legal and belong to T4's
+- **Out of the profile file check at boot, recorded:** cross-reference errors (a binding that names
+  a role the pack never declares) are schema-legal and belong to the preflight arms and the command line's
   bindings arm (and to `limits.cannotVerify` now); the scanner does not
-  display the profile identity today (T6's panel); the config-tool
+  display the profile identity today (the preflight panel's panel); the config-tool
   validates no profile (C4); `CONTEXT.md` §5's "paper" sentence widened
   to cover the file-against-schema fact (edit noted there, 2026-09-12);
   the spec §8 R-C3-1 carries a supersession note for R12.
 
-Red-first for P1 (seams): the validator module refuses `instaled` (as
+Red-first for the profile file check at boot (seams): the validator module refuses `instaled` (as
 an added `display.main` key), a wrong type, a missing required key, an
 unknown family, and accepts the ALN profile, both fixture profiles and
 the generated simulation profile (as `simulationProfile.test.js`
@@ -761,15 +779,15 @@ delivers and whether the tree is a coherent stopping point after it.
 | Task | Delivers (observable) | Depends on | Stop point? What the GM has |
 |---|---|---|---|
 | T1b | Equipment interior pinned; both packs declare their families; toy fixtures for dormant and require; endpoint map; two more Tier L legs | — | Yes. No behavior change yet. |
-| T1a | Three health words end to end incl. the display; sticky dormant with its door; cues silenced when their equipment is absent, rendered as such; the session-start refusal with the typed override dialog; the stamp; profile identity | T1b | **Yes — the Block 2a candidate.** Uninstalled equipment never shows red; a session cannot start with required equipment missing, and the GM has the door. No supervisor, no verbs, no preflight panel. |
-| T3 (+T3b) | Bounded restart with escalation for services, unbounded for observers; host config; the three service verbs with their buttons; holds expire; display supervised; every connection credentialed | T1a | Yes. |
-| T4 | The preflight arms, the operator-only domain, the CLI, pack integrity | T1a | Yes; the panel waits for T6. |
-| T5 | The scanner heals its stale pack at a boundary; the two owed tests | T1a | Yes. |
-| T6 | The preflight panel with its limits footer | T4, T5 | Yes. |
-| T7a | The enumerated sweep rows | T6 | Yes. |
-| T7b | Close | T7a | Required before ANY merge, wherever the owner stops. |
+| T1a | Three health words end to end incl. the display; sticky dormant with its door; cues silenced when their equipment is absent, rendered as such; the session-start refusal with the typed override dialog; the stamp; profile identity | the equipment families and fixtures | **Yes — the Block 2a candidate.** Uninstalled equipment never shows red; a session cannot start with required equipment missing, and the GM has the door. No supervisor, no verbs, no preflight panel. |
+| the supervisor and the fault buttons (+credentials on every connection) | Bounded restart with escalation for services, unbounded for observers; host config; the three service verbs with their buttons; holds expire; display supervised; every connection credentialed | the dormancy core | Yes. |
+| T4 | The preflight arms, the operator-only domain, the CLI, pack integrity | the dormancy core | Yes; the panel waits for the preflight panel. |
+| T5 | The scanner heals its stale pack at a boundary; the two owed tests | the dormancy core | Yes. |
+| T6 | The preflight panel with its limits footer | the preflight arms and the command line, the scanner's pack self-heal | Yes. |
+| T7a | The enumerated sweep rows | the preflight panel | Yes. |
+| T7b | Close | the sweep rows | Required before ANY merge, wherever the owner stops. |
 
-Dependency rounds: T1b → T1a → T3‖T3b‖T4‖T5 → T6 → T7a → T7b.
+Dependency rounds: the equipment families and fixtures → the dormancy core → the supervisor and the fault buttons‖credentials on every connection‖the preflight arms and the command line‖the scanner's pack self-heal → the preflight panel → the sweep rows → the close review.
 
 ## 8. Checkpoints and reporting (owner decides; wording ruled 2026-09-12)
 
@@ -779,12 +797,12 @@ words, and nowhere else:
 
 1. **Before any code.** The red-teamed plan and the §7 inventory are
    on the table. The owner decides whether the first round starts.
-2. **After the dormancy core lands** (T1b and T1a reviewed and
+2. **After the dormancy core lands** (the equipment families and fixtures and the dormancy core reviewed and
    merged). The owner decides: continue, stop here and move to the
    green machine, or change the order.
 3. **After the supervisor, the preflight, and the self-heal land**
-   (T3, T3b, T4, T5, and the panel T6 reviewed and merged).
-4. **After the close review** (T7a and T7b done; the tree is ready to
+   (the supervisor and the fault buttons, credentials on every connection, the preflight arms and the command line, the scanner's pack self-heal, and the panel the preflight panel reviewed and merged).
+4. **After the close review** (the sweep rows and the close review done; the tree is ready to
    merge).
 5. **Before Block 3 builds** (its design and red team are done).
 6. **After each Block 3 fix cluster** is proven on the rig.

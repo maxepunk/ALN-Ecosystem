@@ -23,6 +23,18 @@ There are no QR codes. The NFC tags carry a plain token id plus an IP
 address, and the address is not used in the game as run so far. DNS,
 removing the certificate warning, and non-Android player phones are
 planned quality-of-life work, not a priority before this run.
+The audio outputs are HDMI (the monitor's speakers) AND a W-KING X10
+Bluetooth speaker. Two GM tablets, three ESP32 scanners; the scanners
+WILL be flashed with the new firmware this week. The home setup starts
+Saturday or Monday, at the owner's call, depending on where the
+implementation stands. Thursday's token sync is run by a Claude session
+ON the Pi (green if it is ready, else blue) with the repository's sync
+script, which also generates the images; a session on blue works under
+the containment rules, which is why staying on blue carries risk. A
+venue rehearsal before Friday is the owner's call, not assumed either
+way. The fact sheet of that sync workflow, from the code, is
+`.superpowers/sdd/2026-09-12-block2-hardening-plan/token-sync-workflow.md`
+when written.
 
 **RESUME HERE (2026-09-12, Block 2 at checkpoint 2, "after the dormancy
 core lands"; T1a's follow-ups closed).** T1b, T1a and T1a's three
