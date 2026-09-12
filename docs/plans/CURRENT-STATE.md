@@ -78,50 +78,42 @@ Thursday preflight.
 
 ## 6. Running, and on disk
 
-- The container restarted about 18:49Z on 2026-09-12 (uptime): the rig's
-  daemons died, the files survived (packages, node_modules, scratch,
-  `/tmp/rung1`). The fresh-install researcher and the green-setup-gaps
-  reader died with it, no report written. The researcher is re-dispatched
-  from its committed brief → `docs/plans/2026-09-12-green-fresh-install-research.md`.
-- The rig is being brought back (`backend/tests/rung1/down.sh` then
-  `up.sh`, log `/tmp/rung1/up-after-restart.log`; recipe
-  `2026-09-12-container-baseline.md` §7). Needed before any Tier L leg.
-- Fact sheets on disk (scratch dir), each opening with a Conclusions
-  section — read only that: `credentials-factsheet.md`,
-  `self-heal-factsheet.md`, `sweep-audit-producers.md`,
-  `sweep-audit-renderers.md`, `sweep-audit-restore.md`. Still running:
-  the supervisor reader → `supervisor-factsheet.md`.
-- Scratch, `.superpowers/sdd/2026-09-12-block2-hardening-plan/`: the
-  progress file (append-only recovery notes, live-state lines at its
-  end); fact sheets `p1-`, `p2-`, `token-sync-workflow.md`,
-  `collision-matrix.md`; reviews `p1-plan-brief-review.md` +
-  `-rereview.md` (DISPATCH), `p2-plan-brief-review.md` (REVISE),
-  `harness-minimum-rereview.md` (DISPATCH). Scratch survived this restart.
-- Thursday's runbook committed for the owner's review:
-  `docs/runbooks/2026-09-thursday-token-sync.md`.
-- Lanes (name | where | branch | brief | report | state):
-  harness minimum | main checkout | `claude/nice-curie-hescfv-harness-minimum`
-  | `docs/plans/briefs/2026-09-12-harness-minimum.md` | scratch
-  `harness-minimum-report.md` | implementer (opus) running.
-  credentials | `.worktrees/credentials` (not yet cut) | `…-credentials`
-  | `…/2026-09-12-credentials-lane.md` | `credentials-lane-report.md`
-  | brief in plan-and-brief review (opus) → `credentials-lane-review.md`.
-  supervisor | `.worktrees/supervisor` (not yet cut) | `…-supervisor`
-  | `…/2026-09-12-supervisor-lane.md` | `supervisor-lane-report.md`
-  | brief in review → `supervisor-lane-review.md`.
-  self-heal | `.worktrees/self-heal` (not yet cut) | `…-self-heal`
-  | `…/2026-09-12-self-heal-lane.md` | `self-heal-lane-report.md`
-  | brief in review → `self-heal-lane-review.md`.
-- Docs commits go through `.worktrees/docs` (designated branch) while
-  the main checkout is on a lane's task branch; remove that worktree
-  before checking the designated branch out in the main checkout again.
+- Container restarted ~18:49Z 2026-09-12: rig daemons died, files
+  survived. Rig brought back with `backend/tests/rung1/up.sh` (log
+  `/tmp/rung1/up-after-restart.log`); engine not started. Recipe:
+  `2026-09-12-container-baseline.md` §7. Needed before any Tier L leg.
+- Main checkout is on the harness task branch while its implementer
+  runs there; docs commits go through the worktree `.worktrees/docs`
+  (designated branch). Remove that worktree before checking the
+  designated branch out in the main checkout again. Never commit in a
+  checkout where an implementer is editing.
+- Scratch `.superpowers/sdd/2026-09-12-block2-hardening-plan/`: the
+  progress file (append-only; live-state lines at its end); six fact
+  sheets (`supervisor-`, `credentials-`, `self-heal-factsheet.md`,
+  `sweep-audit-producers/-renderers/-restore.md`), each opening with a
+  Conclusions section — read only that; reviews `p1-…` (DISPATCH),
+  `p2-…` (REVISE), `harness-minimum-rereview.md` (DISPATCH).
+- Running: harness-minimum implementer (opus; main checkout, branch
+  `…-harness-minimum`, brief `…/2026-09-12-harness-minimum.md`, report
+  `harness-minimum-report.md`); the fresh-install researcher (opus) →
+  `docs/plans/2026-09-12-green-fresh-install-research.md`; three
+  plan-and-brief reviewers (opus) → `credentials-lane-review.md`,
+  `supervisor-lane-review.md`, `self-heal-lane-review.md`; the
+  preflight-arms reader (sonnet) → `preflight-arms-factsheet.md`.
+- Lane briefs, committed: `docs/plans/briefs/2026-09-12-<lane>-lane.md`
+  for credentials, supervisor, self-heal (worktrees `.worktrees/<lane>`,
+  branches `claude/nice-curie-hescfv-<lane>` in the parent and, for the
+  two scanner-touching lanes, in ALNScanner; not cut until the harness
+  minimum merges). Reports: scratch `<lane>-lane-report.md`.
 - Two questions for the owner, from the briefs: (a) P15's "observe
-  tokens evict per deviceId" cannot work as written (every observe
-  token carries the same literal deviceId) — held out of the
-  credentials brief; drop it or wire the page's deviceId through? (b)
-  P11's `off` mode has no stated meaning — the supervisor brief ships
-  with `off` = spawn once at boot, never restart automatically, the
-  GM's Restart verb still works (R13's fallback).
+  tokens evict per deviceId" cannot work as written (every observe token
+  carries the same literal deviceId) — held out of the credentials
+  brief: drop it, or wire the page's deviceId through? (b) P11's `off`
+  mode has no stated meaning — the supervisor brief ships with `off` =
+  spawn once at boot, never restart automatically, the GM's Restart verb
+  still works (R13's fallback).
+- Thursday's runbook for the owner's review:
+  `docs/runbooks/2026-09-thursday-token-sync.md`.
 
 ## 7. Pointers (open when)
 
