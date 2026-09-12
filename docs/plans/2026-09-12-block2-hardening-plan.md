@@ -1,13 +1,14 @@
 # Block 2 (the hardening block) — re-open plan and task ledger
 
-**Status: DRAFT for the pre-build design red team, then the owner's price
-signature (2026-09-12).** Governs CS.2–CS.5 of the ratified C2+C3 design.
+**Status: DRAFT for the pre-build design red team, then the owner's C0
+go/no-go (2026-09-12).** Governs CS.2–CS.5 of the ratified C2+C3 design.
 Spec (binding authority): `2026-09-04-phase3-c2c3-resolution-dormancy.md`
 §8, read with its §5/§6 adjudications; vocabulary `CONTEXT.md` §2, §4,
 §5; charter `ROADMAP.md` §4 "Block 2". Census: `2026-09-12-block2-reopen-census.md`
 (tree `e87f8c5`). This document adds the re-open rulings, the design
 refinements the build needs that the spec leaves open, the task
-decomposition, and the estimate. Execution records append below in §9.
+decomposition, the stop-point inventory, and the checkpoint protocol.
+Execution records append below in §9.
 
 **Goal.** The engine tells the truth about health: dormant is a real
 third state that never shows red; crashed stack software is restarted a
@@ -22,7 +23,8 @@ separate worktrees on task branches merged back to `claude/nice-curie-hescfv`),
 dispatches a task reviewer after each, runs the fix loop under the
 five-round rule, and never edits code. Coupled seams are one task; a
 cross-repo parity change is one task holding both sides. The house
-close review runs as a workflow at CS.5.
+close review runs as a workflow at CS.5. Schedule decisions are the
+owner's at the §8 checkpoints.
 
 ## 1. Rulings recorded at re-open (2026-09-12)
 
@@ -35,7 +37,7 @@ close review runs as a workflow at CS.5.
 | R5 | Read-plane credential posture: decision after the consumer census and the GM-impact statement (§4, T3b) | owner, Q5 |
 | R6 | Supervisor default (on/off) — owner answer pending (Q6r); plan assumes ON with the host-config off switch | pending |
 | R7 | Block 3 fixes reach the producer side | owner, Q8 |
-| R8 | Schedule: Block 2 merged plus Block 3 designed and priced by 9/13; Block 3 closes 9/14–15 (Q9r pending; §8) | pending |
+| R8 | Schedule, pauses, and the go-to-green decision are the owner's, taken at the §8 checkpoints on observable reports; no time pricing in this plan | owner, 2026-09-12 |
 
 ## 2. Census delta that changes the design (from the re-open census)
 
@@ -458,29 +460,34 @@ integration suite. Vocabulary per `CONTEXT.md`; every temporary construct
 gets a ledger row. Implementers never dispatch subagents. Every claim of
 "done" is verified against the diff and a fresh run.
 
-## 7. Estimate (re-priced at open; owner signature required before T1 dispatches)
+## 7. Scope inventory and stop points (replaces the estimate — owner ruling 2026-09-12)
 
-| Task | Agent work (sessions) |
-|---|---|
-| T1b | 0.25 |
-| T1a | 1.0 |
-| T3 (+T3b 0.1) | 0.75 |
-| T4 | 1.0 |
-| T5 | 0.5 |
-| T6 | 0.4 |
-| T7 | 0.75 |
-| **Total** | **≈ 4.6–5.5** (the ratified 3.5–5 plus the fix vehicle's §2.1 items and P10's four supervision shapes) |
+The owner ruled that pricing in time units is not this plan's to make:
+schedule, pause, and go-to-green decisions are the owner's, taken at the
+checkpoints in §8 on observable reports. This section states what each
+task delivers and whether the tree is a coherent stopping point after it.
 
-Wall-clock under (b): four rounds — T1a‖T1b → T3‖T4‖T5 → T6 (with T3b)
-→ T7 — each round bounded by its longest task plus its review loop.
-Deviation rule: scope beyond this document stops the build and re-prices.
+| Task | Delivers (observable) | Depends on | Stop point after it? What the GM has |
+|---|---|---|---|
+| T1b | Profile equipment interior pinned in the schema; ALN kit declares its equipment; toy fixture with lighting uninstalled; endpoint→service map; a third Tier L leg | — | Yes. No behavior change yet. |
+| T1a | Three health words end to end (registry, three contract sites, scanner); sticky dormant with its door; cues silenced when their equipment is absent; session-start refusal with typed override; preflight stamp (service rows only); profile identity in `/health` and `sync:full` | T1b | **Yes — the Block 2a candidate.** Uninstalled equipment never shows red; a session cannot start with required equipment missing. No supervisor, no verbs, no preflight panel. |
+| T3 | Bounded restart with a flap window and escalation; host config file with a path seam; `service:restart` / `service:out-of-service` / `service:in-service` commands; holds expire at session end; dormant video refused, never held | T1a | Yes, coherent; the commands exist but the GM sees their buttons only after T5. |
+| T3b | Every WebSocket connection presents a credential (only if R5 rules "gate") | T1a | Yes. |
+| T4 | Preflight arms (pack files incl. videos, bindings, services, media, network, staffing, host, certificate as warn, display liveness, pack integrity); the command-line twin; the checklist document points at the instrument | T1a | Yes; the CLI is usable, the panel waits for T6. |
+| T5 | Scanner heals its own stale pack with one toast and a backstop screen; dashboard verbs; the two owed pack-loader tests | T1a | Yes. |
+| T6 | Preflight panel in the GM scanner | T4, T5 | Yes. |
+| T7 | Close: hygiene items, records, dist, both end-to-end legs plus the dormant leg, the whole-unit adversarial review | all landed tasks | Required before ANY merge, wherever the owner stops. |
 
-## 8. Schedule against R8
+Dependency rounds: T1a‖T1b → T3‖T4‖T5 (T3b with T3) → T6 → T7. A
+stop at T1a means T7 runs on that tree.
 
-Round 1 opens on the owner's price signature and the red team's clear.
-The 9/13 target (Block 2 merged) holds only if rounds 1 and 2 close on
-9/12–13 with review loops under three rounds each; otherwise the honest
-fallback is (c): T1a, T1b, T3 and T5 land as Block 2a with T4/T6 as 2b.
+## 8. Checkpoints and reporting (owner decides; recorded 2026-09-12, wording pending the owner's confirmation)
+
+- **C0** — before any code: the red-teamed plan and §7. Owner decides whether Round 1 starts.
+- **C1** — Round 1 landed and reviewed. Owner decides: continue, stop at Block 2a and go to green, or reorder.
+- **C2** — Round 2 landed and reviewed. **C3** — after the close review. **B3-0** — after Block 3's design and red team. **B3-n** — after each Block 3 fix cluster on the rig.
+- **Every report uses one template:** landed (commits, tests red→green, gates passed); in flight; blocked and on whom; what the tree gives the GM if we stop here; open risks. No time estimates.
+- Between checkpoints the orchestrator does not stop to ask; rulings on plan conflicts are the orchestrator's and ledgered (§9), per the ruled method.
 
 ## 9. Execution record
 
