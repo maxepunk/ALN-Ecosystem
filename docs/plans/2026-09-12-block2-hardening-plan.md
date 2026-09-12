@@ -1,7 +1,7 @@
 # Block 2 (the hardening block) — re-open plan and task ledger
 
-**Status: DRAFT for the pre-build design red team, then the owner's C0
-go/no-go (2026-09-12).** Governs CS.2–CS.5 of the ratified C2+C3 design.
+**Status: DRAFT for the pre-build design red team, then the owner's
+"before any code" decision (2026-09-12).** Governs CS.2–CS.5 of the ratified C2+C3 design.
 Spec (binding authority): `2026-09-04-phase3-c2c3-resolution-dormancy.md`
 §8, read with its §5/§6 adjudications; vocabulary `CONTEXT.md` §2, §4,
 §5; charter `ROADMAP.md` §4 "Block 2". Census: `2026-09-12-block2-reopen-census.md`
@@ -35,7 +35,7 @@ owner's at the §8 checkpoints.
 | R3 | Workflows for review fleets and censuses, "well-designed and carefully constructed" | owner, Q3 |
 | R4 | One PR per touched repo per block, owner merges, Block 3 restarts the branch from `main`; draft PR opens at block open | owner, Q4 |
 | R5 | Read-plane credential posture: decision after the consumer census and the GM-impact statement (§4, T3b) | owner, Q5 |
-| R6 | Supervisor default (on/off) — owner answer pending (Q6r); plan assumes ON with the host-config off switch | pending |
+| R6 | The restart supervisor ships ENABLED; the host config file carries the off switch | owner, 2026-09-12 (Q6r) |
 | R7 | Block 3 fixes reach the producer side | owner, Q8 |
 | R8 | Schedule, pauses, and the go-to-green decision are the owner's, taken at the §8 checkpoints on observable reports; no time pricing in this plan | owner, 2026-09-12 |
 
@@ -161,8 +161,8 @@ ruling of this plan, ledgered here, reversible before build.
   `vlc`, `mpd`, `chromium`, `haWebSocket`, `haContainer`. Read once at
   boot by `hostConfigService` through a `HOST_CONFIG_PATH` seam with
   the loud-override warn (the profileService template). Shipped
-  defaults: enabled, 5 failures, 3000 ms, ×2, 60 s window. Q6r decides
-  the shipped `enabled` value.
+  defaults: enabled, 5 failures, 3000 ms, ×2, 60 s window. Shipped `enabled: true`
+  (owner ruling 2026-09-12).
 - **P12. Verbs are commands.** New gm:command actions:
   `service:restart {serviceId}` (vlc: monitor restart + owner
   re-resolve; music: MPD respawn; lighting: container ensure +
@@ -481,13 +481,31 @@ task delivers and whether the tree is a coherent stopping point after it.
 Dependency rounds: T1a‖T1b → T3‖T4‖T5 (T3b with T3) → T6 → T7. A
 stop at T1a means T7 runs on that tree.
 
-## 8. Checkpoints and reporting (owner decides; recorded 2026-09-12, wording pending the owner's confirmation)
+## 8. Checkpoints and reporting (owner decides; wording ruled 2026-09-12)
 
-- **C0** — before any code: the red-teamed plan and §7. Owner decides whether Round 1 starts.
-- **C1** — Round 1 landed and reviewed. Owner decides: continue, stop at Block 2a and go to green, or reorder.
-- **C2** — Round 2 landed and reviewed. **C3** — after the close review. **B3-0** — after Block 3's design and red team. **B3-n** — after each Block 3 fix cluster on the rig.
-- **Every report uses one template:** landed (commits, tests red→green, gates passed); in flight; blocked and on whom; what the tree gives the GM if we stop here; open risks. No time estimates.
-- Between checkpoints the orchestrator does not stop to ask; rulings on plan conflicts are the orchestrator's and ledgered (§9), per the ruled method.
+The owner makes every schedule, pause, and go-to-green decision. The
+orchestrator stops and reports at these six points, named in plain
+words, and nowhere else:
+
+1. **Before any code.** The red-teamed plan and the §7 inventory are
+   on the table. The owner decides whether the first round starts.
+2. **After the dormancy core lands** (T1a and T1b reviewed and
+   merged). The owner decides: continue, stop here and move to the
+   green machine, or change the order.
+3. **After the supervisor, the preflight, and the self-heal land**
+   (T3, T4, T5, and the panel T6 reviewed and merged).
+4. **After the close review** (T7 done; the tree is ready to merge).
+5. **Before Block 3 builds** (its design and red team are done).
+6. **After each Block 3 fix cluster** is proven on the rig.
+
+Every report has the same five lines: what landed (commits, tests that
+went red then green, gates passed); what is in flight; what is blocked
+and on whom; what the GM has if we stop here; open risks. Reports carry
+no time estimates.
+
+Between checkpoints the orchestrator does not stop to ask. Rulings on
+plan conflicts are the orchestrator's and are written in §9, per the
+ruled method.
 
 ## 9. Execution record
 
