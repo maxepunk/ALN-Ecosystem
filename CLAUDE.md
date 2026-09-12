@@ -496,6 +496,6 @@ Multi-context: root `CONTEXT.md` (the ubiquitous language — SEEDED 2026-08-29,
 
 ### Process
 
-Skill wiring (mattpocock-skills by trigger), the six session/continuity rules (the stage is the unit; workflows carry bulk reads; write for the cold agent; reload before resuming), and workflow-prompt standards. See `docs/agents/process.md`.
+Skill wiring (mattpocock-skills by trigger, plus the adopted superpowers rows), the seven session/continuity rules (the stage is the unit; workflows carry bulk reads; write for the cold agent; reload before resuming; compact only at a checkpoint with the tree pushed), and workflow-prompt standards. See `docs/agents/process.md`.
 
 **After any compaction or container restart:** before changing any file, reload the required context set in full — `docs/agents/process.md` rule 6 names the set (process.md, root CONTEXT.md, CURRENT-STATE.md, the active unit's design doc with its execution record, the component CLAUDE.md for each area touched). The compaction summary says where to look; the documents are what to rely on.

@@ -40,7 +40,7 @@ Not wired in, because the PHASE3-STATUS and slice-train system already
 covers their jobs (available on request): `to-tickets`, `to-spec`,
 `triage`, `wayfinder`, `ask-matt`, `teach`, `grill-me`.
 
-## 2. Sessions, compaction, and continuity (six rules)
+## 2. Sessions, compaction, and continuity (seven rules)
 
 The working reality: this is one long-running remote session. When the
 conversation grows too large, the harness replaces the history with a
@@ -50,7 +50,7 @@ erases `/tmp`.
 
 What survives all of this is the paper trail: design documents with
 execution records, PHASE3-STATUS rows, and pushed commits. The paper
-trail, not the compaction summary, is the continuity system. The six
+trail, not the compaction summary, is the continuity system. The seven
 rules:
 
 1. **The stage is the unit.** A stage ends with all tests green, the
@@ -89,10 +89,32 @@ rules:
    document with its execution record, in full. Read the component
    `CLAUDE.md` for each area the work will touch. Then check the
    summary's claims against the repository (`git status`, `git log`,
-   the records) before acting on them. This rule exists because
-   resuming from the summary alone has caused real errors: stale
-   verdicts restated as current, and invented vocabulary in place of
-   the project's own terms.
+   the records) before acting on them. A summary claim the record does
+   not back is false. Then read any subagent output files from the
+   round in flight from disk, re-read the briefs for the next round,
+   and send the owner a reload report in the checkpoint template
+   before dispatching anything. This rule exists because resuming from
+   the summary alone has caused real errors: stale verdicts restated as
+   current, and invented vocabulary in place of the project's own terms.
+7. **Compact only at a checkpoint, with the tree pushed (owner-directed
+   2026-09-12).** What survives: committed and pushed files survive
+   everything; scratchpad files survive compaction but not a container
+   restart; background agents keep running and their results land in
+   files, but resuming one by name can be lost; unpushed local branches
+   die with a reclaimed container. Before compacting: (a) commit and
+   push every decision-carrying artifact: the plan with review findings
+   and rulings folded in, the execution record written to the moment,
+   and `docs/plans/CURRENT-STATE.md` naming the checkpoint reached and
+   the owner decision pending; (b) move the working files that matter
+   from the scratchpad into the repo: task briefs (each implementer's
+   single source of requirements) and review findings with their
+   adjudications; (c) end the round: every task reviewed, merged into
+   the designated branch, and pushed, so no task branch holds unmerged
+   work; (d) write a "resume here" paragraph at the top of
+   `CURRENT-STATE.md`: the next round, its briefs, any agents still
+   running and their output paths. The worst moment to compact is
+   mid-round. Compaction keeps the session, so installed skills stay as
+   they are; a new container is a new session.
 
 ## 3. Workflow-prompt standards
 
