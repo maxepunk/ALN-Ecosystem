@@ -375,10 +375,17 @@ you intend.
   configurations, not special cases.
 - **Endpoints vs stack.** The two-layer capability model. The *stack*
   is the orchestrator's service software. If the orchestrator is
-  present, every stack service is expected to run. *Endpoints* are the
-  physical devices (speakers, lights, displays), configured per event.
-  A missing stack service is a *fault*; an absent endpoint makes its
-  features *dormant* (definitions in §4).
+  present, every stack service is expected to run, with one exception:
+  a stack service that exists only to drive endpoints the profile says
+  are absent tonight is *dormant*, and its process is not started. The
+  pack decides whether that absence is allowed: a need the pack marks
+  `degrade` resolves dormant; a need the pack marks `require` resolves
+  no-go, and the preflight refuses the start, because the profile then
+  fails the pack's minimum. (Edit noted 2026-09-12, owner-ruled for the
+  hardening block's supervisor.) *Endpoints* are the physical devices
+  (speakers, lights, displays), configured per event. A missing stack
+  service that the show needs is a *fault*; an absent endpoint makes
+  its features *dormant* (definitions in §4).
 - **Preflight.** The pre-show check: one button produces a go/no-go
   list, and every line traces to a field in the profile or the pack
   manifest. Ratified direction C1 (2026-08-22), design ratified

@@ -112,9 +112,14 @@ rules:
 7. **Compact only at a checkpoint, with the tree pushed (owner-directed
    2026-09-12).** What survives: committed and pushed files survive
    everything; scratchpad files survive compaction but not a container
-   restart; background agents keep running and their results land in
-   files, but resuming one by name can be lost; unpushed local branches
-   die with a reclaimed container. Before compacting: (a) commit and
+   restart; background agents keep running through compaction and
+   their results land in files; a finished agent can be resumed by
+   name with its context, an agent stopped with the stop button cannot
+   (the harness refuses), and a plain message never stops one; a
+   workflow resumes from its run id with its finished agents' results
+   cached (Claude Code docs: sub-agents, workflows; verified
+   2026-09-12); unpushed local branches die with a reclaimed
+   container. Before compacting: (a) commit and
    push every decision-carrying artifact: the plan with review findings
    and rulings folded in, the execution record written to the moment,
    and `docs/plans/CURRENT-STATE.md` naming the checkpoint reached and
