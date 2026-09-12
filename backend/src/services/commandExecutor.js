@@ -23,6 +23,7 @@ const soundService = require('./soundService');
 const musicService = require('./musicService');
 const scoreboardControlService = require('./scoreboardControlService');
 const registry = require('./serviceHealthRegistry');
+const { doorWording } = require('./dormancyWording');
 const profileService = require('./profileService');
 const packService = require('./packService');
 const { CUE_ACTIONS } = require('../gameRules/cueValidation');
@@ -44,6 +45,12 @@ const SERVICE_DEPENDENCIES = {
   // video:queue:reorder and video:queue:clear intentionally UNGATED —
   // pure queue operations (no VLC calls). GM must manage queue during VLC outage.
   'display:idle-loop': 'vlc',
+  // T1a D6/P16: `display` is the ninth service — the kiosk that renders the
+  // scoreboard. Showing the scoreboard needs the kiosk; returning to video
+  // needs VLC. display:status stays UNGATED: a status read has to work
+  // precisely when the kiosk is dead.
+  'display:scoreboard': 'display',
+  'display:return-to-video': 'vlc',
   // service:check intentionally UNGATED — health probe bypasses health gate
   'sound:play': 'sound',
   'sound:stop': 'sound',
@@ -84,6 +91,14 @@ const REQUIRED_PAYLOAD_FIELDS = {
   'bluetooth:disconnect': ['address'],
   'audio:route:set': ['sink'],
   'lighting:scene:activate': ['sceneId'],
+  // T1a D6: pre-registered for T3/T4. Table entries ONLY — the switch cases
+  // land with those tasks. Registering the fields (and the floor prefix in
+  // gameRules/grants.js) now means the guard and the operator floor are
+  // already standing when the cases arrive, rather than being remembered.
+  'service:restart': ['serviceId'],
+  'service:out-of-service': ['serviceId', 'reason'],
+  'service:in-service': ['serviceId'],
+  'preflight:run': [],
 };
 
 /**
@@ -175,8 +190,21 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
     }
 
-    // Pre-dispatch health check: reject commands when required service is down
+    // Pre-dispatch health check: reject commands when required service is
+    // down — or DORMANT, which is checked FIRST (T1a D6, pin P5). A dormant
+    // service is also not healthy, so without this ordering the GM would
+    // read "lighting is down: Home Assistant unreachable" for a venue that
+    // simply has no lighting rig: red for an absence nobody needs to fix,
+    // which is the alarm the dormancy work exists to prevent.
     const requiredService = SERVICE_DEPENDENCIES[action];
+    if (requiredService && registry.isDormant(requiredService)) {
+      const { door } = registry.getStatus(requiredService);
+      return {
+        success: false,
+        message: `${requiredService} is ${doorWording(door)}`,
+        source
+      };
+    }
     if (requiredService && !registry.isHealthy(requiredService)) {
       const { status, message } = registry.getStatus(requiredService);
       return {
@@ -214,12 +242,34 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         });
         break;
 
-      case 'session:start':
-        // Transition session from setup to active (starts game clock)
-        await sessionService.startGame();
+      case 'session:start': {
+        // Transition session from setup to active (starts game clock).
+        // T1a D6/P7: the require gate lives in sessionService; here we pass
+        // the typed override through and translate its two refusals into
+        // the acks the scanner keys on (ruling R11).
+        try {
+          await sessionService.startGame(
+            { startAnyway: !!payload.startAnyway, reason: payload.reason },
+            { deviceId, tier: actor?.tier ?? null }
+          );
+        } catch (err) {
+          // Matched by NAME, not instanceof: this module lazily requires
+          // preflightService, so an identity check compares against
+          // whichever module instance the registry currently holds. The
+          // name and the `blocking` array are the error's contract.
+          if (err.name === 'PreflightNoGoError' && Array.isArray(err.blocking)) {
+            return {
+              success: false,
+              message: `NO-GO: ${err.blocking.join('; ')}`,
+              source
+            };
+          }
+          throw err;
+        }
         resultMessage = 'Game started';
         logger.info('Game started', { source, deviceId });
         break;
+      }
 
       case 'session:pause':
         // Service will emit session:updated → broadcasts.js wraps as session:update
@@ -626,8 +676,20 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         // and a 'manual' trigger; cue-engine dispatches keep source 'cue'
         const cueSource = source === 'gm' ? 'gm' : 'cue';
         const cueTrigger = source === 'gm' ? 'manual' : undefined;
-        await cueEngineService.fireCue(payload.cueId, cueTrigger, undefined, cueSource);
-        resultMessage = `Cue fired: ${payload.cueId}`;
+        // T1a D6/P3: three outcomes, three acks. HELD is a SUCCESS — the cue
+        // is parked and the GM can release it; calling that a failure would
+        // send them hunting for a fault that is not there. A refusal
+        // (dormant, disabled) is success:false carrying its reason.
+        const outcome = await cueEngineService.fireCue(
+          payload.cueId, cueTrigger, undefined, cueSource
+        );
+        if (outcome && outcome.held) {
+          resultMessage = `Cue held: ${outcome.reason}`;
+        } else if (outcome && outcome.fired === false) {
+          return { success: false, message: outcome.reason, source };
+        } else {
+          resultMessage = `Cue fired: ${payload.cueId}`;
+        }
         logger.info('Cue fired', { source, deviceId, cueId: payload.cueId });
         break;
       }
@@ -635,7 +697,10 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       case 'cue:enable': {
         if (!payload.cueId) throw new Error('cueId required');
         const cueEngineService = getCueEngine();
-        cueEngineService.enableCue(payload.cueId);
+        const enabled = cueEngineService.enableCue(payload.cueId);
+        if (enabled && enabled.ok === false) {
+          return { success: false, message: enabled.reason, source };
+        }
         resultMessage = `Cue enabled: ${payload.cueId}`;
         logger.info('Cue enabled', { source, deviceId, cueId: payload.cueId });
         break;
@@ -686,7 +751,14 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const { heldId } = payload;
         if (!heldId) throw new Error('heldId required');
         if (heldId.startsWith('held-cue-')) {
-          await getCueEngine().releaseCue(heldId);
+          // T1a D6: the re-fire can be refused or held again (the world
+          // moved on while the item sat in the queue); the cue is re-held
+          // and the ack says so rather than claiming a release that did
+          // not happen.
+          const outcome = await getCueEngine().releaseCue(heldId);
+          if (outcome && outcome.released === false) {
+            return { success: false, message: outcome.reason, source };
+          }
         } else if (heldId.startsWith('held-video-')) {
           videoQueueService.releaseHeld(heldId);
         } else {
@@ -713,15 +785,22 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'held:release-all': {
+        // F-SHOW-16 keeps this TRY-ALL: one stubborn item must not abort the
+        // rest. T1a D6 adds the honest tail — the ids that came straight
+        // back are named in the message instead of silently vanishing.
         const cueEngine = getCueEngine();
+        const reHeld = [];
         for (const held of cueEngine.getHeldCues()) {
-          await cueEngine.releaseCue(held.id);
+          const outcome = await cueEngine.releaseCue(held.id);
+          if (outcome && outcome.released === false) reHeld.push(held.id);
         }
         for (const held of videoQueueService.getHeldVideos()) {
           videoQueueService.releaseHeld(held.id);
         }
-        resultMessage = 'All held items released';
-        logger.info('All held items released', { source, deviceId });
+        resultMessage = reHeld.length > 0
+          ? `All held items released except ${reHeld.join(', ')} (re-held)`
+          : 'All held items released';
+        logger.info('All held items released', { source, deviceId, reHeld });
         break;
       }
 
@@ -816,7 +895,17 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
 
         const { serviceId } = payload;
 
+        // T1a D6/P5: never probe a dormant service. The probe is noise for
+        // equipment nobody installed, and an answer would fight the latch —
+        // so the ack says which door holds it and that nothing was probed.
         if (serviceId) {
+          if (registry.isDormant(serviceId)) {
+            const { door } = registry.getStatus(serviceId);
+            resultMessage = `${serviceId} is ${doorWording(door)} — not probed`;
+            resultData = { [serviceId]: false };
+            logger.info('Service health check skipped (dormant)', { source, deviceId, serviceId });
+            break;
+          }
           // Check single service
           const check = HEALTH_CHECKS[serviceId];
           if (!check) {
@@ -833,7 +922,12 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         } else {
           // Check all services
           const results = {};
+          const skipped = [];
           for (const [id, check] of Object.entries(HEALTH_CHECKS)) {
+            if (registry.isDormant(id)) {
+              skipped.push(id);
+              continue;
+            }
             try {
               results[id] = !!(await check());
             } catch {
@@ -842,7 +936,8 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
           }
           resultData = results;
           const healthy = Object.values(results).filter(Boolean).length;
-          resultMessage = `Health check: ${healthy}/${Object.keys(results).length} services healthy`;
+          resultMessage = `Health check: ${healthy}/${Object.keys(results).length} services healthy`
+            + (skipped.length > 0 ? ` (${skipped.join(', ')} not probed)` : '');
         }
         logger.info('Service health check', { source, deviceId, serviceId: serviceId || 'all', results: resultData });
         break;

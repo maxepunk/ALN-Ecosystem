@@ -44,6 +44,9 @@ describe('Display Events - Contract Validation', () => {
 
     // Mark VLC as healthy (required for display:idle-loop SERVICE_DEPENDENCIES gate)
     serviceHealthRegistry.report('vlc', 'healthy', 'test mock');
+    // T1a D6/P16: `display` is the ninth service and display:scoreboard is
+    // gated on it. There is no kiosk in this test host, so say so.
+    serviceHealthRegistry.report('display', 'healthy', 'test mock');
 
     // Initialize display control service with mocked VLC
     await displayControlService.init({
