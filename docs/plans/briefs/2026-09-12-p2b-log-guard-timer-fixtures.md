@@ -1,3 +1,5 @@
+> SUPERSEDED 2026-09-12 (owner scope ruling): only the log guard and the per-worker data directory build now, from `2026-09-12-harness-minimum.md`; the rest of this brief waits for the engineering windows after the run opens. Kept for the record.
+
 # P2b brief — the log guard, the health timer, deterministic fixtures (implementer)
 
 Read this first; it is your single source of requirements, with the

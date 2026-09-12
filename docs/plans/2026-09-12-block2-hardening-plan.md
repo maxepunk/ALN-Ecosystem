@@ -562,21 +562,47 @@ items) wait for the weekly engineering windows after the run opens.
   `slot = TEST_PARALLEL_INDEX || '0'` (the bus's own key). A restart in
   the same worker keeps the same directories. `clearSessionData()`
   clears only that worker's data directory; its `memory` branch, which
-  clears a singleton in the wrong process, is deleted and the comment
+  clears a singleton in the calling process, is deleted and the comment
   says the respawn is the isolation. The child's `cwd` stays `backend/`.
-- **P22. A closed output pipe never fills the disk.** In
-  `src/utils/logger.js`: one `error` listener each on `process.stdout`
-  and `process.stderr`, attached once, that on `EPIPE` or
-  `ERR_STREAM_DESTROYED` silences the Console transport (`silent =
-  true`) and writes one line to the file transports; the
-  `uncaughtException` handler, on an error whose `code` is `EPIPE`,
-  silences the console the same way instead of logging through it, then
-  exits after the existing one-second delay. Under PM2 on the Pi the
-  pipe never closes, so the guard is inert in production. Proof RED
-  first: spawn the orchestrator with a piped stdout, close the read end,
-  and watch its log directory for 10 seconds under a 200 MB cap and a
-  hard kill; before the fix the file grows without bound, after it the
-  file gains one line and the process exits.
+- **P22. A closed output pipe never fills the disk (revised 2026-09-12
+  after the harness plan review: the loop's engine is winston's OWN
+  exception handler, registered unconditionally through
+  `exceptionHandlers`, fanning every exception through the closed
+  Console transport; the app's `NODE_ENV`-gated handler is absent in
+  every harness orchestrator).** The guard sits at the stream: in
+  `src/utils/logger.js`, one `error` listener each on `process.stdout`
+  and `process.stderr`, attached unconditionally at module load,
+  OUTSIDE the `NODE_ENV` guard, that on `EPIPE` or `ERR_STREAM_DESTROYED`
+  sets the Console transport `silent = true` and writes ONE guard line
+  through the file transports only: `console output closed (<code>);
+  console transport silenced`. A synchronous write to a destroyed stream
+  throws instead of emitting, so the app's `uncaughtException` handler
+  (inside the guard) takes the same two codes and does the same; once
+  the console is silent, winston's own exception handler can fan out
+  safely because nothing writes to the pipe any more. The orphaned
+  orchestrator SURVIVES with a silenced console; it does not exit
+  (ruling: under PM2 a daemon death must never kill a running show).
+  Under PM2 the guard changes nothing while the daemon lives; if the
+  daemon dies, the guard silences the console instead of filling the
+  disk, which is the wanted production behavior too. The unit test
+  (`tests/unit/utils/logger.test.js`) emits a synthetic `error` with each
+  code on `process.stdout` and restores `silent = false` afterwards.
+  The reproduction (`tests/integration/logger-epipe-guard.test.js`,
+  Jest timeout 40 s): spawn `node src/server.js` `detached: true` with
+  `stdio: ['ignore', 'pipe', 'pipe']`, the harness's `TEST_ENV` plus
+  `LOG_LEVEL=info`, `ENABLE_VIDEO_PLAYBACK=false`,
+  `ENABLE_MUSIC_PLAYBACK=false`, `LIGHTING_ENABLED=false`, a random
+  `PORT`, and `DATA_DIR`/`LOGS_DIR` under a fresh temp directory; wait
+  for `/health`; destroy the stdout and stderr read streams; then for 10
+  seconds poll `/health` every 250 ms (the write trigger: request
+  logging at level info) while polling the temp `combined.log` size
+  every 250 ms, breaking and killing the process GROUP the moment the
+  file exceeds 200 MB. RED (before the fix): the cap trips; the size at
+  the break is the evidence. GREEN: the file stays under 1 MB for the
+  full window with at most one guard line, and the child is still alive
+  (`kill -0`) with the console silenced. Afterwards the group is killed
+  and residue is asserted absent: no new `node src/server.js`, and
+  `/tmp/aln-pm-mpd.pid` unchanged. The temp directory is deleted.
 - **P23. The health timer stops when a test file ends.**
   `resetAllServicesForTesting` calls
   `serviceHealthRegistry.stopRevalidation()` right after
