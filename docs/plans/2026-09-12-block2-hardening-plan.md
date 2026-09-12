@@ -34,7 +34,7 @@ owner's at the §8 checkpoints.
 | R2 | `superpowers@claude-plugins-official` declared; hook self-heals plugins; `subagent-driven-development` and `verification-before-completion` adopted in process.md §1 | owner, Q2 (landed `c921255`) |
 | R3 | Workflows for review fleets and censuses, "well-designed and carefully constructed" | owner, Q3 |
 | R4 | One PR per touched repo per block, owner merges, Block 3 restarts the branch from `main`; draft PR opens at block open | owner, Q4 |
-| R5 | Read-plane credential posture: decision after the consumer census and the GM-impact statement (§4, T3b) | owner, Q5 |
+| R5 | Every live connection must present a credential (GM login token or read-only token); the two tests that pin the open door are rewritten. T3b is in scope. | owner, 2026-09-12 (Q5r) |
 | R6 | The restart supervisor ships ENABLED; the host config file carries the off switch | owner, 2026-09-12 (Q6r) |
 | R7 | Block 3 fixes reach the producer side | owner, Q8 |
 | R8 | Schedule, pauses, and the go-to-green decision are the owner's, taken at the §8 checkpoints on observable reports; no time pricing in this plan | owner, 2026-09-12 |
@@ -191,7 +191,7 @@ ruling of this plan, ledgered here, reversible before build.
   failure it shows a blocking screen with a plain instruction (reload)
   and stops there. The server keeps its warn. The two §8.5 tests land in
   this task.
-- **P15. Read-plane gate (if R5 rules "gate").** `socketServer.js`
+- **P15. Every connection presents a credential (R5).** `socketServer.js`
   requires an operator or observe token for EVERY connection; the two
   tests that pin the tokenless posture are rewritten to expect
   `connect_error`. GM impact: none (every client already complies).
@@ -212,7 +212,7 @@ floor map so later tasks add switch cases only.
 | T1b profile interior + endpoint map + fixtures | CS.2 | backend, TokenData? (no: manifests only under backend fixtures and ALN-TokenData `pack-manifest.json` for the toy? — see below) | T1a | sonnet |
 | T1a dormancy core + enum + gate + render-safe scanner | CS.2 | backend + contracts + ALNScanner + e2e helper | T1b | opus |
 | T3 supervisor + host config + verbs + holds | CS.3 | backend + contracts | T4, T5 | opus |
-| T3b read-plane gate (only if R5 = gate) | CS.3 | backend | T3 | sonnet |
+| T3b every connection presents a credential | CS.3 | backend | T3 | sonnet |
 | T4 preflight arms + CLI + video-file need + F-P2-7/8 | CS.4 | backend + contracts + docs | T3, T5 | opus |
 | T5 scanner self-heal + verbs + §8.5 tests | CS.3 | ALNScanner | T3, T4 | opus |
 | T6 scanner preflight panel | CS.4 | ALNScanner | after T5 | sonnet |
@@ -348,7 +348,7 @@ scenario "kill cvlc five times in a minute" shows the red row message in
 `getSnapshot()` and `service:restart` recovers (rung-1 audit-flows
 assertion added).
 
-### T3b — read-plane gate (CS.3, only if R5 rules "gate")
+### T3b — every connection presents a credential (CS.3)
 
 Files: `websocket/socketServer.js` (P15), `tests/unit/websocket/socketMiddleware.test.js`,
 `tests/integration/admin-interventions.test.js`. Red-first: a tokenless
@@ -472,7 +472,7 @@ task delivers and whether the tree is a coherent stopping point after it.
 | T1b | Profile equipment interior pinned in the schema; ALN kit declares its equipment; toy fixture with lighting uninstalled; endpoint→service map; a third Tier L leg | — | Yes. No behavior change yet. |
 | T1a | Three health words end to end (registry, three contract sites, scanner); sticky dormant with its door; cues silenced when their equipment is absent; session-start refusal with typed override; preflight stamp (service rows only); profile identity in `/health` and `sync:full` | T1b | **Yes — the Block 2a candidate.** Uninstalled equipment never shows red; a session cannot start with required equipment missing. No supervisor, no verbs, no preflight panel. |
 | T3 | Bounded restart with a flap window and escalation; host config file with a path seam; `service:restart` / `service:out-of-service` / `service:in-service` commands; holds expire at session end; dormant video refused, never held | T1a | Yes, coherent; the commands exist but the GM sees their buttons only after T5. |
-| T3b | Every WebSocket connection presents a credential (only if R5 rules "gate") | T1a | Yes. |
+| T3b | Every live connection presents a credential; the two open-door tests rewritten | T1a | Yes. |
 | T4 | Preflight arms (pack files incl. videos, bindings, services, media, network, staffing, host, certificate as warn, display liveness, pack integrity); the command-line twin; the checklist document points at the instrument | T1a | Yes; the CLI is usable, the panel waits for T6. |
 | T5 | Scanner heals its own stale pack with one toast and a backstop screen; dashboard verbs; the two owed pack-loader tests | T1a | Yes. |
 | T6 | Preflight panel in the GM scanner | T4, T5 | Yes. |
