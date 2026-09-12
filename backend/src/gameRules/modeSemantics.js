@@ -42,6 +42,8 @@ const LEGACY_ALN_MODES = Object.freeze([
     entityRole: 'ledger',
     countsTowardGroups: true,
     displayBehavior: Object.freeze({ surface: 'scoreboard-rankings', when: 'immediate' }),
+    claimedLabel: 'SOLD to {entity}',
+    icon: '💰',
   }),
   Object.freeze({
     id: 'detective',
@@ -52,8 +54,62 @@ const LEGACY_ALN_MODES = Object.freeze([
     defaultEntity: 'Nova',
     countsTowardGroups: false,
     displayBehavior: Object.freeze({ surface: 'scoreboard-evidence', fields: Object.freeze(['summary', 'owner']), when: 'immediate' }),
+    claimedLabel: 'EXPOSED by {entity}',
+    icon: '🔍',
   }),
 ]);
+
+// C0 controls + DEL + bidi controls: stripped from presentation fields
+// before validation (R-Q2) — a control char must never reach a display
+// or defeat the {entity} template check. Mirrors the scanner resolver.
+const CONTROL_AND_BIDI = /[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+
+/**
+ * Normalize a declared claimedLabel value (R-Q2 #1): a TEMPLATE with
+ * exactly one `{entity}` token and no other braces. Returns the cleaned
+ * template, or null when the value is not usable. Value-level and SILENT
+ * — the activation gate is the loud voice for declared-but-broken packs
+ * (the scanner mirror DECLINEs with a warn, since it never sees a gate).
+ * @param {*} value
+ * @returns {string|null}
+ */
+function normalizedClaimedLabel(value) {
+  if (typeof value !== 'string') return null;
+  const cleaned = value.replace(CONTROL_AND_BIDI, '');
+  const parts = cleaned.split('{entity}');
+  if (parts.length !== 2 || parts.some((p) => /[{}]/.test(p))) return null;
+  return cleaned;
+}
+
+/**
+ * Normalize a declared icon value (R-Q2 #1): a 1-4 code-point TEXT GLYPH,
+ * markup-free — rendered as content only, NEVER a class/attribute key.
+ * Returns the cleaned glyph, or null when not usable. Silent (see above).
+ * @param {*} value
+ * @returns {string|null}
+ */
+function normalizedIcon(value) {
+  if (typeof value !== 'string') return null;
+  const cleaned = value.replace(CONTROL_AND_BIDI, '');
+  if (cleaned.length === 0 || [...cleaned].length > 4 || /[<>&"'{}]/.test(cleaned)) return null;
+  return cleaned;
+}
+
+/**
+ * Normalize a declared entities.label block (Q1): non-empty singular AND
+ * plural strings. Returns {singular, plural} or null. The backend has no
+ * entity-noun display surface today (reports are Q4-OUT; the scanner owns
+ * the screens) — this exists for the activation gate's refusal twin.
+ * @param {*} label - gameConfig.entities.label
+ * @returns {{singular: string, plural: string}|null}
+ */
+function normalizedEntityLabel(label) {
+  const singular = typeof (label && label.singular) === 'string'
+    ? label.singular.replace(CONTROL_AND_BIDI, '').trim() : '';
+  const plural = typeof (label && label.plural) === 'string'
+    ? label.plural.replace(CONTROL_AND_BIDI, '').trim() : '';
+  return (singular && plural) ? { singular, plural } : null;
+}
 
 let legacyWarnHook = (msg) => console.warn(msg);
 let warnedLegacy = false;
@@ -108,6 +164,12 @@ function resolveMode(gameConfig, modeId) {
     defaultEntity: mode.defaultEntity || null,
     countsTowardGroups: mode.countsTowardGroups === true,
     claims: mode.claims === undefined ? 'consuming' : mode.claims,
+    // Presentation fields (R-Q2): normalized to null when absent or not
+    // usable. Backend consumer-less today — pre-wiring for report/
+    // scoreboard surfaces; the parity claim requires both mirrors to
+    // normalize identically.
+    claimedLabel: mode.claimedLabel === undefined ? null : normalizedClaimedLabel(mode.claimedLabel),
+    icon: mode.icon === undefined ? null : normalizedIcon(mode.icon),
     displayBehavior: {
       surface: db.surface || 'none',
       fields: Array.isArray(db.fields) ? [...db.fields] : [],
@@ -159,6 +221,9 @@ module.exports = {
   wireModeIds,
   defaultModeId,
   setLegacyWarnHook,
+  normalizedClaimedLabel,
+  normalizedIcon,
+  normalizedEntityLabel,
   LEGACY_ALN_MODES,
   _resetForTesting,
 };

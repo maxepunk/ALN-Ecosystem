@@ -34,7 +34,7 @@ const {
 
 const { selectTestTokens } = require('../helpers/token-selection');
 const { GMScannerPage } = require('../helpers/page-objects/GMScannerPage');
-const { calculateExpectedScore, loadPackScoring } = require('../helpers/scoring');
+const { calculateExpectedScore, loadPackScoring, loadPackEntities } = require('../helpers/scoring');
 
 /**
  * Helper to add console capture to a page
@@ -263,7 +263,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await gmScanner.navigateToAdminPanel();
 
       // Verify admin panel sections are rendered
-      const scoresSection = page.locator('.admin-section h3:has-text("Team Scores")');
+      const scoresSection = page.locator('#adminScoreboardTitle');
       await expect(scoresSection).toBeVisible();
 
       // Verify teams with scores appear in scoreboard
@@ -284,9 +284,17 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
         5000
       );
 
+      // Q1 LOCKSTEP (dual-pack, pack-derived): the reset confirm's entity
+      // noun follows game.json entities.label — ALN declares Account, the
+      // toy Crew; packless falls back to the baked 'team'.
+      const packEntities = await loadPackEntities(orchestratorInfo.url);
+      const entityNoun = (typeof packEntities?.label?.singular === 'string' && packEntities.label.singular.length > 0)
+        ? packEntities.label.singular.toLowerCase()
+        : 'team';
+
       // Setup dialog handler BEFORE clicking
       page.once('dialog', async dialog => {
-        expect(dialog.message()).toContain('Reset all team scores to zero');
+        expect(dialog.message()).toContain(`Reset all ${entityNoun} scores to zero`);
         await dialog.accept();
       });
 
@@ -487,7 +495,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await gmScanner2.navigateToAdminPanel();
 
       // Verify admin panel sections are rendered after reload
-      const scoresSection = page.locator('.admin-section h3:has-text("Team Scores")');
+      const scoresSection = page.locator('#adminScoreboardTitle');
       await expect(scoresSection).toBeVisible();
 
       // Verify score persisted (use same formatted total from before reload)

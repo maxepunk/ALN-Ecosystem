@@ -24,6 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
 const { parseMoneyFormat } = require('../gameRules/formatting');
+const { normalizedClaimedLabel, normalizedIcon, normalizedEntityLabel } = require('../gameRules/modeSemantics');
 
 const DEFAULT_PACK_DIR = path.join(__dirname, '../../../ALN-TokenData');
 
@@ -565,10 +566,34 @@ function _gateCheck(manifest, gameConfig) {
         if (!ENGINE_MODE_CAPS.claims.has(claims)) {
           undrivable.push(`claims '${claims}'`);
         }
+        // Presentation fields (R-Q2 #5, the strings-class refusal twins):
+        // ABSENT gates nothing (engine-generic fallback), but a DECLARED
+        // value the resolver would decline must refuse loudly here — the
+        // scanner mirrors with a DECLINE-not-fail, since it never passes
+        // this gate.
+        if (mode.claimedLabel !== undefined && normalizedClaimedLabel(mode.claimedLabel) === null) {
+          undrivable.push(
+            `claimedLabel ${JSON.stringify(mode.claimedLabel)} (a template with exactly one {entity} and no other braces required)`
+          );
+        }
+        if (mode.icon !== undefined && normalizedIcon(mode.icon) === null) {
+          undrivable.push(
+            `icon ${JSON.stringify(mode.icon)} (1-4 plain text glyphs, no markup characters — icons render as content, never as class keys)`
+          );
+        }
         if (undrivable.length > 0) {
           problems.push(`mode '${mode.id}' is not driveable by this engine: ${undrivable.join(', ')} not implemented`);
         }
       }
+    }
+    // Entity label (Q1, same refusal-twin posture): absent gates nothing
+    // (baked Team/Teams); a declared-but-unusable label refuses.
+    if (gameConfig.entities && gameConfig.entities.label !== undefined
+        && normalizedEntityLabel(gameConfig.entities.label) === null) {
+      problems.push(
+        `entities.label ${JSON.stringify(gameConfig.entities.label)} is not usable — ` +
+        'non-empty singular AND plural strings required'
+      );
     }
   }
 

@@ -40,6 +40,8 @@ Unit pins moving in lockstep: `initializationSteps.test.js:18/31/34/45` + `uiMan
 
 ## 4. Owner questions (HELD — do not build)
 
+> **RULED 2026-08-22**: option (a) — MINIMAL theme.json ships in Phase 3 (semantic mode colors, rating glyph/display incl. ALN's star-drop, scoreboard accent) as its own scheduled unit; full depth waits for the first real second game.
+
 - **Q-3c-1 — theme.json scope** (overlaps 3a's Q5 scoreboard-theming-depth and 3b's Q-3b-2 star glyphs): should packs declare visual identity (mode colors, type colors, glyphs, fonts) via the `theme` pointer? The pointer exists with zero consumers and no canonical-filename pin (the `strings` lesson says pin it before consuming). Recommend: 3c ships the SEMANTIC layer only; theme.json is designed once, with Q5 + Q-3b-2 folded in, as its own unit after the owner rules on theming depth.
 
 ## 5. Execution record (2026-08-21 — decision-free core COMPLETE)

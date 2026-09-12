@@ -945,14 +945,18 @@ def write_groups_block(game_path, groups):
     """Merge the derived groups block into game.json (atomic, F-TOOL-10).
     Returns True when the file changed."""
     game_path = Path(game_path)
-    game = json.loads(game_path.read_text())
+    game = json.loads(game_path.read_text(encoding='utf-8'))
     if game.get('groups') == groups:
         return False
     game['groups'] = groups
     tmp = game_path.with_name(game_path.name + '.tmp')
     try:
-        with tmp.open('w') as f:
-            json.dump(game, f, indent=2)
+        with tmp.open('w', encoding='utf-8') as f:
+            # ensure_ascii=False (R-Q2 #9): game.json carries raw emoji
+            # (mode icons since the closers slice) — the default ASCII
+            # escaping would rewrite every icon byte on every sync,
+            # churning the file and the pack contentHash for no reason.
+            json.dump(game, f, indent=2, ensure_ascii=False)
             f.write('\n')
             f.flush()
             os.fsync(f.fileno())

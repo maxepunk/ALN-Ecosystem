@@ -129,7 +129,7 @@ test.describe('GM Scanner Admin Panel - UI & Navigation', () => {
       const systemSection = await page.locator('.admin-section h3:has-text("Service Health")');
       await expect(systemSection).toBeVisible();
 
-      const scoresSection = await page.locator('.admin-section h3:has-text("Team Scores")');
+      const scoresSection = await page.locator('#adminScoreboardTitle');
       await expect(scoresSection).toBeVisible();
 
       const gameActivitySection = await page.locator('.admin-section h3:has-text("Game Activity")');

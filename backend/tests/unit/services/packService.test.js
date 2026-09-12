@@ -397,6 +397,54 @@ describe('packService', () => {
       ));
       expect(() => packService.activatePack()).not.toThrow();
     });
+
+    describe('presentation-field refusal twins (R-Q2 #5 + Q1 — declared-but-undrivable refuses; absent gates nothing)', () => {
+      it('accepts declared claimedLabel/icon/entities.label in good shape (the real toy declarations)', () => {
+        writeGame(tmpDir, {
+          ...gameWith(mode({ id: 'fence', claimedLabel: 'FENCED by {entity}', icon: '💼' })),
+          entities: { label: { singular: 'Crew', plural: 'Crews' } },
+        });
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it('refuses a claimedLabel without exactly one {entity} or with stray braces', () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'bad', claimedLabel: 'CLAIMED' })));
+        expect(() => packService.activatePack())
+          .toThrow(/mode 'bad' is not driveable.*claimedLabel "CLAIMED".*exactly one \{entity\}/);
+
+        packService._resetForTesting();
+        writeGame(tmpDir, gameWith(mode({ id: 'bad2', claimedLabel: '{entity} beats {entity}' })));
+        expect(() => packService.activatePack()).toThrow(/mode 'bad2' is not driveable.*claimedLabel/);
+      });
+
+      it('refuses a markup-bearing or over-long icon (icons are TEXT glyphs, never class keys)', () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'bad', icon: '<b>' })));
+        expect(() => packService.activatePack())
+          .toThrow(/mode 'bad' is not driveable.*icon "<b>".*never as class keys/);
+
+        packService._resetForTesting();
+        writeGame(tmpDir, gameWith(mode({ id: 'bad2', icon: '💰💰💰💰💰' })));
+        expect(() => packService.activatePack()).toThrow(/mode 'bad2' is not driveable.*icon/);
+      });
+
+      it('refuses a declared-but-unusable entities.label; an ABSENT entities block gates nothing', () => {
+        writeGame(tmpDir, {
+          ...gameWith(mode({ id: 'ok' })),
+          entities: { label: { singular: '', plural: 'Crews' } },
+        });
+        expect(() => packService.activatePack())
+          .toThrow(/entities\.label.*is not usable.*singular AND plural/);
+
+        packService._resetForTesting();
+        writeGame(tmpDir, gameWith(mode({ id: 'ok' })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it('absent presentation fields gate nothing (engine-generic fallback is a safe landing)', () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'plain' })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+    });
   });
 
   describe('rules-block drivability (A3 slice 2 — §2i/§2j: the engine implements the declared table only)', () => {

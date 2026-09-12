@@ -50,6 +50,8 @@ Program: §3 slice 5 — "clock/phase params (B11): duration/overtime landed in 
 
 ## 4. Owner questions (HELD — do not build)
 
+> **ALL THREE RULED 2026-08-22**: Q-5-1 = Phase 4, REQUIRED by project completion (D-track obligation); Q-5-2 = deferred to the first real phases-bearing game; Q-5-3 = parallel confirmed. **SLICE 5 FULLY CLOSED.**
+
 - **Q-5-1 — manual phase advance:** should the GM be able to force/advance a phase via gm:command (new action enum + commandExecutor + admin UI)? It is the only operator escape for a trigger-started phase whose trigger never fires. Not needed for the toy (its trigger is group:completed; time-starts need no escape). Recommend: yes eventually, but as D-track show-control UX — not slice 5.
 - **Q-5-2 — phase-aware post-session validation:** LogParser and every wired validator are clock-blind today. Recommend: defer until a phases-bearing game actually ships; not part of the slice gate.
 - **Q-5-3 — overtime-as-phase unification:** keep overtimeAt a parallel scalar permanently, or recast as phase machinery when a pack needs per-phase overtime? Recommend: keep parallel; revisit only on a real pack's demand.

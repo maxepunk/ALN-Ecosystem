@@ -139,6 +139,15 @@ const loadTokens = () => {
   // from the active pack's `groups` block, never parsed from tokens.
   // eslint-disable-next-line global-require
   const packGroups = require('./packService').getGameConfig()?.groups || null;
+  // Q3 (owner-ruled): the token NOUN in game-flavored wording is
+  // pack-declared (strings.terminology.tokenNoun — ALN declares
+  // "Memory", the toy "Take"); baked 'Memory' keeps the packless path
+  // byte-identical. Same benign-wording posture as awardMessage.
+  // eslint-disable-next-line global-require
+  const declaredNoun = require('./packService').getStrings()?.terminology?.tokenNoun;
+  const tokenNoun = (typeof declaredNoun === 'string' && declaredNoun.length > 0)
+    ? declaredNoun
+    : 'Memory';
 
   // Transform object format to array format expected by backend
   const tokensArray = Object.entries(tokensObject).map(([id, token]) => {
@@ -161,7 +170,7 @@ const loadTokens = () => {
 
     return {
       id: id,
-      name: token.SF_Group || `Memory ${id}`,
+      name: token.SF_Group || `${tokenNoun} ${id}`,
       value: calculatedValue,
       memoryType: token.SF_MemoryType || 'UNKNOWN',
       groupId: groupName,

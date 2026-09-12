@@ -214,4 +214,32 @@ describe('D1b/v2 — the pack groups block is the SOLE multiplier source', () =>
       packSvc._resetForTesting();
     }
   });
+
+  it('Q3: loadTokens reads the DECLARED tokenNoun for the group-name fallback (review-added coverage)', () => {
+    // The baked-'Memory' twin lives in tokenService.test.js; this pins the
+    // pack-driven branch with a real on-disk pack, same seam as the
+    // groups test above — deleting the getStrings() read must fail here.
+    const dir = fs2.mkdtempSync(path2.join(os2.tmpdir(), 'aln-noun-'));
+    const orig = process.env.PACK_PATH;
+    try {
+      fs2.writeFileSync(path2.join(dir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'g', strings: 'strings.json',
+      }));
+      fs2.writeFileSync(path2.join(dir, 'strings.json'), JSON.stringify({
+        kind: 'strings', schemaVersion: 2, terminology: { tokenNoun: 'Take' },
+      }));
+      fs2.writeFileSync(path2.join(dir, 'tokens.json'), JSON.stringify({
+        t1: { SF_RFID: 't1', SF_ValueRating: 1, SF_MemoryType: 'Personal', SF_Group: '' },
+      }));
+      process.env.PACK_PATH = dir;
+      packSvc._resetForTesting();
+      const tokenSvc = require('../../../src/services/tokenService');
+      const tokens = tokenSvc.loadTokens();
+      expect(tokens.find(t => t.id === 't1').name).toBe('Take t1');
+    } finally {
+      fs2.rmSync(dir, { recursive: true, force: true });
+      if (orig === undefined) delete process.env.PACK_PATH; else process.env.PACK_PATH = orig;
+      packSvc._resetForTesting();
+    }
+  });
 });

@@ -32,6 +32,7 @@ const { createBrowserContext, createPage, closeAllContexts } = require('../setup
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { selectTestTokens } = require('../helpers/token-selection');
+const { loadPackStrings } = require('../helpers/scoring');
 const { ScoreboardPage } = require('../helpers/page-objects/ScoreboardPage');
 
 // Tests are serial — they share one orchestrator and must not race each other
@@ -43,6 +44,7 @@ test.skip(({ isMobile }) => !isMobile, 'Scoreboard restart-recovery tests only r
 let browser = null;
 let orchestratorInfo = null;
 let testTokens = null;
+let expectedLive = 'LIVE'; // Q5 pack chrome — pack-derived in beforeAll
 
 test.describe('Scoreboard Restart Recovery', () => {
 
@@ -64,6 +66,11 @@ test.describe('Scoreboard Restart Recovery', () => {
       ]
     });
     testTokens = await selectTestTokens(orchestratorInfo.url);
+    // Q5: connection-status wording is pack chrome (baked 'LIVE' when undeclared)
+    const packStrings = await loadPackStrings(orchestratorInfo.url);
+    expectedLive = (typeof packStrings?.scoreboard?.statusLive === 'string' && packStrings.scoreboard.statusLive.length > 0)
+      ? packStrings.scoreboard.statusLive
+      : 'LIVE';
   });
 
   test.afterAll(async () => {
@@ -97,8 +104,8 @@ test.describe('Scoreboard Restart Recovery', () => {
       // Connect and verify LIVE
       await scoreboard.goto(orchestratorInfo.url);
       await scoreboard.waitForConnection(10000);
-      expect(await scoreboard.getStatusText()).toBe('LIVE');
-      console.log('Scoreboard connected pre-restart, status: LIVE');
+      expect(await scoreboard.getStatusText()).toBe(expectedLive);
+      console.log(`Scoreboard connected pre-restart, status: ${expectedLive}`);
 
       // Restart the backend (preserves session data, reuses same port)
       console.log('Restarting orchestrator...');
@@ -114,8 +121,8 @@ test.describe('Scoreboard Restart Recovery', () => {
       // and calls authenticate() + connectWebSocket() immediately (not the 5min zombie timer).
       // Wait for LIVE status to return — should be within ~10s, not 5 minutes.
       await scoreboard.waitForConnection(30000);
-      expect(await scoreboard.getStatusText()).toBe('LIVE');
-      console.log('Scoreboard recovered LIVE status after restart');
+      expect(await scoreboard.getStatusText()).toBe(expectedLive);
+      console.log('Scoreboard recovered connected status after restart');
 
     } finally {
       await page.close();

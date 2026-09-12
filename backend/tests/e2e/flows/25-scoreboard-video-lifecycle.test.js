@@ -161,14 +161,10 @@ test.describe('Scoreboard During Video Lifecycle @hardware', () => {
     try {
       // Open scoreboard in kiosk mode — overlay only activates in ?kiosk=true
       await scoreboard.gotoKiosk(orchestratorInfo.url);
-      // In kiosk mode, the status indicator is hidden via CSS (display:none).
-      // waitForConnection() waits for visibility which fails for the hidden span.
-      // Use waitForFunction to poll statusText content directly, bypassing visibility.
-      await sbPage.waitForFunction(
-        () => document.getElementById('statusText')?.textContent === 'LIVE',
-        null,
-        { timeout: 10000 }
-      );
+      // waitForConnection keys on the STATUS CLASS with state:'attached'
+      // (Q5: the status TEXT is pack chrome, and kiosk mode hides the
+      // indicator via CSS — attached works either way).
+      await scoreboard.waitForConnection(10000);
       console.log('Scoreboard connected in kiosk mode');
 
       // Setup GM scanner with session (need active session for player scans to work)

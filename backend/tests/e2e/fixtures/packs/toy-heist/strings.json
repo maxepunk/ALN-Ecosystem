@@ -5,7 +5,13 @@
     "header": "JOB BOARD: MIDNIGHT HEIST",
     "emptyTicker": "No takes recorded",
     "emptyEvidence": "Awaiting tips...",
-    "unknownOwner": "Unattributed"
+    "unknownOwner": "Unattributed",
+    "statusConnecting": "DIALING IN",
+    "statusLive": "WIRED IN",
+    "statusOffline": "GONE DARK",
+    "recIndicator": "TAP",
+    "videoOverlay": "Feed Running...",
+    "initializing": "CRACKING"
   },
   "scanner": {
     "appTitle": "Fence Terminal",
@@ -16,6 +22,9 @@
     }
   },
   "scoring": {
-    "awardMessage": "Take fenced. {points} added to the haul."
+    "awardMessage": "Take fenced. {pointsFormatted} added to the haul."
+  },
+  "terminology": {
+    "tokenNoun": "Take"
   }
 }
