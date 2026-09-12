@@ -5,6 +5,16 @@ in place, updated whenever execution state changes: what's done,
 what's next, and who each open item waits on. The full frame is
 `ROADMAP.md` (r4); the deep archive is `PHASE3-STATUS.md`.
 
+**THE GOAL THIS WEEK (owner, stated the night of 2026-09-11, recorded
+2026-09-12 after it was lost at a compaction):** implement Blocks 2 and
+3, set up the green Pi, and test it before Thursday 2026-09-17, so that
+green, not blue, ideally runs the show on Friday 2026-09-18. Reason:
+syncing new tokens onto blue as it stands carries more risk than
+bringing green up. Either way, new tokens must be synced from Notion by
+Thursday. Every plan and every priority call below serves this goal;
+where a document says the run opens on blue unless the gate is met,
+that is the fallback, not the plan.
+
 **RESUME HERE (2026-09-12, Block 2 at checkpoint 2, "after the dormancy
 core lands"; T1a's follow-ups closed).** T1b, T1a and T1a's three
 follow-ups (CI kiosk launch, scanner review-bot fixes, display exit
