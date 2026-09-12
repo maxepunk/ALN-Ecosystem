@@ -91,7 +91,13 @@ Thursday preflight.
 
 ## 6. Running, and on disk
 
-- Five workflows running (owner: "go" 21:40Z; the adversarial pass
+- Harness build DONE 22:19:55Z (head f778f15, review clean, five minors
+  ledgered in the progress file); its hostile tester runs now,
+  `wf_dfd702f3-067` (script `hostile-harness.js`); then one fixer
+  commit + scoped re-review, my fresh gate, the merge, the lane
+  worktrees. Arms fact sheet DONE (scratch `preflight-arms-factsheet.md`,
+  20 design-changing facts, recount clean on substance).
+- Workflows still running (owner: "go" 21:40Z; the adversarial pass
   "agreed" 21:59:19Z, 2026-09-12;
   resumable after any stop with `Workflow({scriptPath, resumeFromRunId})`,
   finished agents cached; scripts copied to the scratchpad

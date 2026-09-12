@@ -344,10 +344,10 @@ Files: `backend/config/profiles/installation-profile.schema.json`
 (the profile file check at boot interior, `additionalProperties: false`); `backend/config/profiles/aln-full-kit.json`
 (endpoints: all families installed; `network` authored per R11:
 `mode: kit-network`, `kitNetwork: {ssid: "aboutlastnetwork",
-orchestratorIp: "192.168.0.191", localDnsOverride: true}` — SSID and IP
+orchestratorIp: "192.168.0.191", localDnsOverride: false}` — SSID and IP
 are the owner's stated production values (2026-09-12; the ESP32
 `sample_config.txt` values `Sidewinder` / `10.0.0.177` are not the
-production values); `localDnsOverride: true` is the ratified posture
+production values); `localDnsOverride: false` is the posture on disk (the owner ruled 2026-09-12 that DNS is not set up; the earlier "true" here was stale — the arms fact sheet caught the drift)
 (`CONTEXT.md` §5 "Kit network": the Pi answers the name on the LAN);
 `orchestratorName` is OMITTED until the owner states the kit's DNS name
 — the only value in the repo, `play.aboutlastnightgame.com`, is an
