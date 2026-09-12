@@ -1085,6 +1085,25 @@ the risk is a foreign commit landing mid-walk, not speed.
    nested data pin, which ships with the cutover); Notion sync is
    fine again after the walk.
 
+**WALKED 2026-09-12.** All 22 PRs across the five repos are merged;
+zero open PRs remain (GitHub auto-closed every one, the two
+odd-based fix-vehicle PRs included). New mains: parent `df95b7a`
+(16 vehicle merge commits as first-parent waypoints), ALNScanner
+`5653a3e`, ALN-TokenData `d9e37be`, ALNPlayerScan `e0bf299`,
+arduino `f81aba5`. Mechanism deviation, owner-authorized in the
+moment: the GitHub integration spent the day refusing WRITE calls
+(reads fine) with a rate-limit error, so the walk executed as
+LOCAL merge commits pushed once per repo — which also meant zero
+intermediate CI structurally (one push event per repo, tip commit
+only) and pre-push verification: every final tree diffed
+byte-identical against its green PR head BEFORE pushing, and every
+submodule pin verified an ancestor of its submodule's new main.
+Un-drafting and retargeting became unnecessary (API-merge-only
+steps). Tip CI verdict recorded below when complete. Branch
+cleanup deliberately deferred (never `production-2026-07`; the
+`blue-2026-07` tags anchor the frozen system). Follow-on work:
+`docs/plans/2026-09-12-postwalk-handoff.md`.
+
 Timing (superseded 2026-09-05, roadmap r4 supersession 9 — was
 "owner-driven, post-run"): the walk is the owner's call at the
 coherent-on-main readiness state. Before any vehicle merges, the

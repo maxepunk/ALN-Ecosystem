@@ -5,13 +5,19 @@ in place, updated whenever execution state changes: what's done,
 what's next, and who each open item waits on. The full frame is
 `ROADMAP.md` (r4); the deep archive is `PHASE3-STATUS.md`.
 
-**Last updated: 2026-09-06** (fix vehicle COMPLETE: S1–S5b closed.
-S5b landed the shared, profile-gated rung-1 provisioning module —
-one module for the rig and the E2E suite — and put real VLC, a
-witness Home Assistant, and a mocked Bluetooth adapter under the
-full dual-pack legs. Three engine defects and one never-executed
-test's own defect were found and fixed by paths running for the
-first time ever. The train now waits on the owner's walk).
+**Last updated: 2026-09-12 — THE MERGE TRAIN IS WALKED.** All 22
+PRs merged across the five repos; `main` is the deployable truth
+(parent `df95b7a`); zero open PRs; frozen production stays anchored
+at `production-2026-07` / tag `blue-2026-07`. Coherent-on-main
+pends only the tip CI verdict (recorded in PHASE3-STATUS beside the
+train table). **A fresh session picks up from here** — its entry
+point is `docs/plans/2026-09-12-postwalk-handoff.md` (owner-ruled
+2026-09-12): guide the green Pi Stage B setup, then build Block 2
+(hardening) and Block 3 (truth sweep); the show-ready gate stands
+AS WRITTEN — green runs a show only after Blocks 2+3. Calendar:
+token content ~Thu 9/17; the run opens Fri 9/18 (on blue unless the
+gate is met; blue token updates ONLY via the containment rules in
+the handoff §3).
 
 ## Where we stand
 
