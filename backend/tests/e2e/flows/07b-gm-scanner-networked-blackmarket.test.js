@@ -45,6 +45,7 @@ const {
   calculateExpectedScore,
   calculateExpectedGroupBonus,
   loadPackScoring,
+  loadPackGroups,
 } = require('../helpers/scoring');
 
 let browser = null;
@@ -52,6 +53,7 @@ let orchestratorInfo = null;
 let vlcInfo = null;
 let testTokens = null;  // Dynamically selected tokens
 let packScoring = null; // ACTIVE pack scoring block — the single score oracle (L5 retired)
+let packGroups = null;  // ACTIVE pack groups block — sole multiplier source (v2 cutover)
 
 test.describe('GM Scanner Networked Mode - Black Market', () => {
   let orchestrator;
@@ -95,6 +97,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     // Select test tokens dynamically from production database
     testTokens = await selectTestTokens(orchestratorInfo.url);
     packScoring = await loadPackScoring(orchestratorInfo.url);
+    packGroups = await loadPackGroups(orchestratorInfo.url);
 
     browser = await chromium.launch({
       headless: true,
@@ -333,7 +336,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
 
     // Calculate expected scores using production logic
     const baseScore = groupTokens.reduce((sum, t) => sum + calculateExpectedScore(t, packScoring), 0);
-    const bonus = calculateExpectedGroupBonus(groupTokens, packScoring);
+    const bonus = calculateExpectedGroupBonus(groupTokens, packScoring, packGroups);
     const expectedTotal = baseScore + bonus;
 
     // Initialize scanner in networked mode

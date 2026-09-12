@@ -10,13 +10,13 @@
  * and threads it into the calculators; a calculator called without it
  * throws instead of silently scoring from a second source.
  *
- * Group parsing (parseGroupMultiplier) still comes from production
- * tokenService — the "(xN)" group format is pack-universal string
- * parsing, not a scoring table.
+ * Group multipliers come from the ACTIVE pack's game.json `groups`
+ * block (v2 cutover, A3 slice 2b/D3b): SF_Group is the pure name and
+ * the "(xN)" suffix parsers are DELETED everywhere at runtime — flows
+ * load the block once via loadPackGroups() and thread it in.
  */
 
 const https = require('https');
-const { parseGroupMultiplier } = require('../../../src/services/tokenService');
 
 /**
  * Fetch the ACTIVE pack's game.json scoring block from the orchestrator's
@@ -67,6 +67,19 @@ function loadPackModes(orchestratorUrl) {
 }
 
 /**
+ * Fetch the ACTIVE pack's declared `groups` block (v2 — the sole
+ * multiplier source; the "(xN)" suffix died at the tokens-v2 cutover).
+ * Null when the pack ships no game.json/groups — the bonus calculator
+ * THROWS on grouped tokens with a null block, same loudness doctrine
+ * as the scoring oracle.
+ * @param {string} orchestratorUrl
+ * @returns {Promise<Object|null>} game.json `groups` block or null
+ */
+function loadPackGroups(orchestratorUrl) {
+  return _fetchGameJsonField(orchestratorUrl, 'groups');
+}
+
+/**
  * Pack-derived UI labels for mode assertions (lowercase, as the pill
  * renders them minus the ' Mode' suffix). Tests written against ALN's
  * "black market"/"detective" literals use these so the same assertion
@@ -85,19 +98,19 @@ function expectedModeLabels(modes) {
 }
 
 /** Score a token against a pack scoring block, mirroring the ENGINE's
- *  normalization (packService._normalizeScoring: LOWERCASED type keys,
- *  `unknown` always present at 0) — the oracle must match what the
- *  backend actually computes, including for case-mismatched packs
- *  (review finding; the scanner's exact-case lookup is the open D2b
- *  canon question for slice 2b — until it's ruled, the backend is the
- *  networked-mode authority this oracle validates). */
+ *  normalization (packService._normalizeScoring: EXACT-CASE type keys,
+ *  `UNKNOWN` always present at 0) — the oracle must match what the
+ *  backend actually computes. EXACT-CASE since D2b (ruled 2026-07-18):
+ *  types are pack-declared ids matched verbatim — the scanner's
+ *  always-exact-case lookup became the canon and the backend dropped
+ *  its lowercase normalization; the activation gate refuses tokens
+ *  whose type is absent from the pack's own typeMultipliers. */
 function packTokenValue(packScoring, rating, memoryType) {
   const base = packScoring.baseValues[String(rating)] ?? packScoring.baseValues[rating] ?? 0;
-  const multipliers = { unknown: 0 };
-  for (const [k, v] of Object.entries(packScoring.typeMultipliers)) {
-    multipliers[k.toLowerCase()] = v;
-  }
-  const mult = multipliers[String(memoryType || 'unknown').toLowerCase()] ?? multipliers.unknown;
+  // Object.hasOwn mirrors the engine: prototype-chain names never resolve
+  const mult = Object.hasOwn(packScoring.typeMultipliers, memoryType ?? '')
+    ? packScoring.typeMultipliers[memoryType]
+    : (packScoring.typeMultipliers.UNKNOWN ?? 0);
   return base * mult;
 }
 
@@ -127,22 +140,36 @@ function calculateExpectedScore(token, packScoring) {
  * Calculate expected group completion bonus against the pack oracle
  * @param {Array<Object>} tokens - Array of tokens in the same group
  * @param {Object} packScoring - loadPackScoring() result (REQUIRED)
+ * @param {Object|null} packGroups - loadPackGroups() result (REQUIRED
+ *   for grouped tokens — v2: game.json `groups` is the sole multiplier
+ *   source; the running orchestrator's activation gate refuses packs
+ *   whose tokens name undeclared groups, so a miss here means the
+ *   harness misthreaded the block, and we throw instead of silently
+ *   scoring bonus 0)
  * @returns {number} Expected bonus score (0 if no valid group)
  */
-function calculateExpectedGroupBonus(tokens, packScoring) {
+function calculateExpectedGroupBonus(tokens, packScoring, packGroups) {
   _requireOracle(packScoring, 'calculateExpectedGroupBonus');
   if (!tokens || tokens.length === 0) {
     return 0;
   }
 
-  // Extract group info from first token
+  // Extract group info from first token (v2: SF_Group IS the pure name)
   const firstToken = tokens[0];
-  if (!firstToken.SF_Group || firstToken.SF_Group.trim() === '') {
+  const groupName = (firstToken.SF_Group || '').trim();
+  if (!groupName) {
     return 0;
   }
 
-  // Use the production parser for the "(xN)" group multiplier
-  const multiplier = parseGroupMultiplier(firstToken.SF_Group);
+  const declared = packGroups && packGroups[groupName];
+  if (!declared) {
+    throw new Error(
+      `calculateExpectedGroupBonus: group "${groupName}" is not in the pack ` +
+      `groups block — load it in beforeAll with loadPackGroups(orchestratorInfo.url) ` +
+      `and thread it through. (The "(xN)" suffix parser retired at the v2 cutover.)`
+    );
+  }
+  const multiplier = declared.multiplier;
 
   // Group bonus only applies if multiplier > 1x
   if (multiplier <= 1) {
@@ -166,6 +193,7 @@ function calculateExpectedGroupBonus(tokens, packScoring) {
 module.exports = {
   loadPackScoring,
   loadPackModes,
+  loadPackGroups,
   expectedModeLabels,
   calculateExpectedScore,
   calculateExpectedGroupBonus

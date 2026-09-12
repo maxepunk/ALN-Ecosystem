@@ -226,6 +226,12 @@ def sandbox(tmp_path, monkeypatch):
     monkeypatch.setattr(sync, "ASSETS_AUDIO", audio)
     monkeypatch.setattr(sync, "VIDEOS_DIR", videos)
     monkeypatch.setattr(sync, "TOKENS_JSON", tokens_json)
+    # D3b: main() writes the derived groups block to GAME_JSON_PATH — the
+    # sandbox MUST redirect it or pipeline tests corrupt the real pack
+    # (caught 2026-07-18: a sandbox run emptied ALN's groups block).
+    game_json = tmp_path / "game.json"
+    game_json.write_text(json.dumps({"kind": "game"}))
+    monkeypatch.setattr(sync, "GAME_JSON_PATH", game_json)
     monkeypatch.setattr(
         sync, "generate_neurai_display",
         lambda rfid, text: f"assets/images/{rfid}.bmp",

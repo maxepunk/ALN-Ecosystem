@@ -32,7 +32,7 @@ describe('routes (HTTP layer)', () => {
       'PORT=3000\nHOST=0.0.0.0\nADMIN_PASSWORD=super-secret\nJWT_SECRET=jwt-secret-value\nHOME_ASSISTANT_TOKEN=ha-token-value\nEMPTY_TOKEN=\nNOTION_API_KEY=notion-key-value\nMPD_PASS=mpd-pass-value\nSSL_KEY_PATH=/etc/ssl/server.key\n'
     );
     fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
-      kind: 'game', schemaVersion: 1, id: 'test-pack',
+      kind: 'game', schemaVersion: 2, id: 'test-pack',
       scoring: {
         baseValues: { 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 },
         typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 },

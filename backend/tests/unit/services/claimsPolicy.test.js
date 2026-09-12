@@ -45,12 +45,12 @@ describe('claims flag through processScan (D3s2)', () => {
     packService._resetForTesting();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-claims-'));
     fs.writeFileSync(path.join(tmpDir, 'pack-manifest.json'), JSON.stringify({
-      kind: 'pack-manifest', schemaVersion: 1, packId: 'claims-pack', version: '0.0.1',
+      kind: 'pack-manifest', schemaVersion: 2, packId: 'claims-pack', version: '0.0.1',
       contentHash: HASH, engine: { minVersion: '3.0.0' },
       files: [{ path: 'tokens.json', role: 'tokens', sha1: '0'.repeat(40), size: 2 }],
     }));
     fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
-      kind: 'game', schemaVersion: 1, id: 'claims-pack',
+      kind: 'game', schemaVersion: 2, id: 'claims-pack',
       modes: [
         {
           id: 'sell', label: 'Sell', scoringPolicy: 'standard', entityRole: 'ledger',
@@ -175,5 +175,43 @@ describe('claims flag through processScan (D3s2)', () => {
     // if THIS harness actually wires the persistence listener — prove it.
     const session = sessionService.getCurrentSession();
     expect(session.getDeviceScannedTokensArray('GM_A')).toEqual(['tok1']);
+  });
+});
+
+describe('D1b/v2 — the pack groups block is the SOLE multiplier source', () => {
+  const fs2 = require('fs');
+  const os2 = require('os');
+  const path2 = require('path');
+  const packSvc = require('../../../src/services/packService');
+
+  it('loadTokens reads groupMultiplier from the pack block; undeclared names read 1 (no suffix parse exists)', () => {
+    const dir = fs2.mkdtempSync(path2.join(os2.tmpdir(), 'aln-groups-'));
+    const orig = process.env.PACK_PATH;
+    try {
+      fs2.writeFileSync(path2.join(dir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'g',
+        groups: { 'Server Logs': { multiplier: 7 } },
+      }));
+      // NOTE: t2 names an undeclared group — the ACTIVATION gate refuses
+      // such a pack; this exercises loadTokens' own defensive reading
+      // (1 = "group with no completion bonus") without the gate in play.
+      fs2.writeFileSync(path2.join(dir, 'tokens.json'), JSON.stringify({
+        t1: { SF_RFID: 't1', SF_ValueRating: 1, SF_MemoryType: 'Personal', SF_Group: 'Server Logs' },
+        t2: { SF_RFID: 't2', SF_ValueRating: 1, SF_MemoryType: 'Personal', SF_Group: 'Undeclared' },
+      }));
+      process.env.PACK_PATH = dir;
+      packSvc._resetForTesting();
+      const tokenSvc = require('../../../src/services/tokenService');
+      const tokens = tokenSvc.loadTokens();
+      // Declared group: the PACK multiplier
+      expect(tokens.find(t => t.id === 't1').groupMultiplier).toBe(7);
+      // Undeclared name: 1 — the "(x4)"-style suffix would be part of the
+      // NAME now, never a multiplier (the parsers died at the cutover)
+      expect(tokens.find(t => t.id === 't2').groupMultiplier).toBe(1);
+    } finally {
+      fs2.rmSync(dir, { recursive: true, force: true });
+      if (orig === undefined) delete process.env.PACK_PATH; else process.env.PACK_PATH = orig;
+      packSvc._resetForTesting();
+    }
   });
 });

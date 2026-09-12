@@ -15,7 +15,7 @@ const { resolveMode, wireModeIds, defaultModeId, setLegacyWarnHook, LEGACY_ALN_M
 
 // ALN-shaped config (mirrors ALN-TokenData/game.json modes)
 const ALN_CONFIG = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   modes: [
     {
       id: 'blackmarket', label: 'Black Market', verb: 'Sell',
@@ -34,7 +34,7 @@ const ALN_CONFIG = {
 // Toy-shaped config (mirrors toy-heist game.json modes) — the open-vocabulary
 // proof: NONE of these ids appear anywhere in engine code.
 const TOY_CONFIG = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   modes: [
     {
       id: 'fence', label: 'Fence', verb: 'Fence',

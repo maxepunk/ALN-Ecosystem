@@ -1,6 +1,6 @@
 {
   "kind": "game",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "requires": [
     "scoring.tabular",
     "groupRules.all",
@@ -78,6 +78,14 @@
     "minSize": 2,
     "completion": {
       "bonusFormula": "multiplier-minus-one-times-base"
+    }
+  },
+  "groups": {
+    "Vault Plans": {
+      "multiplier": 3
+    },
+    "Getaway Route": {
+      "multiplier": 2
     }
   },
   "duplicatePolicy": {

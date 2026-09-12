@@ -34,8 +34,12 @@ const DEFAULT_PACK_DIR = path.join(__dirname, '../../../ALN-TokenData');
 const ENGINE_VERSION = '3.0.0';
 // game.json / pack-manifest schemaVersion this engine reads. EXACT match
 // when declared — a pack authored against a future schema must refuse
-// loudly, never half-parse.
-const PACK_SCHEMA_VERSION = 1;
+// loudly, never half-parse. v2 = the tokens-v2 cutover (A3 slice 2b):
+// pure SF_Group names + pack `groups` block. The bump is load-bearing
+// BOTH ways: a v1 engine suffix-parses v2 pure names into silent 1x
+// multipliers, and this engine reads v1 suffixed names as verbatim
+// (undeclared) group names.
+const PACK_SCHEMA_VERSION = 2;
 // Capability ids this engine implements. A pack's `requires` array (in
 // game.json) must be a subset or activation refuses. The v1 baseline
 // names what the engine actually runs today; slices 1/2 grow it as
@@ -100,18 +104,23 @@ function _isUsableScoring(scoring) {
 }
 
 /** Normalize a scoring block for engine consumption: numeric rating keys,
- *  LOWERCASED type keys (tokenService lowercases lookups), always an
- *  `unknown` entry. */
+ *  EXACT-CASE pack-declared type keys (D2b — tokenService matches
+ *  verbatim), always an `UNKNOWN` entry (the null/unrecognized bucket). */
 function _normalizeScoring(scoring) {
   return {
     baseValues: Object.fromEntries(
       Object.entries(scoring.baseValues).map(([k, v]) => [parseInt(k, 10), v])
     ),
+    // EXACT-CASE keys (A3 slice 2b, D2b): types are pack-declared ids —
+    // the backend's old lowercase normalization diverged from the
+    // scanner's exact-case lookup (a lowercased vocabulary silently
+    // scored 0× standalone-only, the worst divergence class). The
+    // scanner's behavior is the canon; the type-coverage gate makes a
+    // case-mismatched token REFUSE at boot instead of silently zeroing.
+    // UNKNOWN (schema-required) is the null/unrecognized bucket.
     typeMultipliers: {
-      unknown: 0,
-      ...Object.fromEntries(
-        Object.entries(scoring.typeMultipliers).map(([k, v]) => [k.toLowerCase(), v])
-      ),
+      UNKNOWN: 0,
+      ...scoring.typeMultipliers,
     },
     // D2s2: pack-conditional score floor. Strict === true so a pack that
     // declares scoring but omits semantics gets the conservative floor;
@@ -196,9 +205,14 @@ function _compareVersions(a, b) {
 /**
  * Capability gate (A3 slice 0, audit F2 + adversarial R6): refuse LOUDLY
  * — by throwing out of activation, which fails the boot — any pack this
- * engine cannot faithfully run. Nothing is checked for a pack that
- * declares nothing (pre-pack checkouts and v1 packs activate exactly as
- * before); every declared constraint is enforced.
+ * engine cannot faithfully run. Declared constraints are enforced; the
+ * old "declares nothing gates nothing" posture survives ONLY where the
+ * silent reading is safe (e.g. capabilities, modes). Since the tokens-v2
+ * cutover (slice 2b) two checks are UNCONDITIONAL over any pack with a
+ * game.json: groups coverage (an absent block refuses grouped tokens —
+ * the silent reading was 1x multipliers) and type coverage when scoring
+ * is usable. A game.json-less checkout (pre-pack legacy) still rides the
+ * loud shims.
  * @throws {Error} when the pack requires what this engine lacks
  */
 function _gateCheck(manifest, gameConfig) {
@@ -280,6 +294,80 @@ function _gateCheck(manifest, gameConfig) {
           'multi-phase and trigger-started clocks are not driveable by this engine yet (see slice 5); ' +
           'the engine drives only the degenerate single-phase-at-0'
         );
+      }
+    }
+    // Type coverage (A3 slice 2b, D2b): with exact-case lookup, a token
+    // whose SF_MemoryType is absent from the pack's own typeMultipliers
+    // would silently score 0× — refuse it at boot instead. null types
+    // are LEGAL (the UNKNOWN bucket, 3 in ALN production data); packs
+    // without a usable scoring block gate nothing (shim path).
+    if (_isUsableScoring(gameConfig.scoring)) {
+      let tokensForTypes = null;
+      try {
+        tokensForTypes = JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
+      } catch { /* no tokens.json — the loader refuses separately */ }
+      if (tokensForTypes) {
+        const uncovered = new Set();
+        for (const token of Object.values(tokensForTypes)) {
+          const t = token.SF_MemoryType;
+          // Object.hasOwn (not `in`): a type named 'constructor' would
+          // pass an `in` check via the prototype chain, then score NaN
+          // downstream (round-2 review C10)
+          if (t !== null && t !== undefined && !Object.hasOwn(gameConfig.scoring.typeMultipliers, t)) {
+            uncovered.add(t);
+          }
+        }
+        for (const t of uncovered) {
+          problems.push(
+            `tokens use memory type '${t}' which is not a key of scoring.typeMultipliers — ` +
+            'types match EXACT-CASE (D2b); declare the type or fix the tokens'
+          );
+        }
+      }
+    }
+    // Groups coverage (A3 slice 2b, D1b — UNCONDITIONAL since the v2
+    // cutover): every group a token names must be DECLARED in game.json
+    // `groups`, the sole multiplier source. An ABSENT block is an empty
+    // declaration set, so ANY grouped token refuses — the pre-cutover
+    // "declares nothing gates nothing" tolerance retired with the bump
+    // to PACK_SCHEMA_VERSION 2 (this engine has no suffix parser; an
+    // undeclared name would silently read 1x, the exact silent-drift
+    // class D1b exists to kill). v2: SF_Group IS the pure name
+    // (tokens.schema.json makes a "(xN)" suffix illegal; the sync is the
+    // sole parser of the authoring shorthand — D3b).
+    {
+      let tokensObj = null;
+      try {
+        tokensObj = JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
+      } catch { /* no tokens.json — the loader refuses separately */ }
+      if (tokensObj) {
+        const declaredGroups = (gameConfig.groups && typeof gameConfig.groups === 'object')
+          ? gameConfig.groups
+          : {};
+        // Declared entries must be USABLE: an integer multiplier >= 1
+        // (schema-required, but the gate cannot assume schema validation
+        // ran — a malformed entry would flow NaN into every bonus)
+        for (const [gname, entry] of Object.entries(declaredGroups)) {
+          if (!entry || !Number.isInteger(entry.multiplier) || entry.multiplier < 1) {
+            problems.push(
+              `game.json groups['${gname}'] has no usable multiplier ` +
+              `(integer >= 1 required; got ${JSON.stringify(entry && entry.multiplier)})`
+            );
+          }
+        }
+        const undeclared = new Set();
+        for (const token of Object.values(tokensObj)) {
+          const name = (token.SF_Group || '').trim();
+          // Object.hasOwn (not truthy-index): a group named 'constructor'
+          // would resolve via the prototype chain (round-2 review C11)
+          if (name && !Object.hasOwn(declaredGroups, name)) undeclared.add(name);
+        }
+        for (const name of undeclared) {
+          problems.push(
+            `tokens name group '${name}' which is not declared in game.json groups — ` +
+            'group multipliers are pack rules (D1b); declare the group or fix the token'
+          );
+        }
       }
     }
     // Mode drivability (slice 1): every declared mode's flag VALUES must

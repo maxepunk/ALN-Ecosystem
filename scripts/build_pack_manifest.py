@@ -113,7 +113,7 @@ def build(pack_dir):
     files = build_files(pack_dir)
     manifest = {
         "kind": "pack-manifest",
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "packId": existing.get("packId") or pack_dir.name,
         "version": existing.get("version") or "0.1.0",
         "contentHash": content_hash(files),

@@ -209,20 +209,29 @@ testTokens = await selectTestTokens(orchestratorUrl);
 
 #### `helpers/scoring.js`
 
-Calculates expected scores using production scoring logic (imports from `src/services/tokenService.js`):
+Calculates expected scores against the ACTIVE pack's game.json (the single
+oracle — scoring block for values, `groups` block for multipliers; both
+loaded once in beforeAll from the running orchestrator's pack channel):
 
 ```javascript
-const { calculateExpectedScore, calculateExpectedGroupBonus } = require('../helpers/scoring');
+const {
+  calculateExpectedScore, calculateExpectedGroupBonus,
+  loadPackScoring, loadPackGroups,
+} = require('../helpers/scoring');
+
+// In beforeAll (after startOrchestrator):
+packScoring = await loadPackScoring(orchestratorInfo.url);
+packGroups = await loadPackGroups(orchestratorInfo.url);
 
 // Single token score
 const token = testTokens.personalToken;
-const expectedScore = calculateExpectedScore(token);
+const expectedScore = calculateExpectedScore(token, packScoring);
 // Example: 2-star Personal = $25,000 × 1 = $25,000
 
-// Group completion bonus
+// Group completion bonus (v2: multiplier from the pack groups block)
 const groupTokens = testTokens.groupTokens;
-const bonus = calculateExpectedGroupBonus(groupTokens);
-// Example: 4 tokens with 2x multiplier = (2 - 1) × $15,000 base = $15,000 bonus
+const bonus = calculateExpectedGroupBonus(groupTokens, packScoring, packGroups);
+// Example: 4 tokens in a declared x2 group = (2 - 1) × $15,000 base = $15,000 bonus
 ```
 
 **Scoring Formula:**

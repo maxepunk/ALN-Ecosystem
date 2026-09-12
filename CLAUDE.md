@@ -111,7 +111,7 @@ Scoring values live in the game pack: `ALN-TokenData/game.json` (`scoring` block
 |-----------|------|-------|
 | Pack Rules (authoritative) | `ALN-TokenData/game.json` (`scoring` block) | Sole shared source; read by backend + GM Scanner + validators + config-tool economy editor |
 | Token Schema | `ALN-TokenData/tokens.schema.json` | tokens.json format (enforced by backend contract test) |
-| Backend Rules Read | `backend/src/services/packService.js` (`getScoringRules()`) | Normalized active-pack snapshot (numeric ratings, lowercased types, `unknown` present); loud baked shim when packless |
+| Backend Rules Read | `backend/src/services/packService.js` (`getScoringRules()`) | Normalized active-pack snapshot (numeric ratings, EXACT-CASE type keys per D2b, `UNKNOWN` present); loud baked shim when packless |
 | Backend Rules | `backend/src/gameRules/scoring.js` (pure functions) | Server-side scoring + group completion (transactionService adapts); GM duplicate rules in `gameRules/duplicatePolicy.js` |
 | GM Scanner Loader | `ALNScanner/src/core/packLoader.js` + `scoring.js` (`applyPackScoring`) | Runtime pack scoring; vendored baked shim warns LOUDLY when active |
 | GM Scanner Group Logic | `ALNScanner/src/core/storage/LocalStorage.js` (`_checkGroupCompletion`) | Client-side group completion |
@@ -133,7 +133,7 @@ Scoring values live in the game pack: `ALN-TokenData/game.json` (`scoring` block
     "SF_RFID": "tokenId",
     "SF_ValueRating": 1-5,
     "SF_MemoryType": "Personal" | "Business" | "Technical" | "Mention" | "Party" | null,
-    "SF_Group": "Group Name (xN)" | "",
+    "SF_Group": "Group Name" | "",
     "summary": "Optional summary text",
     "owner": "CHARACTER_NAME" | null
   }
@@ -143,6 +143,7 @@ Scoring values live in the game pack: `ALN-TokenData/game.json` (`scoring` block
 **Field Notes:**
 - `owner`: Character who owns this memory, resolved from Notion Elements→Characters Owner relation during sync (role prefix stripped)
 - `SF_MemoryType`: `null` occurs in production data (3 tokens currently); scoring treats null/unknown types as UNKNOWN → 0x multiplier (tokens.schema.json allows null)
+- `SF_Group` (tokens v2, A3 slice 2b): the PURE group name — a `"(xN)"` suffix is schema-ILLEGAL. Multipliers are declared in `game.json` `groups` (sole source); the activation gate refuses packs whose tokens name undeclared groups. The `(xN)` shorthand survives only as the Notion AUTHORING format, parsed exclusively by `sync_notion_to_tokens.py` (derives the groups block, emits pure names)
 
 **Data Flow:**
 ```
@@ -158,7 +159,7 @@ Notion Elements DB → sync_notion_to_tokens.py → ALN-TokenData/tokens.json
 - `SF_RFID`: Token identifier (matches filename)
 - `SF_ValueRating`: 1-5 star rating
 - `SF_MemoryType`: Personal, Business, Technical, Mention, or Party
-- `SF_Group`: Group name with multiplier, e.g., "Server Logs (x5)"
+- `SF_Group`: Pure group name (v2), e.g., "Server Logs" — the Notion description still authors `Group Name (xN)`; the sync strips the suffix into `game.json` `groups`
 
 ## deviceType Duplicate Detection (Cross-Cutting)
 

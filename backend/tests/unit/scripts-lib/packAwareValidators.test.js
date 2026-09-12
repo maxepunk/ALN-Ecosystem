@@ -29,7 +29,7 @@ const HASH_B = `sha256:${'b'.repeat(64)}`;
 // A toy-shaped pack: one scored+counting mode, one unscored+counting
 // mode (event-only groups, §2f), one unscored non-counting mode.
 const GAME_CONFIG = {
-  kind: 'game', schemaVersion: 1, id: 'validator-pack',
+  kind: 'game', schemaVersion: 2, id: 'validator-pack',
   modes: [
     {
       id: 'fence', label: 'Fence', scoringPolicy: 'standard', entityRole: 'ledger',
@@ -48,17 +48,19 @@ const GAME_CONFIG = {
     baseValues: { 1: 100, 2: 200, 3: 300, 4: 400, 5: 500 },
     typeMultipliers: { Personal: 1, Technical: 2, UNKNOWN: 0 },
   },
+  // v2 (D1b): multipliers live HERE — tokens carry the pure group name
+  groups: { Duo: { multiplier: 3 } },
 };
 
 const TOKENS_JSON = {
-  g1: { SF_RFID: 'g1', SF_ValueRating: 1, SF_MemoryType: 'Personal', SF_Group: 'Duo (x3)' },
-  g2: { SF_RFID: 'g2', SF_ValueRating: 2, SF_MemoryType: 'Personal', SF_Group: 'Duo (x3)' },
+  g1: { SF_RFID: 'g1', SF_ValueRating: 1, SF_MemoryType: 'Personal', SF_Group: 'Duo' },
+  g2: { SF_RFID: 'g2', SF_ValueRating: 2, SF_MemoryType: 'Personal', SF_Group: 'Duo' },
   solo: { SF_RFID: 'solo', SF_ValueRating: 3, SF_MemoryType: 'Technical', SF_Group: '' },
 };
 
 function writePack(dir, { contentHash = HASH_A } = {}) {
   fs.writeFileSync(path.join(dir, 'pack-manifest.json'), JSON.stringify({
-    kind: 'pack-manifest', schemaVersion: 1, packId: 'validator-pack', version: '0.0.1',
+    kind: 'pack-manifest', schemaVersion: 2, packId: 'validator-pack', version: '0.0.1',
     contentHash, engine: { minVersion: '3.0.0' },
     files: [{ path: 'tokens.json', role: 'tokens', sha1: '0'.repeat(40), size: 2 }],
   }));

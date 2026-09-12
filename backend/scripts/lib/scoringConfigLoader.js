@@ -39,13 +39,13 @@ function loadScoringConstants(packDir = DEFAULT_PACK_DIR) {
     BASE_VALUES: Object.fromEntries(
       Object.entries(scoring.baseValues).map(([k, v]) => [parseInt(k), v])
     ),
-    // `unknown` always present, mirroring packService._normalizeScoring —
-    // the engine scores unknown types at 0x and validators must agree
+    // EXACT-CASE keys + UNKNOWN always present, mirroring
+    // packService._normalizeScoring (D2b): types are pack-declared ids
+    // matched verbatim; the engine scores unmatched types at 0x and
+    // validators must agree
     TYPE_MULTIPLIERS: {
-      unknown: 0,
-      ...Object.fromEntries(
-        Object.entries(scoring.typeMultipliers).map(([k, v]) => [k.toLowerCase(), v])
-      ),
+      UNKNOWN: 0,
+      ...scoring.typeMultipliers,
     },
   };
 

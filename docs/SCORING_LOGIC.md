@@ -26,9 +26,11 @@ and the dual-pack test gate runs both.
 | Post-session validators | `scripts/lib/scoringConfigLoader.js` → `ALN-TokenData/game.json` scoring | None — throws (a validator must never validate against baked constants) |
 
 **Normalization (backend `getScoringRules()`):** rating keys become
-numbers, type keys are LOWERCASED, and an `unknown` multiplier is always
-present (0 unless the pack overrides it). Lookups use `??` (not `||`) so a
-pack may legitimately declare a `0` multiplier.
+numbers, type keys stay EXACT-CASE (D2b — pack-declared ids matched
+verbatim; the scanner's always-exact-case lookup is the canon), and an
+`UNKNOWN` multiplier is always present (0 unless the pack overrides it).
+Declared-type lookups honor a legitimate `0` multiplier; unmatched/null
+types read the `UNKNOWN` bucket.
 
 **Rules freeze at boot:** the pack snapshot is frozen by
 `packService.activatePack()`. A pack publish changes scoring only on the
@@ -88,7 +90,7 @@ When a team collects ALL tokens in a group, they receive a bonus multiplier.
 bonus = (groupMultiplier - 1) × totalGroupBaseScore
 ```
 
-**Example: "Server Logs (x5)" group (ALN tables)**
+**Example: "Server Logs" group declared x5 (ALN tables)**
 - Group contains 3 tokens worth $15,000 base
 - Team collects all 3 tokens
 - Bonus = (5 - 1) × $15,000 = $60,000
@@ -152,17 +154,24 @@ review — core rules agree: blackmarket-only, min-2-token groups):**
 Both divergences dissolve when one rules implementation serves both modes
 (Phase 3 C-track direction; not yet scheduled).
 
-## tokens.json SF_Group Format
+## tokens.json SF_Group Format (v2 — pure names)
 
-Groups are specified in `tokens.json` with the format:
+Since the tokens-v2 cutover (A3 slice 2b, D1b/D3b), `SF_Group` carries
+the PURE group name and the multiplier is declared in the pack's
+`game.json` `groups` block:
 ```
-"SF_Group": "Group Name (xN)"
-```
+"SF_Group": "Server Logs"            // tokens.json (a "(xN)" suffix is schema-ILLEGAL)
 
-Where `N` is the multiplier. Examples:
-- `"Server Logs (x5)"` - 5x multiplier group
-- `"Email Archives (x3)"` - 3x multiplier group
-- `""` - No group (standalone token)
+"groups": {                           // game.json — sole multiplier source
+  "Server Logs": { "multiplier": 5 }
+}
+```
+- `""` — no group (standalone token)
+- The activation gate refuses packs whose tokens name undeclared groups
+- The `"Group Name (xN)"` shorthand survives ONLY as the Notion authoring
+  format: `sync_notion_to_tokens.py` parses it (sole parser), derives the
+  `groups` block, and emits pure names. No runtime component parses the
+  suffix anymore.
 
 ## Non-Scoring Modes
 

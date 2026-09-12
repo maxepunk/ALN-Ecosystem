@@ -5,23 +5,16 @@ const logger = require('../utils/logger');
 
 /**
  * Parse group bonus multiplier from group field
- * @param {string} group - Group field like "Marcus Sucks (x2)"
- * @returns {number} Multiplier value, defaults to 1 if not found
+ * @param {string} group - v2 SF_Group: the PURE group name ('' = none)
+ * @returns {string|null} Trimmed group name, null when ungrouped
  */
-const parseGroupMultiplier = (group) => {
-  if (!group) return 1;
-  const match = group.match(/\(x(\d+)\)/i);
-  return match ? parseInt(match[1], 10) : 1;
-};
-
-/**
- * Extract group name without multiplier
- * @param {string} group - Group field like "Marcus Sucks (x2)"
- * @returns {string} Group name without multiplier
- */
+// The "(xN)" microformat parsers died at the tokens-v2 cutover (A3
+// slice 2b, D3b): the Notion sync is the SOLE parser of the authoring
+// shorthand; runtime consumers read the pure name + the pack's `groups`
+// block. tokens.schema.json v2 makes a suffixed SF_Group ILLEGAL.
 const extractGroupName = (group) => {
   if (!group) return null;
-  return group.replace(/\s*\(x\d+\)/i, '').trim() || null;
+  return group.trim() || null;
 };
 
 /**
@@ -59,11 +52,17 @@ const calculateTokenValue = (rating, type) => {
   const scoring = packService.getScoringRules();
 
   const baseValue = scoring.baseValues[rating] || 0;
-  const typeKey = (type || 'unknown').toLowerCase();
-  // `unknown` is always present in normalized tables (0 unless the pack
-  // overrides), so this chain never needs a numeric tail — and `??`
-  // (not `||`) lets a pack legitimately declare a 0 multiplier.
-  const multiplier = scoring.typeMultipliers[typeKey] ?? scoring.typeMultipliers.unknown;
+  // EXACT-CASE lookup (D2b): types are pack-declared ids, matched
+  // verbatim — scanner parity (its lookup was always exact-case). The
+  // activation gate refuses tokens whose type is absent from the pack's
+  // own typeMultipliers, so the UNKNOWN fallback is reached only by
+  // null-typed tokens (legal, scores 0×) and packless legacy paths.
+  // Object.hasOwn (not bare index): a type named 'constructor' would
+  // resolve via the prototype chain into NaN (round-2 review C10).
+  // `??`-style fallback preserved: a declared 0 multiplier pays 0.
+  const multiplier = Object.hasOwn(scoring.typeMultipliers, type ?? '')
+    ? scoring.typeMultipliers[type]
+    : scoring.typeMultipliers.UNKNOWN;
 
   return Math.floor(baseValue * multiplier);
 };
@@ -136,10 +135,25 @@ const loadRawTokens = () => _loadTokensFile();
 const loadTokens = () => {
   const tokensObject = _loadTokensFile();
 
+  // D1b/v2 (A3 slice 2b): group multipliers are pack RULES — resolved
+  // from the active pack's `groups` block, never parsed from tokens.
+  // eslint-disable-next-line global-require
+  const packGroups = require('./packService').getGameConfig()?.groups || null;
+
   // Transform object format to array format expected by backend
   const tokensArray = Object.entries(tokensObject).map(([id, token]) => {
     const groupName = extractGroupName(token.SF_Group);
-    const groupMultiplier = parseGroupMultiplier(token.SF_Group);
+    // v2: multiplier comes from the pack's groups block ONLY (1 for
+    // undeclared names — unreachable for ANY activated pack with a
+    // game.json: the coverage gate is unconditional, an absent block is
+    // an empty declaration set. Reachable only in packless legacy
+    // checkouts (no game.json at all), where a 1x multiplier means
+    // "group with no completion bonus", safe)
+    // Object.hasOwn: a group named 'constructor' must not resolve via
+    // the prototype chain (round-2 review C11)
+    const groupMultiplier = (packGroups && groupName && Object.hasOwn(packGroups, groupName))
+      ? packGroups[groupName].multiplier
+      : 1;
     const calculatedValue = calculateTokenValue(
       token.SF_ValueRating,
       token.SF_MemoryType
@@ -176,7 +190,6 @@ const loadTokens = () => {
 module.exports = {
   loadTokens,
   loadRawTokens,
-  parseGroupMultiplier,
   extractGroupName,
   calculateTokenValue
 };

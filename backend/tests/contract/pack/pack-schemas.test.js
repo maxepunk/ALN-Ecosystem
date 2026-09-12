@@ -144,6 +144,25 @@ describe('game pack schema contract (A1)', () => {
     // that divergence for real).
   });
 
+  describe('EVERY bootable fixture pack has a FRESH manifest (round-2 review C6)', () => {
+    // The full-schema contract runs on the two real packs above; fixture
+    // packs may carry PARTIAL game.json overlays (parity-pack does), but
+    // any pack the PACK_PATH seam can boot still needs a fresh manifest —
+    // slice 2b edited parity-pack twice relying on manual regen alone.
+    const packsDir = path.resolve(__dirname, '../../e2e/fixtures/packs');
+    const fixturePacks = fs.readdirSync(packsDir, { withFileTypes: true })
+      .filter(e => e.isDirectory())
+      .map(e => e.name);
+
+    it.each(fixturePacks)('%s manifest sha1s/contentHash match the tree', (pack) => {
+      const dir = path.join(packsDir, pack);
+      const manifest = readJson(dir, 'pack-manifest.json');
+      const files = buildFiles(dir);
+      expect(manifest.files).toEqual(files);
+      expect(manifest.contentHash).toBe(contentHash(files));
+    });
+  });
+
   describe('toy pack is genuinely a SECOND game (methodology guard)', () => {
     it('differs from ALN in id, modes, scoring values, and entity labels', () => {
       const aln = readJson(TOKEN_DATA_DIR, 'game.json');
@@ -154,7 +173,9 @@ describe('game pack schema contract (A1)', () => {
       expect(toy.entities.label.singular).not.toBe(aln.entities.label.singular);
     });
 
-    it('toy tokens include a completable group (>= minSize members, multiplier > 1)', () => {
+    it('toy tokens include a completable group (>= minSize members, declared multiplier > 1)', () => {
+      // v2 (D1b): SF_Group is the pure name; the multiplier is DECLARED
+      // in game.json `groups` — the "(xN)" suffix is schema-illegal now.
       const toy = readJson(TOY_PACK_DIR, 'game.json');
       const tokens = readJson(TOY_PACK_DIR, 'tokens.json');
       const groups = {};
@@ -162,7 +183,8 @@ describe('game pack schema contract (A1)', () => {
         if (t.SF_Group) (groups[t.SF_Group] = groups[t.SF_Group] || []).push(t);
       }
       const completable = Object.entries(groups).filter(([name, members]) =>
-        members.length >= toy.groupRules.minSize && /\(x([2-9]|[1-9][0-9]+)\)$/.test(name));
+        members.length >= toy.groupRules.minSize
+        && (toy.groups?.[name]?.multiplier ?? 1) > 1);
       expect(completable.length).toBeGreaterThan(0);
     });
   });

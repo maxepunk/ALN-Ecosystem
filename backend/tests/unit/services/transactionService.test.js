@@ -832,7 +832,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       savedPackPath = process.env.PACK_PATH;
       tmpPack = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-2f-'));
       fs.writeFileSync(path.join(tmpPack, 'game.json'), JSON.stringify({
-        kind: 'game', schemaVersion: 1, id: 'event-pack',
+        kind: 'game', schemaVersion: 2, id: 'event-pack',
         modes: [
           { id: 'fence', label: 'Fence', scoringPolicy: 'standard', entityRole: 'ledger', countsTowardGroups: true, displayBehavior: { surface: 'scoreboard-rankings' } },
           { id: 'stash', label: 'Stash', scoringPolicy: 'none', entityRole: 'ledger', countsTowardGroups: true, displayBehavior: { surface: 'none' } },

@@ -99,7 +99,7 @@ For detailed schema information including all properties, types, and relationshi
 
 ### 1. Syncing Elements to tokens.json
 
-A common workflow is synchronizing the Elements database to a `tokens.json` file for use in external applications. See [scripts/sync_to_tokens.py](scripts/sync_to_tokens.py) for a complete implementation.
+A common workflow is synchronizing the Elements database to a `tokens.json` file. Use the REAL pipeline — `python3 scripts/sync_notion_to_tokens.py` from the ALN-Ecosystem root — which also derives the pack `groups` block (D3b hard-errors on multiplier conflicts), regenerates the pack manifest, and emits the ESP32 asset manifest. (The old standalone `scripts/sync_to_tokens.py` twin is RETIRED — it skipped all three and produced drifted packs.)
 
 **Key considerations:**
 - Filter Elements by "Basic Type" property (Memory Token Image, Memory Token Audio, Memory Token Video)
@@ -377,7 +377,7 @@ For real-time updates, Notion Enterprise supports webhooks, but they're not avai
 - [Notion SDK for Python](https://github.com/ramnes/notion-sdk-py)
 - [Notion SDK for JavaScript](https://github.com/makenotion/notion-sdk-js)
 - [references/api-patterns.md](references/api-patterns.md) - Common API patterns and examples
-- [scripts/sync_to_tokens.py](scripts/sync_to_tokens.py) - Complete token sync implementation
+- [scripts/sync_to_tokens.py](scripts/sync_to_tokens.py) - RETIRED stub (use ALN-Ecosystem's scripts/sync_notion_to_tokens.py)
 
 ## Quick Reference
 
