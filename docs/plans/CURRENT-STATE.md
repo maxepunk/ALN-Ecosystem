@@ -97,6 +97,17 @@ Thursday preflight.
   commit + scoped re-review, my fresh gate, the merge, the lane
   worktrees. Arms fact sheet DONE (scratch `preflight-arms-factsheet.md`,
   20 design-changing facts, recount clean on substance).
+- Brief reviews DONE (all three REVISE; findings refuted independently);
+  the three briefs rewritten to revision 2 (44c331f): credentials as one
+  task, supervisor and self-heal as three reviewed tasks each. Scoped
+  re-reviews of credentials and self-heal run now (`wf_ce9f7fcc-512`);
+  the supervisor's re-review waits for the dormancy-core adversarial
+  pass (it builds on that core; survivors fold in first).
+- Research DONE once (10 differences; document in the docs worktree);
+  its critic left three show-night gaps (the environment PM2 freezes at
+  first start; the acceptance checklist blind to a missing browser or a
+  Wayland session; MPD's major-version step); revision 2 runs now
+  (`wf_a50361c3-286`), then the final commit and the guide repair.
 - Workflows still running (owner: "go" 21:40Z; the adversarial pass
   "agreed" 21:59:19Z, 2026-09-12;
   resumable after any stop with `Workflow({scriptPath, resumeFromRunId})`,
