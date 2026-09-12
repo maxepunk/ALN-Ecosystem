@@ -25,6 +25,10 @@ const fs = require('fs');
 const os = require('os');
 const logger = require('./logger');
 const config = require('../config');
+// Block 2 T1a D9 (pin P16): the kiosk is the NINTH service. The driver owns
+// the report because the driver is the only thing that knows whether the
+// process is alive — nothing probes `display` on the revalidation timer.
+const registry = require('../services/serviceHealthRegistry');
 
 // Module-level state (persistent across calls within a process lifetime)
 let browserProcess = null;
@@ -173,6 +177,15 @@ async function _doLaunch() {
 
   browserProcess.on('exit', (code, signal) => {
     logger.warn('[DisplayDriver] Browser process exited', { code, signal });
+    // An exit while VISIBLE is a fault: the scoreboard vanished mid-show.
+    // An exit while HIDDEN is not — nothing is being displayed and
+    // showScoreboard() relaunches, so reporting red would put a permanent
+    // alarm on a healthy idle system (R13; alarm integrity).
+    if (visible) {
+      registry.report('display', 'down', 'kiosk exited while visible');
+    } else {
+      registry.report('display', 'healthy', 'kiosk closed while hidden; relaunches on show');
+    }
     browserProcess = null;
     visible = false;
   });
@@ -191,12 +204,14 @@ async function _doLaunch() {
   await new Promise(r => setTimeout(r, 1000));
   if (!browserProcess) {
     logger.error('[DisplayDriver] Chromium process died during startup');
+    registry.report('display', 'down', 'kiosk launch failed');
     return false;
   }
 
   logger.info('[DisplayDriver] Chromium process started', {
     pid: browserProcess?.pid
   });
+  registry.report('display', 'healthy', 'kiosk launched');
   return true;
 }
 

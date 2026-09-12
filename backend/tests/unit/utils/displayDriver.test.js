@@ -902,3 +902,102 @@ describe('displayDriver — PID-file write guard', () => {
     expect(pidWrites).toHaveLength(0);
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════
+// Block 2 T1a D9 — the display is the NINTH service (plan §3 pin P16,
+// ruling R13). The kiosk is a piece of the venue like VLC or the lighting
+// rig, and until now nothing on the health dashboard said whether it was
+// alive. The driver owns the report because the driver is the only thing
+// that knows.
+// ══════════════════════════════════════════════════════════════════════
+describe('displayDriver — health reporting (T1a D9, pin P16)', () => {
+  let registry;
+
+  const armExecFile = () => {
+    const { execFile } = require('child_process');
+    execFile.mockImplementation((cmd, args, opts, cb) => {
+      if (typeof opts === 'function') { cb = opts; }
+      if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
+      else cb(null, '', '');
+    });
+  };
+
+  beforeEach(() => {
+    registry = require('../../../src/services/serviceHealthRegistry');
+    registry.clearDormant('display');
+    registry.report('display', 'down', 'Not yet checked');
+    jest.spyOn(registry, 'report');
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  test('a successful launch reports display healthy', async () => {
+    const { spawn } = require('child_process');
+    spawn.mockReturnValue({ pid: 1234, on: jest.fn(), killed: false });
+    armExecFile();
+
+    await displayDriver.ensureBrowserRunning();
+
+    expect(registry.report).toHaveBeenCalledWith('display', 'healthy', 'kiosk launched');
+  });
+
+  test('a failed launch reports display down', async () => {
+    const { spawn } = require('child_process');
+    // The 'error' handler nulls browserProcess; the driver's alive check
+    // then sees nothing and returns false.
+    spawn.mockImplementation(() => {
+      const proc = {
+        pid: undefined, killed: false,
+        on: (event, handler) => { if (event === 'error') setImmediate(() => handler(new Error('ENOENT'))); },
+      };
+      return proc;
+    });
+    armExecFile();
+
+    const ok = await displayDriver.ensureBrowserRunning();
+
+    expect(ok).toBe(false);
+    expect(registry.report).toHaveBeenCalledWith('display', 'down', 'kiosk launch failed');
+  });
+
+  test('an exit while VISIBLE is down — the scoreboard vanished mid-show', async () => {
+    const { spawn } = require('child_process');
+    const handlers = {};
+    spawn.mockReturnValue({
+      pid: 1234, killed: false,
+      on: (event, handler) => { handlers[event] = handler; },
+    });
+    armExecFile();
+
+    await displayDriver.showScoreboard();
+    expect(displayDriver.isScoreboardVisible()).toBe(true);
+    registry.report.mockClear();
+
+    handlers.exit(1, null);
+
+    expect(registry.report).toHaveBeenCalledWith('display', 'down', 'kiosk exited while visible');
+  });
+
+  test('an exit while HIDDEN stays healthy — it relaunches on the next show', async () => {
+    // Chromium being closed while minimized is not a fault: nothing is
+    // being displayed, and showScoreboard() relaunches. Reporting red here
+    // would put a permanent alarm on a healthy idle system.
+    const { spawn } = require('child_process');
+    const handlers = {};
+    spawn.mockReturnValue({
+      pid: 1234, killed: false,
+      on: (event, handler) => { handlers[event] = handler; },
+    });
+    armExecFile();
+
+    await displayDriver.ensureBrowserRunning();
+    expect(displayDriver.isScoreboardVisible()).toBe(false);
+    registry.report.mockClear();
+
+    handlers.exit(0, null);
+
+    expect(registry.report).toHaveBeenCalledWith(
+      'display', 'healthy', 'kiosk closed while hidden; relaunches on show'
+    );
+  });
+});

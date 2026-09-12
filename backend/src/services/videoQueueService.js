@@ -9,6 +9,7 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const vlcService = require('./vlcMprisService'); // Load at top to avoid lazy require in timer callbacks
 const registry = require('./serviceHealthRegistry');
+const { doorWording } = require('./dormancyWording');
 const fs = require('fs');
 const path = require('path');
 
@@ -97,6 +98,21 @@ class VideoQueueService extends EventEmitter {
       // displayControlService handles display restoration via video:idle listener
       this.emit('video:idle');
       return; // Nothing to play
+    }
+
+    // T1a D9: a dormant VLC FAILS the item rather than holding it. A hold
+    // is a promise to play it when the service returns; nothing is
+    // returning tonight, and a queue of unreleasable holds is worse than
+    // an honest failure the GM can see and move past.
+    if (registry.isDormant('vlc')) {
+      const { door } = registry.getStatus('vlc');
+      const why = `Video is ${doorWording(door)}`;
+      logger.info('Video failed: VLC dormant', { itemId: nextItem.id, reason: why });
+      nextItem.failPlayback(why);
+      this.emit('video:failed', nextItem);
+      this.currentItem = null;
+      this.clearCompleted();
+      return;
     }
 
     // Check VLC health before attempting playback
@@ -864,6 +880,20 @@ class VideoQueueService extends EventEmitter {
    * @returns {{available: boolean, reason?: string, message?: string, waitTime?: number}}
    */
   canAcceptVideo() {
+    // T1a D9: a venue with no TV is not a venue with a BROKEN TV. Checked
+    // before the down branch — a dormant service is also not healthy, and
+    // "VLC is offline" would be a lie about a TV nobody brought. The wire
+    // shape is unchanged (S7): scanRoutes maps this reason to the same
+    // 409 {status:'rejected'} the down case produces, so no scanner needs
+    // a rebuild.
+    if (registry.isDormant('vlc')) {
+      const { door } = registry.getStatus('vlc');
+      return {
+        available: false,
+        reason: 'vlc_dormant',
+        message: `Video is ${doorWording(door)}`,
+      };
+    }
     if (!registry.isHealthy('vlc')) {
       const { message } = registry.getStatus('vlc');
       return { available: false, reason: 'vlc_down', message: `VLC is offline: ${message}` };
