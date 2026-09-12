@@ -6,7 +6,7 @@ what's next, and who each open item waits on. The full frame is
 `ROADMAP.md` (r4); the deep archive is `PHASE3-STATUS.md`.
 
 **Last updated: 2026-09-05** (roadmap r4 ratified; ratification edits
-executed).
+executed; deployment-docs repair — agent half — DONE the same day).
 
 ## Where we stand
 
@@ -32,8 +32,8 @@ executed).
 |---|---|---|
 | Whole-train review (full combined diff, fresh-context session) | agent (a NEW session) | not started — next agent unit after the docs repair, or in parallel at the owner's word |
 | Walk the merge train (18 vehicles, in order) | owner | waits on the review |
-| **Deployment-docs repair** (Appendix C scope, ≈1–1.5 sessions; includes boot-to-running posture) | agent | **the first unit — ready to start** |
-| Capture the 7 lighting-scene definitions off the live machine (~20 min, read-only, borrow/restore rules) | owner | scheduled at the owner's pace — gates the Home Assistant chapter of the docs repair |
+| **Deployment-docs repair** (Appendix C scope; includes boot-to-running posture) | agent | **AGENT HALF DONE 2026-09-05** (branch `claude/phase3-docs-repair`): env reference rebuilt from source (+2 template defects fixed), HA install procedure, installation-profile section, media-transfer procedure with runnable verification, machine prep + Pi-5 video settings, boot-to-running posture, cert-spike home, 4 wrong sections fixed (scoreboard auth ×3, spotifyd), Bluetooth contradiction removed |
+| Capture the 7 lighting-scene definitions off the live machine (~20 min, read-only, borrow/restore rules) | owner | scheduled at the owner's pace — the guide's HA §3 carries the marked slot the captured YAML fills |
 | Screen baselines from the pinned production release (Q8) | agent (priced at approval — no capture infra exists yet) | not started |
 | Home hardware pass (Stage B) + certificate spike | owner + agent support | waits on the repaired docs and the green machine |
 

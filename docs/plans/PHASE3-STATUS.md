@@ -999,7 +999,8 @@ adds its PRs to this block.
 | 3 | ALNPlayerScan | **#6** | foundations | PWA is visibility-only (L3); no later train commits exist |
 | 4 | arduino-cyd-player-scanner | **#7** | foundations | ESP32 pack identity via asset manifest; no later train commits exist |
 | 5–17 | ALN-Ecosystem (parent) | **#19 → #31 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6, slice 7, theme unit) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass — **watch it**. #30 is slice 7, #31 the theme unit (both opened AT slice open per the corrected discipline). |
-| 18 | ALN-Ecosystem (parent) | **#32** (added to the train 2026-09-05 at roadmap-r4 ratification) | `claude/phase3-b0` | The final recorded vehicle: the tooling foundation (B0) + CS.1 (rung-1 harness + resolve core) + the re-charter corpus (roadmap r4, audits, grill record, capability census). Stacked on #31. The train grows only if further work lands before the walk. |
+| 18 | ALN-Ecosystem (parent) | **#32** (added to the train 2026-09-05 at roadmap-r4 ratification) | `claude/phase3-b0` | The tooling foundation (B0) + CS.1 (rung-1 harness + resolve core) + the re-charter corpus (roadmap r4, audits, grill record, capability census). Stacked on #31. |
+| 19 | ALN-Ecosystem (parent) | **#33** (draft, opened 2026-09-05 at unit open) | `claude/phase3-docs-repair` | The deployment-docs repair (roadmap r4 Block 1 first unit): guide + preflight §12.3 + env template. Stacked on #32. The train grows only if further work lands before the walk. |
 
 Timing (superseded 2026-09-05, roadmap r4 supersession 9 — was
 "owner-driven, post-run"): the walk is the owner's call at the

@@ -125,7 +125,8 @@ cd backend
 cp .env.example .env
 ```
 
-Edit `.env` with your settings:
+Edit `.env` with your settings. A production Raspberry Pi minimally
+sets:
 
 ```env
 # Server Configuration
@@ -133,18 +134,33 @@ NODE_ENV=production
 PORT=3000
 HOST=0.0.0.0
 
-# Feature Flags
+# HTTPS (required for Web NFC)
+ENABLE_HTTPS=true
+SSL_KEY_PATH=./ssl/key.pem
+SSL_CERT_PATH=./ssl/cert.pem
+HTTP_REDIRECT_PORT=8000
+
+# Security — change both
+ADMIN_PASSWORD=choose-a-strong-password
+JWT_SECRET=choose-a-long-random-secret
+
+# Video + display
 ENABLE_VIDEO_PLAYBACK=true
+FEATURE_IDLE_LOOP=true
 
-# CORS Origins (optional)
-CORS_ORIGINS=http://localhost:3000,http://192.168.1.100:3000
+# Environment control (lighting)
+HOME_ASSISTANT_URL=http://localhost:8123
+HOME_ASSISTANT_TOKEN=your-ha-long-lived-access-token
+LIGHTING_ENABLED=true
 
-# Additional Settings (optional)
+# Logging
 LOG_LEVEL=info
-SESSION_TIMEOUT=3600000
-MAX_QUEUE_SIZE=50
-VIDEO_TRANSITION_DELAY=1000
 ```
+
+The full key reference below is authoritative against
+`backend/src/config/index.js` (the engine's single env intake) plus
+the four service-direct reads (`VLC_HW_ACCEL`, `FEATURE_IDLE_LOOP`,
+`DISCOVERY_UDP_PORT`, `ENABLE_MUSIC_PLAYBACK`). Verified 2026-09-05.
 
 #### Environment Variables Explained
 
@@ -187,7 +203,62 @@ VLC is controlled via **D-Bus MPRIS** (`org.mpris.MediaPlayer2.vlc`) — there i
   - Use `false` if VLC not available or for testing without video
   - Default: `true`
 
+- **FEATURE_IDLE_LOOP** (`true` | `false`)
+  - `false`: skip playing the idle-loop video when nothing else is
+    playing (useful during hands-on development)
+  - Read directly by `vlcMprisService`
+  - Default: `true`
+
+- **ENABLE_MUSIC_PLAYBACK** (`true` | `false`)
+  - `false`: skip spawning MPD entirely (tests/CI without audio
+    hardware). When unset/true the orchestrator spawns and
+    supervises its own MPD via ProcessMonitor (socket
+    `/tmp/aln-mpd.sock`)
+  - Read directly by `app.js`
+  - Default: `true`
+
 (The offline GM-transaction queue is always active — there is no `ENABLE_OFFLINE_MODE` flag.)
+
+##### Pack and Installation Profile
+
+- **PACK_PATH** (directory path)
+  - Points the ENTIRE engine (rules, tokens, pack channel) at an
+    alternate game-pack directory instead of the in-repo
+    `ALN-TokenData/`. Frozen at boot by `packService.activatePack()`.
+  - Logs a LOUD warning when active — a production machine should
+    normally NOT set it (it is the harness/rollback seam; see "Game
+    Pack Rollback" below)
+  - Default: unset (the in-repo `ALN-TokenData/` pack)
+
+- **PROFILE_PATH** (file path)
+  - Points the engine at an alternate installation profile (the
+    venue document — see "Installation Profile" below). Loud warning
+    when active.
+  - Default: unset (`backend/config/profiles/aln-full-kit.json`)
+
+##### Display / Kiosk
+
+- **IDLE_LOOP_FILE** (filename)
+  - The idle-loop video's filename inside `VIDEO_DIR`; one key for
+    all three `vlcMprisService` sites (init play, return play,
+    existence guard). NOTE: on the current tree the installation
+    profile's `bindings.surfaces` entry for the pack's idle-loop
+    channel is the primary source; this key is the loud fallback
+    (ledger L12).
+  - Default: `idle-loop.mp4`
+
+- **SCOREBOARD_WINDOW_MARKER** (string)
+  - The FUNCTIONAL window-title marker `displayDriver` uses to find
+    the scoreboard Chromium window (xdotool) and the server injects
+    into the served page's `<title>`. Both sides follow this one
+    key — never rebrand either side independently.
+  - Default: `ALN-SCOREBOARD`
+
+- **CHROMIUM_BIN** (path)
+  - Overrides the browser binary `displayDriver` spawns for the
+    scoreboard kiosk (a test-environment seam; the hardware default
+    is right for Raspberry Pi OS)
+  - Default: `chromium-browser`
 
 ##### Network Configuration
 
@@ -208,37 +279,86 @@ VLC is controlled via **D-Bus MPRIS** (`org.mpris.MediaPlayer2.vlc`) — there i
   - `debug`: Detailed debugging information
   - Default: `info`
 
-- **LOG_TO_FILE** (`true` | `false`)
-  - `true`: Write logs to files in `backend/logs/`
-  - `false`: Console output only
-  - Default: `true` in production, `false` in development
+- **LOGS_DIR** (path)
+  - Log directory
+  - Default: `./logs`
+
+(`LOG_TO_FILE` is not read by the engine — logging always writes to
+`LOGS_DIR` under PM2; the key survives only in old notes.)
 
 ##### Session Configuration
 
-- **SESSION_TIMEOUT** (minutes)
+- **SESSION_TIMEOUT** (**minutes** — NOT milliseconds; the engine
+  parses this as minutes, `config/index.js:41`)
   - How long before an inactive session expires
   - `120` = 2 hours (default)
-  - `60` = 1 hour
-  - Default: `120` (2 hours)
+  - Default: `120`
 
 - **DATA_DIR** (path)
-  - Where to store persistent data (sessions, state)
+  - Where to store persistent data (sessions, state, backups)
   - Relative paths are from backend directory
-  - Example: `./data` or `/var/lib/aln-orchestrator`
   - Default: `./data`
+  - (The engine reads `DATA_DIR`; the old `PERSISTENCE_DIR` key is
+    dead — it is read nowhere.)
 
 ##### Video Configuration
 
 - **VIDEO_DIR** (path)
-  - Directory containing video files
+  - Directory containing video files (including the idle loop)
   - Default: `./public/videos`
+
+(`MAX_QUEUE_SIZE`, `VIDEO_TRANSITION_DELAY`, and
+`DEFAULT_VIDEO_DURATION` are NOT read by the engine — dead keys from
+an older architecture.)
 
 ##### Discovery Service
 
 - **DISCOVERY_UDP_PORT** (number)
   - UDP port for discovery broadcasts
   - Scanners can automatically find orchestrator
+  - Read directly by `discoveryService`; the template's old
+    `DISCOVERY_ENABLED`/`DISCOVERY_PORT`/`DISCOVERY_INTERVAL` keys
+    are dead
   - Default: `8888`
+
+##### Environment Control (lighting, audio, Bluetooth)
+
+- **LIGHTING_ENABLED** (`true` | `false`) — set `false` to run with
+  no Home Assistant at all (lighting reports down/absent instead of
+  erroring). Default: `true`
+- **HOME_ASSISTANT_URL** — the HA instance the lighting service
+  drives. Default: `http://localhost:8123`
+- **HOME_ASSISTANT_TOKEN** — an HA long-lived access token (see the
+  Home Assistant section below). Default: empty (lighting disables
+  itself gracefully)
+- **HA_DOCKER_MANAGE** (`true` | `false`) — when true the backend
+  auto-starts/stops the HA Docker container around its own
+  lifecycle. Default: `true`
+- **HA_DOCKER_CONTAINER** — the container name it manages.
+  Default: `homeassistant`
+- **HA_DOCKER_STOP_TIMEOUT** (seconds) — graceful-stop window before
+  SIGKILL. Default: `10`
+- **AUDIO_DEFAULT_OUTPUT** (`hdmi` | sink name) — default audio
+  routing target. Default: `hdmi`
+- **BLUETOOTH_SCAN_TIMEOUT_SEC** / **BLUETOOTH_CONNECT_TIMEOUT_SEC**
+  — BT discovery/connect timeouts. Defaults: `15` / `10`
+
+##### Rarely-changed keys (complete for reference; defaults are fine)
+
+| Key | Default | What it is |
+|---|---|---|
+| `MAX_PLAYERS` / `MAX_GM_STATIONS` | 10 / 5 | session limits |
+| `DUPLICATE_WINDOW` | 5 (seconds) | duplicate-scan window |
+| `STORAGE_TYPE` | `file` (`memory` under test) | persistence backend |
+| `BACKUP_INTERVAL` | 100 (transactions) | backup cadence |
+| `ARCHIVE_AFTER` | 24 (hours) | session archive age |
+| `TRANSACTION_HISTORY_LIMIT` | 1000 | kept transactions |
+| `RECENT_TRANSACTIONS_COUNT` | 10 | recent-list size |
+| `LOG_FORMAT` / `LOG_MAX_FILES` / `LOG_MAX_SIZE` | `json` / 5 / `10m` | log rotation |
+| `ENABLE_ADMIN_PANEL` | `true` | admin surface flag |
+| `ENABLE_DEBUGGING` | `false` | verbose debug flag |
+| `WS_PING_INTERVAL` / `WS_PING_TIMEOUT` / `WS_MAX_PAYLOAD` | 25000 / 60000 / 1000000 | WebSocket tuning |
+| `TEST_ADMIN_PASSWORD` | unset | E2E-test-only override (never set in production) |
 
 ##### Security Settings (Production)
 
@@ -256,6 +376,9 @@ VLC is controlled via **D-Bus MPRIS** (`org.mpris.MediaPlayer2.vlc`) — there i
   - Password for admin panel and WebSocket authentication
   - Required for GM Scanner connections
   - Generate strong password for production
+  - The served scoreboard page receives its credential at SERVE TIME
+    (`resourceRoutes` injection) — changing this key requires NO
+    file edits anywhere else
   - Default: `admin`
 
 - **JWT_SECRET** (string)
@@ -392,6 +515,36 @@ Since the certificate is self-signed, each client device requires one-time certi
 - WiFiClientSecure accepts self-signed certificates by default
 - Validates connection but doesn't enforce CA chain
 
+### Real Domain Certificate (spike S2 — OPEN, procedure home)
+
+The self-signed certificate above is the working default and stays
+so until spike S2 passes. S2's goal: a real certificate on a real
+domain, issued via a DNS-01 challenge against a Cloudflare-managed
+domain — which removes the per-device trust workflow entirely and is
+the prerequisite for the players'-phones work (tap-to-web cannot ask
+guests to click through a certificate warning).
+
+The spike runs during the home hardware pass (Stage B; ROADMAP §6).
+Planned shape, to be verified and recorded by the spike itself:
+
+1. A domain managed in Cloudflare, with an API token scoped to DNS
+   edits for that zone.
+2. `certbot` with the `dns-cloudflare` plugin issues a certificate
+   for the kit's hostname (or a wildcard) via DNS-01 — no inbound
+   port 80/443 needed, so it works behind the kit router.
+3. The issued key/cert are pointed at by `SSL_KEY_PATH` /
+   `SSL_CERT_PATH` in `.env` (the engine needs no other change).
+4. Renewal is certbot's standard timer; the renewal hook restarts
+   the orchestrator (`pm2 restart aln-orchestrator`) so the new cert
+   is picked up.
+5. The kit's DNS name must resolve to the orchestrator's reserved
+   LAN IP for devices on the kit network (router DNS entry or
+   public DNS A record to the private IP — the spike decides which).
+
+Record the spike's outcome (exact commands, gotchas, renewal
+verification) in this section when it runs; until then this section
+is the procedure's home, not its proof.
+
 ### Troubleshooting HTTPS Issues
 
 **Mixed Content Errors:**
@@ -514,14 +667,16 @@ aln-memory-scanner/
 
 #### Orchestrator Backend
 ```bash
-backend/
-├── ALN-TokenData/           # Direct submodule for token definitions
-│   └── tokens.json          # Read by orchestrator
-└── public/
-    └── videos/              # Video files for TV playback
-        ├── memory1.mp4
-        ├── memory2.mp4
-        └── test_30sec.mp4
+ALN-Ecosystem/
+├── ALN-TokenData/           # The game pack (root submodule) — the
+│   ├── tokens.json          #   backend reads THIS checkout
+│   ├── game.json            #   (packService DEFAULT_PACK_DIR)
+│   └── cues.json
+└── backend/
+    └── public/
+        ├── videos/          # Video files for TV playback (git-excluded)
+        ├── music/           # Music library (git-excluded)
+        └── audio/           # Cue sound files
 ```
 
 ### Adding New Media
@@ -535,6 +690,176 @@ backend/
    - Update tokens.json: `"image": "assets/images/filename.jpg"`
    - Commit and push ALN-TokenData submodule
    - Update submodule reference in scanner repos
+
+## Installation Profile (the venue document)
+
+The installation profile connects the pack's abstract hardware names
+to the real instruments in the room. It is a single JSON file,
+frozen at orchestrator boot (`profileService`), and it is
+load-bearing: **without it, every lighting cue and the idle loop
+degrade loudly** (ledger L7/L12 warnings on every fire — the show
+runs, but lights don't change and the idle loop falls back to engine
+config).
+
+- **Default location:** `backend/config/profiles/aln-full-kit.json`
+  (in-repo — a fresh clone carries ALN's full-kit profile already).
+- **Override:** the `PROFILE_PATH` env key points at an alternate
+  profile file (loud warning when active).
+- **Shape** (see the in-repo file for the live example):
+  - `bindings.lighting` — pack lighting ROLE → Home Assistant scene
+    id. ALN's seven roles bind to seven `scene.*` ids (`scene.game`,
+    `scene.video`, `scene.off`, `scene.police_1`, `scene.police2`,
+    `scene.police3`, `scene.policeglitch`). Those scenes must exist
+    in the Home Assistant instance — see the next section.
+  - `bindings.surfaces` — display-surface channel → media file.
+    ALN binds its idle-loop channel (`aln-idle`) to `idle-loop.mp4`
+    in `VIDEO_DIR`.
+- **What breaks without it:** a missing/renamed profile does NOT
+  refuse boot (deliberate — the engine degrades loudly instead).
+  Symptoms: `unresolvable lighting role` / ledger-L7 warnings in the
+  log on cue fires, and the idle loop resolving from
+  `IDLE_LOOP_FILE` with a ledger-L12 warning.
+- **Verification:** after boot, fire one lighting cue (or activate a
+  scene from the GM panel) and grep the log — zero L7/L12 fallback
+  warnings means the profile bound.
+
+## Home Assistant (Lighting)
+
+Lighting scenes are driven through a local Home Assistant instance
+in Docker. Nothing in the engine installs it — this section is the
+install procedure a new machine needs.
+
+### 1. Install Docker and create the container
+
+```bash
+# Docker (official convenience script, or distro packages)
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER   # log out/in, or use `sg docker -c '...'`
+
+# Persistent config volume + container (host networking; HA needs
+# LAN discovery for bulbs). The container name MUST match
+# HA_DOCKER_CONTAINER in .env (default: homeassistant).
+mkdir -p ~/ha-config
+docker run -d --name homeassistant \
+  --network=host \
+  --restart=unless-stopped \
+  -v ~/ha-config:/config \
+  ghcr.io/home-assistant/home-assistant:stable
+```
+
+Notes:
+- With `HA_DOCKER_MANAGE=true` (the default) the backend starts and
+  stops this container around its own lifecycle — but only a
+  container that already EXISTS by this name; creation is this
+  one-time step.
+- `--restart=unless-stopped` keeps HA up across reboots
+  independently of the backend (the backend tolerates either
+  posture).
+- First boot takes a few minutes. Ready when
+  `curl -s -o /dev/null -w '%{http_code}' http://localhost:8123/api/`
+  returns `401`.
+
+### 2. Onboard and create the access token
+
+1. Open `http://[PI-IP]:8123`, create the owner account, finish
+   onboarding.
+2. Pair the venue's lights (Settings → Devices & Services — the
+   integration depends on the bulb brand).
+3. Profile (bottom-left) → Security → Long-Lived Access Tokens →
+   Create Token. Put it in `backend/.env` as `HOME_ASSISTANT_TOKEN`.
+
+### 3. Restore the scene definitions
+
+The seven `scene.*` ids the ALN profile binds (listed in the
+Installation Profile section) are **venue content that lives only in
+the HA config volume — they exist in no git repository.**
+
+> **OWNER TASK (recorded in ROADMAP Appendix C):** capture the seven
+> scene definitions from the live machine's HA before building a new
+> one — Settings → Automations & Scenes → Scenes → open each → the
+> ⋮ menu → Edit in YAML, and save the seven YAML bodies (or copy
+> `scenes.yaml` / the `.storage` scene entries out of the live
+> machine's HA config volume). Store them beside this guide when
+> captured.
+
+On the new machine, recreate each scene (Settings → Automations &
+Scenes → Add Scene → paste the captured YAML via Edit in YAML), with
+the SAME entity ids — or place the captured `scenes.yaml` into the
+config volume and reload scenes. Scene IDs must match the profile's
+bindings exactly; the preflight's lighting checks and one manual
+scene activation from the GM panel verify the chain.
+
+### 4. Verify
+
+```bash
+# Reachable (401 = up, needs token; 200 = authorized)
+curl -s -o /dev/null -w '%{http_code}' http://localhost:8123/api/
+
+# Token works
+curl -s -H "Authorization: Bearer $HA_TOKEN" \
+  http://localhost:8123/api/ | head -c 100
+
+# Scenes visible to the engine: from the GM panel, Environment →
+# Lighting → refresh scene list; all seven scene.* ids should appear.
+```
+
+## Media Transfer (building a new machine)
+
+Media files are deliberately NOT in git (videos and music are
+git-excluded; ROADMAP §2.3). A new machine gets them by copy. The
+scanner-side images/audio ARE in git (`ALN-TokenData/assets/`) and
+arrive with the clone — hardware scanners then sync them from the
+orchestrator automatically.
+
+### Inventory (what must be copied)
+
+| What | Where | Source of truth for the list |
+|---|---|---|
+| Game videos + `idle-loop.mp4` | `backend/public/videos/` | every non-null `video` field in the active pack's `tokens.json`, plus the profile's `bindings.surfaces` file |
+| Music library | `backend/public/music/` | `backend/config/music-playlists.json` references |
+| Cue sound files | `backend/public/audio/` | every sound file named in the active pack's `cues.json` |
+
+### Copy (from the old machine or the post-event backup)
+
+```bash
+# From the old machine over the LAN (or restore from the rsync
+# backup medium — see "Backups" below):
+rsync -av old-pi:ALN-Ecosystem/backend/public/videos/ backend/public/videos/
+rsync -av old-pi:ALN-Ecosystem/backend/public/music/  backend/public/music/
+rsync -av old-pi:ALN-Ecosystem/backend/public/audio/  backend/public/audio/
+```
+
+Session data (`backend/data/`) is deliberately NOT part of a fresh
+build — a new machine starts clean; the old machine and the backup
+medium keep history.
+
+### Verify (before calling the machine ready)
+
+```bash
+cd backend
+
+# 1. Every pack-referenced video exists (idle loop included)
+node -e "
+const t=require('../ALN-TokenData/tokens.json'),fs=require('fs');
+const missing=Object.values(t).map(x=>x.video).filter(Boolean)
+  .filter(v=>!fs.existsSync('public/videos/'+v));
+console.log(missing.length?'MISSING: '+missing.join(', '):'videos OK');"
+ls public/videos/idle-loop.mp4
+
+# 2. Every cue sound exists
+node -e "
+const c=require('../ALN-TokenData/cues.json'),fs=require('fs');
+const refs=JSON.stringify(c).match(/[\w-]+\.(wav|mp3)/g)||[];
+const missing=[...new Set(refs)].filter(f=>!fs.existsSync('public/audio/'+f));
+console.log(missing.length?'MISSING: '+missing.join(', '):'sounds OK');"
+
+# 3. Music: regenerate the bootstrap playlist from what's on disk
+npm run music:seed
+```
+
+The in-panel preflight's resource checks (`validateCommand`: sound
+files, video files, lighting scenes, audio sinks) are the same
+verification run continuously once the system is up.
 
 ## Deployment
 
@@ -700,6 +1025,26 @@ Once running (any method):
 
 ## Raspberry Pi Deployment
 
+### 0. Image the machine
+
+The production platform is a **Raspberry Pi 5** running **Raspberry
+Pi OS Bookworm 64-bit, Desktop edition** — the desktop matters: the
+orchestrator's VLC and the scoreboard's Chromium kiosk render on the
+Pi's own graphical session (Xorg/LXDE; the `desktop-control.sh`
+prestart hook assumes LXDE components).
+
+1. Flash the OS with Raspberry Pi Imager (set hostname, user, WiFi,
+   and SSH in the imager's settings gear).
+2. Boot, then enable **auto-login to desktop**:
+   `sudo raspi-config` → System Options → Boot / Auto Login →
+   Desktop Autologin. Without this, nothing can own the display
+   after an unattended power-up (see "Boot-to-running" below).
+3. Add the service user to the device groups the system touches:
+   ```bash
+   sudo usermod -aG video,audio,bluetooth $USER
+   # docker group comes with the Home Assistant install step
+   ```
+
 ### 1. Prepare Raspberry Pi
 
 ```bash
@@ -708,7 +1053,11 @@ sudo apt update && sudo apt upgrade -y
 
 # Install dependencies
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs vlc git
+sudo apt install -y nodejs vlc mpd git xdotool wmctrl chromium-browser
+
+# Disable the system MPD — the orchestrator spawns and supervises its own
+sudo systemctl stop mpd && sudo systemctl disable mpd
+sudo systemctl stop mpd.socket 2>/dev/null && sudo systemctl disable mpd.socket 2>/dev/null
 
 # Install PM2
 sudo npm install -g pm2
@@ -731,6 +1080,24 @@ hdmi_group=2
 hdmi_mode=82  # 1080p 60Hz
 ```
 
+### 2b. Pi 5 Video Settings (CRITICAL — HEVC only)
+
+Full detail: `backend/CLAUDE.md` → "Raspberry Pi 5 Specifics". The
+load-bearing facts:
+
+- **The Pi 5 has NO H.264 hardware decoder.** Only HEVC (H.265) is
+  hardware-decoded. Every game video (idle loop included) MUST be
+  HEVC, or VLC software-decodes at ~47% CPU with artifacts. Encode
+  with `-c:v libx265 -tag:v hvc1 -movflags +faststart` (the
+  faststart flag prevents a frozen first frame; the full ffmpeg
+  recipe is in backend/CLAUDE.md).
+- **VLC video output must be `--vout=gles2`** — auto-detected on
+  Pi 5 by `vlcMprisService._getHwAccelArgs()`; override only via
+  `VLC_HW_ACCEL`. (`--vout=gl` = 280% CPU + black screens.)
+- Verify hardware decode on the bench:
+  `DISPLAY=:0 cvlc --verbose 2 --play-and-exit video.mp4 2>&1 | grep -i hwaccel`
+  — a `Hwaccel V4L2 HEVC` line means the hardware path engaged.
+
 ### 3. Set Static IP (Optional)
 
 Raspberry Pi OS Bookworm uses **NetworkManager** (`nmcli` / `nmtui`), not `dhcpcd`. Configure a static IP on the active connection:
@@ -752,15 +1119,43 @@ sudo nmcli con up "<connection-name>"
 
 Or use the interactive TUI: `sudo nmtui`. (On pre-Bookworm releases, edit `/etc/dhcpcd.conf` instead.)
 
-### 4. Enable Auto-start
+### 4. Boot-to-running (auto-start posture)
+
+Goal (ROADMAP, the boot pain): power on the Pi with the venue TV
+connected and arrive at a running show system — orchestrator up, VLC
+idle loop on the TV — with no terminal work. The pieces:
 
 ```bash
 cd ~/ALN-Ecosystem/backend
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup
-# Run the command it outputs
+npm start            # first manual start (builds GM scanner, starts PM2)
+pm2 save             # snapshot the process list
+pm2 startup          # generate the systemd unit
+# Run the sudo command it outputs — PM2 now resurrects on boot
 ```
+
+What each boot then does, and what it depends on:
+
+1. systemd starts PM2's resurrect service → `aln-orchestrator` runs.
+2. The orchestrator spawns and supervises its own VLC, MPD, and
+   (when the display mode calls for it) the scoreboard Chromium —
+   none of these need separate auto-start entries.
+3. **Display dependency:** VLC and Chromium render on `DISPLAY=:0`,
+   so the desktop auto-login (step 0) must be enabled. PM2's systemd
+   unit can start BEFORE the graphical session exists; the
+   orchestrator's ProcessMonitor retries VLC, which papers over the
+   race — but this ordering is exactly the kind of thing CI cannot
+   test.
+4. Home Assistant: with `--restart=unless-stopped` on the container
+   (and/or `HA_DOCKER_MANAGE=true`), lighting comes up without
+   intervention.
+
+> **Stage-B checklist item (home hardware pass):** perform at least
+> one cold power-cycle with nothing attached but power, network, and
+> the TV, and verify the idle loop appears unaided. If VLC loses the
+> boot race and the ProcessMonitor retries don't recover it, the fix
+> to test is delaying PM2's unit until the graphical target
+> (`systemctl edit pm2-<user>` → `After=graphical.target`); record
+> what the bench shows.
 
 ### 5. Install WirePlumber Rule (Required for Video Audio)
 
@@ -915,25 +1310,23 @@ firefox --kiosk https://[ORCHESTRATOR-IP]:3000/scoreboard
 
 ### Authentication Details
 
-**IMPORTANT SECURITY NOTE**: The scoreboard uses hardcoded authentication for read-only display access.
+The scoreboard authenticates automatically for read-only display
+access — **no file edits are ever needed.**
 
-- **How it works**: Admin password is embedded in the scoreboard HTML for automatic WebSocket authentication
-- **Security tradeoff**: Password visible in HTML source, but scoreboard is read-only (cannot send commands)
-- **Configuration**: Update the `adminPassword` in `/backend/public/scoreboard.html` to match your `ADMIN_PASSWORD` in `.env`
+- **How it works**: the server injects the credential into the page
+  AT SERVE TIME (`resourceRoutes.renderScoreboardHtml` — the page
+  source in the repo carries only a placeholder, never a real
+  password). Change `ADMIN_PASSWORD` in `.env`, restart, done.
+- **Recovery**: if the display ever looks wrong or stale, a page
+  reload is the fix — the page re-fetches its credential and full
+  state on load (this retired the old blank-TV-after-restart
+  failure).
+- **Read-only**: the scoreboard can only receive updates, not send
+  commands.
 
-```javascript
-// In scoreboard.html (search for `const CONFIG` — in the CONFIG block, ~line 770)
-const CONFIG = {
-    adminPassword: '@LN-c0nn3ct',  // CHANGE THIS to match your .env ADMIN_PASSWORD
-    // ...
-};
-```
-
-**Why this approach?**
-1. **No user interaction required** - Perfect for unattended displays
-2. **Auto-reconnect** - Works across network interruptions
-3. **Simplicity** - No separate authentication flow needed
-4. **Read-only access** - Scoreboard can only receive updates, not send commands
+> The old instruction to edit `const CONFIG = { adminPassword: … }`
+> inside `scoreboard.html` is OBSOLETE — that line no longer exists
+> in the file, and grep-ing for it proves nothing is broken.
 
 **For higher security:**
 - Keep scoreboard on local/trusted network only
@@ -945,12 +1338,16 @@ const CONFIG = {
 
 #### Blank screen or "Auth Failed"
 ```bash
-# Verify admin password matches between .env and scoreboard.html
-grep ADMIN_PASSWORD backend/.env
-grep adminPassword backend/public/scoreboard.html
+# The credential is injected at serve time — first move is a page
+# reload on the display device. Then:
 
 # Check orchestrator is running
 curl -k https://localhost:3000/health
+
+# Confirm the SERVED page carries an injected token (not the raw
+# placeholder — a placeholder in the served output means the
+# injection path broke):
+curl -ks https://localhost:3000/scoreboard | grep -c '%%' # expect 0
 
 # Check browser console for errors (F12)
 ```
@@ -1136,11 +1533,14 @@ Operational notes:
 # Limit memory usage in ecosystem.config.js
 max_memory_restart: '256M'
 node_args: '--max-old-space-size=256'
-
-# Disable unnecessary services
-sudo systemctl disable bluetooth
-sudo systemctl disable avahi-daemon
 ```
+
+**Do NOT disable the bluetooth service** — the GM panel pairs and
+routes audio to a Bluetooth speaker through BlueZ
+(`bluetoothService`); disabling it kills a supported show feature.
+(An older revision of this guide said to disable it — that was
+wrong.) `avahi-daemon` may be disabled if `.local` mDNS names are
+not in use.
 
 ### For Production
 - Use wired ethernet when possible
@@ -1151,7 +1551,7 @@ sudo systemctl disable avahi-daemon
 ## Security Considerations
 
 ### Production Deployment
-1. Change the default `ADMIN_PASSWORD` and `JWT_SECRET` in `.env` (and update `scoreboard.html` to match)
+1. Change the default `ADMIN_PASSWORD` and `JWT_SECRET` in `.env` (the scoreboard picks the password up automatically at serve time — no other edits)
 2. Use firewall to restrict access
 3. Enable HTTPS with reverse proxy (nginx/caddy)
 4. Limit CORS origins in .env
