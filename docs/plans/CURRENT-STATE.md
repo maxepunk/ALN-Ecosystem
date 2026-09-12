@@ -102,8 +102,26 @@ Thursday preflight.
 - Lanes (name | where | branch | brief | report | state):
   harness minimum | main checkout | `claude/nice-curie-hescfv-harness-minimum`
   | `docs/plans/briefs/2026-09-12-harness-minimum.md` | scratch
-  `harness-minimum-report.md` | implementer (opus) running; the three
-  precisions from the re-review handed at dispatch.
+  `harness-minimum-report.md` | implementer (opus) running.
+  credentials | `.worktrees/credentials` (not yet cut) | `…-credentials`
+  | `…/2026-09-12-credentials-lane.md` | `credentials-lane-report.md`
+  | brief in plan-and-brief review (opus) → `credentials-lane-review.md`.
+  supervisor | `.worktrees/supervisor` (not yet cut) | `…-supervisor`
+  | `…/2026-09-12-supervisor-lane.md` | `supervisor-lane-report.md`
+  | brief in review → `supervisor-lane-review.md`.
+  self-heal | `.worktrees/self-heal` (not yet cut) | `…-self-heal`
+  | `…/2026-09-12-self-heal-lane.md` | `self-heal-lane-report.md`
+  | brief in review → `self-heal-lane-review.md`.
+- Docs commits go through `.worktrees/docs` (designated branch) while
+  the main checkout is on a lane's task branch; remove that worktree
+  before checking the designated branch out in the main checkout again.
+- Two questions for the owner, from the briefs: (a) P15's "observe
+  tokens evict per deviceId" cannot work as written (every observe
+  token carries the same literal deviceId) — held out of the
+  credentials brief; drop it or wire the page's deviceId through? (b)
+  P11's `off` mode has no stated meaning — the supervisor brief ships
+  with `off` = spawn once at boot, never restart automatically, the
+  GM's Restart verb still works (R13's fallback).
 
 ## 7. Pointers (open when)
 
