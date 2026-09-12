@@ -391,9 +391,11 @@ you intend.
   verified against. A required ("block the show") need left unmet
   refuses `session:start`, with a typed, logged "start anyway"
   override for genuine emergencies.
-- **Paper vs live checks.** The two verification depths. *Paper* =
-  pack needs vs the profile FILE (the declared inventory) — pure data,
-  runs anywhere. *Live* = the profile vs reality (the sink exists in
+- **Paper vs live checks.** The two verification depths. *Paper* = pure
+  data, checkable anywhere: pack needs against the profile FILE (the
+  declared inventory), and the profile file against its own schema.
+  (Edit noted 2026-09-12: widened for Block 2's profile check, plan
+  P19.) *Live* = the profile vs reality (the sink exists in
   pactl right now, HA actually has that scene) — runs only where the
   hardware is. Every verdict says which depth it reached and against
   which profile, so a green at home is never mistaken for venue

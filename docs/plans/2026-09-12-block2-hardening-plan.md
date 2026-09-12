@@ -44,6 +44,7 @@ Schedule decisions are the owner's at the §8 checkpoints.
 | R9 | The pre-build red team's 99 findings are ruled in the adjudication record (first recorded as 100 from the three lens headers; the security report's count line says 14 MAJOR where its table holds 13 — recounted from the tables at checkpoint 1, every id present in the adjudication); the twelve owner-visible rulings (★ there) are reported at the "before any code" checkpoint | orchestrator, 2026-09-12 |
 | R10 | Re-slice recorded: dormant's operator door rides T3 with the verb commands (ratified CS.2 text put both doors in CS.2) | orchestrator, 2026-09-12 (D-26) |
 | R11 | The kit's network values were already in the repo (owner, checkpoint 1: "don't you have the ssid, ip, dns name in our repos already?"); T1b authors the ALN profile's `network` block: SSID `aboutlastnetwork`, IP `192.168.0.191` (owner-stated production values; the ESP32 sample config's `Sidewinder` / `10.0.0.177` are not the production values), `localDnsOverride: true` per CONTEXT.md §5. The DNS name is NOT in the repo as a decision (the July design's `play.aboutlastnightgame.com` sits beside placeholder SSID/IP values) — `orchestratorName` stays omitted until the owner states it. SEC-25's "owner task" narrows to that one value | owner + orchestrator, 2026-09-12 |
+| R12 | A profile that fails its check blocks `session:start`, with the typed override; `blocking` widens from two rules to three (P19), superseding P7's two-rule closure and narrowing spec §8 R-C3-1's "while any `onAbsent: require` need is unresolved" (supersession note added there) | owner, 2026-09-12 |
 
 ## 2. Census delta that changes the design (from the re-open census)
 
@@ -152,7 +153,8 @@ Schedule decisions are the owner's at the §8 checkpoints.
   dialog ships in the same task as the gate (SB-6 ★). On restore of a
   non-ended session at boot the evaluation is re-run and re-stamped
   with `restoredAt`; a `no-go` there is a loud warn and a GM-visible
-  row, never a refusal.
+  row, never a refusal. (Superseded in part by P19/R12: `blocking` now
+  has three producers, closed.)
 - **P8. One preflight evaluator.** `services/preflightService.js`
   `evaluate({live})` returns `{profileId, forPack, packHash,
   computedAt, depth, rows, rollup, blocking, limits}`. Rows quote
@@ -254,8 +256,8 @@ Schedule decisions are the owner's at the §8 checkpoints.
   grep proves no sender). The whole identity block leaves the branch;
   only the collision check stays GM-scoped. `sync:request` stays open
   to any credentialed socket and uses the non-mutating getter. Observe
-  tokens evict per deviceId. `/health` carries only `{profileId,
-  forPack}`. What the gate achieves: the tokenless path is gone and
+  tokens evict per deviceId. `/health` carries only the profile identity
+  `{profileId, forPack, valid}` (P20) — no reason text, no bindings. What the gate achieves: the tokenless path is gone and
   every socket carries verified claims; the read plane is not private
   (the observe credential is mintable by any LAN client that serves
   the scoreboard page), stated plainly.
@@ -609,67 +611,114 @@ green, all four Tier L legs run locally three times with three workers
 with zero failures and zero retries, and the residue check after them
 is empty.
 
-**Design pins for P1 (from the fact sheet; each a ruling of this plan):**
+**Design pins for P1 (from the fact sheet; each a ruling of this plan; revised 2026-09-12 after the plan-and-brief review — 18 findings, all folded):**
 
 - **P17. The check.** `profileService.activateProfile()` validates the
   parsed file against `installation-profile.schema.json` with one
-  compiled AJV validator (Ajv2020, `strict: true`, `allErrors: true`,
-  the options the contract test already uses) exported from one module
-  under `backend/src/` that the contract test imports too, so boot and
-  test never drift. `ajv` and `ajv-formats` move to `dependencies`. The
-  check runs after the existing envelope checks. Any failure of the
-  file — unreadable, unparseable, not an object, wrong `kind`, wrong
-  `schemaVersion`, schema errors — yields one validity record
-  `{valid: false, reason}` where `reason` names the file and up to
-  three `path: message` errors plus a count of the rest, capped so the
-  NO-GO ack stays readable (200 characters). One `logger.error` line
-  carries the same reason. A valid file yields `{valid: true}`.
-- **P18. What a failed check means for the loaded content.** The
-  content that parsed is still loaded (bindings and endpoints resolve
-  exactly as today), so after an override the venue runs on whatever
-  the file gets right. The profile identity is never null once
-  activation ran: `{profileId, forPack, valid}` with `profileId` the
-  file's `profileId` when it is a string, else the file's base name,
-  and `forPack` null when absent. A profile absent on disk is a failed
-  check, not a silent "no profile". (Before activation, selective-init
-  harnesses keep today's behavior.)
-- **P19. The row and the gate (owner ruling 2026-09-12: a failed check
-  blocks `session:start`, typed override available).** `evaluate()`
-  prepends one synthetic need `{kind: 'profile', id: 'schema'}` and
-  passes `inventory.profileValidity`; `resolve()` gains the case:
-  `runs` when valid, `no-go` with the P17 reason when not, depth
-  `paper` (a file against its schema is a paper fact). `blocking`
-  therefore widens from two rules to three by this ruling; the closure
-  comments in `gameRules/resolution.js` and `sessionService.js` are
-  rewritten to name the three rules and cite the ruling. No other arm
-  may widen it. The require gate, the override, the stamp, and the
-  scanner's typed dialog need no change: the NO-GO message already
-  carries `blocking`. — cost if wrong: a venue with a broken profile
-  needs a typed reason to start; the reason names the field to fix.
-- **P20. Identity on the wire, contract-first.** `/health.profile` and
-  `sync:full.profile` gain `valid` (required boolean); `profileId`
-  stays required; the session `preflight` stamp is unchanged (the
-  blocking list already carries the reason). Two contract sites, the
-  health contract test, and `sync:full` completeness.
-- **Out of P1, recorded:** cross-reference errors (a binding that
-  names a role the pack never declares) are schema-legal and belong to
-  T4's bindings arm; the scanner does not display the profile identity
-  today (T6's panel); the config-tool validates no profile (C4).
+  compiled AJV validator (Ajv2020, `strict: true`, `allErrors: true`)
+  exported from `backend/src/services/profileValidator.js`, which BOTH
+  schema tests import in place of their own compile
+  (`tests/contract/profile/installation-profile-schema.test.js` and
+  `tests/unit/scripts/simulationProfile.test.js`), so boot and test
+  never drift. `ajv` moves to `dependencies`; `ajv-formats` stays a
+  devDependency (the schema declares no `format` keyword). The
+  validator compiles once at module load inside a try; a compile
+  failure yields `{valid: false, reason: 'profile validator
+  unavailable: <error>'}` with a `logger.error`, never a throw (the
+  service's never-throws rule stands). The check runs after the
+  existing envelope checks. Every failure of the file — unreadable,
+  unparseable, not an object, wrong `kind`, wrong `schemaVersion`,
+  schema errors — yields one validity record `{valid: false, reason}`:
+  `reason` is `installation profile <basename> fails its check: ` plus
+  up to three `path: message` errors joined by `; `, the error list
+  capped at 200 CODE POINTS with the P7 idiom (`[...s].slice(0, N).join('')`,
+  never a UTF-16 slice), then `(+N more)` appended AFTER truncation and
+  never itself truncated; an envelope failure carries one message
+  (`unreadable: <error>`, `not a JSON object`, `kind must be
+  installation-profile`, `schemaVersion must be 1`). One `logger.error`
+  line carries the same reason. A valid file yields `{valid: true}`.
+- **P18. What a failed check means for the loaded content.** A file
+  that passes the envelope checks but fails the schema is still LOADED
+  (its bindings and endpoints resolve exactly as today), so after an
+  override the venue runs on whatever the file gets right. An envelope
+  failure keeps today's behavior: `getProfile()` returns null and
+  nothing binds, because a document that is not an installation profile
+  must not half-bind (the assertions at `profileService.test.js:244,249`
+  stand). The profile identity `{profileId, forPack, valid}` always
+  carries `valid`: after activation it is the activation's validity;
+  before activation it is the validity of the live read, so
+  selective-init harnesses keep today's content and gain the flag.
+  `profileId` is the file's `profileId` when it is a string, else the
+  file's base name without its extension; `forPack` is null when
+  absent. A profile absent on disk is a failed check, not a silent "no
+  profile".
+- **P19. The row and the gate (R12).** `evaluate()` prepends one
+  synthetic need `{kind: 'profile', id: 'schema'}` (row id
+  `profile:schema`) and passes `inventory.profileValidity`; `resolve()`
+  gains the case: `runs` when valid; `no-go` with the P17 reason when
+  not; `runs` at depth `paper` with reason `profile validity unverified`
+  when the record is absent (the unknown-never-faults rule every other
+  case follows); depth `paper` throughout (a file against its schema is
+  a paper fact). The `profile` kind never joins `ORCHESTRATOR_KINDS` (a
+  broken file's verdict cannot depend on a field inside the broken
+  file). `resolve`'s `inventory` docstring widens from "live facts the
+  caller gathered" to "facts the caller gathered, live unless the
+  verdict says otherwise". `blocking` widens from two rules to three by
+  R12; the closure comments in `gameRules/resolution.js` and
+  `sessionService.js` are rewritten to: "Exactly three rules can produce
+  a no-go: the endpoint `onAbsent: require` rule, the device-class
+  minimum, and the installation profile FILE's own validity against
+  `installation-profile.schema.json` (P19, R12). The third rule is the
+  file-versus-schema fact ONLY — no other profile-derived finding,
+  including a binding that names an undeclared role, may join it; those
+  are faults. NO OTHER ARM MAY ADD TO IT." `preflightService.LIMITS.verifies`
+  gains "the installation profile file against its schema (paper)" and
+  `cannotVerify` gains "bindings that name roles or channels the pack
+  never declares (T4)" (P8: the honesty face moves with the arm). The
+  require gate, the override, the stamp, and the scanner's typed dialog
+  need no change: the NO-GO message already carries `blocking` (reasons
+  only; the row id is never in the message). — cost if wrong: a venue
+  with a broken profile needs a typed reason to start; the reason names
+  the field to fix.
+- **P20. Identity on the wire, contract-first (supersedes P15's
+  two-field statement of the same object).** `/health.profile` and
+  `sync:full.profile` gain `valid` (required boolean); `profileId` stays
+  required; the session `preflight` stamp is unchanged (its `profileId`
+  is already string-or-null and `blocking` carries the reason).
+  Coverage: the health contract test, a nested assertion in
+  `tests/contract/websocket/session-events.test.js`, the hand-written
+  `profile` fixture at `tests/contract/scanner/event-handling.test.js:44`
+  updated; the `sync:full` completeness test pins top-level keys only
+  and stays untouched.
+- **Out of P1, recorded:** cross-reference errors (a binding that names
+  a role the pack never declares) are schema-legal and belong to T4's
+  bindings arm (and to `limits.cannotVerify` now); the scanner does not
+  display the profile identity today (T6's panel); the config-tool
+  validates no profile (C4); `CONTEXT.md` §5's "paper" sentence widened
+  to cover the file-against-schema fact (edit noted there, 2026-09-12);
+  the spec §8 R-C3-1 carries a supersession note for R12.
 
-Red-first for P1 (seams): the validator module refuses `instaled`,
-a wrong type, a missing required key, an unknown family, and accepts
-the ALN profile and both fixture profiles; profileService yields the
-validity record for each failure class and the loaded content on a
-schema failure; `getProfileInfo()` shape for valid, invalid, absent;
-`resolve()` `profile` case both ways with the reason text; `rollUp`
-blocking with three rules; `startGame` refuses on a failed check and
-starts with a typed reason; `/health` and `sync:full` carry `valid`
-(contract tests); one integration boot with `PROFILE_PATH` at a broken
-fixture reads `/health.profile.valid === false`; one E2E flow on the
-toy leg pins a broken fixture profile per call (`options.profilePath`,
-no new leg) and sees the NO-GO in the GM's dialog. Done when backend
-unit + contract + integration, ratchet, lint are green and the merge
-gate passes.
+Red-first for P1 (seams): the validator module refuses `instaled` (as
+an added `display.main` key), a wrong type, a missing required key, an
+unknown family, and accepts the ALN profile, both fixture profiles and
+the generated simulation profile (as `simulationProfile.test.js`
+generates it); a validator compile failure yields the unavailable
+record without throwing; profileService yields the validity record for
+each failure class, loads the content on a schema failure and returns
+null on an envelope failure; `getProfileInfo()` shape for valid,
+schema-invalid, envelope-invalid, absent-on-disk, and pre-activation;
+`resolve()` `profile` case valid, invalid, and record-absent, with the
+reason text and the depth; `rollUp` blocking with three rules;
+`sessionService.startGame` refuses with `PreflightNoGoError` on a failed
+check and starts and stamps `preflightOverride` with a typed reason; a
+fault never refuses; `/health` and `sync:full` carry `valid` (contract
+tests); one contract-level boot (full init) with `PROFILE_PATH` at the
+broken fixture reads `/health.profile.valid === false`; one E2E flow on
+the toy pack pins the broken fixture profile per call beside its pack
+(no new leg), drives `session:start` itself (never through the helper
+that auto-overrides on the require leg), and sees the NO-GO reason text
+in the GM's dialog. Done when backend unit + contract + integration,
+ratchet, lint are green and the merge gate passes.
 
 ## 5. DoD pins
 
