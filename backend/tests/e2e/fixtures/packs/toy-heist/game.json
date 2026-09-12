@@ -1,0 +1,157 @@
+{
+  "kind": "game",
+  "schemaVersion": 1,
+  "requires": [
+    "scoring.tabular",
+    "groupRules.all",
+    "duplicatePolicy.once"
+  ],
+  "id": "midnight-heist",
+  "title": "Midnight Heist",
+  "modes": [
+    {
+      "id": "fence",
+      "label": "Fence",
+      "verb": "Fence",
+      "scoringPolicy": "standard",
+      "entityRole": "ledger",
+      "countsTowardGroups": true,
+      "displayBehavior": {
+        "surface": "scoreboard-rankings",
+        "when": "immediate"
+      }
+    },
+    {
+      "id": "tipoff",
+      "label": "Tip-Off",
+      "verb": "Leak",
+      "scoringPolicy": "none",
+      "entityRole": "attribution",
+      "defaultEntity": "The Dispatcher",
+      "countsTowardGroups": false,
+      "displayBehavior": {
+        "surface": "scoreboard-evidence",
+        "fields": [
+          "summary"
+        ],
+        "when": "immediate"
+      }
+    },
+    {
+      "id": "appraise",
+      "label": "Appraise",
+      "verb": "Appraise",
+      "scoringPolicy": "none",
+      "entityRole": "ledger",
+      "countsTowardGroups": false,
+      "displayBehavior": {
+        "surface": "none"
+      }
+    }
+  ],
+  "scoring": {
+    "baseValues": {
+      "1": 100,
+      "2": 250,
+      "3": 600,
+      "4": 1300,
+      "5": 2800
+    },
+    "typeMultipliers": {
+      "Personal": 2,
+      "Mention": 1,
+      "Business": 4,
+      "Party": 2,
+      "Technical": 6,
+      "UNKNOWN": 0
+    },
+    "display": {
+      "unit": "credits",
+      "format": "#,### cr"
+    },
+    "semantics": {
+      "allowNegative": false
+    }
+  },
+  "groupRules": {
+    "type": "all",
+    "minSize": 2,
+    "completion": {
+      "bonusFormula": "multiplier-minus-one-times-base"
+    }
+  },
+  "duplicatePolicy": {
+    "claim": "once",
+    "view": "unlimited"
+  },
+  "entities": {
+    "label": {
+      "singular": "Crew",
+      "plural": "Crews"
+    },
+    "creation": "freeform-at-action",
+    "membership": "untracked"
+  },
+  "functions": {
+    "view-content": {
+      "classes": [
+        "personal",
+        "station",
+        "staffed"
+      ]
+    },
+    "transact": {
+      "classes": [
+        "staffed"
+      ],
+      "modes": [
+        "fence",
+        "tipoff",
+        "appraise"
+      ]
+    },
+    "entity-binding": {
+      "classes": []
+    },
+    "session-lifecycle": {
+      "classes": [
+        "staffed"
+      ]
+    },
+    "show-control": {
+      "classes": [
+        "staffed"
+      ]
+    },
+    "score-intervention": {
+      "classes": [
+        "staffed"
+      ]
+    },
+    "report-intake": {
+      "classes": [
+        "staffed"
+      ]
+    }
+  },
+  "gameClock": {
+    "duration": 3600,
+    "overtimeAt": 3300,
+    "phases": [
+      {
+        "id": "casing",
+        "label": "Casing the Joint",
+        "start": {
+          "at": 0
+        }
+      },
+      {
+        "id": "the-job",
+        "label": "The Job",
+        "start": {
+          "at": 1800
+        }
+      }
+    ]
+  }
+}

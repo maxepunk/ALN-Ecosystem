@@ -61,7 +61,9 @@ backend/contracts/
 - **GET /api/assets/audio/{tokenId}.{ext}** - Per-token audio file (ESP32 asset sync)
 - **GET /api/music/tracks** - Music track catalog (MPD)
 - **GET /api/music/playlists** - Music playlists (music-playlists.json)
-- **GET /health** - Health check
+- **GET /api/pack/manifest** - Active game-pack manifest (Phase 3 A2 pack channel)
+- **GET /api/pack/files/{filePath}** - Inventoried pack file (whitelist-only serving)
+- **GET /health** - Health check (includes active pack identity)
 
 ### asyncapi.yaml - WebSocket API (25 messages)
 

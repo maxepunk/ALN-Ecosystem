@@ -144,6 +144,11 @@ async function buildSyncFullPayload({
     heldItems,
     sound,
     displayStatus,
+    // A2 staleness visibility: the server's ACTIVE pack identity (null on
+    // pre-pack checkouts). Provided centrally here — never by callers — so
+    // every sync:full emit path carries it (see the completeness contract
+    // test). Singleton import, same pattern as displayControlService above.
+    pack: require('../services/packService').getActivePackInfo(),
   };
 }
 

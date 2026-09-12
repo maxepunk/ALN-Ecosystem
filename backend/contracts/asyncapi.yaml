@@ -28,7 +28,12 @@ info:
          token: "JWT_TOKEN",           // Required: JWT from POST /api/admin/auth
          deviceId: "DEVICE_ID",        // Required: Unique device identifier
          deviceType: "gm" | "admin",   // Required: Device type for permissions
-         version: "1.0.0"              // Optional: Client version string
+         version: "1.0.0",             // Optional: Client version string
+         packHash: "sha256:..."        // Optional (A2 staleness): contentHash of the
+                                       // pack the CLIENT has loaded. The server
+                                       // records it on the device connection and
+                                       // loud-warns on mismatch with its active
+                                       // pack; C1 preflight fails on mismatch.
        }
        ```
     3. Server validates JWT in Socket.io middleware during connection handshake
@@ -312,7 +317,32 @@ components:
               - music
               - sound
               - displayStatus
+              - pack
             properties:
+              pack:
+                description: |
+                  The server's ACTIVE game pack identity (Phase 3 A2
+                  staleness visibility — the F-TOOL-05 killer). Clients
+                  compare their loaded pack contentHash against this; C1
+                  preflight fails on mismatch. `null` when the active pack
+                  directory has no pack-manifest.json (pre-pack checkout).
+                  Delivered ONLY here and in GET /health — pack identity
+                  changes at app start / new-session boundaries, never
+                  mid-session, so no push event exists for it.
+                oneOf:
+                  - type: "null"
+                  - type: object
+                    required: [packId, version, contentHash]
+                    properties:
+                      packId:
+                        type: string
+                        example: "about-last-night"
+                      version:
+                        type: string
+                        example: "1.0.0"
+                      contentHash:
+                        type: string
+                        pattern: '^sha256:[0-9a-f]{64}$'
               session:
                 description: Current session (matches Session schema from OpenAPI)
                 oneOf:
@@ -381,6 +411,23 @@ components:
                             example:
                               GM_STATION_1: ["kaa001", "kaa002"]
                               PLAYER_001: ["kaa003", "kaa004"]
+                          pack:
+                            description: |
+                              The pack this session was created under (A2 —
+                              rules frozen at start). Null for legacy
+                              sessions and pre-pack checkouts.
+                            oneOf:
+                              - type: "null"
+                              - type: object
+                                required: [packId, version, contentHash]
+                                properties:
+                                  packId:
+                                    type: string
+                                  version:
+                                    type: string
+                                  contentHash:
+                                    type: string
+                                    pattern: '^sha256:[0-9a-f]{64}$'
                   - type: "null"
               scores:
                 type: array

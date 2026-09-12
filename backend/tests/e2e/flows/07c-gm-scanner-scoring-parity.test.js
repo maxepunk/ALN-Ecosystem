@@ -81,11 +81,11 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // completable group (Marcus Mention is x1), so the group-parity test
     // self-skipped forever. The injected pack adds a 2-member x2 group —
     // backend, /api/tokens, AND the standalone scanner's relative
-    // tokens.json all serve the same set (TOKENS_PATH seam).
+    // tokens.json all serve the same set (PACK_PATH seam).
     orchestratorInfo = await startOrchestrator({
       https: true,
       timeout: 30000,
-      tokensPath: require('path').resolve(__dirname, '../fixtures/packs/parity-pack.tokens.json')
+      packPath: require('path').resolve(__dirname, '../fixtures/packs/parity-pack')
     });
 
     browser = await chromium.launch({
@@ -156,7 +156,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     orchestratorInfo = await startOrchestrator({
       https: true,
       timeout: 30000,
-      tokensPath: require('path').resolve(__dirname, '../fixtures/packs/parity-pack.tokens.json')
+      packPath: require('path').resolve(__dirname, '../fixtures/packs/parity-pack')
     });
     console.log(`[afterEach] ✓ Orchestrator restarted for test isolation`);
   });

@@ -90,6 +90,21 @@ class SessionService extends EventEmitter {
         this.currentSession = Session.fromJSON(sessionData);
         logger.info('Session restored from storage', { sessionId: this.currentSession.id });
 
+        // A2: a restart that resumes a session under a DIFFERENT active
+        // pack is loud — the session's transactions were scored under the
+        // rules of the pack it was created with, not the one now on disk.
+        {
+          const sessionPack = this.currentSession.metadata?.pack || null;
+          const activePack = require('./packService').getActivePackInfo();
+          if ((sessionPack?.contentHash || null) !== (activePack?.contentHash || null)) {
+            logger.warn(
+              'Restored session was created under a DIFFERENT pack than the active one — ' +
+              'its existing transactions were scored under the session pack\'s rules',
+              { sessionId: this.currentSession.id, sessionPack, activePack }
+            );
+          }
+        }
+
         // Mark all devices as disconnected — WebSocket connections don't survive restarts
         if (this.currentSession.connectedDevices) {
           const stale = this.currentSession.connectedDevices
@@ -167,6 +182,12 @@ class SessionService extends EventEmitter {
         status: 'setup',
         scores: this.initializeTeamScores(sessionData.teams),
       });
+
+      // A2: stamp the pack this session is created under — a session's
+      // rules are frozen at start, and this stamp is the mechanism (restore
+      // compares it against the active pack; reports get provenance).
+      this.currentSession.metadata.pack =
+        require('./packService').getActivePackInfo();
 
       // Save to persistence (both specific ID and 'current' reference),
       // serialized through the write queue (F-BCORE-07) behind any pending

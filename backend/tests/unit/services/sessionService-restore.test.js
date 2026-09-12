@@ -185,4 +185,61 @@ describe('SessionService restart restore (F-SHOW-01)', () => {
 
     await sessionService.endSession();
   });
+
+  // ── Phase 3 A2: pack-mismatch warning on restore ────────────────────────
+  // A session's rules are frozen at start; its pack stamp is the mechanism.
+  // Restoring under a DIFFERENT active pack must be loud.
+
+  function packWarns(logger) {
+    return logger.warn.mock.calls.filter(([msg]) =>
+      typeof msg === 'string' && msg.includes('DIFFERENT pack')
+    );
+  }
+
+  it('loud-warns when a restored session was created under a different pack', async () => {
+    const logger = require('../../../src/utils/logger');
+    const json = buildSessionJSON();
+    json.metadata.pack = {
+      packId: 'some-other-game',
+      version: '2.0.0',
+      contentHash: `sha256:${'d'.repeat(64)}`,
+    };
+    persistenceService.load.mockImplementation(async (key) =>
+      key === 'session:current' ? json : null
+    );
+
+    await sessionService.init();
+
+    expect(packWarns(logger)).toHaveLength(1);
+    await sessionService.endSession();
+  });
+
+  it('does not warn when the restored session matches the active pack', async () => {
+    const logger = require('../../../src/utils/logger');
+    const packService = require('../../../src/services/packService');
+    const json = buildSessionJSON();
+    json.metadata.pack = packService.getActivePackInfo();
+    expect(json.metadata.pack).not.toBeNull(); // test env runs the real ALN pack
+    persistenceService.load.mockImplementation(async (key) =>
+      key === 'session:current' ? json : null
+    );
+
+    await sessionService.init();
+
+    expect(packWarns(logger)).toHaveLength(0);
+    await sessionService.endSession();
+  });
+
+  it('warns for legacy sessions with no pack stamp (unknown provenance)', async () => {
+    const logger = require('../../../src/utils/logger');
+    const json = buildSessionJSON(); // metadata has no pack key at all
+    persistenceService.load.mockImplementation(async (key) =>
+      key === 'session:current' ? json : null
+    );
+
+    await sessionService.init();
+
+    expect(packWarns(logger)).toHaveLength(1);
+    await sessionService.endSession();
+  });
 });
