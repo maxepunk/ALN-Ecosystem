@@ -560,7 +560,11 @@ describe('E5 — Three-segment compound-cue timeline', () => {
         timeline: [{ at: 0, action: 'sound:play', payload: { file: 'x.wav' } }],
       }]);
 
-      await expect(cueEngineService.fireCue('reject-at0')).resolves.toBeUndefined();
+      // T1a D5: fireCue now reports its outcome ({fired, held, reason?})
+      // instead of returning undefined; the point here is unchanged — the
+      // rejected at:0 completion must not reject the fire.
+      await expect(cueEngineService.fireCue('reject-at0'))
+        .resolves.toEqual({ fired: true, held: false });
       await flushAsync();
     });
   });

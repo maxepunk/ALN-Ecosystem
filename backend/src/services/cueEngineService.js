@@ -26,6 +26,7 @@ const EventEmitter = require('events');
 const logger = require('../utils/logger');
 const { executeCommand, SERVICE_DEPENDENCIES } = require('./commandExecutor');
 const registry = require('./serviceHealthRegistry');
+const { doorWording } = require('./dormancyWording');
 const HeldItemsStore = require('./heldItemsStore');
 const TimelineRuntime = require('./cue/timelineRuntime');
 const {
@@ -57,8 +58,26 @@ class CueEngineService extends EventEmitter {
     resetClockWarnings();
     /** @type {Map<string, Object>} All loaded cues indexed by ID */
     this.cues = new Map();
-    /** @type {Set<string>} IDs of disabled cues */
+    // Three disable PROVENANCES (Block 2 T1a, plan §3 pin P4). They are
+    // separate sets, not one, because they answer different questions and
+    // have different lifetimes: only a GM can undo the first, only a
+    // re-arm the second, and only a profile change the third.
+    /** @type {Set<string>} A GM disabled it by hand. Persisted. */
     this.disabledCues = new Set();
+    /** @type {Set<string>} A once-cue that already fired. Persisted. */
+    this.spentOnceCues = new Set();
+    /**
+     * @type {Set<string>} Every service it needs is dormant. RECOMPUTED at
+     * boot / session create / system reset by dormancyService.applyDormancy,
+     * and deliberately NEVER persisted — a profile edit must change it.
+     */
+    this.dormancyDisabledCues = new Set();
+    /**
+     * @type {Map<string, Array<{action: string, service: string, door: string}>>}
+     * Per cue, the commands that WOULD run against a dormant service. A
+     * mixed cue keeps running; this is what the GM sees on its tile.
+     */
+    this._dormantCommands = new Map();
     /** @type {boolean} Whether the engine is actively evaluating standing cues */
     this.active = false;
     /** @type {Set<string>} Clock cue IDs that have already fired (prevents re-fire) */
@@ -163,8 +182,44 @@ class CueEngineService extends EventEmitter {
     return this.getCues().filter(cue => cue.trigger);
   }
 
+  /**
+   * Is this cue disabled by ANY provenance (P4)? The one question every
+   * caller should ask; the three sets are an implementation detail.
+   * @param {string} cueId
+   * @returns {boolean}
+   */
+  isCueDisabled(cueId) {
+    return this.disabledCues.has(cueId)
+      || this.spentOnceCues.has(cueId)
+      || this.dormancyDisabledCues.has(cueId);
+  }
+
+  /**
+   * Which provenance disabled this cue, or null. Precedence when several
+   * apply: dormant (the venue's fact) beats gm (a person's choice) beats
+   * once (a spent trigger) — most-structural first, so the GM reads the
+   * reason they cannot change before the ones they can.
+   * @param {string} cueId
+   * @returns {'gm'|'once'|'dormant'|null}
+   */
+  disabledByOf(cueId) {
+    if (this.dormancyDisabledCues.has(cueId)) return 'dormant';
+    if (this.disabledCues.has(cueId)) return 'gm';
+    if (this.spentOnceCues.has(cueId)) return 'once';
+    return null;
+  }
+
+  /** The union of the three provenances, as a Set (evaluator input). */
+  _disabledUnion() {
+    return new Set([
+      ...this.disabledCues,
+      ...this.spentOnceCues,
+      ...this.dormancyDisabledCues,
+    ]);
+  }
+
   getDisabledCues() {
-    return Array.from(this.disabledCues);
+    return Array.from(this._disabledUnion());
   }
 
   checkHealth() {
@@ -189,7 +244,13 @@ class CueEngineService extends EventEmitter {
         quickFire: cue.quickFire,
         once: cue.once,
         triggerType,
-        enabled: !this.disabledCues.has(cue.id),
+        enabled: !this.isCueDisabled(cue.id),
+        // P4: WHY it is off, so the GM panel can grey a dormant cue
+        // differently from one they switched off themselves.
+        disabledBy: this.disabledByOf(cue.id),
+        // P3: the mixed-cue badge — commands that will be skipped quietly
+        // when this (still enabled) cue fires.
+        dormantCommands: this._dormantCommands.get(cue.id) || [],
       };
     });
   }
@@ -219,16 +280,125 @@ class CueEngineService extends EventEmitter {
   // Cue enable/disable/activate/suspend
   // ─────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Re-enable a cue a GM switched off, or re-arm a spent once-cue (R17).
+   * REFUSES a dormancy-disabled cue: the GM cannot enable their way out of
+   * equipment that is not in the room — the honest answer is the door's,
+   * not a button that appears to work and then refuses at fire.
+   * @param {string} cueId
+   * @returns {{ok: boolean, reason?: string}}
+   */
   enableCue(cueId) {
+    if (this.dormancyDisabledCues.has(cueId)) {
+      const reason = this._dormantRefusalReason(cueId);
+      logger.info(`[CueEngine] Refused enable of dormancy-disabled cue: ${reason}`);
+      return { ok: false, reason };
+    }
     this.disabledCues.delete(cueId);
+    this.spentOnceCues.delete(cueId);
     logger.info(`[CueEngine] Enabled cue: ${cueId}`);
     this.emit('cue:status', { cueId, state: 'enabled' });
+    return { ok: true };
   }
 
   disableCue(cueId) {
     this.disabledCues.add(cueId);
     logger.info(`[CueEngine] Disabled cue: ${cueId}`);
     this.emit('cue:status', { cueId, state: 'disabled' });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Dormancy (Block 2 T1a D5, pin P3)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Recompute which cues are silenced because every service they need is
+   * dormant. Called by dormancyService at boot, at session create, and
+   * after a system reset — never persisted, always derived.
+   *
+   * The rule (P3, refining D-C3.2):
+   *   - a SIMPLE cue with at least one service-bearing command, ALL of whose
+   *     service-bearing commands sit on dormant services → silenced;
+   *   - a SIMPLE cue with only SOME on dormant services → still enabled, and
+   *     the dormant ones are recorded so the panel can badge it and fireCue
+   *     can skip them quietly;
+   *   - a COMPOUND cue with ANY dormant timeline entry → silenced whole. A
+   *     timeline is a shape in time; running half of one is worse than not
+   *     running it (S2's reasoning, D-5).
+   *   - a cue with NO service-bearing command at all is never touched.
+   *
+   * @param {{dormantServiceIds: string[], doorOf: Object<string,string>}} result
+   */
+  applyDormancy({ dormantServiceIds = [], doorOf = {} } = {}) {
+    const dormant = new Set(dormantServiceIds);
+    const previouslyDisabled = this.dormancyDisabledCues;
+    const nextDisabled = new Set();
+    const nextDormantCommands = new Map();
+
+    for (const cue of this.cues.values()) {
+      const entries = cue.timeline ? cue.timeline : (cue.commands || []);
+      const serviceBearing = [];
+      const dormantOnes = [];
+      for (const entry of entries) {
+        const service = SERVICE_DEPENDENCIES[entry.action];
+        if (!service) continue;                 // ungated command: not a dependency
+        serviceBearing.push(service);
+        if (dormant.has(service)) {
+          dormantOnes.push({
+            action: entry.action,
+            service,
+            door: doorOf[service] || 'profile',
+          });
+        }
+      }
+
+      if (dormantOnes.length > 0) {
+        nextDormantCommands.set(cue.id, dormantOnes);
+      }
+      if (serviceBearing.length === 0) continue;
+
+      const whollyDormant = cue.timeline
+        ? dormantOnes.length > 0
+        : dormantOnes.length === serviceBearing.length;
+      if (whollyDormant) nextDisabled.add(cue.id);
+    }
+
+    const left = [...previouslyDisabled].filter((id) => !nextDisabled.has(id));
+
+    this.dormancyDisabledCues = nextDisabled;
+    this._dormantCommands = nextDormantCommands;
+
+    if (left.length > 0 && this.active) {
+      // A cue that comes BACK mid-session must not replay a clock threshold
+      // that passed while it was silenced (catch-up storm), nor stay armed
+      // to fire it ten minutes late. Same mark-don't-fire policy as restore.
+      const elapsed = require('./gameClockService').getElapsed();
+      this._markPastClockCuesFired(elapsed);
+      logger.info(
+        `[CueEngine] ${left.length} cue(s) left the dormancy set; ` +
+        `past-due clock thresholds marked fired at ${elapsed}s`,
+        { cues: left }
+      );
+    }
+
+    logger.info(
+      `[CueEngine] Dormancy applied: ${nextDisabled.size} cue(s) silenced, ` +
+      `${nextDormantCommands.size} cue(s) with skipped commands`,
+      { dormantServices: [...dormant] }
+    );
+    this.emit('cue:status', { cueId: null, state: 'dormancy-updated' });
+  }
+
+  /**
+   * The one sentence a dormancy refusal says, built from the door.
+   * @param {string} cueId
+   * @returns {string}
+   * @private
+   */
+  _dormantRefusalReason(cueId) {
+    const [first] = this._dormantCommands.get(cueId) || [];
+    if (!first) return `${cueId} is dormant`;
+    return `${cueId} is ${doorWording(first.door)} (${first.service})`;
   }
 
   activate() {
@@ -253,7 +423,7 @@ class CueEngineService extends EventEmitter {
   handleGameEvent(eventName, payload) {
     if (!this.active) return;
 
-    const matchingCues = findMatchingEventCues(this.cues, this.disabledCues, eventName, payload);
+    const matchingCues = findMatchingEventCues(this.cues, this._disabledUnion(), eventName, payload);
 
     for (const cue of matchingCues) {
       this.fireCue(cue.id, `event:${eventName}`).catch(err => {
@@ -269,7 +439,7 @@ class CueEngineService extends EventEmitter {
    * @param {Object} payload
    */
   async fireEventCuesAndWait(eventName, payload) {
-    const matchingCues = findMatchingEventCues(this.cues, this.disabledCues, eventName, payload);
+    const matchingCues = findMatchingEventCues(this.cues, this._disabledUnion(), eventName, payload);
 
     for (const cue of matchingCues) {
       try {
@@ -287,7 +457,7 @@ class CueEngineService extends EventEmitter {
   handleClockTick(elapsedSeconds) {
     if (!this.active) return;
 
-    const clockCues = findMatchingClockCues(this.cues, this.disabledCues, this.firedClockCues, elapsedSeconds);
+    const clockCues = findMatchingClockCues(this.cues, this._disabledUnion(), this.firedClockCues, elapsedSeconds);
 
     for (const cue of clockCues) {
       this.firedClockCues.add(cue.id);
@@ -502,21 +672,32 @@ class CueEngineService extends EventEmitter {
     const cue = this.cues.get(cueId);
     if (!cue) throw new Error(`Cue "${cueId}" not found`);
 
-    if (this.disabledCues.has(cueId)) {
+    // DORMANCY FIRST (P3), before every other gate including lighting-role
+    // normalization inside executeCommand. A wholly dormant cue is REFUSED
+    // outright: not held (a hold promises a later run and nothing is
+    // coming), not cue:error (nothing is broken), just an info log. This is
+    // alarm integrity at the cue level.
+    if (this.dormancyDisabledCues.has(cueId)) {
+      const reason = this._dormantRefusalReason(cueId);
+      logger.info(`[CueEngine] Refusing dormant cue: ${reason}`);
+      return { fired: false, held: false, reason };
+    }
+
+    if (this.disabledCues.has(cueId) || this.spentOnceCues.has(cueId)) {
       logger.info(`[CueEngine] Skipping disabled cue: ${cueId}`);
-      return;
+      return { fired: false, held: false, reason: `${cueId} is disabled` };
     }
 
     if (parentChain && parentChain.has(cueId)) {
       logger.warn(`[CueEngine] Cycle detected: "${cueId}" is already in chain [${[...parentChain].join(' → ')}]`);
       this.emit('cue:error', { cueId, action: null, position: null, error: `Cycle detected` });
-      return;
+      return { fired: false, held: false, reason: `Cycle detected` };
     }
 
     if (cue.timeline && this._timeline.has(cueId)) {
       logger.warn(`[CueEngine] Compound cue "${cueId}" already running, skipping re-fire`);
       this.emit('cue:error', { cueId, action: null, position: null, error: `Already running` });
-      return;
+      return { fired: false, held: false, reason: `Already running` };
     }
 
     if (parentChain && parentChain.size >= CueEngineService.MAX_NESTING_DEPTH) {
@@ -527,14 +708,20 @@ class CueEngineService extends EventEmitter {
         position: null,
         error: `Max nesting depth (${CueEngineService.MAX_NESTING_DEPTH}) exceeded`,
       });
-      return;
+      return {
+        fired: false, held: false,
+        reason: `Max nesting depth (${CueEngineService.MAX_NESTING_DEPTH}) exceeded`,
+      };
     }
 
-    // Service health check
+    // Service health check. A DORMANT dependency is skipped here, never
+    // held: this cue is mixed (the wholly-dormant case returned above), and
+    // its live half must still run.
     const cmds = cue.timeline ? cue.timeline : cue.commands;
     const blockedServices = [];
     for (const cmd of cmds) {
       const dep = SERVICE_DEPENDENCIES[cmd.action];
+      if (dep && registry.isDormant(dep)) continue;
       if (dep && !registry.isHealthy(dep) && !blockedServices.includes(dep)) {
         blockedServices.push(dep);
       }
@@ -549,12 +736,14 @@ class CueEngineService extends EventEmitter {
         reason: 'service_down',
       });
       this.emit('cue:held', held);
-      return;
+      return {
+        fired: false, held: true,
+        reason: `${cueId} held: ${blockedServices.join(', ')}`,
+      };
     }
 
     if (cue.timeline) {
-      await this._startCompoundCue(cue, trigger, parentChain, source);
-      return;
+      return this._startCompoundCue(cue, trigger, parentChain, source);
     }
 
     // Simple cue
@@ -562,8 +751,19 @@ class CueEngineService extends EventEmitter {
 
     const completedCommands = [];
     const failedCommands = [];
+    const dormantHere = new Set(
+      (this._dormantCommands.get(cueId) || []).map((c) => c.action)
+    );
 
     for (const cmd of cue.commands) {
+      if (dormantHere.has(cmd.action)) {
+        // Quietly, by design: no cue:error, no failedCommands entry. The
+        // equipment is absent, not broken.
+        logger.info(
+          `[CueEngine] Skipping dormant command in cue "${cueId}": ${cmd.action}`
+        );
+        continue;
+      }
       try {
         const result = await executeCommand({
           action: cmd.action,
@@ -593,9 +793,23 @@ class CueEngineService extends EventEmitter {
     this.emit('cue:completed', { cueId, completedCommands, failedCommands });
 
     if (cue.once) {
-      this.disableCue(cueId);
-      logger.info(`[CueEngine] Auto-disabled once cue: ${cueId}`);
+      this._markOnceSpent(cueId);
     }
+
+    return { fired: true, held: false };
+  }
+
+  /**
+   * A once-cue has fired: park it in its OWN provenance set, not the GM's
+   * (P4). Before T1a both landed in disabledCues, so a GM could not tell
+   * "I turned this off" from "it already went".
+   * @param {string} cueId
+   * @private
+   */
+  _markOnceSpent(cueId) {
+    this.spentOnceCues.add(cueId);
+    logger.info(`[CueEngine] Auto-disabled once cue: ${cueId}`);
+    this.emit('cue:status', { cueId, state: 'disabled' });
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -638,7 +852,7 @@ class CueEngineService extends EventEmitter {
           }
         }, 10000);
 
-        return;
+        return { fired: false, held: true, reason: `${cueId} held: video_busy` };
       }
     }
 
@@ -692,9 +906,10 @@ class CueEngineService extends EventEmitter {
     }
 
     if (cue.once) {
-      this.disableCue(cueId);
-      logger.info(`[CueEngine] Auto-disabled once cue: ${cueId}`);
+      this._markOnceSpent(cueId);
     }
+
+    return { fired: true, held: false };
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -795,7 +1010,15 @@ class CueEngineService extends EventEmitter {
 
   /**
    * Release a held cue and re-fire it.
+   *
+   * The re-fire can fail a SECOND time — the world moved on while the item
+   * sat in the queue (a GM disabled the cue, another service fell over, the
+   * profile now calls its equipment dormant). When it does, the item is
+   * RE-HELD carrying the new reason rather than silently vanishing, and the
+   * caller is told so it can ack honestly (T1a D5/D6).
+   *
    * @param {string} heldId
+   * @returns {Promise<{released: boolean, reason?: string}>}
    */
   async releaseCue(heldId) {
     const held = this._heldStore.find(heldId);
@@ -805,7 +1028,9 @@ class CueEngineService extends EventEmitter {
       const videoQueueService = require('./videoQueueService');
       await videoQueueService.skipCurrent();
     } else {
-      const stillDown = held.blockedBy.filter(svc => !registry.isHealthy(svc));
+      const stillDown = (held.blockedBy || []).filter(
+        svc => !registry.isHealthy(svc) && !registry.isDormant(svc)
+      );
       if (stillDown.length > 0) {
         throw new Error(`Cannot release held cue: services still down: ${stillDown.join(', ')}`);
       }
@@ -814,7 +1039,27 @@ class CueEngineService extends EventEmitter {
     const released = this._heldStore.release(heldId);
     this.emit('cue:released', { heldId: released.id, cueId: released.cueId });
 
-    await this.fireCue(released.cueId, released.trigger, released.parentChain || undefined);
+    const outcome = await this.fireCue(
+      released.cueId, released.trigger, released.parentChain || undefined
+    );
+
+    if (outcome && outcome.fired) return { released: true };
+
+    const reason = (outcome && outcome.reason) || `${released.cueId} did not fire`;
+    if (!outcome || !outcome.held) {
+      // fireCue held it again itself (outcome.held) — do not double-hold.
+      const reHeld = this._heldStore.holdItem({
+        type: 'cue',
+        cueId: released.cueId,
+        trigger: released.trigger || null,
+        parentChain: released.parentChain || null,
+        blockedBy: held.blockedBy || [],
+        reason,
+      });
+      this.emit('cue:held', reHeld);
+    }
+    logger.info(`[CueEngine] Re-held cue after a refused release: ${reason}`);
+    return { released: false, reason };
   }
 
   /**
@@ -845,7 +1090,9 @@ class CueEngineService extends EventEmitter {
    * @returns {Object}
    */
   toPersistence() {
-    return standingToPersistence(this.firedClockCues, this.disabledCues, this.active);
+    return standingToPersistence(
+      this.firedClockCues, this.disabledCues, this.spentOnceCues, this.active
+    );
   }
 
   /**
@@ -865,12 +1112,14 @@ class CueEngineService extends EventEmitter {
     const state = standingFromPersistence(snapshot);
     this.firedClockCues = state.firedClockCues;
     this.disabledCues = state.disabledCues;
+    this.spentOnceCues = state.spentOnceCues;
     this.active = state.active;
     this._restoredClockElapsed = elapsedSeconds;
     this._markPastClockCuesFired(elapsedSeconds);
     logger.info('[CueEngine] Restored from persistence', {
       firedClockCues: this.firedClockCues.size,
       disabledCues: this.disabledCues.size,
+      spentOnceCues: this.spentOnceCues.size,
       active: this.active,
       elapsedSeconds,
     });
