@@ -1,6 +1,6 @@
 # Green from a fresh Raspberry Pi OS install: what differs from the guide and the code
 
-Research, 2026-09-12 (revised the same day to close eleven review gaps). Brief: `docs/plans/briefs/2026-09-12-green-fresh-install-research.md`.
+Research, 2026-09-12 (revised the same day to close eleven review gaps, then three more from the completeness critic: §2.11–2.13). Brief: `docs/plans/briefs/2026-09-12-green-fresh-install-research.md`.
 Vocabulary: `CONTEXT.md` §5 (kit, venue, installation profile, blue/green).
 Line numbers: `docs/plans/ROADMAP.md` and `CONTEXT.md` are cited against this docs
 worktree; every other file against the main checkout (`DEPLOYMENT_GUIDE.md` and
@@ -9,7 +9,7 @@ topic readers and by the reviser on 2026-09-12; every one has a URL in §7.
 
 ## Conclusions
 A fresh 64-bit Desktop image today is Raspberry Pi OS **Trixie** (Debian 13, image dated 2026-06-18), not the
-Bookworm the guide assumes (`DEPLOYMENT_GUIDE.md:1030`). Eight things differ in a way that matters this week.
+Bookworm the guide assumes (`DEPLOYMENT_GUIDE.md:1030`). Ten things differ in a way that matters this week.
 
 1. **The desktop is Wayland (labwc); the code drives X11** (`DISPLAY=:0`, xdotool, wmctrl). Fix first: `sudo raspi-config` → Advanced Options → Wayland → **W1 X11**, reboot.
    The X11 stack (xserver-xorg, Openbox, lxpanel-pi) is on the Desktop image (§2.1, sourced to the image build and the metapackage); if it still comes up broken, blue runs the show (§2.1).
@@ -23,29 +23,29 @@ Bookworm the guide assumes (`DEPLOYMENT_GUIDE.md:1030`). Eight things differ in 
    scan timestamp silently (§2.7). Fix: `sudo timedatectl set-timezone <blue's zone>` (read it on blue with `timedatectl`). Guide change, step 0.
 8. **The certificate a clone delivers is for 10.0.0.177, not the venue address** (`backend/ssl/` is tracked, not ignored; expires 2026-10-24). Fix:
    establish what blue actually serves (fingerprint), copy THAT pair after the clone and before the first `npm start`, else regenerate with an IP SAN (§2.8).
+9. **PM2 resurrects the orchestrator with the environment of the first `npm start`; the code sets no `DBUS_SESSION_BUS_ADDRESS` or `XDG_RUNTIME_DIR` of its own.** Every `pactl` call and every VLC D-Bus call inherits them or fails (§2.11).
+   Fix: run the first `npm start` from a terminal inside green's desktop session, or put the two variables in `backend/.env` (or `ecosystem.config.js`); then the cold-boot check of §2.11 (`/proc/<pid>/environ` has them; `audio` and `vlc` healthy; pause/resume the idle loop from the panel).
+10. **The acceptance gate (`docs/preflight-checklist.md`, `ROADMAP.md:452-453`) passes a broken green.** Its nine-binary check names no chromium/xdotool/wmctrl, its display test is `xset q` (XWayland answers it under labwc), its header pins blue's path (§2.12).
+    The guide repair must add `command -v "$CHROMIUM_BIN"` and a window-control check under the real session (`DISPLAY=:0 xdotool search --name ALN-SCOREBOARD`), not `xset q`. The panel's `display` light is no proof (`displayDriver.js:359-378`: healthy while hidden); the only real proof is the kiosk on the TV.
 
-Unchanged, no action: VLC 3.0.23 with `--vout=gles2` and D-Bus MPRIS; Docker via `get.docker.com`; NetworkManager; `/boot/firmware/config.txt`;
-**BlueZ 5.82's `bluetoothctl` prints exactly the lines the parser reads, unchanged since 5.66** (§2.9); xdotool, wmctrl present (X11 only); DejaVu fonts
-on the Desktop image; HEVC only; Playwright installs on arm64 Debian 13 (§6). Bench (§1b): the X11 session owns a real window, `pactl`/`pw-play`/`dbus-monitor` on PATH, `output:hdmi-stereo`.
+Unchanged, no action: VLC 3.0.23 with `--vout=gles2` and D-Bus MPRIS; Docker via `get.docker.com`; NetworkManager; `/boot/firmware/config.txt`; **BlueZ 5.82's `bluetoothctl`
+prints exactly the lines the parser reads, unchanged since 5.66** (§2.9); **MPD 0.23.12 → 0.24.4 accepts every key the orchestrator writes** (§2.13; bench: `music` healthy, a track, ducking under a video);
+xdotool, wmctrl present (X11 only); DejaVu fonts on the Desktop image; HEVC only; Playwright installs on arm64 Debian 13 (§6). Bench (§1b): the X11 session owns a real window, `pactl`/`pw-play`/`dbus-monitor` on PATH, `output:hdmi-stereo`.
 
-**Copy from blue over the share** (paths on blue's disk; `~` = blue's login user): `~/ALN-Ecosystem/backend/ssl/cert.pem` + `key.pem`, only the pair
-whose fingerprint blue serves, after checking SAN and `notAfter` (§2.8); `~/ALN-Ecosystem/backend/.env`, then audit it for blue-only values (§3);
-`~/ha-config/` whole (the Home Assistant volume: `scenes.yaml`, owner account, token; copy BEFORE the first `docker run`, and run blue's exact HA image,
-not `:stable`, §3); `~/ALN-Ecosystem/backend/public/videos/*.mp4` (idle-loop.mp4 included); `.../backend/public/music/`; `.../backend/public/audio/`
-(files git lacks only); then the guide's verify block (`DEPLOYMENT_GUIDE.md:836-858`). Read, do not copy: `ALN-TokenData/pack-manifest.json` (contentHash →
-pack commit), `/boot/firmware/config.txt` (compare), the profile file (diff), `timedatectl` (the zone), HA's version and image digest. Never: `backend/data/`,
-`~/.pm2/`, `/var/lib/bluetooth/` (re-pair), the `.lua` drop-in.
+**Copy from blue over the share** (paths on blue's disk; `~` = blue's login user): `~/ALN-Ecosystem/backend/ssl/cert.pem` + `key.pem`, only the pair whose fingerprint blue serves, after checking SAN and `notAfter` (§2.8);
+`~/ALN-Ecosystem/backend/.env`, then audit it for blue-only values (§3); `~/ha-config/` whole (the Home Assistant volume: `scenes.yaml`, owner account, token; copy BEFORE the first `docker run`, and run blue's exact HA image,
+not `:stable`, §3); `~/ALN-Ecosystem/backend/public/videos/*.mp4` (idle-loop.mp4 included); `.../backend/public/music/`; `.../backend/public/audio/` (files git lacks only); then the guide's verify block (`DEPLOYMENT_GUIDE.md:836-858`).
+Read, do not copy: `ALN-TokenData/pack-manifest.json` (contentHash → pack commit), `/boot/firmware/config.txt` (compare), the profile file (diff), `timedatectl` (the zone), HA's version and image digest.
+Never: `backend/data/`, `~/.pm2/`, `/var/lib/bluetooth/` (re-pair), the `.lua` drop-in.
 
-**Pull from git:** `git clone --recurse-submodules https://github.com/maxepunk/ALN-Ecosystem.git ~/ALN-Ecosystem` on `main`, with submodules ALN-TokenData
-(at blue's pack commit), ALNScanner + `data`, aln-memory-scanner + `data` (this one carries the ESP32 asset corpus and `assets/manifest.json`, §4),
-arduino-cyd-player-scanner; the installation profile `backend/config/profiles/aln-full-kit.json` (verify it bound, §4). Built on green: `backend/` `npm install`;
-ALNScanner `npm ci && npm run build` (the `npm start` prestart does it); `npm run music:seed`; `python3 scripts/generate_asset_manifest.py` only if the served manifest's pack hash differs from `/health`.
+**Pull from git:** `git clone --recurse-submodules https://github.com/maxepunk/ALN-Ecosystem.git ~/ALN-Ecosystem` on `main`, with submodules ALN-TokenData (at blue's pack commit), ALNScanner + `data`,
+aln-memory-scanner + `data` (this one carries the ESP32 asset corpus and `assets/manifest.json`, §4), arduino-cyd-player-scanner; the installation profile `backend/config/profiles/aln-full-kit.json` (verify it bound, §4).
+Built on green: `backend/` `npm install`; ALNScanner `npm ci && npm run build` (the `npm start` prestart does it); `npm run music:seed`; `python3 scripts/generate_asset_manifest.py` only if the served manifest's pack hash differs from `/health`.
 
-**Install, in the guide's order:** Imager 64-bit Desktop (user/hostname/WiFi/SSH; Localisation = blue's zone) → `raspi-config`: Desktop Autologin, Wayland → W1 X11 →
-`usermod -aG video,audio,bluetooth` → `apt update && apt upgrade` → NodeSource `setup_22.x`, `nodejs` → `apt install vlc mpd git xdotool wmctrl chromium pulseaudio-utils
-pipewire-bin dbus-bin` (renamed: chromium; added: `pactl`, and `pw-play`/`dbus-monitor`, normally present already — the line is idempotent) → disable `mpd`, `mpd.socket` →
-`npm install -g pm2` → clone, `npm install` → certificate check + copy → Docker via `get.docker.com`, `usermod -aG docker`, HA container at blue's image digest on the copied
-`~/ha-config` → WirePlumber `.conf` → timezone → address (router) → `npm start`, `pm2 save`, `pm2 startup` → media and manifest verify. Skip `ufw` (absent). Optional: the four `python3-*`.
+**Install, in the guide's order:** Imager 64-bit Desktop (user/hostname/WiFi/SSH; Localisation = blue's zone) → `raspi-config`: Desktop Autologin, Wayland → W1 X11 → `usermod -aG video,audio,bluetooth` → `apt update && apt upgrade` →
+NodeSource `setup_22.x`, `nodejs` → `apt install vlc mpd git xdotool wmctrl chromium pulseaudio-utils pipewire-bin dbus-bin` (renamed: chromium; added: `pactl`, and `pw-play`/`dbus-monitor`, normally present already — the line is idempotent) →
+disable `mpd`, `mpd.socket` → `npm install -g pm2` → clone, `npm install` → certificate check + copy → Docker via `get.docker.com`, `usermod -aG docker`, HA container at blue's image digest on the copied `~/ha-config` → WirePlumber `.conf` → timezone →
+address (router) → the two bus variables in `.env` (or a desktop-session terminal) → `npm start`, `pm2 save`, `pm2 startup` → cold-boot check (§2.11) → media and manifest verify → the repaired checklist (§2.12). Skip `ufw` (absent). Optional: the four `python3-*`.
 
 ## 1. The facts: today versus what the guide and the code assume
 
@@ -67,10 +67,13 @@ pipewire-bin dbus-bin` (renamed: chromium; added: `pactl`, and `pw-play`/`dbus-m
 | 14 | The certificate a clone delivers (repository fact, checked with `openssl x509` on 2026-09-12) | `backend/ssl/cert.pem`: `CN=10.0.0.177`, SAN `IP:10.0.0.177, DNS:raspberrypi.local, DNS:localhost`, valid 2025-10-24 → 2026-10-24; both files are in the checkout and no `.gitignore` excludes `backend/ssl/` (root `.gitignore`, 67 lines, has no ssl/pem/cert entry; `backend/` has no `.gitignore`). Chrome matches the SAN only (CN ignored since Chrome 58); an IP host needs an `iPAddress` SAN that matches exactly (RFC 2818 §3.1) | Served by default (`backend/.env.example:111-112`; `backend/ecosystem.config.js:22-23`); the guide's recipes emit no SAN (`DEPLOYMENT_GUIDE.md:454-458` `/CN=localhost`, `:463-467`); the plan says "blue's self-signed certificate copied to green, the warning accepted once per tablet" (`ROADMAP.md:772-775`) | **Yes** — at 192.168.0.191 this file is a name mismatch; what blue serves must be established, not assumed (§2.8) | developer.chrome.com chrome-58-deprecations; rfc-editor.org RFC 2818 §3.1; docs.openssl.org openssl-req (`-addext`) |
 | 15 | Playwright on arm64 Debian 13 (rung 2 only) | Playwright's system requirements list "Debian 12 / 13, Ubuntu 22.04 / 24.04 / 26.04 (x86-64 or arm64)" and Node "latest 22.x, 24.x or 26.x" | `backend/playwright.config.js:81-92` declares the project as plain `chromium` (`devices['Desktop Chrome']`, no `executablePath`, no `channel`); CI runs `npx playwright install chromium --with-deps` (`.github/workflows/test.yml:269-271`); `playwright ^1.56.1`, `@playwright/test ^1.57.0` (`backend/package.json:122`, `:110`) | No (supported); fallback named in §6 | playwright.dev/docs/intro (system requirements) |
 | 16 | Home Assistant `:stable` | Resolves to 2026.9.2 (released 2026-09-11) on 2026-09-12; UI scenes are stored in `scenes.yaml` in the config directory; `/api/config` reports `version` | `ghcr.io/home-assistant/home-assistant:stable` (`DEPLOYMENT_GUIDE.md:747`); the seven `scene.*` ids bound by `backend/config/profiles/aln-full-kit.json:48-66` exist only in the volume (`DEPLOYMENT_GUIDE.md:773-775`; `ROADMAP.md:754-756`) | Version skew against blue is unknown until read on blue; fix is to run blue's exact image (§3) | github.com/home-assistant/core/releases/latest; home-assistant.io scene editor docs; developers.home-assistant.io REST API; home-assistant.io container install; docs.docker.com pull by digest |
+| 17 | The environment PM2 resurrects the orchestrator with | PM2 injects "the current environment of your shell" when it first starts a process; `pm2 save` dumps the process list with that environment (`lib/API/Startup.js:423-482`); `pm2 startup`'s systemd unit carries only `PATH` and `PM2_HOME` and runs `pm2 resurrect` (`systemd.tpl`); a restart re-reads the shell only with `--update-env`. The orchestrator adds nothing: `ecosystem.config.js:17-24` sets NODE_ENV, PORT, HOST, HTTPS and the SSL paths; a grep of `backend/src` for `DBUS_SESSION_BUS_ADDRESS` or `XDG_RUNTIME_DIR` finds nothing; only `DISPLAY` is defaulted (`displayDriver.js:56-57`, `vlcMprisService.js:119`); `.env.example` names neither | `pactl` is run bare (`audioRoutingService.js:158`, `:215`, `:948`), `dbus-monitor --session` (`mprisPlayerBase.js:205-207`) and `dbus-send --session` (`:66-86`) likewise — all inherit the process environment. The rig sets both explicitly (`tests/rung1/up.sh:60-61`, `:106-107`; `engine.sh:49-50`); `docs/preflight-checklist.md:914-935` (§8.4) names the hazard and the remedy; `DEPLOYMENT_GUIDE.md:1130-1158` (boot-to-running) never mentions the session bus or the runtime dir | **Yes** — whatever the first `npm start`'s shell had is what every boot gets (§2.11) | pm2.keymetrics.io environment, process-management and startup pages; Unitech/pm2 `systemd.tpl`, `lib/API/Startup.js`, `lib/binaries/CLI.js` |
+| 18 | The acceptance gate for green, `docs/preflight-checklist.md` (repository fact) | `ROADMAP.md:452-453`: "The preflight checklist is its acceptance gate." The checklist's header pins blue's checkout path (`preflight-checklist.md:5`); §7 (`:608-859`) checks nine executables by its own count (`:610`; eight in its summary loop, `:848-853`: cvlc, dbus-send, dbus-monitor, pactl, pw-play, bluetoothctl, docker, pgrep) and no chromium, xdotool or wmctrl; §8.3 (`:897-912`) proves the display with `DISPLAY=:0 xset q`, which any X server answers — under labwc that is XWayland; §8.4 (`:914-935`) is the one place the session-bus hazard is written down | Green built from the guide, on the default Wayland session and with no `chromium` binary, passes the gate. The panel's `display` light does not catch it: `displayDriver.js:359-378` `probe()` reports `healthy` when the kiosk process is alive AND when there is no process and the kiosk is hidden (`:348-353`, R13) | **Yes** — the gate is blind to differences 1 and 3 (§2.12) | repository only |
+| 19 | MPD | 0.24.4 (trixie `mpd` 0.24.4-1, Depends `libpulse0`) against Bookworm's 0.23.12 (`mpd` 0.23.12-1): a major step. `NEWS` at v0.24.4, sections 0.24 through 0.24.4, removes, renames or deprecates no configuration key; every key the orchestrator writes is in 0.24.4's accepted-key table (`src/config/Templates.cxx:12-70`); a bare `audio_buffer_size "4096"` still means KiB (`src/config/PlayerConfig.cxx:21-23`, `ParseSize(s, KILOBYTE)`); one behaviour change since 0.23.12: 0.23.13 made `--no-daemon` MPD "shut down if parent process dies" | The guide installs `mpd` unpinned and disables the system unit (`DEPLOYMENT_GUIDE.md:1056`, `:1059-1060`); the orchestrator writes its own config and spawns `mpd --no-daemon <conf>` (`musicService.js:565-620`, config at `:601`, spawn at `:604-605`; keys at `mpdConfigBuilder.js:33-54`: unix-socket `bind_to_address`, `audio_output` type `pulse`, `audio_buffer_size`, `restore_paused`, `auto_update`) | No (verified, §2.13); the bench step is in §1b | packages.debian.org/bookworm/mpd and /trixie/mpd; MusicPlayerDaemon/MPD at v0.24.4: `NEWS`, `src/config/Templates.cxx` + `.hxx`, `src/config/PlayerConfig.cxx`, `src/config/Parser.cxx`, `doc/user.rst` |
 
 ### 1b. Not covered by the readers: check on the bench, one command each
 
-- After W1 X11 and a reboot: `echo $XDG_SESSION_TYPE` prints `x11`; `DISPLAY=:0 wmctrl -m` names Openbox; `DISPLAY=:0 xdotool getdisplaygeometry` prints the TV size; then `npm start`, the panel shows `display` healthy, the kiosk is on the TV, and one video plays through `--vout=gles2`. This is the gate for §2.1; §2.1 names the contingency.
+- After W1 X11 and a reboot: `echo $XDG_SESSION_TYPE` prints `x11`; `DISPLAY=:0 wmctrl -m` names Openbox; `DISPLAY=:0 xdotool getdisplaygeometry` prints the TV size; then `npm start`, show the scoreboard from the panel and see the kiosk on the TV, `DISPLAY=:0 xdotool search --name ALN-SCOREBOARD` prints a window id (the driver's own lookup, `displayDriver.js:104`), hide it again, and one video plays through `--vout=gles2`. The kiosk on the TV is the proof; the panel's `display` light is not — `displayDriver.js:359-378` reports `healthy` whenever the kiosk is hidden, process or no process (§2.12). This is the gate for §2.1; §2.1 names the contingency.
 - `command -v pactl pw-play dbus-monitor pw-dump` — `pactl` comes from `pulseaudio-utils`; the guide never installs it (CI does: `.github/workflows/test.yml:38`). `pw-play`/`pw-dump` come from `pipewire-bin`, `dbus-monitor` from `dbus-bin`; both are dependencies of packages the image carries, so they should already be present — the apt line in §5 names them anyway. (`mpc` is rig-only, `rung1.yml:70`; the engine speaks MPD directly, `backend/src/services/musicService.js:47-48`.)
 - `pactl list cards short` then `pactl list sinks short` — the `output:hdmi-stereo` profile (`audioRoutingService.js:948`) and an HDMI sink must exist under PipeWire 1.4. The profile and `backend/config/environment/routing.json` use logical ids (`hdmi`, `bluetooth`), so no file carries a hardware sink name; any `bluez_output.*` sink is classed `bluetooth` at runtime (`audioRoutingService.js:247-248`).
 - `command -v chromium-browser` — if a compatibility wrapper exists on Trixie nothing breaks; set `CHROMIUM_BIN` anyway.
@@ -79,7 +82,8 @@ pipewire-bin dbus-bin` (renamed: chromium; added: `pactl`, and `pw-play`/`dbus-m
 - Speaker pairing from the GM panel — an acceptance step (`CURRENT-STATE.md:73-74`), no longer a parser question (§2.9); if it fails, §2.9 names the by-hand route.
 - `systemctl --user status wireplumber` after installing the `.conf` drop-in (§2.2): a parse error shows there. Then, with a video playing, `pw-dump | grep -c '"state.restore-props": "false"'` prints at least 1 — the only check that proves the rule matched VLC.
 - `timedatectl` on both machines: `Time zone:` must match (§2.7).
-- The MPD package version on Trixie was not checked; the orchestrator writes its own config (`musicService.js:47-48`), so only the "disable the system unit" step matters (`DEPLOYMENT_GUIDE.md:1059-1060`).
+- MPD (§2.13; Trixie's 0.24.4 against blue's 0.23.12, every key accepted): after `npm start`, the panel's System Status shows `music` healthy — the orchestrator spawned it on the config it wrote to `/tmp/aln-mpd.conf` (`musicService.js:47-48`, `:601`, `:604-605`); play a track from the panel; start a video and hear the music duck under it and come back (`ROADMAP.md:473-474`). If `music` is down, `/tmp/aln-mpd.log` names the refused key or the missing output; none is expected.
+- After the first cold boot with no terminal: the three-line `/proc/<pid>/environ` check, `audio` and `vlc` healthy on the panel, pause and resume the idle loop from the panel (§2.11).
 
 ## 2. Each difference: what breaks, where, and the smallest fix
 
@@ -319,6 +323,101 @@ not discovered on the bench.
 - Doc defect found on review: `DEPLOYMENT_GUIDE.md:810` says the scanner-side images/audio are in
   `ALN-TokenData/assets/`; that directory does not exist. They are in `aln-memory-scanner/assets/` (§4).
 
+### 2.11 The environment PM2 resurrects the orchestrator with (added for the completeness critic)
+
+What breaks. The guide's boot-to-running step (`DEPLOYMENT_GUIDE.md:1130-1158`) is `npm start` (which is
+`pm2 start ecosystem.config.js`, `backend/package.json:9`), `pm2 save`, `pm2 startup`; every boot after that is
+systemd → `pm2 resurrect`. PM2 injects "the current environment of your shell" when it first starts a process
+and keeps it: `pm2 save` writes the process list, environment included, to the dump file (`lib/API/Startup.js:423-482`);
+the unit `pm2 startup` generates carries only `PATH` and `PM2_HOME` (`systemd.tpl`); a restart re-reads the shell
+only with `--update-env`. The orchestrator adds nothing of its own: `ecosystem.config.js:17-24` sets NODE_ENV,
+PORT, HOST, HTTPS and the SSL paths; a grep of `backend/src` for `DBUS_SESSION_BUS_ADDRESS` or `XDG_RUNTIME_DIR`
+finds nothing; `DISPLAY` alone is defaulted to `:0` (`displayDriver.js:56-57`, `vlcMprisService.js:119`). Every
+consumer inherits what the process has: `pactl` (`audioRoutingService.js:158` the health probe, `:215` the sink
+list, `:948` the HDMI profile, `:444-509` routing and volume), `dbus-monitor --session` (`mprisPlayerBase.js:205-207`),
+`dbus-send --session` (`:66-86`; every transport command goes through it, `:126-128`), `pw-play` (`soundService.js:75`).
+`pactl` reaches PipeWire's PulseAudio socket through `XDG_RUNTIME_DIR`; the session bus is
+`DBUS_SESSION_BUS_ADDRESS` (or, unset, `$XDG_RUNTIME_DIR/bus`). So if the first `npm start` ran in a shell that
+lacked them — the checklist names SSH; a `sudo`/`su -` shell drops them too — the absence is frozen into every
+boot: `audio` reports down ("PipeWire unreachable", `:156-165`), every D-Bus call throws ("not found on D-Bus",
+`:82-87`), the idle loop never starts, and nothing in the boot log names the cause. The rig knows this and sets
+both explicitly (`tests/rung1/up.sh:60-61`, written into `env.sh` at `:106-107`, passed through `runuser` at
+`engine.sh:49-50`); the E2E harness does the same (`tests/e2e/setup/session-env.js:86`). The preflight checklist is
+the one document that says so (`docs/preflight-checklist.md:914-935`, §8.4: "When starting the server via SSH or
+PM2, the DBUS_SESSION_BUS_ADDRESS env var may not be inherited … Add DBUS_SESSION_BUS_ADDRESS to the
+env_production block in backend/ecosystem.config.js, or set it in backend/.env"); the guide's boot section names
+neither variable. Blue solved it once, by whichever shell ran its first start; green rolls the dice again.
+
+Smallest fix: a guide change (step 4) plus one of two settings. Either run the first `npm start` from a terminal
+inside green's desktop session (it carries both variables and `DISPLAY`), or make the shell irrelevant: in
+`backend/.env` add `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus` and `XDG_RUNTIME_DIR=/run/user/1000`
+(1000 = `id -u` of the login user — check it; `dotenv.config()` runs at `backend/src/config/index.js:10`, before
+any spawn, so children inherit them), or the same two keys in the `env` block at `ecosystem.config.js:17-24`, the
+checklist's remedy. If PM2 already holds a bad environment: `pm2 restart aln-orchestrator --update-env && pm2 save`.
+Cold-boot verification (add to the guide's Stage-B item at `:1152-1158`): power-cycle with nothing attached but
+power, network and the TV; once the idle loop is up, (1) `PID=$(pgrep -f 'node .*src/server.js' | head -1);
+tr '\0' '\n' < /proc/$PID/environ | grep -E '^(DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR|DISPLAY)='` prints all
+three; (2) the panel's System Status shows `audio` healthy — that is `pactl info` answering inside the
+orchestrator's own environment, as the service user (`audioRoutingService.js:156-165`) — and `vlc` healthy;
+(3) pause, then resume, the idle loop from the panel: a transport command over D-Bus (`mprisPlayerBase.js:126-128`),
+and the TV must react; (4) from a terminal in the desktop session, the guide's own ping `dbus-send --session
+--dest=org.mpris.MediaPlayer2.vlc --print-reply /org/mpris/MediaPlayer2 org.freedesktop.DBus.Peer.Ping`
+(`DEPLOYMENT_GUIDE.md:1398-1399`) answers — VLC is on the bus the desktop sees, the one the orchestrator must share.
+Code change (optional, not this week): default both from `/run/user/<uid>` when unset, the way `displayDriver.js:56-57`
+defaults `DISPLAY`; and add both keys to `.env.example` (today a key-set diff, §3, would flag them as undocumented).
+
+### 2.12 The acceptance gate does not see the two largest differences (added for the completeness critic)
+
+What breaks. `ROADMAP.md:452-453` makes `docs/preflight-checklist.md` green's acceptance gate ("green is built as a
+real production machine, not a test box. The preflight checklist is its acceptance gate."), and the first draft of
+this document never audited it. The checklist's header pins blue's checkout path (`:5`,
+`/home/maxepunk/projects/AboutLastNight/ALN-Ecosystem`). Its §7 ("The backend spawns 9 external executables",
+`:610`; `:608-859`) checks cvlc, dbus-send, dbus-monitor, pactl, pw-play, bluetoothctl (plus paired devices), docker
+and pgrep — eight in its own summary loop (`:848-853`) — and neither chromium, xdotool nor wmctrl, the three the
+display driver spawns (`displayDriver.js:104`, `:165`, `:289-290`). Its §8.3 (`:897-912`, "X11 Display Accessible")
+proves the display with `DISPLAY=${DISPLAY:-:0} xset q`: that needs only an X server to answer, and under labwc
+XWayland is one, so it proves neither an X11 session nor a window manager that xdotool/wmctrl can drive. A green
+built from the guide, on the default Wayland session and with no `chromium` binary, therefore passes the gate. The
+panel does not catch it either: `displayDriver.js:359-378` `probe()` reports `display` healthy when the kiosk
+process is alive AND when there is no process and the kiosk is hidden (`:348-353`, ruling R13: hidden is the idle
+posture, not a fault); a kiosk that has never launched reads as healthy until someone asks for the scoreboard.
+The first draft leaned on that light twice (§1b's session bullet, §6's closing line); both sentences are replaced.
+
+Smallest fix: three edits to the checklist in the guide repair (Appendix C scope, `ROADMAP.md:752`), and one rule
+for the bench. (1) §7: add `command -v "${CHROMIUM_BIN:-chromium-browser}"` (must print `/usr/bin/chromium` on
+green after §2.3) and `command -v xdotool wmctrl`. (2) §8.3: replace `xset q` with a window-control check under
+the real session: `[ "$XDG_SESSION_TYPE" = x11 ]`; `DISPLAY=:0 wmctrl -m` names Openbox; and, with the orchestrator
+running and the scoreboard shown once from the panel, `DISPLAY=:0 xdotool search --name ALN-SCOREBOARD` prints a
+window id — the driver's own lookup (`displayDriver.js:104`; the marker defaults to `ALN-SCOREBOARD`,
+`backend/src/config/index.js:114`). (3) Header: the working directory is the machine's own checkout. The rule: the
+only real proof is the kiosk on the TV — scoreboard shown from the panel, visible on the venue TV, hidden again —
+and one video through VLC on top of it. A green `display` light proves nothing on its own.
+
+### 2.13 MPD 0.23.12 → 0.24.4: verified, no config change (added for the completeness critic)
+
+What was checked. The guide installs `mpd` unpinned (`DEPLOYMENT_GUIDE.md:1056`) and disables the system unit
+(`:1059-1060`); the orchestrator writes `/tmp/aln-mpd.conf` from `mpdConfigBuilder.js:33-54` (`musicService.js:601`)
+and spawns `mpd --no-daemon <conf>` under its ProcessMonitor (`:604-605`, inside `spawnMpd()`, `:565-620`). The keys
+written: `music_directory`, `playlist_directory`, `db_file`, `log_file`, `state_file`, `pid_file`, `bind_to_address`
+(a unix socket), an `audio_output` block of type `pulse` with a `name`, `audio_buffer_size "4096"`,
+`restore_paused "yes"`, `auto_update "no"`. Bookworm ships mpd 0.23.12-1; Trixie 0.24.4-1; both Depends `libpulse0`,
+so the `pulse` output plugin is built. The `NEWS` file at v0.24.4, sections 0.24 (2025-03-11) through 0.24.4
+(2025-05-20), removes, renames or deprecates no configuration key — its removals are the soundcloud and hybrid_dsd
+plugins, JACK on Windows, Haiku and Boost. All eleven keys are in 0.24.4's accepted-key table
+(`src/config/Templates.cxx:12-70`; `Templates.hxx:7-15` gives the flags; an unknown key is a start-up error,
+`src/config/File.cxx:223` "unrecognized parameter", a deprecated one only a warning, `:135-138`; the only deprecated key
+nearby is `buffer_before_play`, `Templates.cxx:43`, which the builder does not write). `audio_buffer_size` is
+documented as a SIZE in 0.24 (`doc/user.rst`: "Default is 4 MB (4 MiB)"), but a bare number is still kilobytes:
+`src/config/PlayerConfig.cxx:21-23` parses it with `ParseSize(s, KILOBYTE)` and `src/config/Parser.cxx:69-118` applies
+that factor when no suffix is given — `"4096"` is 4 MiB, as on blue. One behaviour change on the way up from
+0.23.12: 0.23.13 made `--no-daemon` MPD "shut down if parent process dies", so on green an orchestrator crash takes
+its MPD with it instead of orphaning it (0.23.10 also stopped requiring `log_file`; the builder still sets one).
+Nothing to change; `musicService.js:565-620` runs as is.
+
+Bench step (§1b, after `npm start`): the panel's System Status shows `music` healthy; play a track from the panel;
+start a video and hear the music duck under it and return (`ROADMAP.md:473-474`). If `music` is down,
+`/tmp/aln-mpd.log` names the refused key or the missing output; the table above says there should be none.
+
 ## 3. Copied from blue, not recreated
 
 Blue is reachable as a network share; paths below are as they appear on blue's own disk. `~` is blue's
@@ -328,7 +427,7 @@ fix ownership on green (`chown -R <green-user>` on the copied trees).
 | What | Path on blue | Why copied, and the check | Source |
 |---|---|---|---|
 | Certificate and key | `~/ALN-Ecosystem/backend/ssl/cert.pem`, `~/ALN-Ecosystem/backend/ssl/key.pem` | The tablets and the Pi 4 display accepted the certificate blue SERVES once; a new one means every device warns again. First establish that this file is that certificate (sha256 fingerprint of the file = fingerprint from `openssl s_client -connect 192.168.0.191:3000`), read its SAN and `notAfter` (§2.8). Copy after the clone, before the first `npm start`, over the tracked 10.0.0.177 pair the clone delivers; key mode 600. If the fingerprints differ or the date fails, regenerate with the IP-SAN recipe instead. | `DEPLOYMENT_GUIDE.md:445`, `:447-517`; `backend/ecosystem.config.js:22-23`; `.env.example:111-112`; `ROADMAP.md:501-507`, `:772-775`; §2.8 |
-| Environment file | `~/ALN-Ecosystem/backend/.env` | ADMIN_PASSWORD, JWT_SECRET, HOME_ASSISTANT_TOKEN and ~30 other keys. Mode 600. Then AUDIT for blue-only values: `grep -n -E '^(PACK_PATH\|PROFILE_PATH\|SSL_KEY_PATH\|SSL_CERT_PATH\|VIDEO_DIR\|HOME_ASSISTANT_URL\|HOME_ASSISTANT_TOKEN\|HA_DOCKER_CONTAINER\|SCOREBOARD_WINDOW_MARKER\|IDLE_LOOP_FILE\|CHROMIUM_BIN)=' backend/.env`. Rules: `PACK_PATH`/`PROFILE_PATH` are "LOUD warn when active" seams a production machine leaves unset (`.env.example:68-74`) — an absolute path from blue's disk does not refuse boot, it degrades lighting and the idle loop (`DEPLOYMENT_GUIDE.md:717-721`), so delete or repoint; `SSL_*_PATH` stay relative `./ssl/…` (`:111-112`); `HOME_ASSISTANT_URL` stays `http://localhost:8123` (`:139`); `HOME_ASSISTANT_TOKEN` (`:140`) was issued by the HA instance in the copied volume and is valid only with that volume — if HA is recreated from scratch, mint a new token; `HA_DOCKER_CONTAINER` (`:147`) must equal the `docker run --name` (`DEPLOYMENT_GUIDE.md:740-741`); set `CHROMIUM_BIN=/usr/bin/chromium` (§2.3); `SCOREBOARD_WINDOW_MARKER` (`:162`) and `IDLE_LOOP_FILE` (`:168`) are normally unset. Then key-set diff against `.env.example`: a key in one and not the other is a doc defect (`ROADMAP.md:765-768`, Appendix C's five undocumented keys are exactly this list). | `DEPLOYMENT_GUIDE.md:119-165`; `.gitignore:55`; `backend/.env.example:60`, `:66-74`, `:108-112`, `:136-147`, `:162`, `:168`, `:170-172` |
+| Environment file | `~/ALN-Ecosystem/backend/.env` | ADMIN_PASSWORD, JWT_SECRET, HOME_ASSISTANT_TOKEN and ~30 other keys. Mode 600. Then AUDIT for blue-only values: `grep -n -E '^(PACK_PATH\|PROFILE_PATH\|SSL_KEY_PATH\|SSL_CERT_PATH\|VIDEO_DIR\|HOME_ASSISTANT_URL\|HOME_ASSISTANT_TOKEN\|HA_DOCKER_CONTAINER\|SCOREBOARD_WINDOW_MARKER\|IDLE_LOOP_FILE\|CHROMIUM_BIN\|DBUS_SESSION_BUS_ADDRESS\|XDG_RUNTIME_DIR)=' backend/.env`. Rules: `PACK_PATH`/`PROFILE_PATH` are "LOUD warn when active" seams a production machine leaves unset (`.env.example:68-74`) — an absolute path from blue's disk does not refuse boot, it degrades lighting and the idle loop (`DEPLOYMENT_GUIDE.md:717-721`), so delete or repoint; `SSL_*_PATH` stay relative `./ssl/…` (`:111-112`); `HOME_ASSISTANT_URL` stays `http://localhost:8123` (`:139`); `HOME_ASSISTANT_TOKEN` (`:140`) was issued by the HA instance in the copied volume and is valid only with that volume — if HA is recreated from scratch, mint a new token; `HA_DOCKER_CONTAINER` (`:147`) must equal the `docker run --name` (`DEPLOYMENT_GUIDE.md:740-741`); set `CHROMIUM_BIN=/usr/bin/chromium` (§2.3); `SCOREBOARD_WINDOW_MARKER` (`:162`) and `IDLE_LOOP_FILE` (`:168`) are normally unset; `DBUS_SESSION_BUS_ADDRESS`/`XDG_RUNTIME_DIR` (absent from `.env.example`) embed a uid — keep blue's values only if green's login user has the same `id -u`, else write `/run/user/<uid>/bus` and `/run/user/<uid>` (§2.11). Then key-set diff against `.env.example`: a key in one and not the other is a doc defect (`ROADMAP.md:765-768`, Appendix C's five undocumented keys are exactly this list). | `DEPLOYMENT_GUIDE.md:119-165`; `.gitignore:55`; `backend/.env.example:60`, `:66-74`, `:108-112`, `:136-147`, `:162`, `:168`, `:170-172` |
 | Home Assistant volume | `~/ha-config/` (the directory mounted at `/config`) | The seven `scene.*` definitions (`scenes.yaml` — the scene editor reads and writes that file), the owner account, and the long-lived token exist only here. Copy before the first `docker run` and mount the copy. VERSION: on 2026-09-12 `:stable` is 2026.9.2 (released 2026-09-11); blue's version is unknown to this document — read it on blue with `curl -s -H "Authorization: Bearer $HOME_ASSISTANT_TOKEN" http://localhost:8123/api/config` (field `version`) and blue's image with `docker inspect homeassistant --format '{{.Config.Image}}'` + `docker images --digests ghcr.io/home-assistant/home-assistant`. Smallest fix: run green on blue's EXACT image — `docker run … ghcr.io/home-assistant/home-assistant@sha256:<blue's digest>` in place of `:stable` — so no migration happens this week; upgrade both later. If `:stable` is used anyway, HA migrates `.storage` on first start (watch `docker logs homeassistant`); `scenes.yaml` is not part of that migration. Either way, verify: `curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8123/api/states \| grep -o '"entity_id":"scene\.[a-z0-9_]*"' \| sort` lists the seven ids of `aln-full-kit.json:48-66`, then one scene from the GM panel on a bulb. Fallback (days, so do the version check first): author the seven scenes by hand from the profile's bindings (`DEPLOYMENT_GUIDE.md:785-790`). The bulb integrations copy too; at the venue blue and green never run at once. | `DEPLOYMENT_GUIDE.md:742-747`, `:771-790` (owner task `:777`); `ROADMAP.md:501-507`, `:754-756`; §7 Home Assistant, Docker |
 | Game videos | `~/ALN-Ecosystem/backend/public/videos/*.mp4` incl. `idle-loop.mp4` | Git-excluded (`.gitignore:10`); every non-null `video` in tokens.json plus the profile's `bindings.surfaces` file. Must be HEVC. `loopimages/` is in git. Verify with the guide's block 1 (`:841-847`): the node one-liner prints `videos OK` and `ls public/videos/idle-loop.mp4` succeeds. | `DEPLOYMENT_GUIDE.md:814-832`, `:836-847`; `backend/config/profiles/aln-full-kit.json:71` |
 | Music library | `~/ALN-Ecosystem/backend/public/music/` | Git-excluded (`.gitignore:17-19`); `music-playlists.json` references it. Run `npm run music:seed` after (guide block 3, `:856-857`). | `DEPLOYMENT_GUIDE.md:819`, `:828`, `:857` |
@@ -399,19 +498,20 @@ Not carried over, by design:
 | 1 | `apt update && apt upgrade -y` (`:1052`) | Same | none |
 | 1 | NodeSource `setup_20.x` (`:1055`) | `setup_22.x` | **changed** |
 | 1 | `apt install nodejs vlc mpd git xdotool wmctrl chromium-browser` (`:1056`) | `apt install nodejs vlc mpd git xdotool wmctrl chromium pulseaudio-utils pipewire-bin dbus-bin` | **renamed** chromium; **added** pulseaudio-utils (`pactl`), pipewire-bin (`pw-play`, `pw-dump`), dbus-bin (`dbus-monitor`) — the last two are dependencies of `pipewire`/`dbus` and normally present; naming them is idempotent |
-| 1 | disable `mpd`, `mpd.socket` (`:1059-1060`) | Same | none |
+| 1 | disable `mpd`, `mpd.socket` (`:1059-1060`) | Same; the package is 0.24.4 (blue: 0.23.12) and every key the orchestrator writes is accepted (§2.13) | none |
 | 1 | `npm install -g pm2` (`:1063`) | Same | none |
 | 1 | clone, `npm install` (`:1067-1069`) | Same; pin the pack commit (§4) | none |
 | 1b | — | Certificate: fingerprint check on blue, copy the served pair over the tracked one, before the first `npm start` (§2.8) | **added** |
 | 2 | HDMI lines in `/boot/firmware/config.txt` (`:1074-1081`) | Same path; keys may be ignored on Pi 5 (§1b) | verify |
 | 2b | HEVC only, `--vout=gles2` (`:1083-1099`) | Same | none |
 | 3 | static IP by nmcli (`:1101-1120`) | Router reservation at cutover, or nmcli with the persistence check (§2.6) | **changed** |
-| 4 | `npm start`, `pm2 save`, `pm2 startup` (`:1130-1132`) | Same; the boot-race test (`:1152-1158`) runs on X11 as before | none |
+| 4 | `npm start`, `pm2 save`, `pm2 startup` (`:1130-1132`) | Same commands, environment made explicit first: the first `npm start` from a terminal in green's desktop session, or `DBUS_SESSION_BUS_ADDRESS` + `XDG_RUNTIME_DIR` in `backend/.env` (§2.11); then the cold-boot check (`/proc/<pid>/environ`, `audio` and `vlc` healthy, pause/resume from the panel); the boot-race test (`:1152-1158`) runs on X11 as before | **changed** (environment) |
 | 4b | Media verify (`:836-858`) | Same: blocks 1 (videos + idle loop), 2 (cue sounds), 3 (`music:seed`); plus the asset-manifest hash check (§4) | **carried in** (was missing from the first draft) |
 | 5 | WirePlumber Lua drop-in (`:1168-1184`) | The `.conf` drop-in of §2.2, with the `pw-dump` check | **changed** |
 | HA | `get.docker.com`, `usermod -aG docker`, `docker run … -v ~/ha-config:/config … :stable` (`:735-747`) | Same, with the copied `~/ha-config` and blue's image digest in place of `:stable`; the seven-scene check (§3) | **changed** (version pin) |
 | — | `ufw` rules (`:1206-1208`) | `ufw` is absent; skip | skip |
 | — | `pip install -r scripts/requirements.txt` (`scripts/requirements.txt:2`) | apt `python3-requests python3-pil python3-dotenv python3-jsonschema`, or a venv | **changed** (optional on green) |
+| gate | `docs/preflight-checklist.md` as the acceptance gate (`ROADMAP.md:452-453`) | Run it, after three repairs: chromium/xdotool/wmctrl in §7, a window-control check in place of `xset q` in §8.3, the header path (§2.12); the proof is the kiosk on the TV | **changed** (checklist repair) |
 
 ## 6. Green as the home development environment afterwards (rung 2)
 
@@ -455,8 +555,11 @@ Where it collides with production on the same machine:
 
 Short form: on green, testing and the show never run at the same time. Sequence: `pm2 stop aln-orchestrator`,
 `docker stop homeassistant`, run the rig or the suites, `sudo bash tests/rung1/down.sh`, `sudo rm -f /tmp/aln-*`,
-`docker start homeassistant`, `pm2 start aln-orchestrator`. The preflight on the GM panel is the check that
-production is whole again.
+`docker start homeassistant`, `pm2 start aln-orchestrator`. Then show the scoreboard from the panel and see it on the TV, play
+one video, hide it again: that, not the panel's `display` light, is the check that production is whole again (§2.12 —
+the light stays green while the kiosk is hidden, `displayDriver.js:359-378`); then the repaired checklist. Note that
+`pm2 start` after the rig reuses PM2's saved environment (§2.11), but a `pm2 delete` followed by a fresh `npm start`
+from the rig's root shell would not — run any fresh first start from the desktop session.
 
 ## 7. Sources (all read 2026-09-12)
 
@@ -561,6 +664,23 @@ Timezone
 Test tooling
 - https://playwright.dev/docs/intro — System requirements: "Debian 12 / 13, Ubuntu 22.04 / 24.04 / 26.04 (x86-64 or arm64)"; "Node.js: latest 22.x, 24.x or 26.x".
 
+PM2 (§2.11)
+- https://pm2.keymetrics.io/docs/usage/environment/ — "PM2 will inject environment in this order when starting a new process: First the PM2 CLI will use its environment so the current environment of your shell will be injected."
+- https://pm2.keymetrics.io/docs/usage/process-management/ — "To update environment variables or PM2 options, specify the --update-env CLI option".
+- https://pm2.keymetrics.io/docs/usage/startup/ — `pm2 save`; "To manually bring back previously saved processes (via pm2 save): pm2 resurrect".
+- https://raw.githubusercontent.com/Unitech/pm2/master/lib/templates/init-scripts/systemd.tpl — the generated unit: `User=%USER%`, `Environment=PATH=…`, `Environment=PM2_HOME=…`, `ExecStart=%PM2_PATH% resurrect`, `After=network.target`; nothing else.
+- https://raw.githubusercontent.com/Unitech/pm2/master/lib/API/Startup.js — `dump()` (`:423-482`) writes the running process list (`getMonitorData`) to the dump file.
+- https://raw.githubusercontent.com/Unitech/pm2/master/lib/binaries/CLI.js — `-a --update-env`, "force an update of the environment with restart/reload".
+
+MPD (§2.13)
+- https://packages.debian.org/bookworm/mpd — mpd 0.23.12-1 (binaries 0.23.12-1+b1); Depends `libpulse0`.
+- https://packages.debian.org/trixie/mpd — mpd 0.24.4-1; Depends `libpulse0`.
+- https://raw.githubusercontent.com/MusicPlayerDaemon/MPD/v0.24.4/NEWS — ver 0.24 (2025/03/11) through 0.24.4 (2025/05/20): no configuration key removed, renamed or deprecated; 0.23.13 "shut down if parent process dies in --no-daemon mode"; 0.23.10 "log to stdout by default, don't require log_file setting".
+- https://raw.githubusercontent.com/MusicPlayerDaemon/MPD/v0.24.4/src/config/Templates.cxx and …/Templates.hxx — the accepted top-level keys with `repeatable`/`deprecated` flags; all eleven builder keys present; `buffer_before_play` is the deprecated one.
+- https://raw.githubusercontent.com/MusicPlayerDaemon/MPD/v0.24.4/src/config/PlayerConfig.cxx and …/src/config/Parser.cxx — `ParseSize(s, KILOBYTE)`; a bare number gets the default factor.
+- https://raw.githubusercontent.com/MusicPlayerDaemon/MPD/v0.24.4/src/config/File.cxx — `throw FmtRuntimeError("unrecognized parameter: {:?}", name)` (`:223`); deprecated keys warn only (`:135-138`).
+- https://raw.githubusercontent.com/MusicPlayerDaemon/MPD/v0.24.4/doc/user.rst — `audio_buffer_size SIZE` "Default is 4 MB (4 MiB)"; `restore_paused yes|no`.
+
 ## 8. Web-tool failures reported by the readers and the reviser
 
 Readers (first pass): none. All nine readers reported `webToolFailed: false`. Partial results worth knowing:
@@ -583,20 +703,28 @@ Reviser (gap-closure pass, 2026-09-12):
 - home-assistant.io's scene integration page does not say where UI scenes are stored; the scene editor page does (`scenes.yaml`).
 - Three forum threads surfaced for "X11 on Trixie" (t=394204, p=2341782, t=389477) contain no staff statement on X11 status; they were not used as evidence.
 
+Completeness pass (2026-09-12, §2.11–2.13):
+
+- The web-fetch summariser reported "no entries" for the MPD `NEWS` file and omitted `--update-env` from PM2's environment page; both files were then fetched raw with `curl` and read directly, which is what rows 17 and 19 rest on (the process-management page and PM2's CLI source carry `--update-env`).
+- mpd.readthedocs.io's "stable" manual shows no version marker; the version-pinned `doc/user.rst` at tag v0.24.4 was used instead. `src/config/PartitionConfig.cxx` (guessed) does not read `audio_buffer_size`; a code search found `src/config/PlayerConfig.cxx`, confirmed at the tag.
+- No web tool failed on this pass.
+
 ## 9. Ranked: what breaks on a fresh install if nothing is done
 
 1. **Wayland session.** No scoreboard on the TV, display service down, VLC fullscreen unverified. Whole show-control surface. The X11 stack is on the image; the switch is one menu entry; the contingency is blue. (§2.1)
 2. **Router reservation on blue's MAC.** Green is unreachable at 192.168.0.191; every tablet and scanner fails. Not an OS change, a cutover step. (§2.6)
 3. **The certificate.** A clone serves the 10.0.0.177 file; if the copy is skipped, mis-ordered, or copies a file blue does not actually serve, the tablets warn or NFC stops in a "secure context" that is not. Checked copy, or the IP-SAN recipe. (§2.8)
-4. **Chromium binary name.** Kiosk spawn fails, display service down, even after the X11 fix. (§2.3)
-5. **WirePlumber Lua drop-in ignored.** Silent: video audio can come back muted after a restart, and copying blue's file hides the warning; a wrong `.conf` key passes the status check — the `pw-dump` line is the real test. (§2.2)
-6. **Host timezone.** Silent: every hardware-scanner timestamp and the validator report shift by hours; nothing warns until a report is read. (§2.7)
-7. **Home Assistant version skew.** `:stable` is 2026.9.2; blue's is unknown until read; a migration surprise on show week has a days-long fallback. Run blue's digest. (§3)
-8. **Node 20.** Engine warning, unsupported runtime, no security fixes. Runs, probably. (§2.4)
-9. **Python pip refusal.** Thursday's token sync fails if run on green. (§2.5)
-10. **`desktop-control.sh` no-op.** ~290 MB not freed. Harmless on a Pi 5. (§2.1)
-11. **`ufw` absent.** Nothing to do on the kit network. (§2.10)
+4. **PM2's frozen environment.** If the first `npm start` ran in a shell without the session bus and the runtime dir, every boot after it has `audio` down, every VLC D-Bus call throwing and no idle loop, with nothing in the log naming the cause. One shell choice, or two lines in `.env`, then a cold-boot check. (§2.11)
+5. **Chromium binary name.** Kiosk spawn fails, display service down, even after the X11 fix. (§2.3)
+6. **WirePlumber Lua drop-in ignored.** Silent: video audio can come back muted after a restart, and copying blue's file hides the warning; a wrong `.conf` key passes the status check — the `pw-dump` line is the real test. (§2.2)
+7. **The acceptance gate is blind to 1 and 5.** The checklist passes a Wayland session with no `chromium` binary, and the panel's `display` light stays green while the kiosk is hidden. Not a failure by itself; it lets the two through. Repair the checklist; trust the TV. (§2.12)
+8. **Host timezone.** Silent: every hardware-scanner timestamp and the validator report shift by hours; nothing warns until a report is read. (§2.7)
+9. **Home Assistant version skew.** `:stable` is 2026.9.2; blue's is unknown until read; a migration surprise on show week has a days-long fallback. Run blue's digest. (§3)
+10. **Node 20.** Engine warning, unsupported runtime, no security fixes. Runs, probably. (§2.4)
+11. **Python pip refusal.** Thursday's token sync fails if run on green. (§2.5)
+12. **`desktop-control.sh` no-op.** ~290 MB not freed. Harmless on a Pi 5. (§2.1)
+13. **`ufw` absent.** Nothing to do on the kit network. (§2.10)
 
-Cleared on review, not ranked: BlueZ 5.82's `bluetoothctl` output (§2.9); Playwright on arm64 Debian 13 (§6);
+Cleared on review, not ranked: BlueZ 5.82's `bluetoothctl` output (§2.9); MPD 0.24.4's configuration keys (§2.13); Playwright on arm64 Debian 13 (§6);
 `pw-play`/`dbus-monitor` packages (§1 row 3, §5); the ESP32 asset corpus and manifest (§4); the cue-sound count
 (seven, §3); the media verify block (§5 row 4b).
