@@ -16,11 +16,12 @@ GM has now: the three health words with dormant grey and its door, the
 display as the ninth service (a crashed kiosk reads red), cues silenced
 by absent equipment, the session-start require gate with the typed
 override, the preflight stamp, the profile identity in `sync:full` and
-`/health`. CI: Rung-1 green on the designated branch (run 18); the Test
-workflow's last complete run (299, `fae51b6`) was 9/10 with one red Tier
-L leg caused by a pre-existing harness race (a parallel worker wipes the
-shared `backend/data/` during a restart test — home T7a, plan §9); run
-300 on `fb2c29c` is the current verdict. Records: plan §9 (execution
+`/health`. CI: green on the designated branch — Test run 300 on `fb2c29c`
+10/10 (all four Tier L legs, integration, unit + contract, scanners,
+scripts, ESP32) and Rung-1 run 18; T1a's CI is closed. Run 299 had one
+red Tier L leg from a pre-existing harness race (a parallel worker wipes
+the shared `backend/data/` during a restart test — home T7a, plan §9);
+it did not recur on run 300. Records: plan §9 (execution
 record through the follow-ups), the ledger at
 `.superpowers/sdd/2026-09-12-block2-hardening-plan/progress.md` (rulings
 1–28, deferred minors), briefs under `docs/plans/briefs/`. **Owner
