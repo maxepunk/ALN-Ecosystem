@@ -111,9 +111,15 @@ Thursday preflight.
   throwing at boot, and the display health word (probe reports healthy
   while hidden; nothing returns it from down without a launch). Per
   R26 survivors are fixed as one task before any lane merges.
-- Research: revision 2 running (`wf_a50361c3-286`) to close the three
-  show-night gaps; the document (revision 1) is committed in the docs
-  worktree; then the guide repair (R24) and your guide-ready note.
+- Research: revision 2 committed (7b4493e, 730 lines); revision 3
+  running (`wf_ff6f5b79-f04`, script `research-revision-3.js`) to close
+  five narrower gaps its critic found (a checklist remedy naming a PM2
+  block that does not exist; the browser check must read `CHROMIUM_BIN`
+  from `backend/.env`; the session-bus address shape; Appendix C partly
+  stale; desktop autologin on the new release); then the guide repair
+  (R24) and your guide-ready note.
+- Lane worktrees: one command each after the merge,
+  `<scratchpad>/cut-lane-worktree.sh <lane> [scanner]`.
 - Every workflow resumes with `Workflow({scriptPath, resumeFromRunId})`;
   scripts under `<scratchpad>/` (`harness-minimum-build.js`,
   `research.js`, `research-revision-2.js`, `arms-factsheet.js`,
