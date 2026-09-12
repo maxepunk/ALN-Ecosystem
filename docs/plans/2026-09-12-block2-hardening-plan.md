@@ -43,7 +43,7 @@ Schedule decisions are the owner's at the §8 checkpoints.
 | R8 | Schedule, pauses, and the go-to-green decision are the owner's, taken at the §8 checkpoints on observable reports; no time pricing in this plan | owner, 2026-09-12 |
 | R9 | The pre-build red team's 100 findings are ruled in the adjudication record; the twelve owner-visible rulings (★ there) are reported at the "before any code" checkpoint | orchestrator, 2026-09-12 |
 | R10 | Re-slice recorded: dormant's operator door rides T3 with the verb commands (ratified CS.2 text put both doors in CS.2) | orchestrator, 2026-09-12 (D-26) |
-| R11 | The kit's network values were already in the repo (owner, checkpoint 1: "don't you have the ssid, ip, dns name in our repos already?"); T1b authors the ALN profile's `network` block from them (SSID and IP from the ESP32 sample config, the name from the July profile design, dnsmasq posture from CONTEXT.md §5). SEC-25's "owner task" is closed; the certificate spike at Stage B confirms the name | owner + orchestrator, 2026-09-12 |
+| R11 | The kit's network values were already in the repo (owner, checkpoint 1: "don't you have the ssid, ip, dns name in our repos already?"); T1b authors the ALN profile's `network` block: SSID `aboutlastnetwork`, IP `192.168.0.191` (owner-stated production values; the ESP32 sample config's `Sidewinder` / `10.0.0.177` is a dev network), the name from the July profile design, dnsmasq posture from CONTEXT.md §5. SEC-25's "owner task" is closed; the certificate spike at Stage B confirms the name | owner + orchestrator, 2026-09-12 |
 
 ## 2. Census delta that changes the design (from the re-open census)
 
@@ -294,12 +294,15 @@ own contract edits. T1b runs first; T1a after it.
 Files: `backend/config/profiles/installation-profile.schema.json`
 (P1 interior, `additionalProperties: false`); `backend/config/profiles/aln-full-kit.json`
 (endpoints: all families installed; `network` authored per R11:
-`mode: kit-network`, `kitNetwork: {ssid: "Sidewinder", orchestratorIp:
-"10.0.0.177", orchestratorName: "play.aboutlastnightgame.com",
-localDnsOverride: true}` — sources: ESP32 `sample_config.txt` and
-`CLAUDE.md` for the SSID and IP, `2026-07-09-phase3-1-installation-profile.md`
-for the name, `CONTEXT.md` §5 "Kit network" for the dnsmasq posture; the
-certificate spike confirms the name at Stage B); `ALN-TokenData/pack-manifest.json` (`hardware.endpoints`
+`mode: kit-network`, `kitNetwork: {ssid: "aboutlastnetwork",
+orchestratorIp: "192.168.0.191", orchestratorName:
+"play.aboutlastnightgame.com", localDnsOverride: true}` — SSID and IP
+are the owner's stated production values (2026-09-12; the ESP32
+`sample_config.txt` values `Sidewinder` / `10.0.0.177` are a dev
+network, NOT production), the name from
+`2026-07-09-phase3-1-installation-profile.md`, the dnsmasq posture from
+`CONTEXT.md` §5 "Kit network"; the certificate spike confirms the name
+at Stage B); `ALN-TokenData/pack-manifest.json` (`hardware.endpoints`
 gains `audio.sinks` and `lighting.instruments`, degrade; manifest
 rebuilt; parent pin bumped); `backend/tests/e2e/fixtures/packs/toy-heist/`
 (manifest gains `lighting.instruments` and `audio.sinks` degrade; cues
