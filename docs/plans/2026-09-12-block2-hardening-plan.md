@@ -513,14 +513,101 @@ and `p2-factsheet.md` (rig hygiene; reader brief
 
 | Task | Serves | Repos | Runs with | Model |
 |---|---|---|---|---|
-| P1 the installation profile check at boot | the one truth (a profile that lies makes every verdict wrong); the GM's loop (the NO-GO names the broken field) | backend + contracts | after P2a; beside P2b | opus |
-| P2a merge gate, worker isolation, run teardown | the engineering loop only | backend tests + scripts | first | sonnet |
-| P2b log guard, health timer, fixture race | the engineering loop only | backend + tests | beside P1 | sonnet |
+| P2b log guard, health timer, fixture generation | the engineering loop only (a dead pipe can fill the disk in minutes: 7.3 GB free here) | backend + tests + rung-1 scripts | first | opus |
+| P2a worker isolation, run teardown, merge gate, probe user, PID-file test | the engineering loop only | backend tests + scripts | after P2b | opus |
+| P1 the installation profile check at boot | the one truth (a profile that lies makes every verdict wrong); the GM's loop (the NO-GO names the broken field) | backend + contracts | after P2a | opus |
 
-P2a and P2b are pinned when the P2 fact sheet lands. Ordering reason:
-P2a's merge gate then gates P1's merge; P1 and P2b touch disjoint
-files (P1 owns `package.json` dependencies, P2a its scripts block —
-they never run together).
+Sequential, all in the main checkout on task branches cut from the
+designated branch: the log guard lands before any local Tier L leg runs
+again (the disk is thin); the merge gate then gates P1's merge. No
+worktrees: nothing here is worth the node_modules cost.
+
+**Design pins for P2 (from the fact sheet; each a ruling of this plan):**
+
+- **P21. One data directory and one log directory per worker.**
+  `startOrchestrator` passes `DATA_DIR` and `LOGS_DIR` to the child:
+  `/tmp/aln-e2e-env/w<slot>/data` and `/tmp/aln-e2e-env/w<slot>/logs`,
+  `slot = TEST_PARALLEL_INDEX || '0'` (the bus's own key). A restart in
+  the same worker keeps the same directories. `clearSessionData()`
+  clears only that worker's data directory; its `memory` branch, which
+  clears a singleton in the wrong process, is deleted and the comment
+  says the respawn is the isolation. The child's `cwd` stays `backend/`.
+- **P22. A closed output pipe never fills the disk.** In
+  `src/utils/logger.js`: one `error` listener each on `process.stdout`
+  and `process.stderr`, attached once, that on `EPIPE` or
+  `ERR_STREAM_DESTROYED` silences the Console transport (`silent =
+  true`) and writes one line to the file transports; the
+  `uncaughtException` handler, on an error whose `code` is `EPIPE`,
+  silences the console the same way instead of logging through it, then
+  exits after the existing one-second delay. Under PM2 on the Pi the
+  pipe never closes, so the guard is inert in production. Proof RED
+  first: spawn the orchestrator with a piped stdout, close the read end,
+  and watch its log directory for 10 seconds under a 200 MB cap and a
+  hard kill; before the fix the file grows without bound, after it the
+  file gains one line and the process exits.
+- **P23. The health timer stops when a test file ends.**
+  `resetAllServicesForTesting` calls
+  `serviceHealthRegistry.stopRevalidation()` right after
+  `performSystemReset`, covering all twenty files; `forceExit` and the
+  global teardown stay as they are (recorded: `forceExit` masks leaked
+  handles; a later hygiene row may remove it).
+- **P24. Fixture generation is deterministic and atomic.** The witness
+  register and the simulation profiles are generated from ONE fixed pack
+  set on every pass — `ALN-TokenData`, `toy-heist`, `toy-heist-require`,
+  `parity-pack` — never from the requesting run's pack alone, so every
+  worker writes identical content and the witness Home Assistant never
+  restarts mid-run. `loadPack()` treats a missing `cues.json` as benign
+  emptiness (`cues: []`, CONTEXT.md §2). Every generated file is written
+  to `<file>.tmp-<pid>` and renamed into place. No lock file.
+- **P25. A run can be torn down.** `session-env.js` passes `pidFile`
+  (bus: `/tmp/aln-e2e-env/dbus-w<slot>.pid`; display:
+  `/tmp/aln-e2e-env/xvfb.pid`) and `pidDir` (`/tmp/aln-e2e-env`) for
+  every daemon it starts; `down.sh` also reaps `/tmp/aln-e2e-env/*.pid`
+  and removes that directory's sockets. The orchestrator child is
+  spawned `detached: true` and stopped by process group, so its own
+  children (kiosk, monitors) die with it; `startOrchestrator` appends the
+  child's PID to `/tmp/aln-e2e-env/orchestrators.pids` and
+  `stopOrchestrator` removes it; `vlc-service.js` does the same in
+  `vlcs.pids`. Playwright's `globalTeardown` is re-enabled to reap those
+  two files only (never the shared daemons, which the rig owns), and
+  `startOrchestrator` sweeps stale entries first, killing a listed PID
+  only when `/proc/<pid>/cmdline` names `src/server.js` or `vlc`.
+- **P26. One command mirrors CI.** `backend/scripts/merge-gate.sh`
+  (npm script `merge-gate`) runs, in order, with every exit code
+  captured and `pipefail` on: a disk check (fail under 5 GB free); a
+  residue check (fail and list orphan orchestrators, VLCs, worker buses);
+  backend `lint`, `test -- --coverage`, `coverage:check`,
+  `test:integration`; scanner `test -- --coverage`, `coverage:check`,
+  `lint`, `build`; PWA `test`; config-tool `test` and `lint`; scripts
+  `pytest` and ESP32 `pio test -e native` when their tools exist, else a
+  LOUD skip line; the four Tier L legs with CI's exact env values,
+  selectable by `--legs`; the rung-1 audit when `/tmp/rung1` is
+  provisioned (`--no-audit` to skip); a residue check and a log-size
+  check after. It prints one verdict table with each step's exit code
+  and the log path, and exits non-zero on any failure or any residue.
+- **P27. Small hygiene.** `probe.sh` runs `pactl info` as
+  `$RUNG1_USER` through `runuser`, the way `up.sh` does;
+  `bluetoothService.test.js` gains an `afterAll` that stops the monitor
+  so `/tmp/aln-pm-bluez-dbus-monitor.pid` is not left behind.
+- **Out of P2, recorded:** `forceExit` in the Jest configs; CI's Tier L
+  job has no teardown step (the runner is disposable; the local gate
+  needs one, hence P25/P26); the whole set stays under the size cap by
+  the split above.
+
+Red-first for P2 (seams): P22's reproduction; a unit test that a
+stdout `error` with `EPIPE` silences the console and writes one line;
+`clearSessionData` with two worker directories leaves the other
+untouched; the child env carries `DATA_DIR`/`LOGS_DIR` under the slot;
+the reset helper stops the timer (the integration run prints no
+"import after teardown" message); `generate-fixtures` on the fixed set
+produces identical bytes twice and tolerates a pack without
+`cues.json`; the pids files fill and empty across start and stop;
+`down.sh` and the global teardown reap what they list and nothing else;
+the gate's verdict table on a run with one forced failure exits
+non-zero. Done when unit + contract, integration, ratchet, lint are
+green, all four Tier L legs run locally three times with three workers
+with zero failures and zero retries, and the residue check after them
+is empty.
 
 **Design pins for P1 (from the fact sheet; each a ruling of this plan):**
 
