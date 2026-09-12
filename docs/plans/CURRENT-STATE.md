@@ -92,7 +92,7 @@ Thursday preflight.
 ## 6. Running, and on disk
 
 - Five workflows running (owner: "go" 21:40Z; the adversarial pass
-  "agreed" 21:5xZ, 2026-09-12;
+  "agreed" 21:59:19Z, 2026-09-12;
   resumable after any stop with `Workflow({scriptPath, resumeFromRunId})`,
   finished agents cached; scripts copied to the scratchpad
   `<scratchpad>/harness-minimum-build.js`, `research.js`,
