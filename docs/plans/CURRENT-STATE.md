@@ -65,10 +65,23 @@ Thursday preflight.
 
 ## 5. Open items, and who owns them
 
+- Owner decisions pending (asked 2026-09-12 ~20:30Z, with the
+  consequence analysis in the conversation): (a) host-config modes
+  become `self | adopt` only — pin P11 loses `off` (the profile is the
+  one truth for whether a process runs tonight); (b) P15's "observe
+  tokens evict per deviceId" dropped; the `deviceType: gm` vestige gets
+  a ledger row; (c) Chromium moves onto the one supervision path
+  (process monitor with display hooks), replacing the brief's shared-
+  policy-two-spawn-paths ruling; (d) the explicit go for workflows.
+  The three lane briefs are rewritten after these answers, before any
+  review runs again.
 - Deployment guide ready for a fresh OS on green: orchestrator; the
-  research is running; a repair task follows; the owner gets a note
-  with the copy / pull / install lists. Do not start on green before it.
-- Thursday's sync runbook for the owner's review: orchestrator, step 2.
+  research has died three times (container restart, then two stops);
+  it relaunches as a workflow (topic readers, cached per topic). The
+  owner gets a note with the copy / pull / install lists. Do not start
+  on green before it.
+- Thursday's sync runbook for the owner's review:
+  `docs/runbooks/2026-09-thursday-token-sync.md`.
 - During the home setup, owner: copy blue's certificate files; capture
   the seven Home Assistant scenes from blue; pair the speaker and give
   its sink name for the profile; flash the three scanners; practice the
@@ -78,42 +91,38 @@ Thursday preflight.
 
 ## 6. Running, and on disk
 
-- Container restarted ~18:49Z 2026-09-12: rig daemons died, files
-  survived. Rig brought back with `backend/tests/rung1/up.sh` (log
-  `/tmp/rung1/up-after-restart.log`); engine not started. Recipe:
-  `2026-09-12-container-baseline.md` §7. Needed before any Tier L leg.
-- Main checkout is on the harness task branch while its implementer
-  runs there; docs commits go through the worktree `.worktrees/docs`
-  (designated branch). Remove that worktree before checking the
-  designated branch out in the main checkout again. Never commit in a
-  checkout where an implementer is editing.
+- Nothing is running (2026-09-12 20:30Z). Six agents (harness
+  implementer, researcher, three brief reviewers, arms reader) were
+  stopped at 19:59:41Z by the owner's stop button; stopped agents cannot
+  be resumed (documented). The harness implementer's two commits survive
+  on `claude/nice-curie-hescfv-harness-minimum` (`1b2cccb` P22,
+  `30d1514` P21), tree clean; no report, review or fact sheet was written.
+- Harness facts verified from the official docs (guide agent, 20:25Z):
+  a plain message never stops background agents; the stop button stops
+  every running one and they cannot be resumed; a COMPLETED agent can be
+  resumed by message with its context; compaction does not touch running
+  agents; a container restart ends all background work; workflows resume
+  from their run id with finished agents' results cached, cap on this
+  4-CPU box = 2 concurrent agents per workflow; workflows need the
+  owner's explicit "use a workflow"; auto worktrees (`.claude/worktrees/`)
+  branch from the default branch and do not init submodules, so lane
+  worktrees stay hand-cut under `.worktrees/`.
+- Main checkout is on the harness task branch; docs commits go through
+  the worktree `.worktrees/docs` (designated branch). Remove that
+  worktree before checking the designated branch out in the main
+  checkout again. Never commit in a checkout where an implementer edits.
+- Rig: shared arms up under `/tmp/rung1` (engine stopped); a restart
+  loses them (recipe `2026-09-12-container-baseline.md` §7).
 - Scratch `.superpowers/sdd/2026-09-12-block2-hardening-plan/`: the
   progress file (append-only; live-state lines at its end); six fact
   sheets (`supervisor-`, `credentials-`, `self-heal-factsheet.md`,
   `sweep-audit-producers/-renderers/-restore.md`), each opening with a
   Conclusions section — read only that; reviews `p1-…` (DISPATCH),
   `p2-…` (REVISE), `harness-minimum-rereview.md` (DISPATCH).
-- Running: harness-minimum implementer (opus; main checkout, branch
-  `…-harness-minimum`, brief `…/2026-09-12-harness-minimum.md`, report
-  `harness-minimum-report.md`); the fresh-install researcher (opus) →
-  `docs/plans/2026-09-12-green-fresh-install-research.md`; three
-  plan-and-brief reviewers (opus) → `credentials-lane-review.md`,
-  `supervisor-lane-review.md`, `self-heal-lane-review.md`; the
-  preflight-arms reader (sonnet) → `preflight-arms-factsheet.md`.
-- Lane briefs, committed: `docs/plans/briefs/2026-09-12-<lane>-lane.md`
-  for credentials, supervisor, self-heal (worktrees `.worktrees/<lane>`,
-  branches `claude/nice-curie-hescfv-<lane>` in the parent and, for the
-  two scanner-touching lanes, in ALNScanner; not cut until the harness
-  minimum merges). Reports: scratch `<lane>-lane-report.md`.
-- Two questions for the owner, from the briefs: (a) P15's "observe
-  tokens evict per deviceId" cannot work as written (every observe token
-  carries the same literal deviceId) — held out of the credentials
-  brief: drop it, or wire the page's deviceId through? (b) P11's `off`
-  mode has no stated meaning — the supervisor brief ships with `off` =
-  spawn once at boot, never restart automatically, the GM's Restart verb
-  still works (R13's fallback).
-- Thursday's runbook for the owner's review:
-  `docs/runbooks/2026-09-thursday-token-sync.md`.
+- Lane briefs, committed but AWAITING REWRITE after the decisions above:
+  `docs/plans/briefs/2026-09-12-<lane>-lane.md` (+ `-review.md`) for
+  credentials, supervisor, self-heal; the arms reader brief
+  `…-preflight-arms-factsheet-reader.md`.
 
 ## 7. Pointers (open when)
 
