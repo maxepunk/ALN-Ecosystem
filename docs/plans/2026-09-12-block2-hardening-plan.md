@@ -585,3 +585,18 @@ ruled method.
 ## 9. Execution record
 
 (appended per stage close: commits, test counts, review verdicts, rulings)
+
+### 2026-09-12 — block opened (owner: "go ahead and start T1b")
+
+- Draft PR opened at block open (R4): maxepunk/ALN-Ecosystem#35. TokenData and ALNScanner draft PRs open with their first commits.
+- Method frame: `superpowers:subagent-driven-development` + `verification-before-completion`; briefs under `docs/plans/briefs/`; the skill's ledger at `.superpowers/sdd/2026-09-12-block2-hardening-plan/progress.md` mirrors here.
+- Pre-flight conflict scan run (ledger table). Rulings recorded, each with its cost if wrong:
+  1. T1b runs in the main checkout on task branch `claude/nice-curie-hescfv-t1b`; worktrees begin when tasks run in parallel (a worktree lacks node_modules, submodules and the scanner dist the Tier L legs need).
+  2. The simulation generator emits the pinned endpoints interior with stand-in VALUES (`display.main.output: 'rung1-xvfb'`, sinks `rung1_hdmi`/`rung1_bt`, `provider: 'home-assistant'`); `harnessProvides()` recognizes those markers in place of `provider: 'rung1-harness'`, which the pinned interior forbids.
+  3. `toy-dormant-lighting.json` is toy-test-rig minus `lighting.instruments`, bindings kept (P2 ignores them with a warn from T1a).
+  4. `toy-heist-require` keeps packId `midnight-heist`; its contentHash is its identity (A2).
+  5. For T1a: once the P7 gate lands, the toy-require-dormant leg passes through the E2E helper sending `startAnyway` with a typed reason on that leg, plus one flow asserting the refusal (DoD f). The plan text left this open.
+  6. Round 3 re-sequenced to T3b → T3 (‖ T5) → T4: T3/T3b share `asyncapi.yaml`, T3/T4 share `commandExecutor.js` and the contracts, so the plan's "parallel only across disjoint file sets" rule forbids T3 ‖ T3b ‖ T4.
+- Owner-visible carry: `aln-full-kit.json` `stations.count` is set to the manifest's recommended 3 until the owner states tonight's count at Stage B; `orchestratorName` stays absent until the owner names it.
+- T1b brief: `briefs/2026-09-12-t1b-families-fixtures-endpoint-map.md` (Sonnet implementer). Base commit recorded in the ledger at dispatch.
+
