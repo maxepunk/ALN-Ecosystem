@@ -600,3 +600,18 @@ ruled method.
 - Owner-visible carry: `aln-full-kit.json` `stations.count` is set to the manifest's recommended 3 until the owner states tonight's count at Stage B; `orchestratorName` stays absent until the owner names it.
 - T1b brief: `briefs/2026-09-12-t1b-families-fixtures-endpoint-map.md` (Sonnet implementer). Base commit recorded in the ledger at dispatch.
 
+### 2026-09-12 — T1b CLOSED (equipment families, fixtures, endpoint map)
+
+- Commits `34571c0..2152b9f` (9 parent commits, fast-forwarded into the designated branch at `2152b9f`); ALN-TokenData `6f9bc30` on its `claude/nice-curie-hescfv` (draft PR opened). Base `7caeef3`.
+- Tests: unit + contract 2909/2909 (146 suites), ratchet 85/85, lint clean, workflow YAML parses with four legs (`production`, `toy-heist`, `toy-dormant-lighting`, `toy-require-dormant`). Four Tier L legs run locally: zero failures outside the container's recorded base set (see ruling 9). Orchestrator re-ran the suite and ratchet fresh before merging.
+- Review (Opus): spec ✅, quality Approved; one Important finding (pinned-profile legs never generated the witness register on a clean runner) fixed in round 1 and verified by a scoped re-review; seven Minor findings deferred to the close review (ledger).
+- Rulings made during the task, each with its cost if wrong (ledger holds the long form):
+  7. The four pre-existing tests pinning the "no endpoints block" world were re-pinned in T1b, not deferred.
+  8. `contentHash` covers only `files[]`; the manifest's `hardware` block escapes pack identity — accepted finding, home: T4's pack-integrity arm (both builders + parity tests). Ruling 4 amended: fixture packs are distinguished by directory.
+  9. The container's Tier L baseline is not green (6 production / 14 toy failures from 3-worker contention and a pre-existing `generate-fixtures.js` parity-pack race); local bar = no failures outside that set; CI is the gate; the race goes to T7a rig hygiene.
+  10. E2E fixture generation (the witness register) runs on every run regardless of `E2E_PROFILE_PATH`; the explicit profile only replaces the generated path.
+  11–20 (made while writing T1a's brief): the NO-GO ack is `success:false` + message `NO-GO: <reasons; joined>`; the typed dialog lives in the scanner app layer using the existing `prompt()` idiom; `display` health semantics (healthy on launch, down on launch failure or exit-while-visible, healthy "closed while hidden" on hidden exit, down when video playback is disabled by host config); restore re-evaluation at the end of `initializeServices`; the require leg passes through the E2E helper's `startAnyway` override only when the pack path names `toy-heist-require`; `resolve()` reads inventory health as a string or the snapshot entry; `cue:enable` re-arms a spent once-cue and is refused on a dormancy-disabled cue; rollup = `{status, dormantNeeds, problems, blocking}`; health `message` maxLength 300; the scanner's nested `data` pin moves to `6f9bc30` in T1a.
+- Deviation accepted: `cues.timeline` added to the toy pack's `requires` (the activation gate demanded it for the new compound cue).
+- Owner-visible carries: `aln-full-kit.json` declares `audio.sinks: [hdmi]` only (routing.json names one target) and `stations.count: 3` (the manifest's recommended count) — both corrected at Stage B; `orchestratorName` absent until the owner names it.
+- T1a brief: `briefs/2026-09-12-t1a-dormancy-core.md` (Opus implementer; reader fact sheet brief beside it). Next: T1a.
+
