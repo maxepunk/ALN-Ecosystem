@@ -1,11 +1,12 @@
-# The self-heal lane — the scanner's pack self-heal and the two owed tests (implementer brief, revision 2: three tasks)
+# The self-heal lane — the scanner's pack self-heal and the two owed tests (implementer brief, revision 3: three tasks)
 
 Read this first; it is your single source of requirements, with the
 exact values to use verbatim. Vocabulary: `CONTEXT.md` §2 (one truth,
 three loops; activation; shim; benign emptiness), §5 (the pack
 channel). Model: Opus. You dispatch no subagents; review arrives from
-the orchestrator after each task's report. Revision 2 folds in the
-plan-and-brief review of 2026-09-12 (scratch `self-heal-lane-review.md`)
+the orchestrator after each task's report. Revision 3 folds in the
+plan-and-brief review of 2026-09-12 and its two scoped re-reviews
+(scratch `self-heal-lane-review.md`, `-rereview.md`, `-rereview-3.md`)
 and cuts the lane into THREE tasks, run in order in the same worktree,
 each reviewed before the next starts. The dispatch names your task:
 **Task A** (deliverables 1, 2, 5), **Task B** (3, 4), **Task C** (6).
