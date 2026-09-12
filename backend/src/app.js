@@ -317,6 +317,21 @@ async function initializeServices() {
     // no probe fires at equipment nobody installed.
     require('./services/dormancyService').recompute();
 
+    // T1a D8 (ruling R14): a session restored from disk gets its preflight
+    // re-evaluated and re-stamped HERE, not in sessionService.init() — at
+    // init() time no service has started and every live fact would be a
+    // lie. A no-go warns loudly and never refuses; the show is already on.
+    {
+      const restored = sessionService.getCurrentSession();
+      if (restored && restored.status !== 'ended') {
+        try {
+          await sessionService.restampAfterRestore();
+        } catch (err) {
+          logger.warn('Preflight re-stamp after restore failed', { error: err.message });
+        }
+      }
+    }
+
     // Start periodic health revalidation (catches stale services like pipewire-pulse)
     serviceHealthRegistry.startRevalidation({
       vlc: vlcService,

@@ -215,6 +215,16 @@ class SessionService extends EventEmitter {
       this.currentSession.metadata.pack =
         require('./packService').getActivePackInfo();
 
+      // T1a D8 (pin P6/P8): decide what is dormant tonight BEFORE stamping,
+      // so the stamp describes this room rather than the last one, then
+      // record the preflight projection on the session. Every session
+      // carries a stamp — a report six months from now can say what the
+      // engine believed about the venue when the show began.
+      require('./dormancyService').recompute();
+      this.currentSession.metadata.preflight =
+        stampFromEvaluation(require('./preflightService').evaluate({ live: true }));
+      this.currentSession.metadata.preflightOverride = null;
+
       // Save to persistence (both specific ID and 'current' reference),
       // serialized through the write queue (F-BCORE-07) behind any pending
       // writes from the just-ended previous session
@@ -252,16 +262,55 @@ class SessionService extends EventEmitter {
 
   /**
    * Start the game — transitions session from setup to active
-   * Starts the game clock and session timeout
+   * Starts the game clock and session timeout.
+   *
+   * THE REQUIRE GATE (T1a D8, plan §3 pin P7). After the status check the
+   * preflight is evaluated LIVE and the session re-stamped. The start is
+   * refused only when `blocking` is non-empty — the unresolved
+   * `onAbsent: require` needs, the one list the require rule alone can
+   * populate. A FAULT never refuses: the show can run with a dead speaker,
+   * and a gate that cries wolf is a gate GMs learn to click through. No arm
+   * added later may widen `blocking` (see resolution.js rollUp).
+   *
+   * The way past the gate is typed, logged and attributed, because the only
+   * override worth having is one a human can defend afterwards.
+   *
+   * @param {{startAnyway?: boolean, reason?: string}} [opts]
+   * @param {{deviceId?: string, tier?: string}} [actor]
    * @returns {Promise<Session>}
+   * @throws {PreflightNoGoError} when blocking and startAnyway was not asked
+   * @throws {Error} when startAnyway was asked with no usable reason
    */
-  async startGame() {
+  async startGame({ startAnyway = false, reason } = {}, actor = {}) {
     if (!this.currentSession) {
       throw new Error('No session to start');
     }
 
     if (this.currentSession.status !== 'setup') {
       throw new Error(`Cannot start game: session is in "${this.currentSession.status}" state (expected "setup")`);
+    }
+
+    const preflightService = require('./preflightService');
+    const ev = preflightService.evaluate({ live: true });
+    this.currentSession.metadata.preflight = stampFromEvaluation(ev);
+
+    if (ev.blocking.length > 0) {
+      if (!startAnyway) {
+        throw new preflightService.PreflightNoGoError(ev.blocking);
+      }
+      const normalized = normalizeOverrideReason(reason);
+      if (!normalized) {
+        throw new Error('startAnyway requires a reason');
+      }
+      const stamp = {
+        reason: normalized,
+        at: new Date().toISOString(),
+        blocking: ev.blocking,
+        byDeviceId: actor.deviceId ?? null,
+        byTier: actor.tier ?? null,
+      };
+      this.currentSession.metadata.preflightOverride = stamp;
+      logger.warn('session started over a preflight NO-GO', { ...stamp });
     }
 
     // Transition session to active
@@ -734,6 +783,70 @@ class SessionService extends EventEmitter {
 
     logger.info('Session service reset');
   }
+
+  /**
+   * Re-evaluate and re-stamp the preflight of a session restored from disk
+   * (T1a D8, ruling R14). Called from app.js at the END of
+   * initializeServices — NOT from init(), where no service has started yet
+   * and every live fact would be a lie.
+   *
+   * A no-go here is a loud warn and a GM-visible stamp, NEVER a refusal:
+   * the session is already running, and refusing it mid-show would be the
+   * gate doing harm rather than good.
+   * @returns {Promise<void>}
+   */
+  async restampAfterRestore() {
+    if (!this.currentSession) return;
+    const ev = require('./preflightService').evaluate({ live: true });
+    this.currentSession.metadata.preflight = {
+      ...stampFromEvaluation(ev),
+      restoredAt: new Date().toISOString(),
+    };
+    if (ev.blocking.length > 0) {
+      logger.warn(
+        'restored session is running under a preflight NO-GO — ' +
+        'required equipment is missing and the show is already live',
+        { sessionId: this.currentSession.id, blocking: ev.blocking }
+      );
+    }
+    await this.saveCurrentSession();
+  }
+}
+
+/**
+ * The compact projection of a preflight evaluation that a session carries.
+ * Not the rows: a session file is read by humans and by report tooling, and
+ * a hundred verdict rows per session would drown both. The full evaluation
+ * lives in preflightService.getLast().
+ * @param {object} ev
+ * @returns {{status: string, computedAt: string, profileId: string|null,
+ *   packHash: string|null, blocking: string[], dormantNeeds: string[]}}
+ */
+function stampFromEvaluation(ev) {
+  return {
+    status: ev.rollup.status,
+    computedAt: ev.computedAt,
+    profileId: ev.profileId,
+    packHash: ev.packHash,
+    blocking: ev.blocking,
+    dormantNeeds: ev.rollup.dormantNeeds,
+  };
+}
+
+/**
+ * Normalize an operator's "start anyway" reason before it is stored and
+ * logged. Unicode control and format characters go (a bidi override in a
+ * log line can make the rest of the line read backwards); pipes go (log
+ * lines and CSV exports are pipe-delimited in places); the result is
+ * trimmed and capped at 350 CODE POINTS, not UTF-16 units, so the cap does
+ * not split an emoji or a surrogate pair.
+ * @param {string} reason
+ * @returns {string} the normalized reason, '' when nothing usable remains
+ */
+function normalizeOverrideReason(reason) {
+  if (typeof reason !== 'string') return '';
+  const stripped = reason.replace(/[\p{Cc}\p{Cf}]/gu, '').replace(/\|/g, '').trim();
+  return [...stripped].slice(0, 350).join('');
 }
 
 // Export singleton instance
