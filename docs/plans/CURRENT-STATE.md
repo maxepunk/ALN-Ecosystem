@@ -86,6 +86,12 @@ Thursday preflight.
   (REVISE, six blocking). Scratch survives compaction, not a restart.
 - The test rig is provisioned in this container (recipe:
   `2026-09-12-container-baseline.md` §7); a restart loses it.
+- Readers running (all sonnet, read-only; reports under the scratch dir):
+  supervisor → `supervisor-factsheet.md`; credentials → `credentials-factsheet.md`;
+  self-heal → `self-heal-factsheet.md`; sweep audit A/B/C →
+  `sweep-audit-producers.md`, `sweep-audit-renderers.md`, `sweep-audit-restore.md`.
+- Thursday's runbook committed for the owner's review:
+  `docs/runbooks/2026-09-thursday-token-sync.md`.
 - Lanes: none dispatched. Format when one is: name | worktree | branch |
   brief | report path | agent | state.
 

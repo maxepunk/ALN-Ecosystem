@@ -218,9 +218,10 @@ one cause.
    auto-overrides when `E2E_PACK_PATH` ends with `toy-heist-require` —
    `session-helpers.js:65` keys on the env var, not the running pack),
    sees the refusal with a NO-GO whose message contains `fails its
-   check`, asserts the row id `profile:schema` against
-   `preflightService.getLast().rows` or the `/health` view, then starts
-   with a typed reason and reads the override stamp.
+   check` (the row id is asserted in deliverable 5, where the evaluator
+   runs in-process; the orchestrator here is a spawned child and
+   `/health` carries no rows), then starts with a typed reason and reads
+   the override stamp.
 
 ## Proof runs (paste each command and its summary line)
 
