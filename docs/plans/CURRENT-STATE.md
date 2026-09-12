@@ -36,6 +36,22 @@ day is the owner's. The fact sheet of that sync workflow, from the code, is
 `.superpowers/sdd/2026-09-12-block2-hardening-plan/token-sync-workflow.md`
 when written.
 
+**RULINGS FROM THE GRILL (owner, 2026-09-12 evening):** the supervisor
+ships ENABLED; the rehearsal exercises it; the host-config switch turns
+it off only if the rehearsal finds a problem that cannot be fixed that
+day. The whole remaining scope of the hardening block and the truth
+sweep is built this week in parallel lanes; what fits before the
+rehearsal is the owner's call. The documentation approach is adopted:
+one-screen state page edited in place, the plan's decisions replaced in
+place with history in its record, briefs and reviews as pointed-to
+working material, the scratch progress file no longer called the ledger,
+the handoff retired into this page. The owner sets up the green machine
+in parallel; once it is ready and the work reaches a checkpoint,
+development moves onto green as the home environment (real substitute
+hardware, "rung 2"). Open: whether the deployment guide is ready for a
+fresh operating system on green (research in progress, to be committed
+as `docs/plans/2026-09-12-green-fresh-install-research.md`).
+
 **RESUME HERE (2026-09-12, Block 2 at checkpoint 2, "after the dormancy
 core lands"; T1a's follow-ups closed).** T1b, T1a and T1a's three
 follow-ups (CI kiosk launch, scanner review-bot fixes, display exit
