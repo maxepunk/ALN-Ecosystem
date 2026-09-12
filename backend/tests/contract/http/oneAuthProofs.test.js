@@ -109,3 +109,49 @@ describe('one-auth §5 proofs (B0 BS.4)', () => {
     });
   });
 });
+
+describe('FLOOR completeness — the map covers the whole contract (train-review F-P9a-4)', () => {
+  // The grants.js comment records this class escaping once already: the
+  // service:* family landed OUTSIDE the map and was reachable by an
+  // observe socket until the B0 close review caught it. This pin makes
+  // the escape structural: a new gm:command family added to the
+  // AsyncAPI enum FAILS here until it is either floor-mapped or
+  // deliberately listed below as ruled non-floor.
+  const fs = require('fs');
+  const yaml = require('js-yaml');
+  const { requiredFloorFunction } = require('../../../src/gameRules/grants');
+
+  // Deliberately non-floor gm:command actions (owner-ruled). EMPTY
+  // today — every contracted action sits behind a floor function.
+  const RULED_NON_FLOOR = [];
+
+  function findActionEnum(node) {
+    if (!node || typeof node !== 'object') return null;
+    if (Array.isArray(node)) {
+      if (node.includes('session:create') && node.includes('system:reset')) return node;
+      for (const child of node) {
+        const hit = findActionEnum(child);
+        if (hit) return hit;
+      }
+      return null;
+    }
+    for (const value of Object.values(node)) {
+      const hit = findActionEnum(value);
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  it('every AsyncAPI gm:command action is floor-mapped or explicitly ruled non-floor', () => {
+    const doc = yaml.load(fs.readFileSync(
+      path.resolve(__dirname, '../../../contracts/asyncapi.yaml'), 'utf8'));
+    const actions = findActionEnum(doc);
+    expect(Array.isArray(actions)).toBe(true);
+    expect(actions.length).toBeGreaterThan(50); // sanity: the real enum, not a fragment
+
+    const unmapped = actions.filter(
+      (action) => requiredFloorFunction(action) === null && !RULED_NON_FLOOR.includes(action)
+    );
+    expect(unmapped).toEqual([]);
+  });
+});

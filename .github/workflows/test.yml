@@ -261,8 +261,20 @@ jobs:
         working-directory: ALNScanner
         run: npm ci && npm run build
 
+      # The rung-1 software stack (fix-vehicle S5 §8.1): the suite
+      # self-provisions its environment through the SHARED module
+      # (tests/rung1/provision.js) — session bus, Xvfb, pipewire,
+      # witness Home Assistant, mocked BlueZ — so installing the
+      # packages is all CI needs for REAL coverage; the video-alert
+      # tests used to pass vacuously here (missing fixture) or skip.
+      # bluez supplies bluetoothctl (the engine's real client, pointed
+      # at the mock); python3-dbusmock supplies the BlueZ mock (with
+      # python3-dbus, its C bindings — pip's build of those is broken).
+      - name: Install rung-1 stack (VLC + dbus + Xvfb + audio + BT mock)
+        run: sudo apt-get update && sudo apt-get install -y vlc-bin vlc-plugin-base dbus xvfb xdotool pipewire pipewire-pulse wireplumber pulseaudio-utils bluez python3-dbusmock python3-dbus
+
       # Tier L = logic/UI flows only (@hardware excluded). Capability gates
-      # make hardware-dependent tests skip LOUDLY on this toolless runner;
+      # make hardware-dependent tests skip LOUDLY where a tool is absent;
       # the manifest reporter prints what was probed. workers=3 is safe for
       # Tier L: per-flow orchestrators bind random ports, memory storage,
       # no UDP discovery in test env, and the system-global resources that

@@ -274,6 +274,8 @@ a DoD violation by definition.
 | L11 | **[RETIRED 2026-09-03 at theme unit ST.F]** `scoreboard.html:12-14` Google Fonts CDN links — offline-LAN risk, same class as the fixed socket.io CDN bug (3a "adjacent note", added 2026-08-29). RESOLVED by self-hosting (D-T.6): five families as woff2 latin+latin-ext subsets with unicode-range — scoreboard's three (IBM Plex Mono, Libre Baskerville, Special Elite; 16 files under `backend/public/fonts`) + config-tool's two (DM Sans, JetBrains Mono; 12 files under `config-tool/public/fonts`), generated `@font-face` css, live fallback stacks kept. Playfair Display NOT hosted — it retired with its dead `--font-display` token (zero `var()` consumers; a font nothing renders would be dead weight — the D-T.6 six-family text reconciled to five at the ST.F review, design §8). CDN stylesheet links AND both googleapis/gstatic preconnects removed from both pages | CLOSED — tripwire tests `backend/tests/unit/utils/fontSelfHosting.test.js` + `config-tool/tests/fontSelfHosting.test.js` | `grep -rlE 'fonts\.(googleapis\|gstatic)' backend/public config-tool/public` = zero (test-enforced, both halves). SCOPE NOTE (ST.F review, finding c): the row's original command used `-R` which FOLLOWS the `gm-scanner`/`player-scanner` submodule symlinks into the NFC tools — a DIFFERENT surface, tracked as L14. The engine's own served page chrome (this row's scope) is `-r` over the `public/` trees; the tests enforce exactly that (symlinks skipped) |
 | L14 | **[in-queue, recorded 2026-09-03 at theme unit ST.F review]** The NFC tools `tag-writer.html` + `token-checkin.html` (ALN-TokenData source, served through `backend/public/gm-scanner/` + `backend/public/player-scanner/data/` submodule symlinks) still carry Google Fonts CDN links — the SAME offline-LAN silent-CDN-failure class as L11, but a SEPARATE surface (NFC programming tools, not venue display chrome) out of L11/D-T.6 scope. Surfaced by the ST.F spec review's tripwire-scope catch (the `-R` vs `-r` symlink difference) | A fonts sweep when the NFC-tool surface is next touched (or the B-pages/tooling work if it subsumes these tools): self-host their families the ST.F way, or promote the fallback stacks | `grep -RlE 'fonts\.(googleapis\|gstatic)' backend/public` shows ONLY these two files (×2 symlink paths each); zero when the sweep lands |
 | L13 | **[post-Phase-3, recorded 2026-09-03 at slice-7 S7.2 — class inherited from its trigger, per the DoD-linkage rule]** ALN-flavored wording retained inside ENGINE-FIXED report structure: the `## Detective Evidence Log` heading (ALN's own mode name), the `Exposed By` column header, and the H1 `Session Report` family — every divergent pack's report inherits them, because the contract names headings/column text as structure (Change Rules #1–#2) and the external pipeline parses them | The ROADMAP §8.10 bundle migration (the pipeline stops parsing markdown; the anchors stop being load-bearing and can localize) | The golden masters + the structural-invariant suite in `ALNScanner/tests/contract/sessionReport.contract.test.js`; contract doc v2 records the retention |
+| L15 | **[in-queue, recorded 2026-09-05 at the whole-train review (F-P5a-4)]** Config-tool publish writes into the `ALN-TokenData` submodule working tree with no commit step and no operator warning (`config-tool/lib/publish.js:165-192`) — a publish can silently diverge the working tree from the recorded pin | Block 5 pack-manager stage designs the commit/handoff mechanism | This row; `git -C ALN-TokenData status --porcelain` non-empty after a publish |
+| L16 | **[in-queue, recorded 2026-09-05 at the whole-train review (F-P5b-6)]** 545 lines of self-declared THROWAWAY pack-manager prototype on the train (`config-tool/public/js/sections/packs.js`), with prototype defects (F-P5b-9) | Block 5 pack-manager stage replaces it | This row; the file's own THROWAWAY header comment |
 | L12 | **[in-queue, recorded 2026-08-29 at slice-6 S6.3; REFRESHED 2026-09-05 at roadmap r4]** The idle-loop config fallback: when a pack names an idle-loop channel (`surfaces.idleLoop`) that the installation profile has no binding for, `vlcMprisService._resolveIdleLoopFile()` falls back LOUDLY to `config.display.idleLoopFile` (the L7 lighting-role-fallback shape). A venue-media identity resolved from engine config instead of the profile. Taxonomy call already made (Q-C3-1 ruling, 2026-09-04): an unbound idle-loop channel is DORMANT | Flip owner assigned: **the bindings work (Block 6)** — every idle-loop channel gets a real profile binding, and the config fallback becomes the dormant path instead of an engine-config read | LOUD warn per fallback fire ("no installation-profile binding — falling back … ledger L12"); `grep -n "ledger L12" backend/src/services/vlcMprisService.js` |
 
 ## Owner rulings 2026-09-04 (B0 design ratification)
@@ -1000,7 +1002,88 @@ adds its PRs to this block.
 | 4 | arduino-cyd-player-scanner | **#7** | foundations | ESP32 pack identity via asset manifest; no later train commits exist |
 | 5–17 | ALN-Ecosystem (parent) | **#19 → #31 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6, slice 7, theme unit) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass — **watch it**. #30 is slice 7, #31 the theme unit (both opened AT slice open per the corrected discipline). |
 | 18 | ALN-Ecosystem (parent) | **#32** (added to the train 2026-09-05 at roadmap-r4 ratification) | `claude/phase3-b0` | The tooling foundation (B0) + CS.1 (rung-1 harness + resolve core) + the re-charter corpus (roadmap r4, audits, grill record, capability census). Stacked on #31. |
-| 19 | ALN-Ecosystem (parent) | **#33** (draft, opened 2026-09-05 at unit open) | `claude/phase3-docs-repair` | The deployment-docs repair (roadmap r4 Block 1 first unit): guide + preflight §12.3 + env template. Stacked on #32. The train grows only if further work lands before the walk. |
+| 19 | ALN-Ecosystem (parent) | **#33** (draft, opened 2026-09-05 at unit open) | `claude/phase3-docs-repair` | The deployment-docs repair (roadmap r4 Block 1 first unit): guide + preflight §12.3 + env template. Stacked on #32. |
+| 20 | ALN-Ecosystem (parent) **#34** (draft, opened 2026-09-05 at unit open) + ALNScanner **#16** (draft, stacked on #15) + ALN-TokenData **#7** (draft, stacked on #6 — cue icon nullable, one 2-line commit from the S4 adversarial review) | fix vehicle | `claude/phase3-train-fixes` (all three repos) | The whole-train review's fix vehicle (all 8 MAJORs + the ruled fix-now set; full triage + §7 execution record: `2026-09-05-train-fix-vehicle.md`; estimate signed 2026-09-05). TokenData #7 merges with #6's group, scanner #16 with #15's; parent #34 carries both submodule pins. Walked LAST. |
+
+**Walk notes (from the whole-train review, 2026-09-05 — read before
+walking):** the review's verdict is walk-with-fixes; vehicle 20 must
+land first. (1) #19/#20/#21 heads are `[skip ci]` docs-only commits
+on top of green SHAs — their code is byte-identical to CI-green
+commits. (2) #31's own PR page shows a red Summary check (a
+cancelled run); its head SHA `8752d53` passed 8/8 as PR #32's first
+run — expect the red badge, it is not a failure. (3) Scanner
+vehicles merge before the parent vehicle that carries the
+MESSAGE_TYPES cross-repo pin (LD-2) — expected; the parent CI leg
+catches drift before `main`. (4) The Tier-L matrix renamed the CI
+check (F-P11a-10) — re-point any branch-protection required-check
+when walking. (5) GitGuardian failed on #23–#26; the review's
+security lens found no secret-like content entering in that range
+beyond the known `.env`.
+
+**Walk runbook (recorded 2026-09-11 — preflight audit complete; the
+authoritative procedure, superseding note 4's required-check item:
+branch protection is OFF on all five repos, so there is nothing to
+re-point).** Verified preconditions, checked 2026-09-06/11: every
+vehicle head green or a recorded exception above; no `main` drift in
+any repo (all five mains are ancestors of their train tips — re-run
+this check at walk start, it is THE load-bearing precondition);
+`blue-2026-07` tags anchor the frozen production tips in all five
+repos (the parent's `production-2026-07` pins are exactly each
+submodule's production tip, and both scanners' nested `data/` pins
+are ancestors of TokenData's — the blue rollback path reconstructs
+by `git clone --recursive` even if branches are lost); merge
+commits enabled, auto-delete-head-branches off (GitHub defaults,
+owner-confirmed on two repos).
+
+The governing insight: each parent branch is a strict superset of
+its predecessor and every PR targets `main`, so a merge-commit walk
+makes each intermediate `main` tree BYTE-IDENTICAL to a PR head
+that already passed CI. Intermediate push-CI runs on `main` verify
+nothing new (the concurrency group cancels them by design — only
+the tip run counts), verification per step is `git diff <PR-head>
+origin/main` == empty (sub-second), and the walk can safely pause
+at any vehicle: every stoppable state is a tested tree. Walk FAST —
+the risk is a foreign commit landing mid-walk, not speed.
+
+1. **Freeze** for the window (~90 min): no Notion token sync (it
+   pushes to TokenData `main`), no ALNPlayerScan "Sync & Deploy"
+   workflow (it pushes to that repo's `main`), no other agent
+   sessions writing, no manual pushes.
+2. **Un-draft 20 PRs** (draft PRs cannot merge): TokenData #6/#7,
+   ALNScanner #15/#16, parent #19–#34. ALNPlayerScan #6 and arduino
+   #7 are already ready.
+3. **Submodules first**: TokenData merge #6, then RETARGET #7's
+   base from `claude/phase3-theme-unit` to `main` (GitHub does NOT
+   retarget when a base branch merges — unretargeted, #7 would
+   merge into the theme-unit branch, not `main`), then merge #7.
+   ALNScanner: same dance — #15, retarget #16, merge #16; each
+   scanner merge fires the "Sync & Deploy GM Scanner" Pages deploy,
+   and the FINAL run must succeed (its `sync.py --local` step
+   cannot push — verified — but its failure leaves gh-pages stale).
+   Then ALNPlayerScan #6, arduino #7. Tree-identity check per repo.
+4. **Parent #19→#34 in numeric order**, merge commits ONLY (squash
+   rewrites SHAs and voids tree identity with the tested heads),
+   tree check after each, no CI waits between merges. `rung1.yml`
+   fires on `main` at #32 and #34 (paths trigger) — 10/10 green on
+   runners, expect green.
+5. **Tip verification** (the only wait, ~20 min): the surviving
+   `test.yml` + `rung1.yml` runs on `main` green; parent `main`
+   pins == submodule `main` tips; fresh `git clone --recursive`
+   resolves; final Pages deploy green. This is coherent-on-main.
+6. **Close-out**: subsumed PRs (TokenData #5–#2, ALNScanner
+   #14–#12) auto-mark merged when their ancestor commits reach
+   `main` — verify, close stragglers with comments that do NOT
+   mention @claude (the scanner repos run comment-triggered bots).
+   Delete ONLY the enumerated merged `claude/*` train branches —
+   `production-2026-07` is never on any deletion list. Update this
+   table (walked, date, tip SHAs) + CURRENT-STATE.
+7. **Failure posture**: non-empty tree diff or a real conflict →
+   STOP, report, never improvise mid-walk. Tip CI red → re-run
+   first (content is PR-proven; red means flake or runner drift).
+8. **Standing post-walk rules**: ALNPlayerScan "Sync & Deploy"
+   stays unused until final-cutover item 6 (it bumps the PWA's
+   nested data pin, which ships with the cutover); Notion sync is
+   fine again after the walk.
 
 Timing (superseded 2026-09-05, roadmap r4 supersession 9 — was
 "owner-driven, post-run"): the walk is the owner's call at the

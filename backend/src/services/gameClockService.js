@@ -100,6 +100,12 @@ class GameClockService extends EventEmitter {
     return {
       status: this.status,
       elapsed: this.getElapsed(),
+      // The pack's declared duration rides EVERY gameclock state push,
+      // not just sync:full (train-review P3-1): the wall scoreboard's
+      // countdown total reset to its 7200 seed on each service:state
+      // push for any pack whose duration isn't 7200. Same source as
+      // syncHelpers.buildGameClockState; lazy require (leaf service).
+      expectedDuration: require('./packService').getClockRules().durationSeconds,
       startTime: this.gameStartTime,
       totalPausedMs: this.totalPausedMs,
       phase: this.getCurrentPhase()

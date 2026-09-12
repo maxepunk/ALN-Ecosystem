@@ -23,17 +23,20 @@
 const GAME_EVENT_NORMALIZERS = {
   /**
    * transaction:accepted — flat vocabulary for cue conditions.
-   * Fields: tokenId, teamId, deviceType, points, memoryType, valueRating,
-   *         groupId, teamScore, hasGroupBonus.
+   * Fields: tokenId, teamId, deviceType, points, teamScore, hasGroupBonus.
+   *
+   * memoryType / valueRating / groupId were REMOVED from the advertised
+   * vocabulary (train-review P1-3): the Transaction wire object never
+   * carried them, so a condition on any of the three could never match —
+   * an authoring lie. Re-adding them is real feature work (enrich the
+   * payload from the token at emit), owned by the show-designer depth
+   * work, never by silently advertising undefined.
    */
   'transaction:accepted': (payload) => ({
     tokenId: payload.transaction.tokenId,
     teamId: payload.transaction.teamId,
     deviceType: payload.transaction.deviceType,
     points: payload.transaction.points,
-    memoryType: payload.transaction.memoryType,
-    valueRating: payload.transaction.valueRating,
-    groupId: payload.transaction.groupId,
     teamScore: payload.teamScore?.currentScore ?? 0,
     hasGroupBonus: payload.groupBonus !== null,
   }),

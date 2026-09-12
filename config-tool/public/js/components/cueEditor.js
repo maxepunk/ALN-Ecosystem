@@ -15,7 +15,7 @@ import { renderTimelineView } from './timelineView.js';
 // fallback when the vocabulary fetch fails. The cueTriggerEvents
 // tripwire test still pins it equal to the backend's EVENT_NORMALIZERS.
 export const TRIGGER_EVENTS = {
-  'transaction:accepted': { label: 'Token Processed', fields: ['tokenId', 'teamId', 'deviceType', 'points', 'memoryType', 'valueRating', 'groupId', 'teamScore', 'hasGroupBonus'] },
+  'transaction:accepted': { label: 'Token Processed', fields: ['tokenId', 'teamId', 'deviceType', 'points', 'teamScore', 'hasGroupBonus'] },
   'group:completed': { label: 'Group Completed', fields: ['teamId', 'groupId', 'multiplier', 'bonus'] },
   'video:loading': { label: 'Video Loading', fields: ['tokenId'] },
   'video:started': { label: 'Video Started', fields: ['tokenId', 'duration'] },
@@ -102,7 +102,14 @@ function renderIdentity(container, cue, editorCtx) {
   );
   const iconInput = el('input', {
     type: 'text', value: cue.icon || '',
-    onInput: () => { cue.icon = iconInput.value || null; editorCtx.markDirty(); },
+    onInput: () => {
+      // A cleared field means "no icon": delete the key rather than write
+      // null — absent is the canonical authored form (the gate and engine
+      // also tolerate null for packs authored before this change).
+      if (iconInput.value) cue.icon = iconInput.value;
+      else delete cue.icon;
+      editorCtx.markDirty();
+    },
   });
   iconGroup.appendChild(iconInput);
   grid.appendChild(iconGroup);

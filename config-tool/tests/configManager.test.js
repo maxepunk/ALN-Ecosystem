@@ -350,6 +350,65 @@ describe('configManager', () => {
       assert.strictEqual(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'), before);
     });
 
+    // Train-review MAJOR 5 (F-P5a-1): preset load was the sole remaining
+    // UN-GATED live-pack scoring writer — an ill-fitting preset (foreign
+    // import, or a same-install preset saved before the pack's type table
+    // changed) wrote a pack the ENGINE REFUSES TO BOOT, reported success,
+    // and the next orchestrator start died (PM2 gives up after 10
+    // restarts). The load now runs the engine's own activation gate
+    // against a staged copy BEFORE any write.
+    describe('preset load runs the engine activation gate (MAJOR 5 / F-P5a-1)', () => {
+      const fullBaseValues = { '1': 10000, '2': 25000, '3': 50000, '4': 75000, '5': 150000 };
+
+      it('REFUSES a preset whose scoring the engine would refuse — nothing is written', () => {
+        const gameBefore = fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8');
+        // tokens.json uses SF_MemoryType 'Personal'; this foreign preset's
+        // table does not cover it → the engine's type-coverage refusal
+        const foreign = {
+          name: 'Foreign Venue', created: 'now', description: '',
+          env: { PORT: '8081' },
+          scoringConfig: { baseValues: fullBaseValues, typeMultipliers: { Technical: 5 } },
+          routing: { routes: {}, ducking: [] },
+        };
+        fs.writeFileSync(path.join(tmpDir, 'presets', 'foreign.json'), JSON.stringify(foreign));
+
+        assert.throws(
+          () => configManager.loadPreset('foreign.json'),
+          (err) => {
+            const text = err.message + ' ' + JSON.stringify(err.details || []);
+            assert.ok(/memory type 'Personal'/.test(text),
+              `refusal must carry the engine gate's own wording; got: ${text}`);
+            return true;
+          }
+        );
+
+        // The gate runs BEFORE any write: pack byte-identical, env untouched
+        assert.strictEqual(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'), gameBefore);
+        assert.ok(fs.readFileSync(path.join(tmpDir, '.env'), 'utf8').includes('PORT=3000'));
+      });
+
+      it('a compatible preset still loads and applies its scoring', () => {
+        const good = {
+          name: 'Good Venue', created: 'now', description: '',
+          env: { PORT: '8082' },
+          scoringConfig: {
+            baseValues: { ...fullBaseValues, '5': 200000 },
+            typeMultipliers: { Personal: 2, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 },
+          },
+          routing: { routes: {}, ducking: [] },
+        };
+        fs.writeFileSync(path.join(tmpDir, 'presets', 'good.json'), JSON.stringify(good));
+
+        configManager.loadPreset('good.json');
+
+        const game = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
+        assert.strictEqual(game.scoring.baseValues['5'], 200000);
+        assert.strictEqual(game.scoring.typeMultipliers.Personal, 2);
+        // non-scoring keys the editor doesn't own survive the merge
+        assert.strictEqual(game.scoring.display.unit, 'currency-usd');
+      });
+    });
+
     it('deletes a preset', () => {
       configManager.savePreset('To Delete', '');
       configManager.deletePreset('to-delete.json');

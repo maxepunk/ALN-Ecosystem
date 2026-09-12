@@ -69,6 +69,8 @@ async function findAvailablePort(preferredPort) {
 let orchestratorProcess = null;
 let serverPort = null;
 let serverProtocol = 'http';
+let serverPackPath = null;
+let serverProfilePath = null;
 let cleanupRegistered = false;
 
 // Test environment configuration
@@ -77,6 +79,12 @@ const TEST_ENV = {
   PORT: process.env.TEST_PORT || '3000',
   HOST: '0.0.0.0',
   ENABLE_VIDEO_PLAYBACK: 'true',
+  // The HARNESS supervises VLC (vlc-service.js spawns it as the
+  // dedicated non-root user — root orchestrators cannot host VLC).
+  // Without this, every orchestrator's own VLC dies-and-respawns on a
+  // 3s loop and each exit resets the engine's MPRIS state — wiping
+  // "playing" while the harness's player is healthy (S5 §8.1).
+  VLC_SELF_SPAWN: 'false',
   ADMIN_PASSWORD: process.env.TEST_ADMIN_PASSWORD || '@LN-c0nn3ct',
   LOG_LEVEL: 'warn', // Reduce noise in test output
   ENABLE_HTTPS: process.env.TEST_HTTPS || 'false',
@@ -189,6 +197,17 @@ async function startOrchestrator(options = {}) {
     await clearSessionData();
   }
 
+  // The rung-1 environment (fix-vehicle S5 §8.1): ONE shared
+  // provisioning module with the rig, gated by the run's PROFILE — a
+  // run pinned to a real profile provisions nothing; an unpinned run
+  // boots the generated per-pack SIMULATION profile and gets the full
+  // stand-in stack (bus, display, pipewire, witness Home Assistant,
+  // mocked Bluetooth), exported into process.env for the spawn below.
+  // Each arm degrades to loud skips on hosts that cannot run it.
+  const { provisionForRun } = require('./session-env');
+  const prov = await provisionForRun({ packPath, profilePath });
+  const ha = prov.ha;
+
   // Update test environment
   const env = {
     ...process.env,
@@ -198,7 +217,19 @@ async function startOrchestrator(options = {}) {
     STORAGE_TYPE: storageType,  // Use parameter instead of TEST_ENV default
     ADMIN_PASSWORD: TEST_ENV.ADMIN_PASSWORD,  // Explicitly override to prevent .env contamination
     ...(packPath ? { PACK_PATH: packPath } : {}),
-    ...(profilePath ? { PROFILE_PATH: profilePath } : {})
+    // The engine boots with the SAME profile the harness provisioned
+    // against (an explicit caller pin passes through unchanged; an
+    // unpinned run gets the simulation profile — never the full-kit
+    // default, whose venue scene bindings the witness HA cannot serve).
+    ...(prov.profilePath ? { PROFILE_PATH: prov.profilePath } : {}),
+    ...(ha ? {
+      HOME_ASSISTANT_URL: ha.url,
+      HOME_ASSISTANT_TOKEN: ha.token,
+      LIGHTING_ENABLED: 'true',
+      // 25+ per-flow orchestrators share ONE machine-level HA container;
+      // none of them may manage its docker lifecycle.
+      HA_DOCKER_MANAGE: 'false',
+    } : {})
   };
 
   // Path to server entry point
@@ -207,6 +238,15 @@ async function startOrchestrator(options = {}) {
   // Set protocol BEFORE logging
   serverPort = port;
   serverProtocol = enableHttps ? 'https' : 'http';
+  // Captured for restartOrchestrator (train-review P9b-1): a restart
+  // used to silently DROP an explicitly pinned packPath/profilePath,
+  // so a restart-flow test that pinned a fixture pack came back up on
+  // the default pack and asserted against the wrong rules.
+  serverPackPath = packPath;
+  // The RESOLVED profile (explicit pin passed through, or the generated
+  // simulation profile) — so a restart re-pins exactly what this run
+  // booted with, not the pre-resolution null.
+  serverProfilePath = prov.profilePath;
 
   logger.info('Starting orchestrator for E2E tests', {
     protocol: serverProtocol,
@@ -373,13 +413,16 @@ async function restartOrchestrator(options = {}) {
   // Wait a moment for port to be released
   await new Promise(resolve => setTimeout(resolve, 1000));
 
-  // Start new instance
+  // Start new instance — carrying the pinned pack/profile through
+  // (P9b-1: dropping them restarted onto the default pack)
   return await startOrchestrator({
     https: currentProtocol === 'https',
     port: currentPort,
     timeout,
     preserveSession,
-    storageType  // Pass through storage type
+    storageType,  // Pass through storage type
+    ...(serverPackPath ? { packPath: serverPackPath } : {}),
+    ...(serverProfilePath ? { profilePath: serverProfilePath } : {})
   });
 }
 

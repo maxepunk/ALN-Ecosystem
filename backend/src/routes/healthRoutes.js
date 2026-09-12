@@ -16,9 +16,10 @@ const { getPosixTimezone } = require('../utils/timezone');
  *
  * Query Parameters:
  *   - deviceId: (optional) Device identifier for heartbeat tracking
- *   - type: (optional) Device type ('player' or 'gm')
+ *   - type: (optional) Device type — 'player' only (default). 'gm' is
+ *     refused: GM stations register via authenticated WebSocket only.
  *
- * When deviceId and type are provided, registers/updates device in current session
+ * When deviceId is provided, registers/updates the device in the current session.
  * This provides a natural heartbeat mechanism for HTTP-only devices (like player scanner)
  */
 router.get('/health', async (req, res) => {
@@ -48,12 +49,19 @@ router.get('/health', async (req, res) => {
       // Only GM scanners use WebSocket authentication, so HTTP /health without type = player
       const deviceType = type || 'player';
 
-      // Validate device type
-      if (deviceType !== 'player' && deviceType !== 'gm') {
-        logger.warn('Invalid device type in health check', { deviceId, type: deviceType });
+      // Validate device type. 'gm' is REFUSED (train-review MAJOR 2 /
+      // LC-2): GM stations register only through the authenticated
+      // WebSocket handshake. A gm-typed HTTP registration would count
+      // against maxGmStations and never be reaped (the heartbeat
+      // monitor skips gm devices — GM liveness is socket ping/pong),
+      // so five unauthenticated GETs could lock every real GM scanner
+      // out of the session with no in-band recovery. No scanner client
+      // ever sent type=gm here.
+      if (deviceType !== 'player') {
+        logger.warn('Refused device type in health check', { deviceId, type: deviceType });
         return res.status(400).json({
           error: 'VALIDATION_ERROR',
-          message: 'Device type must be "player" or "gm"'
+          message: 'Device type must be "player" (GM stations register via WebSocket auth only)'
         });
       }
 

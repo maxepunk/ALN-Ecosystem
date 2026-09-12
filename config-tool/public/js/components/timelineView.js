@@ -5,16 +5,6 @@
 import { el, formatTime, parseTime } from '../utils/formatting.js';
 import { ACTION_DEFS, buildPayloadField, ensureAssets, getAssetDuration } from './commandForm.js';
 
-const CATEGORY_COLORS = {
-  sound: '#4285f4',
-  lighting: '#fbbc04',
-  video: '#ea4335',
-  music: '#9c27b0',
-  cue: '#a855f7',
-  display: '#9ca3af',
-  audio: '#06b6d4',
-};
-
 let pxPerSec = 60;
 
 export function renderTimelineView(container, cue, allCues, editorCtx) {

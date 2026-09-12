@@ -338,14 +338,14 @@ describe('CueEngineService', () => {
         id: 'business-only',
         label: 'Business Only',
         trigger: { event: 'transaction:accepted' },
-        conditions: [{ field: 'memoryType', op: 'eq', value: 'Business' }],
+        conditions: [{ field: 'points', op: 'gte', value: 50000 }],
         commands: [{ action: 'sound:play', payload: { file: 'b.wav' } }]
       }]);
 
       cueEngineService.activate();
 
       cueEngineService.handleGameEvent('transaction:accepted', {
-        transaction: { tokenId: 'T1', teamId: 'A', deviceType: 'gm', points: 10000, memoryType: 'Personal', valueRating: 1, groupId: null },
+        transaction: { tokenId: 'T1', teamId: 'A', deviceType: 'gm', points: 10000 },
         teamScore: { currentScore: 10000 },
         groupBonus: null
       });
@@ -359,8 +359,11 @@ describe('CueEngineService', () => {
         id: 'big-business',
         label: 'Big Business',
         trigger: { event: 'transaction:accepted' },
+        // Conditions use only fields the wire actually carries (P1-3:
+        // memoryType/valueRating/groupId were removed from the vocabulary
+        // — the Transaction object never had them)
         conditions: [
-          { field: 'memoryType', op: 'eq', value: 'Business' },
+          { field: 'points', op: 'gte', value: 100000 },
           { field: 'teamScore', op: 'gte', value: 100000 }
         ],
         commands: [{ action: 'sound:play', payload: { file: 'big.wav' } }]
@@ -369,7 +372,7 @@ describe('CueEngineService', () => {
       cueEngineService.activate();
 
       cueEngineService.handleGameEvent('transaction:accepted', {
-        transaction: { tokenId: 'T1', teamId: 'A', deviceType: 'gm', points: 150000, memoryType: 'Business', valueRating: 3, groupId: null },
+        transaction: { tokenId: 'T1', teamId: 'A', deviceType: 'gm', points: 150000 },
         teamScore: { currentScore: 200000 },
         groupBonus: null
       });
@@ -432,22 +435,22 @@ describe('CueEngineService', () => {
 
     const fireEvent = (overrides = {}) => {
       cueEngineService.handleGameEvent('transaction:accepted', {
-        transaction: { tokenId: 'T1', teamId: 'A', deviceType: 'gm', points: 50000, memoryType: 'Business', valueRating: 3, groupId: null, ...overrides },
+        transaction: { tokenId: 'T1', teamId: 'A', deviceType: 'gm', points: 50000, ...overrides },
         teamScore: { currentScore: overrides.teamScore || 50000 },
         groupBonus: null
       });
     };
 
     it('should support neq operator', async () => {
-      makeEngine([{ field: 'memoryType', op: 'neq', value: 'Personal' }]);
-      fireEvent({ memoryType: 'Business' });
+      makeEngine([{ field: 'deviceType', op: 'neq', value: 'player' }]);
+      fireEvent({ deviceType: 'gm' });
       await flushAsync();
       expect(executeCommand).toHaveBeenCalled();
     });
 
     it('should support in operator', async () => {
-      makeEngine([{ field: 'memoryType', op: 'in', value: ['Business', 'Technical'] }]);
-      fireEvent({ memoryType: 'Technical' });
+      makeEngine([{ field: 'deviceType', op: 'in', value: ['gm', 'esp32'] }]);
+      fireEvent({ deviceType: 'esp32' });
       await flushAsync();
       expect(executeCommand).toHaveBeenCalled();
     });
@@ -460,8 +463,8 @@ describe('CueEngineService', () => {
     });
 
     it('should support lt operator', async () => {
-      makeEngine([{ field: 'valueRating', op: 'lt', value: 4 }]);
-      fireEvent({ valueRating: 3 });
+      makeEngine([{ field: 'points', op: 'lt', value: 60000 }]);
+      fireEvent({ points: 50000 });
       await flushAsync();
       expect(executeCommand).toHaveBeenCalled();
     });

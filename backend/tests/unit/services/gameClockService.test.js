@@ -171,6 +171,10 @@ describe('GameClockService', () => {
       expect(gameClockService.getState()).toEqual({
         status: 'stopped',
         elapsed: 0,
+        // P3-1: the pack's declared duration rides EVERY state push so
+        // the wall scoreboard's countdown total never resets to its
+        // seed on a service:state push (7200 = ALN's declared duration)
+        expectedDuration: 7200,
         startTime: null,
         totalPausedMs: 0,
         phase: null

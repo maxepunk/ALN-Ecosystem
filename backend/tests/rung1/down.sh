@@ -11,7 +11,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 
 docker rm -f rung1-ha >/dev/null 2>&1 && echo "[rung1] ha stopped"
 
-for name in pipewire wireplumber pwpulse xvfb dbus; do
+for name in pipewire wireplumber pwpulse xvfb dbus btmock system-bus; do
   f="$RUNG1/$name.pid"
   if [ -f "$f" ]; then
     kill "$(cat "$f")" 2>/dev/null && echo "[rung1] $name stopped"

@@ -446,7 +446,10 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     await gmScanner1.fireCue('e2e-compound-test');
 
     if (!cueDepsHealthy) {
-      const heldItem = gmPage1.locator('.held-item[data-held-id^="held-cue-"]');
+      // Cue-SPECIFIC locator (audit fold): HeldItemsRenderer prints the
+      // cueId into the item description; a bare .held-item match could
+      // be satisfied by some other held cue and assert nothing.
+      const heldItem = gmPage1.locator('.held-item[data-held-id^="held-cue-"]', { hasText: 'e2e-compound-test' });
       await expect(heldItem.first()).toBeVisible({ timeout: 10000 });
       console.log('✓ Compound cue HELD in UI (sound/lighting down) — running-timeline verification requires real services');
     } else {
@@ -495,6 +498,25 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       console.log('  → VLC idle + healthy, firing video-driven compound cue: e2e-video-compound');
       await gmScanner1.fireCue('e2e-video-compound');
 
+      // This cue's timeline is video (at:0) + HA lighting (at:1), so its
+      // full dependency set is VLC AND lighting — mirror the clock-cue
+      // block above (cueDepsHealthy). When lighting is down the engine
+      // HOLDS the cue by design (service_down), exactly as it holds the
+      // clock cue; asserting "active" then is asserting against the
+      // product's own degradation contract. This path first became
+      // reachable when S5 gave Tier L real VLC: before, vlcInfo.type was
+      // never 'real', so the whole block was skipped and the
+      // lighting-only-down case never ran.
+      if (!caps.lighting) {
+        // Cue-SPECIFIC (audit fold): the 1.6.2 block's service_down hold
+        // has NO auto-discard timer and release refuses while the
+        // dependency is down, so its item persists for the whole run —
+        // a bare .held-item match here was UNCONDITIONALLY vacuous in
+        // the lighting-down environment.
+        const heldVideoCue = gmPage1.locator('.held-item[data-held-id^="held-cue-"]', { hasText: 'e2e-video-compound' });
+        await expect(heldVideoCue.first()).toBeVisible({ timeout: 10000 });
+        console.log('✓ Video compound cue HELD in UI (lighting down — the at:1 lighting step); running-timeline needs real HA');
+      } else {
       // Verify active cue appears (bumped from 5s: the active-cue render rides a debounced
       // cueengine service:state push that can lag under load).
       await gmScanner1.waitForActiveCue('e2e-video-compound', 10000);
@@ -512,6 +534,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       // not when video ends — maxAt=1s, but VLC startup has latency)
       await gmScanner1.waitForCueComplete('e2e-video-compound', 40000);
       console.log('✓ Video-driven compound cue completed');
+      } // end if (caps.lighting) — active-cue path
     } else {
       console.log(`  Skipping video compound cue (VLC: ${vlcInfo.type})`);
     }

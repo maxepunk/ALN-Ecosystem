@@ -17,6 +17,13 @@
 
 const { execFileSync, spawn } = require('child_process');
 const logger = require('../../../src/utils/logger');
+const { ensureSessionEnv } = require('./session-env');
+
+// VLC refuses to run as root (measured:
+// docs/plans/2026-09-04-rung1-capability-research.md). When this suite
+// runs as root, VLC is spawned as this dedicated user over the shared
+// permissive session bus — the same convention as tests/rung1/up.sh.
+const VLC_USER = 'rung1vlc';
 
 const VLC_DBUS_DEST = 'org.mpris.MediaPlayer2.vlc';
 const VLC_MAX_WAIT_MS = 10000; // 10s to wait for VLC startup
@@ -61,15 +68,42 @@ async function startVLCIfNeeded() {
   logger.info('Starting VLC for E2E tests...');
 
   try {
-    vlcProcess = spawn('cvlc', [
+    // MPRIS control is loaded explicitly (--control dbus): the proven
+    // invocation from the rung-1 research doc. process.env already
+    // carries the bus address and display from ensureSessionEnv().
+    const vlcArgs = [
       '--intf', 'dummy',
+      '--control', 'dbus',
       '--no-video-title-show',
       '--quiet'
-    ], {
-      detached: true,
-      stdio: 'ignore',
-      env: { ...process.env, DISPLAY: process.env.DISPLAY || ':0' }
-    });
+    ];
+    const asRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+    if (asRoot) {
+      // Root host: VLC refuses root. Ensure the dedicated user exists,
+      // make the bus socket reachable cross-user, spawn through runuser.
+      // A missing cvlc must fast-fail HERE: runuser itself always
+      // spawns fine, so the ENOENT 'error' handler below never fires
+      // on this branch and a cvlc-less host would otherwise pay the
+      // full 10s readiness timeout in every flow file (audit fold).
+      try { execFileSync('which', ['cvlc'], { stdio: 'pipe' }); }
+      catch {
+        logger.warn('VLC spawn skipped: cvlc not installed on this host');
+        return false;
+      }
+      try { execFileSync('id', [VLC_USER], { stdio: 'pipe' }); }
+      catch { try { execFileSync('useradd', ['-m', VLC_USER], { stdio: 'pipe' }); } catch { /* exists or uncreatable — spawn will tell */ } }
+      vlcProcess = spawn('runuser', ['-u', VLC_USER, '--', 'cvlc', ...vlcArgs], {
+        detached: true,
+        stdio: 'ignore',
+        env: { ...process.env, DISPLAY: process.env.DISPLAY || ':0' }
+      });
+    } else {
+      vlcProcess = spawn('cvlc', vlcArgs, {
+        detached: true,
+        stdio: 'ignore',
+        env: { ...process.env, DISPLAY: process.env.DISPLAY || ':0' }
+      });
+    }
     // spawn() ENOENT (cvlc not installed) arrives ASYNCHRONOUSLY via the
     // 'error' event — without a handler it becomes an uncaughtException
     // that kills the Playwright worker before any test runs, defeating
@@ -166,6 +200,14 @@ async function waitForVLCReady(timeoutMs = VLC_MAX_WAIT_MS) {
  */
 async function setupVLC() {
   logger.info('Setting up VLC for E2E tests (D-Bus MPRIS)...');
+
+  // Rung-1 conditions first (fix-vehicle S5): a session bus and an X
+  // display, self-provisioned when the host lacks them. Video-file
+  // seeding lives in the shared fixture generator (one truth), which
+  // provisionForRun runs when the orchestrator starts — the
+  // vacuous-pass mechanism this vehicle closed stays closed there.
+  const env = ensureSessionEnv();
+  logger.info('E2E session env', { bus: env.bus, display: env.display });
 
   // Strategy 1: Check if VLC is already running
   if (await isVLCAvailable()) {

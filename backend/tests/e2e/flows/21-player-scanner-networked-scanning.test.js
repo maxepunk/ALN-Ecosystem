@@ -49,6 +49,8 @@ const {
 
 const { createSessionViaWebSocket } = require('../setup/session-helpers');
 
+const { getCapabilities, requireCapabilities, formatManifest } = require('../helpers/capabilities');
+
 // Page objects
 const PlayerScannerPage = require('../helpers/page-objects/PlayerScannerPage');
 
@@ -62,6 +64,7 @@ let orchestratorInfo = null;
 let vlcInfo = null;
 let httpClient = null;
 let testTokens = null;  // Dynamically selected tokens
+let caps = null;        // Environment capability manifest
 
 // ========================================
 // SETUP & TEARDOWN
@@ -89,6 +92,9 @@ test.describe('Player Scanner Networked Scanning', () => {
       timeout: 30000
     });
     console.log(`Orchestrator started: ${orchestratorInfo.url}`);
+
+    caps = await getCapabilities(orchestratorInfo.url);
+    console.log(`Capability manifest: ${formatManifest(caps)}`);
 
     // 4. Launch browser
     browser = await chromium.launch({
@@ -294,12 +300,39 @@ test.describe('Player Scanner Networked Scanning', () => {
   // TEST: Video Alert Feature (NeurAI Branding)
   // ========================================
 
+  /**
+   * Wait until the orchestrator's video queue is clear to accept a new
+   * video. The two video-alert tests scan the SAME token against ONE
+   * long-lived orchestrator; with real VLC the first test starts a ~10s
+   * playback, and a scan during it is answered status:'rejected'
+   * (video_busy) — the toast, not the alert. That coupling made the
+   * second test fail first-attempt and pass only on the Playwright
+   * retry (a fresh worker where test 1 never ran) — booked at the S4
+   * close as a timing flake; the model-window audit proved it was this
+   * deterministic ordering defect (fix-vehicle S5 §8.1 fold).
+   */
+  async function waitForOrchestratorVideoIdle(timeoutMs = 20000) {
+    await expect(async () => {
+      const res = await httpClient.get('/api/state', { timeout: 3000 });
+      const status = res.data?.videoStatus?.status;
+      expect(status !== 'playing' && status !== 'loading').toBe(true);
+    }).toPass({ timeout: timeoutMs });
+  }
+
   test('video token triggers video alert with NeurAI branding', async () => {
-    // Skip if no video token available
-    if (!testTokens.videoToken) {
-      console.log('⚠️ Skipping video alert test - no video token in database');
-      return;
-    }
+    // The alert is shown ONLY when the orchestrator actually queues the
+    // video: videoQueueService.canAcceptVideo() refuses with reason
+    // 'vlc_down' when VLC is unhealthy, /api/scan then answers
+    // status:'rejected', and the PWA shows the "video unavailable" toast
+    // instead (scannerCore.classifyScanResponse). So this is a
+    // VLC-primary-path test and must gate on it — LOUDLY, per the
+    // capabilities.js rules — not fail on a VLC-less machine.
+    requireCapabilities(test, caps, ['vlc']);
+    // Missing fixture is also a LOUD skip: the old silent early-return
+    // made this test PASS while asserting nothing whenever the generated
+    // video file was absent (which is how it "passed" every prior close).
+    test.skip(!testTokens.videoToken,
+      'no video token with a present video file in this pack/environment');
 
     const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
@@ -309,6 +342,9 @@ test.describe('Player Scanner Networked Scanning', () => {
 
     const videoTokenId = testTokens.videoToken.SF_RFID;
     console.log(`Testing video token (${videoTokenId})...`);
+
+    // Decouple from any still-playing video (see helper above)
+    await waitForOrchestratorVideoIdle();
 
     // Scan video token
     await scanner.simulateScan(videoTokenId);
@@ -330,11 +366,10 @@ test.describe('Player Scanner Networked Scanning', () => {
   });
 
   test('video alert displays for minimum 5 seconds', async () => {
-    // Skip if no video token available
-    if (!testTokens.videoToken) {
-      console.log('⚠️ Skipping video alert duration test - no video token in database');
-      return;
-    }
+    // Same VLC primary-path dependency + loud fixture skip as above.
+    requireCapabilities(test, caps, ['vlc']);
+    test.skip(!testTokens.videoToken,
+      'no video token with a present video file in this pack/environment');
 
     const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
@@ -343,6 +378,9 @@ test.describe('Player Scanner Networked Scanning', () => {
     await scanner.gotoNetworked(orchestratorInfo.url);
 
     const videoTokenId = testTokens.videoToken.SF_RFID;
+
+    // Decouple from any still-playing video (see helper above)
+    await waitForOrchestratorVideoIdle();
 
     // Scan video token
     await scanner.simulateScan(videoTokenId);

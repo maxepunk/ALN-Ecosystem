@@ -30,6 +30,16 @@ class Session {
     if (!data.transactions) {
       data.transactions = [];
     }
+    // Legacy-history default on the RESTORE path (train-review P1-2):
+    // persisted transactions are hydrated RAW (never re-run through the
+    // Transaction constructor), so a pre-`mode` transaction stayed
+    // modeless after restore — the constructor's 'blackmarket' literal
+    // only guarded fresh constructions. Same STABLE literal, same
+    // rationale (an old ALN session keeps its recorded meaning under
+    // any pack); live ingress never relies on this.
+    data.transactions = data.transactions.map(
+      (tx) => (tx && typeof tx === 'object' && !tx.mode ? { ...tx, mode: 'blackmarket' } : tx)
+    );
 
     if (!data.connectedDevices) {
       data.connectedDevices = [];

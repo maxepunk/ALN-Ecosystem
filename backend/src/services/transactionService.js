@@ -575,10 +575,17 @@ class TransactionService extends EventEmitter {
     const teams = scores.map(s => s.teamId);
 
     // Reset each team's score to zero using TeamScore.reset() method
-    // This preserves team membership (and adminAdjustments audit trail) but
-    // clears: currentScore, baseScore, tokensScanned, bonusPoints, completedGroups
+    // (preserves team membership; clears currentScore, baseScore,
+    // tokensScanned, bonusPoints, completedGroups). Admin adjustments
+    // are cleared HERE, not in reset() — the delete-rebuild path also
+    // calls reset() and must keep replaying current-epoch adjustments
+    // (D2s2), but a reset's own output declares prior adjustments void:
+    // leaving them stored let any later delete-rebuild resurrect
+    // pre-reset deltas onto the new game's scores (train-review
+    // MAJOR 6 / P1-1). The score:adjusted history survives in the logs.
     for (const teamScore of scores) {
       teamScore.reset();
+      teamScore.adminAdjustments = [];
     }
 
     // Clear recent transactions (these are historical, not team membership)

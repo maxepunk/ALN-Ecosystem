@@ -77,6 +77,27 @@ describe('gm:identify — display-class sockets (B0 BS.2)', () => {
     }
   });
 
+  it('a display-class socket connecting AFTER the session exists joins the session room (train-review MAJOR 1 / LA-1)', async () => {
+    // The show-night failure this pins: the kiosk page is opened,
+    // reloaded, or reconnects after the GM created the session. It
+    // must join session:<id> — the room transaction:new /
+    // score:adjusted / scores:reset / transaction:deleted are
+    // emitted to — or the scoreboard paints sync:full once and then
+    // freezes for the rest of the game.
+    const session = await sessionService.createSession({ name: 'Test Session', teams: [] });
+    const socket = makeSocket({ tier: 'device', functions: ['observe'] });
+
+    await handleGmIdentify(socket, { deviceId: 'SCOREBOARD_DISPLAY', version: '1.0.0' }, mockIo);
+
+    expect(socket.disconnect).not.toHaveBeenCalled();
+    expect(socket.join).toHaveBeenCalledWith(`session:${session.id}`);
+
+    // The ruled carve-out halves stay ruled: no device registration.
+    const registered = (sessionService.getCurrentSession().connectedDevices || [])
+      .filter((d) => d.id === 'SCOREBOARD_DISPLAY');
+    expect(registered).toHaveLength(0);
+  });
+
   it('an OPERATOR socket still takes the full path: device registered in the session', async () => {
     await sessionService.createSession({ name: 'Test Session', teams: [] });
     const socket = makeSocket({

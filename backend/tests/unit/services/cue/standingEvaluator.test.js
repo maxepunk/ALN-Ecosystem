@@ -190,11 +190,18 @@ describe('cueVocabulary (game-event normalizers)', () => {
       });
 
       expect(result.tokenId).toBe('T1');
-      expect(result.memoryType).toBe('Business');
-      expect(result.valueRating).toBe(3);
-      expect(result.groupId).toBe('grp1');
+      expect(result.teamId).toBe('Alpha');
+      expect(result.deviceType).toBe('gm');
+      expect(result.points).toBe(50000);
       expect(result.teamScore).toBe(100000);
       expect(result.hasGroupBonus).toBe(true);
+      // P1-3: the three phantom fields are GONE from the vocabulary —
+      // the Transaction wire object never carried them, so a condition
+      // on any of them could never match. Even a payload that fabricates
+      // them (as this one does) must not leak them into the flat fields.
+      expect(result).not.toHaveProperty('memoryType');
+      expect(result).not.toHaveProperty('valueRating');
+      expect(result).not.toHaveProperty('groupId');
     });
 
     it('normalizes group:completed to flat fields', () => {

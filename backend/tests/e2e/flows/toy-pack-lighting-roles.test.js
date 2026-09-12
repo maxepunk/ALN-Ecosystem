@@ -99,9 +99,14 @@ test.describe('Toy pack — role-addressed lighting (second consumer)', () => {
     requireCapabilities(test, caps, ['lighting']);
 
     // 1. Discover a real scene from the running system (machine state).
+    //    Lighting rides /api/state under environment.lighting (the payload
+    //    mirrors sync:full — buildSyncFullPayload nests bluetooth/audio/
+    //    lighting in `environment`). The original read at the TOP level was
+    //    a path the payload never had, invisible until S5b provisioned a
+    //    witness HA and this test executed for the first time.
     await sendGMCommand(orchestratorInfo.url, 'lighting:scenes:refresh');
     const state = await getState(orchestratorInfo.url);
-    const scenes = state.lighting?.scenes || [];
+    const scenes = state.environment?.lighting?.scenes || [];
     expect(scenes.length, 'HA reported no scenes — cannot bind a role').toBeGreaterThan(0);
     const realSceneId = scenes[0].id;
     console.log(`Discovered HA scene: ${realSceneId}`);

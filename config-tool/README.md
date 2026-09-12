@@ -2,6 +2,16 @@
 
 A web-based configuration interface for the About Last Night game system. Allows GMs and show designers to set up venues, tune game economy, author show cues, manage audio routing, and save/restore configuration presets — without editing raw config files.
 
+> **⚠ ACCURACY NOTE (2026-09-06, from the whole-train review — full
+> rewrite lands with the Design-workspace pages re-cut, F-P5a-3):**
+> parts of this README describe the tool BEFORE the B0 auth work. The
+> tool now requires an operator login (the orchestrator's admin
+> password) — there is no unauthenticated access; the app is served
+> over HTTPS in production posture; and pack-content writes (cues,
+> scoring) go through drafts + a publish step that runs the engine's
+> own activation gate (direct write routes now 409). Where a section
+> below contradicts this note, this note wins.
+
 ## Quick Start
 
 ```bash

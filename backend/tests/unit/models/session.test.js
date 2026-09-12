@@ -177,6 +177,34 @@ describe('Session Model - Per-Device Duplicate Detection (P0.1)', () => {
     });
   });
 
+  describe('legacy transaction hydration (train-review P1-2)', () => {
+    it('a persisted pre-`mode` transaction hydrates with the legacy-history default', () => {
+      // Persisted transactions are hydrated RAW (never re-run through
+      // the Transaction constructor), so the constructor's stable
+      // 'blackmarket' literal used to guard only fresh constructions —
+      // a restored legacy session's transactions stayed modeless and
+      // the delete-rebuild path could not resolve their mode.
+      const now = new Date().toISOString();
+      const sessionId = '11111111-2222-4333-8444-555555555555';
+      const tx = (id, extra = {}) => ({
+        id, tokenId: 'abc', teamId: 'A', deviceId: 'GM_1', deviceType: 'gm',
+        points: 100, timestamp: now, sessionId, status: 'accepted', ...extra,
+      });
+      const session = Session.fromJSON({
+        id: sessionId,
+        name: 'Legacy Session',
+        startTime: now,
+        transactions: [
+          tx('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeee1'),
+          tx('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeee2', { mode: 'detective' }),
+        ],
+      });
+      expect(session.transactions[0].mode).toBe('blackmarket');
+      // A recorded mode is never overwritten
+      expect(session.transactions[1].mode).toBe('detective');
+    });
+  });
+
   describe('Integration with existing Session functionality', () => {
     test('should not interfere with addTransaction()', () => {
       const transaction = {

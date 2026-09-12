@@ -71,7 +71,8 @@ async function loadPresetList(listContainer) {
         el('button', {
           className: 'btn btn--small',
           textContent: 'Export',
-          onClick: () => api.exportPreset(preset.filename),
+          onClick: () => api.exportPreset(preset.filename)
+            .catch((err) => alert(`Export failed: ${err.message}`)),
         }),
       );
 

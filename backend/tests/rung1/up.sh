@@ -37,11 +37,6 @@ as_user() { runuser -u "$RUNG1_USER" -- "$@"; }
 mkdir -p "$RUNG1"
 id "$RUNG1_USER" >/dev/null 2>&1 || useradd -m "$RUNG1_USER" 2>/dev/null || true
 
-# --- generated fixtures (one truth: regenerated from the pack) -----
-node "$HERE/generate-fixtures.js" "$PACK_DIR" "$RUNG1" \
-  && note "fixtures generated from $(basename "$PACK_DIR")" \
-  || fail "fixture generation"
-
 # --- ownership + engine-writable dirs ------------------------------
 mkdir -p "$RUNG1/xdg" "$RUNG1/engine-logs" "$RUNG1/engine-data"
 chown -R "$RUNG1_USER" "$RUNG1"
@@ -58,111 +53,34 @@ else
   note "engine already running — skipping /tmp sweep"
 fi
 
-# --- shared session bus (as $RUNG1_USER; permissive conf kept so a --
-# root-launched tool can still probe the same bus)
+# --- the shared arms (tests/rung1/provision.js — ONE implementation
+# with the E2E suite: fixtures from the pack, session bus, Xvfb,
+# pipewire + null sinks, dockerd + witness Home Assistant, Bluetooth
+# mock; recipes and lifecycle decisions live THERE, not here) --------
 export DBUS_SESSION_BUS_ADDRESS="unix:path=$RUNG1/dbus.sock"
-bus_ok() {
-  as_user env DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" \
-    dbus-send --session --dest=org.freedesktop.DBus --type=method_call \
-    / org.freedesktop.DBus.ListNames >/dev/null 2>&1
-}
-if ! bus_ok; then
-  cat > "$RUNG1/dbus-rung1.conf" <<EOF
-<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
- "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
-<busconfig>
-  <type>session</type>
-  <listen>unix:path=$RUNG1/dbus.sock</listen>
-  <auth>EXTERNAL</auth>
-  <policy context="default">
-    <allow user="*"/>
-    <allow send_destination="*" eavesdrop="true"/>
-    <allow eavesdrop="true"/>
-    <allow own="*"/>
-  </policy>
-</busconfig>
-EOF
-  chown "$RUNG1_USER" "$RUNG1/dbus-rung1.conf"
-  as_user dbus-daemon --config-file="$RUNG1/dbus-rung1.conf" --nofork \
-    > "$RUNG1/dbus-daemon.log" 2>&1 &
-  echo $! > "$RUNG1/dbus.pid"
-  sleep 1
-  chmod 666 "$RUNG1/dbus.sock" 2>/dev/null
-fi
-bus_ok && note "session bus OK (user: $RUNG1_USER)" || fail "session bus"
-
-# --- pipewire + null sinks (as $RUNG1_USER, same bus) --------------
 export XDG_RUNTIME_DIR="$RUNG1/xdg"
-pw_env() {
-  as_user env XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
-    DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" "$@"
-}
-if ! pw_env pactl info >/dev/null 2>&1; then
-  pw_env pipewire > "$RUNG1/pipewire.log" 2>&1 &
-  echo $! > "$RUNG1/pipewire.pid"
-  pw_env wireplumber > "$RUNG1/wireplumber.log" 2>&1 &
-  echo $! > "$RUNG1/wireplumber.pid"
-  pw_env pipewire-pulse > "$RUNG1/pwpulse.log" 2>&1 &
-  echo $! > "$RUNG1/pwpulse.pid"
-  sleep 4
-  pw_env pactl load-module module-null-sink sink_name=rung1_hdmi >/dev/null 2>&1
-  pw_env pactl load-module module-null-sink sink_name=rung1_bt >/dev/null 2>&1
-fi
-pw_env pactl info >/dev/null 2>&1 && note "pipewire OK (user: $RUNG1_USER)" \
-  || fail "pipewire"
-
-# --- Xvfb: the display's fake physics ------------------------------
-# The engine's VLC vout and the scoreboard Chromium kiosk both need a
-# REAL X server; only the screen is virtual. Without it every VLC item
-# lands `stopped` (found by the first live-flow audit: video:loading
-# fired, playback never started, restore-after-video never fired).
 export DISPLAY="${RUNG1_DISPLAY:-:99}"
-if ! as_user env DISPLAY="$DISPLAY" xdotool getdisplaygeometry >/dev/null 2>&1; then
-  as_user Xvfb "$DISPLAY" -screen 0 1280x720x24 \
-    > "$RUNG1/xvfb.log" 2>&1 &
-  echo $! > "$RUNG1/xvfb.pid"
-  sleep 2
-fi
-as_user env DISPLAY="$DISPLAY" xdotool getdisplaygeometry >/dev/null 2>&1 \
-  && note "xvfb OK ($DISPLAY)" || fail "xvfb"
-
-# --- Home Assistant (witness register + API onboarding) ------------
-if ! docker info >/dev/null 2>&1; then
-  dockerd --iptables=false --bridge=none --storage-driver=vfs \
-    > "$RUNG1/dockerd.log" 2>&1 &
-  echo $! > "$RUNG1/dockerd.pid"
-  for i in $(seq 1 15); do sleep 2; docker info >/dev/null 2>&1 && break; done
-fi
-if docker info >/dev/null 2>&1; then
-  if ! docker ps --format '{{.Names}}' | grep -q '^rung1-ha$'; then
-    docker rm -f rung1-ha >/dev/null 2>&1 || true
-    docker run -d --name rung1-ha --network=host \
-      -v "$RUNG1/ha-config:/config" "$HA_IMAGE" > /dev/null 2>&1 \
-      || fail "ha container start"
-  fi
-  READY=""
-  for i in $(seq 1 60); do
-    c=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8123/auth/providers)
-    [ "$c" = "200" ] && { READY=1; break; }
-    c2=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8123/api/onboarding)
-    [ "$c2" = "200" ] && { READY=1; break; }
-    sleep 3
-  done
-  if [ -n "$READY" ]; then
-    node "$HERE/onboard-ha.js" "$RUNG1" \
-      && note "ha OK (onboarded, token at $RUNG1/ha-auth.json)" \
-      || fail "ha onboarding"
-  else
-    fail "ha readiness"
-  fi
+if node "$HERE/provision.js" --rung1-dir "$RUNG1" --pack "$PACK_DIR" \
+    --bus-socket "$RUNG1/dbus.sock" --display "$DISPLAY" \
+    > "$RUNG1/provision-result.json"; then
+  note "shared arms up ($(node -e "
+    const r = require('$RUNG1/provision-result.json');
+    console.log(['bus','display','pulseServer','ha','bt']
+      .filter((k) => r[k]).join(', '));"))"
 else
-  fail "dockerd"
+  fail "shared provisioning (see $RUNG1/provision-result.json + logs)"
 fi
+BT_BUS=$(node -e "
+  const r = require('$RUNG1/provision-result.json');
+  console.log(r.bt && r.bt.mode === 'mock' ? r.bt.address : '');" 2>/dev/null)
 
 # --- engine environment file --------------------------------------
+# Long-lived HA token preferred (the engine's expected credential
+# shape; the login-flow token expires in ~30 min — shorter than a leg).
 HA_TOKEN=""
-[ -f "$RUNG1/ha-auth.json" ] && HA_TOKEN=$(node -e \
-  "console.log(require('$RUNG1/ha-auth.json').access_token)" 2>/dev/null)
+[ -f "$RUNG1/ha-auth.json" ] && HA_TOKEN=$(node -e "
+  const a = require('$RUNG1/ha-auth.json');
+  console.log(a.long_lived_token || a.access_token);" 2>/dev/null)
 cat > "$RUNG1/env.sh" <<EOF
 # source me before booting the engine against the rung-1 harness
 export DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS"
@@ -177,6 +95,9 @@ export LOGS_DIR="$RUNG1/engine-logs"
 export DISPLAY="$DISPLAY"
 export CHROMIUM_BIN="/opt/pw-browsers/chromium"
 EOF
+# Bluetooth: when the mock arm is live, the engine's bluetoothctl and
+# dbus-monitor children must reach the private system bus.
+[ -n "$BT_BUS" ] && echo "export DBUS_SYSTEM_BUS_ADDRESS=\"$BT_BUS\"" >> "$RUNG1/env.sh"
 chown "$RUNG1_USER" "$RUNG1/env.sh"
 note "engine env written to $RUNG1/env.sh"
 

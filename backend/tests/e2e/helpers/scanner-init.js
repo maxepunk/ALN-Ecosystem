@@ -107,14 +107,58 @@ async function initializeGMScannerWithMode(page, sessionMode, gameMode = 'blackm
     await gmScanner.selectStandaloneMode();
   }
 
-  // Set game mode (detective vs blackmarket)
-  const currentModeText = await gmScanner.getModeText();
-  const currentMode = currentModeText.toLowerCase().includes('detective') ? 'detective' : 'blackmarket';
-  if (currentMode !== gameMode) {
-    await gmScanner.toggleMode();
+  // Set game mode — PACK-DERIVED on BOTH sides (train-review P9b-5;
+  // fix-vehicle adversarial review): the first cut made only the CURRENT
+  // mode pack-derived while the callers' TARGET stayed the ALN literals
+  // ('blackmarket'/'detective'), so under a pack with different mode ids
+  // the inequality was permanently true and the single blind toggle
+  // parked the scanner one cycle PAST the pack's default (toy leg:
+  // fence → tipoff, a non-scoring mode, while logging "blackmarket").
+  // Now the caller's literal is resolved as a ROLE against the declared
+  // modes (the expectedModeLabels idiom in ./scoring): a declared id
+  // equal to the literal wins (ALN leg unchanged); else blackmarket →
+  // the first standard-scoring mode, detective → the scoreboard-evidence
+  // surface mode (else first non-standard). Toggling cycles declaration
+  // order until the pill shows the target, never a blind single fire.
+  // The ALN literals survive only as the packless fallback (L6 shim).
+  const packModes = options.orchestratorUrl
+    ? await require('./scoring').loadPackModes(options.orchestratorUrl).catch(() => null)
+    : null;
+
+  const readCurrentMode = async () => {
+    const text = (await gmScanner.getModeText()).toLowerCase();
+    if (Array.isArray(packModes) && packModes.length > 0) {
+      const match = packModes.find(
+        (m) => m && m.label && text.includes(String(m.label).toLowerCase())
+      );
+      return match ? match.id : packModes[0].id;
+    }
+    return text.includes('detective') ? 'detective' : 'blackmarket';
+  };
+
+  let targetMode = gameMode;
+  if (Array.isArray(packModes) && packModes.length > 0
+      && !packModes.some((m) => m && m.id === gameMode)) {
+    const byRole = gameMode === 'detective'
+      ? (packModes.find((m) => m && m.displayBehavior && m.displayBehavior.surface === 'scoreboard-evidence')
+         || packModes.find((m) => m && m.scoringPolicy !== 'standard'))
+      : packModes.find((m) => m && m.scoringPolicy === 'standard');
+    targetMode = (byRole || packModes[0]).id;
   }
 
-  console.log(`✓ GM Scanner initialized: ${sessionMode} mode, ${gameMode} game mode`);
+  let currentMode = await readCurrentMode();
+  const maxToggles = Array.isArray(packModes) && packModes.length > 0 ? packModes.length - 1 : 1;
+  for (let i = 0; i < maxToggles && currentMode !== targetMode; i++) {
+    await gmScanner.toggleMode();
+    currentMode = await readCurrentMode();
+  }
+  if (currentMode !== targetMode) {
+    throw new Error(
+      `scanner-init: could not reach mode '${targetMode}' (asked '${gameMode}'; pill reads '${currentMode}')`
+    );
+  }
+
+  console.log(`✓ GM Scanner initialized: ${sessionMode} mode, ${targetMode} game mode (asked: ${gameMode})`);
   return gmScanner;
 }
 

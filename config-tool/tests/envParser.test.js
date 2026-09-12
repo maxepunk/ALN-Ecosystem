@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
-const { parseEnvFile, serializeEnv, readEnv, writeEnv } = require('../lib/envParser');
+const { parseEnvFile, serializeEnv } = require('../lib/envParser');
 
 describe('envParser', () => {
   describe('parseEnvFile', () => {

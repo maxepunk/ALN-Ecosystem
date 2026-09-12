@@ -106,24 +106,34 @@ async function handleGmIdentify(socket, data, io) {
     socket.join('gm');
     logger.debug('Socket joined type room', { deviceId, room: 'gm' });
 
-    // Update session with device ONLY if session exists (never for a
-    // display-class socket — displays are not session devices).
+    // Session handling when a session exists. The display carve-out
+    // (B0 BS.2) covers REGISTRATION and CAPACITY only — a display is
+    // never a session device. Broadcast DELIVERY is for everyone:
+    // transaction:new / score:adjusted / scores:reset /
+    // transaction:deleted are emitted to session:<id>, so a display
+    // that connects (or reloads) AFTER the session exists must join
+    // that room or it freezes on its sync:full snapshot for the rest
+    // of the game (train-review MAJOR 1 / LA-1).
     const session = sessionService.getCurrentSession();
-    if (session && !isDisplay) {
-      await sessionService.updateDevice(device.toJSON());
+    if (session) {
+      if (!isDisplay) {
+        await sessionService.updateDevice(device.toJSON());
+      }
 
-      // 3. Session room (legacy, maintained for compatibility)
+      // 3. Session room — ALL authenticated sockets, displays included
       socket.join(`session:${session.id}`);
-      logger.debug('Socket joined session room', { deviceId, room: `session:${session.id}` });
+      logger.debug('Socket joined session room', { deviceId, room: `session:${session.id}`, display: isDisplay || undefined });
 
       // 4. Team rooms (for team-specific broadcasts in the future)
       // Teams are stored in session.scores, not session.teams
-      const teams = session.scores ? session.scores.map(score => score.teamId) : [];
-      if (teams && teams.length > 0) {
-        teams.forEach(teamId => {
-          socket.join(`team:${teamId}`);
-          logger.debug('Socket joined team room', { deviceId, room: `team:${teamId}` });
-        });
+      if (!isDisplay) {
+        const teams = session.scores ? session.scores.map(score => score.teamId) : [];
+        if (teams && teams.length > 0) {
+          teams.forEach(teamId => {
+            socket.join(`team:${teamId}`);
+            logger.debug('Socket joined team room', { deviceId, room: `team:${teamId}` });
+          });
+        }
       }
     } else if (!session) {
       // No session yet - GM is connecting to create one via Admin panel

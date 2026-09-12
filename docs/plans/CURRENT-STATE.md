@@ -5,8 +5,13 @@ in place, updated whenever execution state changes: what's done,
 what's next, and who each open item waits on. The full frame is
 `ROADMAP.md` (r4); the deep archive is `PHASE3-STATUS.md`.
 
-**Last updated: 2026-09-05** (roadmap r4 ratified; ratification edits
-executed; deployment-docs repair — agent half — DONE the same day).
+**Last updated: 2026-09-06** (fix vehicle COMPLETE: S1–S5b closed.
+S5b landed the shared, profile-gated rung-1 provisioning module —
+one module for the rig and the E2E suite — and put real VLC, a
+witness Home Assistant, and a mocked Bluetooth adapter under the
+full dual-pack legs. Three engine defects and one never-executed
+test's own defect were found and fixed by paths running for the
+first time ever. The train now waits on the owner's walk).
 
 ## Where we stand
 
@@ -30,8 +35,9 @@ executed; deployment-docs repair — agent half — DONE the same day).
 
 | Item | Who | State |
 |---|---|---|
-| Whole-train review (full combined diff, fresh-context session) | agent (a NEW session) | not started — next agent unit after the docs repair, or in parallel at the owner's word |
-| Walk the merge train (18 vehicles, in order) | owner | waits on the review |
+| Whole-train review (full combined diff, fresh-context session) | agent (separate session) | **DONE 2026-09-05** — verdict: walk-with-fixes. Report: `2026-09-05-whole-train-review.md` (branch `claude/whole-train-review`). 8 MAJORs survive; Appendix-B item 5 CLEARED; the "watch it" vehicle confirmed green |
+| **Train fix vehicle** (all 8 MAJORs + ruled fix-now set; owner directive: no deferred MAJORs, every MINOR/NOTE intentionally dispositioned) | agent | estimate signed 2026-09-05; **S1–S4 BUILT + reviewed** (execution record: `2026-09-05-train-fix-vehicle.md` §7): all 8 MAJORs fixed red-first; §6 adversarial review ran (15 agents) — 6 survivors, 5 fixed, 1 deferred (B5); dual-pack E2E diagnosed to root cause — the video-alert tests had NEVER actually run (vacuous pass on a missing fixture) and VLC-down here is an E2E bring-up FAULT (this container is a rung-1 host); harness fixed (loud gates), and a hand-run rung-1 validation put real VLC under the video tests for the first time: they PASS. PRs: parent #34 + scanner #16 + TokenData #7. **S5b CLOSED 2026-09-06 — vehicle COMPLETE** (owner-ruled: "a faulty E2E suite IS a bug"): ONE shared provisioning module (`backend/tests/rung1/provision.js`) serves the rig and the E2E suite, gated by the run's PROFILE (a real venue profile provisions nothing — venue safety by construction); every worker gets a private session bus; the witness HA + Bluetooth mock + real VLC now stand under the full legs. First-ever-executing paths surfaced and fixed 3 engine defects (VLC supervision adopt-mode, MPRIS transition-merge swallow, order-dependent witness register) and 1 test defect (the toy lighting flow read a state key that never existed — its D-4.8 end-to-end proof now actually runs and passes). Final legs: ALN 126 passed/2 failed→fixed, toy 122/2→fixed; close review 17 findings all dispositioned (10 fixed, 1 refuted, 6 accepted/corrected). Execution record: `2026-09-05-train-fix-vehicle.md` §8.2 |
+| Walk the merge train (20 vehicles, in order — fix vehicle last) | owner | **READY** — the fix vehicle is complete (parent PR #34, scanner #16, TokenData #7); walk notes beside the train table |
 | **Deployment-docs repair** (Appendix C scope; includes boot-to-running posture) | agent | **AGENT HALF DONE 2026-09-05** (branch `claude/phase3-docs-repair`): env reference rebuilt from source (+2 template defects fixed), HA install procedure, installation-profile section, media-transfer procedure with runnable verification, machine prep + Pi-5 video settings, boot-to-running posture, cert-spike home, 4 wrong sections fixed (scoreboard auth ×3, spotifyd), Bluetooth contradiction removed |
 | Capture the 7 lighting-scene definitions off the live machine (~20 min, read-only, borrow/restore rules) | owner | scheduled at the owner's pace — the guide's HA §3 carries the marked slot the captured YAML fills |
 | Screen baselines from the pinned production release (Q8) | agent (priced at approval — no capture infra exists yet) | not started |
