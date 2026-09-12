@@ -75,6 +75,17 @@ jobs:
           # the engine spawns its own.
           sudo systemctl stop mpd mpd.socket 2>/dev/null || true
 
+      # Run 16 (9dbbef4) traced `display` down to a real crash, not a
+      # timing race: Chromium's zygote aborts with "No usable sandbox!"
+      # (content/browser/zygote_host/zygote_host_impl_linux.cc:128) —
+      # Ubuntu 24.04's runner image restricts unprivileged user
+      # namespaces via AppArmor, which Chromium's sandbox needs. This
+      # is runner physics, not engine behavior: the venue Pi kiosk
+      # keeps its normal sandbox: displayDriver's launch flags don't
+      # change, only this hosted runner's kernel knob does.
+      - name: Allow Chromium's sandbox (Ubuntu 24.04 restricts unprivileged user namespaces)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       # sudo resets PATH (secure_path) which would hide setup-node's
       # toolcache binary from the scripts' `node` calls — preserve it.
       # RUNG1_USER=runner: the job's own non-root user IS the harness

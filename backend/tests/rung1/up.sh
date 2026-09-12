@@ -99,25 +99,6 @@ if [ -z "$CHROMIUM_RESOLVED" ]; then
 fi
 if [ -z "$CHROMIUM_RESOLVED" ]; then
   note "no Chromium found — the display service will report down"
-else
-  note "CHROMIUM_BIN resolved to $CHROMIUM_RESOLVED"
-  # displayDriver's own alive-check window is a fixed 1s (engine code,
-  # out of scope for this harness) — a stone-cold Chrome-for-Testing
-  # launch (first profile/cert-store init, page-cache-cold ~200MB
-  # binary) can take longer than that on a loaded hosted runner. Fire
-  # one throwaway launch now, under the same Xvfb display and as the
-  # same harness user, so the OS caches are warm before the engine's
-  # own timed launch; the engine's own orphan-recovery pkill
-  # (displayDriver.js _doLaunch) cleans this instance up for us.
-  as_user env DISPLAY="$DISPLAY" XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
-    "$CHROMIUM_RESOLVED" --kiosk --no-first-run --disable-gpu \
-    --disable-dev-shm-usage about:blank \
-    > "$RUNG1/chromium-warmup.log" 2>&1 &
-  WARM_PID=$!
-  sleep 3
-  kill -9 "$WARM_PID" 2>/dev/null || true
-  pkill -9 -f 'chromium.*--kiosk' 2>/dev/null || true
-  note "chromium warm-up done (best-effort; see chromium-warmup.log)"
 fi
 
 cat > "$RUNG1/env.sh" <<EOF
