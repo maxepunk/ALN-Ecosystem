@@ -6,6 +6,23 @@
   "version": 1,
   "forPack": "about-last-night",
   "orchestrator": true,
+  "network": {
+    "mode": "kit-network",
+    "kitNetwork": {
+      "ssid": "aboutlastnetwork",
+      "orchestratorIp": "192.168.0.191",
+      "localDnsOverride": true
+    }
+  },
+  "endpoints": {
+    "display.main": { "installed": true, "output": "hdmi-0" },
+    "audio.sinks": [
+      { "id": "hdmi", "installed": true }
+    ],
+    "lighting.instruments": { "installed": true, "provider": "home-assistant" },
+    "stations": { "count": 3 },
+    "personal": { "expected": false }
+  },
   "bindings": {
     "lighting": {
       "gameplay": { "ha": "scene.game" },
