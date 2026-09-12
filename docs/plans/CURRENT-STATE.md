@@ -31,8 +31,8 @@ implementation stands. Thursday's token sync is run by a Claude session
 ON the Pi (green if it is ready, else blue) with the repository's sync
 script, which also generates the images; a session on blue works under
 the containment rules, which is why staying on blue carries risk. A
-venue rehearsal before Friday is the owner's call, not assumed either
-way. The fact sheet of that sync workflow, from the code, is
+venue rehearsal WILL happen before Friday (owner, 2026-09-12); the
+day is the owner's. The fact sheet of that sync workflow, from the code, is
 `.superpowers/sdd/2026-09-12-block2-hardening-plan/token-sync-workflow.md`
 when written.
 

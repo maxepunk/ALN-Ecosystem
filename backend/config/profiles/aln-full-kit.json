@@ -11,7 +11,7 @@
     "kitNetwork": {
       "ssid": "aboutlastnetwork",
       "orchestratorIp": "192.168.0.191",
-      "localDnsOverride": true
+      "localDnsOverride": false
     }
   },
   "endpoints": {
