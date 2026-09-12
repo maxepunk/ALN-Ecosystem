@@ -553,6 +553,141 @@ describe('packService', () => {
     });
   });
 
+  describe('pack strings sidecar (A3 slice 3a — declared ⇒ must load; undeclared ⇒ baked defaults)', () => {
+    function writeStringsPack(dir, { game = {}, strings, stringsRaw } = {}) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'sp', ...game,
+      }));
+      if (stringsRaw !== undefined) {
+        fs.writeFileSync(path.join(dir, 'strings.json'), stringsRaw);
+      } else if (strings !== undefined) {
+        fs.writeFileSync(path.join(dir, 'strings.json'), JSON.stringify(strings));
+      }
+    }
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('an UNDECLARED strings file gates nothing: activates, getStrings() is null (benign wording class)', () => {
+      writeStringsPack(tmpDir, {});
+      expect(() => packService.activatePack()).not.toThrow();
+      expect(packService.getStrings()).toBeNull();
+    });
+
+    it('declared + MISSING file refuses activation (declared ⇒ must load)', () => {
+      writeStringsPack(tmpDir, { game: { strings: 'strings.json' } });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*strings\.json.*unreadable/);
+    });
+
+    it('declared + unparseable JSON refuses', () => {
+      writeStringsPack(tmpDir, { game: { strings: 'strings.json' }, stringsRaw: '{nope' });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*strings\.json.*unreadable/);
+    });
+
+    it('declared + a non-string leaf refuses (sections nest; leaves are non-empty strings)', () => {
+      writeStringsPack(tmpDir, {
+        game: { strings: 'strings.json' },
+        strings: {
+          kind: 'strings', schemaVersion: 2,
+          scoreboard: { header: 'OK', nested: { fine: 'yes' }, bad: 42 },
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*strings\.json.*scoreboard\.bad/);
+    });
+
+    it('declared + an EMPTY-string leaf refuses (a blank label is an authoring error, not a value)', () => {
+      writeStringsPack(tmpDir, {
+        game: { strings: 'strings.json' },
+        strings: { kind: 'strings', schemaVersion: 2, scanner: { appTitle: '' } },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*strings\.json.*scanner\.appTitle/);
+    });
+
+    it("declared + wrong kind refuses (a mislabeled sidecar is an authoring error)", () => {
+      writeStringsPack(tmpDir, {
+        game: { strings: 'strings.json' },
+        strings: { kind: 'theme', schemaVersion: 2, scanner: { appTitle: 'X' } },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*strings\.json kind 'theme'/);
+    });
+
+    it.each([1, 3])('declared + schemaVersion %i refuses (EXACT match BOTH directions, same posture as the pack gate)', (v) => {
+      writeStringsPack(tmpDir, {
+        game: { strings: 'strings.json' },
+        strings: { kind: 'strings', schemaVersion: v, scanner: { appTitle: 'X' } },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(new RegExp(`CAPABILITY GATE.*strings\\.json schemaVersion ${v}`));
+    });
+
+    it('declared under a NON-CANONICAL filename refuses (review D — filename contract)', () => {
+      // Manifest role + scanner rules-set are keyed to 'strings.json'; a
+      // divergent pointer rebrands the backend while the scanner silently
+      // stays baked. Schema pins it (const) for authored packs; the gate
+      // covers hand-built PACK_PATH packs that bypass the schema.
+      fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'sp', strings: 'wording.json',
+      }));
+      fs.writeFileSync(path.join(tmpDir, 'wording.json'), JSON.stringify({
+        kind: 'strings', schemaVersion: 2, scanner: { appTitle: 'X' },
+      }));
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*wording\.json.*must be named 'strings\.json'/);
+    });
+
+    it.each([
+      ['JSON null', 'null'],
+      ['a bare string', '"strings"'],
+      ['a number', '42'],
+      ['an array', '["a"]'],
+    ])('declared + top-level %s refuses cleanly (never crashes, never passes silently)', (_label, raw) => {
+      // Regression: JSON null crashed the gate (TypeError reading
+      // .schemaVersion); primitives/arrays destructured to an empty
+      // sections object and PASSED — a declared-but-broken sidecar
+      // slipping through as silent baked wording, the exact failure
+      // class the gate exists to refuse.
+      writeStringsPack(tmpDir, { game: { strings: 'strings.json' }, stringsRaw: raw });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*strings\.json.*not a JSON object/);
+    });
+
+    it('declared + valid: activates and getStrings() returns the ACTIVATION SNAPSHOT (frozen)', () => {
+      writeStringsPack(tmpDir, {
+        game: { strings: 'strings.json' },
+        strings: {
+          kind: 'strings', schemaVersion: 2,
+          scoreboard: { header: 'CASE FILE', empty: 'Nothing yet' },
+          modes: { fence: { claimedLabel: 'FENCED by' } },
+        },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+      const s = packService.getStrings();
+      expect(s.scoreboard.header).toBe('CASE FILE');
+      expect(s.modes.fence.claimedLabel).toBe('FENCED by');
+
+      // Disk edits after activation are NOT served (session rules freeze)
+      fs.writeFileSync(path.join(tmpDir, 'strings.json'), JSON.stringify({
+        kind: 'strings', schemaVersion: 2, scoreboard: { header: 'CHANGED' },
+      }));
+      expect(packService.getStrings().scoreboard.header).toBe('CASE FILE');
+    });
+
+    it('pre-activation reads fall through to live disk (same posture as getGameConfig)', () => {
+      writeStringsPack(tmpDir, {
+        game: { strings: 'strings.json' },
+        strings: { kind: 'strings', schemaVersion: 2, scanner: { appTitle: 'Live' } },
+      });
+      expect(packService.getStrings().scanner.appTitle).toBe('Live');
+    });
+  });
+
   describe('groups coverage gate (A3 slice 2b — D1b: tokens must name declared groups)', () => {
     function writePack(dir, { groups, tokens }) {
       fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify({

@@ -28,6 +28,7 @@ const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { selectDetectiveTokens } = require('../helpers/token-selection');
 const { ScoreboardPage } = require('../helpers/page-objects/ScoreboardPage');
+const { loadPackStrings } = require('../helpers/scoring');
 
 test.describe.configure({ mode: 'serial' });
 test.skip(({ isMobile }) => !isMobile, 'Scoreboard nav tests only run on mobile-chrome project');
@@ -39,6 +40,7 @@ const SMALL_VIEWPORT = { width: 600, height: 500 };    // ~1-2 owners/page
 let browser = null;
 let orchestratorInfo = null;
 let detectiveTokens = null;
+let packStrings = null; // ACTIVE pack strings sidecar (3a) — null = baked wording
 
 test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
 
@@ -55,6 +57,7 @@ test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
       ]
     });
     detectiveTokens = await selectDetectiveTokens(orchestratorInfo.url, { count: 10 });
+    packStrings = await loadPackStrings(orchestratorInfo.url);
   });
 
   test.afterAll(async () => {
@@ -106,7 +109,11 @@ test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
       expect(state.dropdown).toBe(false);
 
       const hint = await gmScanner.scoreboardEvidenceHint.textContent();
-      expect(hint.trim()).toBe('Awaiting evidence...');
+      // Shared ×3 key (slice 3a): the scanner shell consumes the pack's
+      // scoreboard.emptyEvidence via applyPackStringsToDom, so the same
+      // assertion holds on every pack — baked literal only for a pack
+      // that declares no sidecar (parity-pack).
+      expect(hint.trim()).toBe(packStrings?.scoreboard?.emptyEvidence || 'Awaiting evidence...');
 
       const options = await gmScanner.scoreboardDropdownOptions();
       expect(options).toEqual([]);
@@ -178,6 +185,13 @@ test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
     try {
       await scoreboard.goto(orchestratorInfo.url);
       await scoreboard.waitForConnection(10000);
+
+      // Slice 3a vertical, asserted at the E2E layer: the served page's
+      // header is the ACTIVE pack's wording (falls back to the baked
+      // literal when the pack declares no strings sidecar — parity-pack).
+      await expect(sbPage.locator('#scoreboardHeader')).toHaveText(
+        packStrings?.scoreboard?.header || 'CASE FILE: ABOUT LAST NIGHT'
+      );
 
       const gmScanner = await initializeGMScannerWithMode(gmPage, 'networked', 'detective', {
         orchestratorUrl: orchestratorInfo.url,

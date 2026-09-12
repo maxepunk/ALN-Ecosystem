@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
+const config = require('../config');
 const registry = require('./serviceHealthRegistry');
 const { execFileSync } = require('child_process');
 const ProcessMonitor = require('../utils/processMonitor');
@@ -312,7 +313,7 @@ class VlcMprisService extends MprisPlayerBase {
 
     try {
       await this._initializeIdleLoopDelay();
-      await this.playVideo('idle-loop.mp4');
+      await this.playVideo(config.display.idleLoopFile);
       await this.setLoop('Track');
       logger.info('[VLC] Idle loop initialized with continuous playback');
     } catch (err) {
@@ -329,7 +330,7 @@ class VlcMprisService extends MprisPlayerBase {
     }
 
     try {
-      await this.playVideo('idle-loop.mp4');
+      await this.playVideo(config.display.idleLoopFile);
       await this.setLoop('Track');
       logger.info('[VLC] Returned to idle loop');
     } catch (err) {
@@ -342,7 +343,7 @@ class VlcMprisService extends MprisPlayerBase {
    * @returns {boolean}
    */
   _idleLoopExists() {
-    const idleVideoPath = path.join(__dirname, '../../public/videos/idle-loop.mp4');
+    const idleVideoPath = path.join(__dirname, '../../public/videos', config.display.idleLoopFile);
     return fs.existsSync(idleVideoPath);
   }
 

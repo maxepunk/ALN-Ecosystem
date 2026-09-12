@@ -67,6 +67,40 @@ describe('displayDriver — window management', () => {
       );
     });
 
+    test('searches xdotool with the CONFIG window marker — never a hardcoded literal (slice 3a pre-fix 1)', async () => {
+      // The driver half of the "Case File" booby-trap coupling
+      // (capability-matrix 2.5): before this pin, the mocks above match
+      // `--name` by POSITION only, so a rebrand of the search literal
+      // passed CI and broke HDMI control at runtime. The page half +
+      // cross-file tripwire live in scoreboardWindowMarker.test.js.
+      const config = require('../../../src/config');
+      const { spawn, execFile } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+      const searchValues = [];
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') {
+          searchValues.push(args[2]);
+          cb(null, '12345678\n', '');
+        } else cb(null, '', '');
+      });
+
+      // Mutation-proof: the config DEFAULT equals the old hardcoded
+      // literal, so asserting against the default would stay green if
+      // the driver re-baked it. Search must follow a RUNTIME override.
+      const original = config.display.scoreboardWindowMarker;
+      try {
+        config.display.scoreboardWindowMarker = 'MUTATION-SENTINEL-MARKER';
+        await displayDriver.showScoreboard();
+      } finally {
+        config.display.scoreboardWindowMarker = original;
+      }
+
+      expect(searchValues.length).toBeGreaterThan(0);
+      expect(new Set(searchValues)).toEqual(new Set(['MUTATION-SENTINEL-MARKER']));
+    });
+
     test('returns false when the browser cannot launch (!running arm — deflaked coverage pin)', async () => {
       // This arm's coverage used to depend on suite interleaving — the
       // recurring ratchet flake. Force the launch failure deterministically.

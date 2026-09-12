@@ -8,7 +8,8 @@ const io = require('socket.io-client');
 const fetch = require('node-fetch');
 
 const ORCHESTRATOR_URL = 'http://localhost:3000';
-const ADMIN_PASSWORD = '@LN-c0nn3ct';
+// Reads .env via config (dotenv) — never bake the venue credential
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || require('./src/config').security.adminPassword;
 
 async function testScoreboardUpdates() {
   console.log('🧪 Testing Scoreboard Live Updates\n');

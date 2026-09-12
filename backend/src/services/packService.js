@@ -80,6 +80,7 @@ let warnedPackPath = false;
 let activated = false;
 let activeManifest = null;
 let activeGameConfig = null;
+let activeStrings = null;
 let warnedDriftHash = false;
 let warnedLegacyScoring = false;
 
@@ -188,6 +189,77 @@ function _readDiskGameConfig() {
     }
     return null;
   }
+}
+
+/**
+ * Load the pack's DECLARED strings sidecar (A3 slice 3a). Posture:
+ * an UNDECLARED file gates nothing (missing strings are benign wording —
+ * consumers keep their baked defaults, the opposite class from silent
+ * wrong scoring); a DECLARED file must load and validate or activation
+ * REFUSES (declared ⇒ must load, the PACK_PATH rule's shape).
+ * @param {Object|null} gameConfig
+ * @returns {{value: Object|null, problems: string[]}}
+ */
+function _loadDeclaredStrings(gameConfig) {
+  const declared = gameConfig && gameConfig.strings;
+  if (!declared) return { value: null, problems: [] };
+
+  // Canonical filename is the CONTRACT (review D, game.schema.json const):
+  // manifest role assignment and the scanner's staged-refresh rules set
+  // are keyed to 'strings.json' — a divergent pointer would rebrand the
+  // backend while the GM scanner silently stayed baked. Hand-authored
+  // PACK_PATH packs bypass the schema, so the gate enforces it too.
+  if (declared !== 'strings.json') {
+    return {
+      value: null,
+      problems: [`game.json declares strings '${declared}' — the sidecar must be named 'strings.json' (canonical filename contract; manifest role + scanner loader are keyed to it)`],
+    };
+  }
+
+  const stringsPath = path.join(getPackDir(), declared);
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(stringsPath, 'utf8'));
+  } catch (err) {
+    return {
+      value: null,
+      problems: [`game.json declares strings '${declared}' but ${declared} is unreadable (${err.message})`],
+    };
+  }
+
+  // Top-level type guard (the scanner mirror has the same one): JSON
+  // null/primitives/arrays parse fine but are not a sidecar — without
+  // this, null CRASHED the gate and primitives destructured to an empty
+  // sections object and passed silently (declared-but-broken must
+  // refuse loudly, never slip through as baked wording).
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return {
+      value: null,
+      problems: [`game.json declares strings '${declared}' but ${declared} is not a JSON object (sidecar must be {kind, schemaVersion, ...sections})`],
+    };
+  }
+
+  const problems = [];
+  if (parsed.schemaVersion !== undefined && parsed.schemaVersion !== PACK_SCHEMA_VERSION) {
+    problems.push(`${declared} schemaVersion ${parsed.schemaVersion} (engine reads ${PACK_SCHEMA_VERSION})`);
+  }
+  if (parsed.kind !== undefined && parsed.kind !== 'strings') {
+    problems.push(`${declared} kind '${parsed.kind}' (expected 'strings')`);
+  }
+  // Every leaf must be a non-empty string; sections nest arbitrarily.
+  const walk = (node, trail) => {
+    for (const [key, val] of Object.entries(node)) {
+      const here = trail ? `${trail}.${key}` : key;
+      if (val && typeof val === 'object' && !Array.isArray(val)) walk(val, here);
+      else if (typeof val !== 'string' || val.length === 0) {
+        problems.push(`${declared} leaf '${here}' is not a non-empty string (a blank or non-string label is an authoring error)`);
+      }
+    }
+  };
+  const { kind, schemaVersion, ...sections } = parsed;
+  walk(sections, '');
+
+  return { value: problems.length === 0 ? sections : null, problems };
 }
 
 /** Numeric 3-part semver compare: negative when a < b. Pre-release tags
@@ -370,6 +442,10 @@ function _gateCheck(manifest, gameConfig) {
         }
       }
     }
+    // Strings sidecar (A3 slice 3a): declared ⇒ must load + validate.
+    for (const prob of _loadDeclaredStrings(gameConfig).problems) {
+      problems.push(prob);
+    }
     // Mode drivability (slice 1): every declared mode's flag VALUES must
     // be in the engine's implemented sets — schema-open, gate-enforced.
     if (Array.isArray(gameConfig.modes)) {
@@ -535,6 +611,7 @@ function activatePack() {
   _coherenceCheck(gameConfig);      // throws = boot fails, by design (D3)
   activeManifest = manifest;
   activeGameConfig = gameConfig;
+  activeStrings = _loadDeclaredStrings(gameConfig).value;
   activated = true;
   warnedDriftHash = false;
   _cachedScoringRules = null;
@@ -582,6 +659,18 @@ function getManifest() {
 function getGameConfig() {
   if (!activated) return _readDiskGameConfig();
   return activeGameConfig;
+}
+
+/**
+ * The ACTIVE pack's declared display strings (A3 slice 3a): the
+ * activation snapshot once activated (session wording freezes with the
+ * rules), else a live disk read. NULL when the pack declares no strings
+ * file — every consumer keeps its baked default wording.
+ * @returns {Object|null} sections object (kind/schemaVersion stripped)
+ */
+function getStrings() {
+  if (!activated) return _loadDeclaredStrings(_readDiskGameConfig()).value;
+  return activeStrings;
 }
 
 /**
@@ -724,6 +813,7 @@ function _resetForTesting() {
   activated = false;
   activeManifest = null;
   activeGameConfig = null;
+  activeStrings = null;
   warnedDriftHash = false;
   warnedLegacyScoring = false;
   warnedLegacyClock = false;
@@ -731,4 +821,4 @@ function _resetForTesting() {
   _cachedScoringRules = null;
 }
 
-module.exports = { getPackDir, getManifest, getGameConfig, getScoringRules, getClockRules, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };
+module.exports = { getPackDir, getManifest, getGameConfig, getStrings, getScoringRules, getClockRules, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };

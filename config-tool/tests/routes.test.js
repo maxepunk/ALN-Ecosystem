@@ -71,15 +71,18 @@ describe('routes (HTTP layer)', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('GET /api/config returns env, scoring, cues, and routing', async () => {
+  it('GET /api/config returns env, scoring, cues, routing, and pack identity', async () => {
     const res = await request(app).get('/api/config').expect(200);
     assert.deepStrictEqual(
       Object.keys(res.body).sort(),
-      ['cues', 'env', 'routing', 'scoring']
+      ['cues', 'env', 'pack', 'routing', 'scoring']
     );
     assert.strictEqual(res.body.env.PORT, '3000');
     assert.strictEqual(res.body.scoring.baseValues['1'], 10000);
     assert.deepStrictEqual(res.body.cues, { cues: [] });
+    // Pack identity (slice 3a): the SPA derives its title + mode labels
+    // from here instead of baked ALN wording.
+    assert.strictEqual(res.body.pack.id, 'test-pack');
   });
 
   it('PUT /api/config/scoring with valid body writes the scoring file', async () => {

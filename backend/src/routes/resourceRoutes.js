@@ -138,11 +138,56 @@ router.get('/assets/audio/:file', (req, res) => {
 });
 
 /**
+ * Render scoreboard.html with the window marker injected (A3 slice 3a
+ * pre-fix 1): the %%WINDOW_MARKER%% placeholder in the page <title>
+ * becomes config.display.scoreboardWindowMarker — the SAME value
+ * displayDriver's xdotool search uses to find the kiosk window. Served
+ * fresh per request (page loads are rare; no cache needed).
+ * @returns {string} rendered HTML
+ */
+// JSON.stringify does NOT escape '<' — a value containing '</script>'
+// would close the served page's inline script block and inject markup
+// (the pack strings are semi-trusted pack data; doctrine treats them
+// defensively). < (and the JS-line-separator pair) are equivalent
+// inside a JSON string literal, so the parsed content is unchanged.
+function jsonForScript(value) {
+  return JSON.stringify(value)
+    .replaceAll('<', '\\u003c')
+    .replaceAll('\u2028', '\\u2028')
+    .replaceAll('\u2029', '\\u2029');
+}
+
+function renderScoreboardHtml() {
+  const config = require('../config');
+  const html = fs.readFileSync(path.join(__dirname, '../../public/scoreboard.html'), 'utf8');
+  // Every replacement is a FUNCTION: a string replacement would run
+  // GetSubstitution, where $$, $&, $' and $` are active patterns — a
+  // password like p@$$w0rd was served mangled and $' splices the rest
+  // of the file. Function replacements are inserted verbatim.
+  return html
+    .replaceAll('%%WINDOW_MARKER%%', () => config.display.scoreboardWindowMarker)
+    // Serve-time credential injection (slice 3a pre-fix 2, matrix 2.34):
+    // the placeholder is QUOTED in the page ('%%ADMIN_PASSWORD%%'), so the
+    // replacement includes the quotes via jsonForScript — quote-safe AND
+    // script-context-safe for any env value. Same delivery to the same
+    // LAN clients as the old baked literal; the source just moved out of
+    // git into env/config.
+    .replaceAll("'%%ADMIN_PASSWORD%%'", () => jsonForScript(config.security.adminPassword))
+    // Pack-declared display strings (A3 slice 3a): the activation
+    // snapshot (or null — page falls back to baked wording per key).
+    .replaceAll("'%%PACK_STRINGS%%'", () => jsonForScript(require('../services/packService').getStrings()));
+}
+
+/**
  * GET /scoreboard - Scoreboard display
  * TV-optimized scoreboard display for Black Market mode
  */
-router.get('/scoreboard', (req, res) => {
-  res.sendFile('scoreboard.html', { root: './public' });
+// BOTH paths: the express.static('public') mount would otherwise serve
+// the RAW file (placeholders unreplaced — no credential, no window
+// marker) at /scoreboard.html. Routes mount before static in app.js.
+router.get(['/scoreboard', '/scoreboard.html'], (req, res) => {
+  res.type('html').send(renderScoreboardHtml());
 });
 
 module.exports = router;
+module.exports.renderScoreboardHtml = renderScoreboardHtml;

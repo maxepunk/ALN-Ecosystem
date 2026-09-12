@@ -1,0 +1,21 @@
+{
+  "kind": "strings",
+  "schemaVersion": 2,
+  "scoreboard": {
+    "header": "JOB BOARD: MIDNIGHT HEIST",
+    "emptyTicker": "No takes recorded",
+    "emptyEvidence": "Awaiting tips...",
+    "unknownOwner": "Unattributed"
+  },
+  "scanner": {
+    "appTitle": "Fence Terminal",
+    "scanPrompt": "Tap Loot Tag",
+    "statLabels": {
+      "score": "Take",
+      "totalValue": "Total Haul"
+    }
+  },
+  "scoring": {
+    "awardMessage": "Take fenced. {points} added to the haul."
+  }
+}

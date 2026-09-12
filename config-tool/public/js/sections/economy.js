@@ -10,6 +10,15 @@ import { renderTokenBrowser } from '../components/tokenBrowser.js';
 let scoringData = null;
 let ctx = null;
 
+// The scoring-mode label comes from the pack's own modes declaration
+// (slice 3a): the mode with scoringPolicy 'standard' — same predicate
+// the backend E2E helpers use. Baked ALN label only when the pack
+// declares no such mode.
+function scoringModeLabel(config) {
+  const mode = (config?.pack?.modes || []).find((m) => m.scoringPolicy === 'standard');
+  return mode?.label || 'Black Market';
+}
+
 export function render(container, config, context) {
   ctx = context;
   scoringData = JSON.parse(JSON.stringify(config.scoring));
@@ -19,7 +28,7 @@ export function render(container, config, context) {
     el('div', { className: 'card__header' },
       el('div', {},
         el('div', { className: 'card__title' }, 'Base Values'),
-        el('div', { className: 'card__subtitle' }, 'Dollar value per star rating (Black Market mode)'),
+        el('div', { className: 'card__subtitle' }, `Dollar value per star rating (${scoringModeLabel(config)} mode)`),
       ),
     ),
   );

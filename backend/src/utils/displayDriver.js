@@ -7,8 +7,12 @@
  * The process is never killed during normal operation — only on server shutdown.
  *
  * Key design decisions (verified on Pi 2026-03-26):
- * - xdotool search --name "Case File" finds the content window by HTML <title>
- *   (--class chromium returns ALL windows including zygote/GPU; --pid doesn't work for Chromium)
+ * - xdotool search --name <marker> finds the content window by HTML <title>
+ *   (--class chromium returns ALL windows including zygote/GPU; --pid doesn't work for Chromium).
+ *   The marker is config.display.scoreboardWindowMarker (slice 3a pre-fix 1) —
+ *   ONE shared value, also injected into the served page's <title> by
+ *   resourceRoutes.renderScoreboardHtml; the coupling is pinned by
+ *   tests/unit/utils/scoreboardWindowMarker.test.js
  * - Window ID looked up fresh per show/hide operation — never cached (eliminates stale-ID bugs)
  * - windowminimize to hide + windowactivate + wmctrl -b add,fullscreen to show — VERIFIED 0,0 1920x1080
  * - execFile (not exec) for all xdotool/wmctrl calls — no shell injection
@@ -20,6 +24,7 @@ const { spawn, execFile, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const logger = require('./logger');
+const config = require('../config');
 
 // Module-level state (persistent across calls within a process lifetime)
 let browserProcess = null;
@@ -78,7 +83,7 @@ function run(cmd, args) {
  */
 async function _findScoreboardWindow() {
   try {
-    const ids = await run('xdotool', ['search', '--name', 'Case File']);
+    const ids = await run('xdotool', ['search', '--name', config.display.scoreboardWindowMarker]);
     if (ids) {
       // run() trims stdout, so a truthy result always splits to at least
       // one non-empty id — no length check needed (a dead length>0 branch
