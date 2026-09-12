@@ -5,6 +5,24 @@ in place, updated whenever execution state changes: what's done,
 what's next, and who each open item waits on. The full frame is
 `ROADMAP.md` (r4); the deep archive is `PHASE3-STATUS.md`.
 
+**RESUME HERE (2026-09-12, Block 2 at the "before any code"
+checkpoint).** The Block 2 plan is red-teamed and every finding is
+ruled: `2026-09-12-block2-hardening-plan.md` (16 design pins, tasks
+T1b → T1a → T3‖T3b‖T4‖T5 → T6 → T7a → T7b, §7 stop points, §8
+checkpoints) and `2026-09-12-block2-redteam-adjudication.md` (100
+findings; the twelve ★ rulings are the owner-visible ones). The
+censuses (`2026-09-12-block2-reopen-census.md`,
+`2026-09-12-block3-truth-sweep-census.md`) and the container baseline
+(`briefs/2026-09-12-container-baseline.md`) are in the tree. **Owner
+decision pending:** start round 1 (T1b, then T1a). No task brief is
+written yet; on the go, T1b's brief lands in `docs/plans/briefs/` and
+one Sonnet implementer runs it in a worktree on a task branch, reviewed
+and merged to `claude/nice-curie-hescfv` (the designated branch in all
+five repos). No agents are running. The rung-1 rig is NOT provisioned in
+this container (`backend/tests/rung1/up.sh` needs apt installs, dockerd,
+the HA image); it is needed before DoD (e) and before Block 3. Blue
+containment rules (handoff §3) stand.
+
 **Last updated: 2026-09-12 — THE MERGE TRAIN IS WALKED.** All 22
 PRs merged across the five repos; `main` is the deployable truth
 (parent `df95b7a`); zero open PRs; frozen production stays anchored
@@ -53,10 +71,13 @@ the handoff §3).
 
 1. **Block 2 — hardening** (dormant health word, supervisor, sticky
    dormancy, scanner self-heal, preflight in panel + CLI + human
-   checklist with the honesty rule, host-config file). Re-priced at
-   open.
+   checklist with the honesty rule, host-config file). **OPEN
+   2026-09-12:** plan red-teamed and ruled (see RESUME HERE above);
+   no time pricing — the owner decides at the plan's §8 checkpoints.
 2. **Block 3 — the truth sweep** (panel-drift audit + fixes on the
-   rig; screen-capture tests join here). Priced after its census.
+   rig; screen-capture tests join here). Census done 2026-09-12
+   (`2026-09-12-block3-truth-sweep-census.md`); design and red team
+   follow Block 2's checkpoint 2.
 3. **Blocks 4/5 order decided after the capture block is wireframed
    and priced** (Q3). Capture wireframes can start any time.
 4. **Block 5 — preview** also opens the GM-scanner redesign's design
