@@ -1,0 +1,103 @@
+<!-- @dsCard group="Tokens" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ALN Control Room — tokens</title>
+<style>
+  /* Source of truth: config-tool/public/styles.css (:root). This card
+     mirrors it for review; a drift here is a doc bug, not a new truth. */
+  :root {
+    --bg-deep: #111114; --bg-surface: #1a1a1f; --bg-raised: #222228;
+    --bg-hover: #2a2a32; --bg-input: #16161b;
+    --amber-300: #ffd54f; --amber-500: #d4a017; --amber-700: #8b6914;
+    --amber-glow: rgba(212, 160, 23, 0.15);
+    --text-primary: #e8e6e1; --text-secondary: #9a9890; --text-muted: #5e5d58;
+    --border-subtle: rgba(255,255,255,0.06); --border-medium: rgba(255,255,255,0.1);
+    --border-accent: rgba(212,160,23,0.3);
+    --success: #4caf50; --warning: #ff9800; --danger: #ef5350; --info: #42a5f5;
+    --radius-md: 6px; --radius-lg: 10px;
+    --font-sans: 'DM Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  body { margin:0; background:var(--bg-deep); color:var(--text-primary);
+         font-family:var(--font-sans); padding:24px; }
+  h1 { font-size:15px; letter-spacing:.08em; text-transform:uppercase;
+       color:var(--amber-300); margin:0 0 4px; }
+  .sub { color:var(--text-secondary); font-size:12px; margin-bottom:20px; }
+  h2 { font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+       color:var(--text-muted); margin:22px 0 10px; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; }
+  .swatch { width:118px; background:var(--bg-surface);
+            border:1px solid var(--border-subtle); border-radius:var(--radius-md);
+            overflow:hidden; }
+  .swatch .chip { height:44px; }
+  .swatch .meta { padding:7px 9px; }
+  .swatch .name { font-size:11px; color:var(--text-primary); }
+  .swatch .val { font-family:var(--font-mono); font-size:10px;
+                 color:var(--text-muted); }
+  .type-sample { background:var(--bg-surface); border:1px solid var(--border-subtle);
+                 border-radius:var(--radius-lg); padding:14px 16px; max-width:560px; }
+  .type-sample .mono { font-family:var(--font-mono); font-size:12px;
+                       color:var(--text-secondary); }
+  .panel-demo { background:var(--bg-surface); border:1px solid var(--border-subtle);
+                border-radius:var(--radius-lg); padding:14px 16px; max-width:560px; }
+  .panel-demo header { display:flex; justify-content:space-between;
+                       border-bottom:1px solid var(--border-subtle);
+                       padding-bottom:8px; margin-bottom:10px; }
+  .panel-demo header b { font-size:12px; letter-spacing:.06em;
+                         text-transform:uppercase; color:var(--amber-300); }
+  .btn { display:inline-block; font:inherit; font-size:12px; padding:6px 14px;
+         border-radius:var(--radius-md); border:1px solid var(--border-accent);
+         background:var(--amber-glow); color:var(--amber-300); cursor:pointer; }
+  .btn.secondary { border-color:var(--border-medium); background:transparent;
+                   color:var(--text-secondary); }
+</style>
+</head>
+<body>
+  <h1>Control Room — design tokens</h1>
+  <div class="sub">The config-tool's visual language (dark charcoal + amber,
+    backstage warmth). Every page prototype builds from these.</div>
+
+  <h2>Ground</h2>
+  <div class="row">
+    <div class="swatch"><div class="chip" style="background:#111114"></div><div class="meta"><div class="name">bg-deep</div><div class="val">#111114</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#1a1a1f"></div><div class="meta"><div class="name">bg-surface</div><div class="val">#1a1a1f</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#222228"></div><div class="meta"><div class="name">bg-raised</div><div class="val">#222228</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#16161b"></div><div class="meta"><div class="name">bg-input</div><div class="val">#16161b</div></div></div>
+  </div>
+
+  <h2>Amber accent</h2>
+  <div class="row">
+    <div class="swatch"><div class="chip" style="background:#ffd54f"></div><div class="meta"><div class="name">amber-300</div><div class="val">#ffd54f</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#d4a017"></div><div class="meta"><div class="name">amber-500</div><div class="val">#d4a017</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#8b6914"></div><div class="meta"><div class="name">amber-700</div><div class="val">#8b6914</div></div></div>
+  </div>
+
+  <h2>Status</h2>
+  <div class="row">
+    <div class="swatch"><div class="chip" style="background:#4caf50"></div><div class="meta"><div class="name">success</div><div class="val">#4caf50</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#ff9800"></div><div class="meta"><div class="name">warning</div><div class="val">#ff9800</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#ef5350"></div><div class="meta"><div class="name">danger</div><div class="val">#ef5350</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#42a5f5"></div><div class="meta"><div class="name">info</div><div class="val">#42a5f5</div></div></div>
+    <div class="swatch"><div class="chip" style="background:#5e5d58"></div><div class="meta"><div class="name">muted (dormant)</div><div class="val">#5e5d58</div></div></div>
+  </div>
+
+  <h2>Type</h2>
+  <div class="type-sample">
+    <div style="font-size:15px; margin-bottom:6px;">DM Sans — interface text, labels, prose</div>
+    <div class="mono">JetBrains Mono — identifiers, hashes, engine output: sha256:caa6c7ca…</div>
+  </div>
+
+  <h2>Panel + buttons</h2>
+  <div class="panel-demo">
+    <header><b>Panel title</b><span style="color:var(--text-muted);font-size:11px">meta</span></header>
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px">
+      Panels sit on <span style="font-family:var(--font-mono)">bg-surface</span> with subtle borders; the amber accent marks headers and primary actions only.
+    </div>
+    <button class="btn">Primary action</button>
+    <button class="btn secondary">Secondary</button>
+  </div>
+</body>
+</html>

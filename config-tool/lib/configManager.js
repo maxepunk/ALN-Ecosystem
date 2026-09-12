@@ -11,6 +11,7 @@ const {
   assertValid,
 } = require('./validators');
 const { MASK_SENTINEL } = require('./secrets');
+const { writeJsonAtomic } = require('./packFs');
 // A3 slice 4 (D-4.7c): the same pack-internal cue gate packService runs at
 // activation. Dependency-free by design (no winston/dotenv) — safe to
 // import directly from the backend tree without pulling in service wiring.
@@ -88,6 +89,19 @@ class ConfigManager {
 
   readTokens() {
     return this._readJson(this.paths.tokensPath);
+  }
+
+  /**
+   * PACK content only (B0 BS.2): what a draft-bound instance can serve
+   * without touching venue config (env/routing live outside packs and
+   * outside drafts).
+   */
+  readPackContent() {
+    return {
+      scoring: this._readJson(this.paths.gamePath).scoring || {},
+      cues: this._readJson(this.paths.cuesPath),
+      pack: this._readPackIdentity(),
+    };
   }
 
   _readJson(filePath) {
@@ -240,16 +254,10 @@ class ConfigManager {
 
   // Atomic write: tmp + rename so a crash mid-write can never leave a
   // truncated JSON file for the backend to silently replace with defaults
-  // at next boot (F-TOOL-10).
+  // at next boot (F-TOOL-10). One implementation, shared with the draft
+  // store and publish pipeline (packFs — BS.2 review fold).
   _writeJson(filePath, data) {
-    const tmp = `${filePath}.tmp`;
-    try {
-      fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', 'utf8');
-      fs.renameSync(tmp, filePath);
-    } catch (err) {
-      try { fs.unlinkSync(tmp); } catch { /* best-effort cleanup */ }
-      throw err;
-    }
+    writeJsonAtomic(filePath, data);
   }
 
   // -- Assets --

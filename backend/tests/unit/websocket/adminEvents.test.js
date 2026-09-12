@@ -43,6 +43,7 @@ describe('adminEvents.js', () => {
       id: 'socket-1',
       deviceId: 'gm-001',
       deviceType: 'gm',
+      tier: 'operator', functions: ['session-lifecycle', 'show-control', 'score-intervention', 'view-content', 'observe'],
     };
     mockIo = { to: jest.fn().mockReturnThis(), emit: jest.fn() };
     executeCommand.mockResolvedValue({ success: true, message: 'OK' });
@@ -206,6 +207,60 @@ describe('adminEvents.js', () => {
       expect(transactionService.processScan).toHaveBeenCalledWith(expect.objectContaining({
         deviceId: 'gm-001',
         deviceType: 'gm'
+      }));
+    });
+
+    it('REFUSES system:reset from a socket lacking session-lifecycle — the inline path runs the same floor (BS.1 slice 4)', async () => {
+      const observeSocket = {
+        deviceId: 'SCOREBOARD_1',
+        deviceType: 'gm',
+        tier: 'device',
+        functions: ['observe'],
+        emit: jest.fn()
+      };
+      await handleGmCommand(observeSocket, {
+        event: 'gm:command',
+        data: { action: 'system:reset', payload: {} },
+        timestamp: new Date().toISOString()
+      }, mockIo);
+      expect(emitWrapped).toHaveBeenCalledWith(observeSocket, 'gm:command:ack', expect.objectContaining({
+        action: 'system:reset',
+        success: false,
+        message: expect.stringMatching(/operator floor/)
+      }));
+    });
+
+    it('a claims-less gm socket passes an EMPTY actor through — the || [] fallback, fail-closed downstream', async () => {
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+      const bareSocket = { deviceId: 'gm-legacy', deviceType: 'gm', emit: jest.fn() };
+      await handleGmCommand(bareSocket, {
+        event: 'gm:command',
+        data: { action: 'session:pause', payload: {} },
+        timestamp: new Date().toISOString()
+      }, mockIo);
+      // The wiring pin: the actor reaches the executor as {tier: null,
+      // functions: []} — the executor's own suite proves that identity
+      // refuses every floor action (commandExecutor.actorFloor.test.js).
+      expect(executeCommand).toHaveBeenCalledWith(expect.objectContaining({
+        action: 'session:pause',
+        actor: { tier: null, functions: [] }
+      }));
+    });
+
+    it('REFUSES a transaction from a non-operator socket — an observe token cannot transact even as deviceType gm (BS.1 slice 5)', async () => {
+      const observeSocket = {
+        deviceId: 'SCOREBOARD_1',
+        deviceType: 'gm',
+        tier: 'device',
+        functions: ['observe'],
+        emit: jest.fn()
+      };
+      await handleTransactionSubmit(observeSocket, {
+        data: { tokenId: 'tok1', teamId: 'Team1', mode: 'blackmarket' }
+      }, mockIo);
+      expect(transactionService.processScan).not.toHaveBeenCalled();
+      expect(emitWrapped).toHaveBeenCalledWith(observeSocket, 'error', expect.objectContaining({
+        code: 'AUTH_REQUIRED'
       }));
     });
 

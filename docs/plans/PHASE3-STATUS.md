@@ -1,13 +1,21 @@
-# PHASE 3 — LIVE EXECUTION STATE
+# PHASE 3 — EXECUTION RECORD (the archive, not the entry point)
 
-> **Fresh session? Read this first.** Program: `2026-06-11-phase3-program.md`
-> (DoD ratified: Phase 3 = A+B+C + toy-pack gate; D/E are Phase 4).
+> **Fresh session? Start at `CURRENT-STATE.md` (the living
+> current-state page) and `ROADMAP.md` (r4, ratified 2026-09-05 —
+> readiness ladder + value-ordered blocks).** This file is the
+> accreting RECORD under the r4 documentation system: ledger and
+> registry tables edited in place, close records appended. It keeps
+> its historical wording — read it with the alias table (ROADMAP
+> Appendix A) beside you.
+> Program: `2026-06-11-phase3-program.md`
+> (its DoD "Phase 3 = A+B+C + toy-pack gate; D/E are Phase 4" is
+> SUPERSEDED — see program §15 and ROADMAP §3 "where done lives").
 > Design docs (all ratified or open points marked inline):
 > `2026-06-13-phase3-1-pack-schemas.md` · `2026-07-09-phase3-1-installation-profile.md`
 > · `2026-07-09-phase3-1-standalone-pack-loading.md` · `2026-07-09-phase3-1-one-auth.md`.
 > Keep this file CURRENT — update it in every commit that changes execution state.
 
-**Last updated:** 2026-09-04 (theme unit CLOSED) · **Working branch:** `claude/phase3-theme-unit` (B0 branch chains next)
+**Last updated:** 2026-09-04 · **Working branch:** `claude/phase3-b0` (theme unit CLOSED; B0 OPENED, PR #32)
 (parent; chained from the verified slice-7 tip `4923575`, per the slice train).
 Under the frozen-production model (see the development-model row) slice
 branches CHAIN — slice N+1 branches from slice N's verified tip, each slice
@@ -28,7 +36,7 @@ finished on foundations with `origin/main` merged back in 2026-07-17.)
 | **A2 runtime pack loading** | ✅ **COMPLETE 2026-07-17** (parent `e73a020`→`3267b30`+, ALNScanner `df7cfed`/`707368d`, PWA `73ac71c`, ESP32 `92d763d`). Pack channel contracted + served (whitelist-only, frozen at boot); staleness identity reported by EVERY consumer (backend /health + sync:full + session stamp; GM UI + WS handshake; PWA config page; ESP32 boot log + CONFIG); PACK_PATH harness seam; GM packLoader with staged atomic refresh + runtime scoring (F-TOOL-05 dead); sync pipeline regenerates the pack manifest (Python builder, byte-parity-pinned); sync:full completeness structural test. Verified: backend 2187 unit/contract + 342 integration + coverage ratchet; scanner 1389 + ratchet + build artifacts + 07b/07c full-stack E2E; PWA 161; ESP32 native 120; scripts 66. Execution detail: "A2 execution record" below. |
 | 2026-07-17 plan review (blind-spot audit) | ✅ six real gaps + five ambiguities found and resolved; all folded into A2 and landed |
 | **2026-07-17 ADVERSARIAL five-phase review** | ✅ six lenses, findings R1-R24 in `2026-07-17-adversarial-plan-review.md`; all doc corrections APPLIED same day (program §1/§3/§7/§9/§11, pack-schemas, one-auth, BILL scoping, this file). OWNER decisions: timeline = HONEST accepted (≈13-20, cut set declined); tokens-v2+genericization = ADDED as slice 2b; E2/S2 = warn-only default adopted, S2 run pending. |
-| **Development model (owner-corrected 2026-07-18)** | **Production is FROZEN until the program completes**: the game-running Pis will NOT pull new code mid-program (one game 2026-07-18/19 — which does NOT use the PWAs — then a break until development is done; final deployment = one coordinated cutover through the preflight). `production-2026-07` branches in ALL FIVE repos pin the exact main SHAs serving that game (created via the GitHub API — the session proxy refuses tag pushes). Consequences: main = integration trunk, NOT deployed state; deploy-choreography constraints relax to architectural ordering (the R12 skew policy + the slice-2 same-pin-bump coupling apply only to the FINAL cutover); tests-green-at-every-merge, contract-first, the coverage ratchet, and the debt ledger stay fully in force. **A2 landing timing (owner decision 2026-07-18): ALL merges to main wait until after the game** — the four submodule PRs then the parent PR land in the R14 order. **Development does NOT wait**: slice 0 branched from the frozen foundations tip (`claude/phase3-a3-slice0`) and PRs against main once the train lands. |
+| **Development model (owner-corrected 2026-07-18)** | *(2026-09-05, roadmap r4: the freeze now ends at the owner's SHOW-READY decision, not program completion — program §15.4; the rest of this row stands.)* **Production is FROZEN until the program completes**: the game-running Pis will NOT pull new code mid-program (one game 2026-07-18/19 — which does NOT use the PWAs — then a break until development is done; final deployment = one coordinated cutover through the preflight). `production-2026-07` branches in ALL FIVE repos pin the exact main SHAs serving that game (created via the GitHub API — the session proxy refuses tag pushes). Consequences: main = integration trunk, NOT deployed state; deploy-choreography constraints relax to architectural ordering (the R12 skew policy + the slice-2 same-pin-bump coupling apply only to the FINAL cutover); tests-green-at-every-merge, contract-first, the coverage ratchet, and the debt ledger stay fully in force. **A2 landing timing (owner decision 2026-07-18): ALL merges to main wait until after the game** — the four submodule PRs then the parent PR land in the R14 order. **Development does NOT wait**: slice 0 branched from the frozen foundations tip (`claude/phase3-a3-slice0`) and PRs against main once the train lands. |
 | **A3 sequence** | Per the REVISED slice list (program §3 + §11/§12): slice 0 ✅ → slice 1 🔨 → slice 2 ✅ (CLOSED 2026-07-18 — design doc + honest re-price honored, program §12.3) → slice 2b ✅ (CLOSED — tokens v2 + pack-declared vocabulary, D1b/D2b/D3b executed in full, two-round adversarial review) → 3a 🔨 (decision-free core ✅; open on Q1–Q5 only) → 3b 🔨 (decision-free core ✅; open on Q-3b-1/Q-3b-2 only) → 3c 🔨 (decision-free core ✅; open on Q-3c-1 only) → **slice 4** (UNBLOCKED 2026-08-22 — C1 RATIFIED, all 12 items + drop-cold; the R4 guard's in-repo fully-bound ALN profile is now buildable to the ratified schema) → **5 🔨 (decision-free core ✅ 2026-08-22, CI-confirmed; open on Q-5-1/2/3 only — built AHEAD of the blocked slice 4: no dependency edge from 4 into 5)** → 6/7. *(The old "rebase foundations onto main" NEXT-step here is superseded — see the development-model row.)* |
 | **A3 slice 0 (dual-pack gate infra)** | ✅ **COMPLETE & CI-CONFIRMED 2026-07-18** (developed on `claude/phase3-a3-slice0`, branched from foundations per the frozen-production model — lands via draft PR #19 once the A2 train merges). LANDED: E2E_PACK_PATH inherited by every non-pinning startOrchestrator call (explicit pins win) + `npm run test:e2e:toy-pack`; toy pack 6→14 tokens / 11 distinct qualifying owners + second group; `packService.getGameConfig()` (activation-snapshot, audit F4); capability gate in activatePack (audit F2 + R6: engine.minVersion semver + schemaVersion exact + `requires` ⊆ ENGINE_CAPABILITIES, refusal = boot failure; ENGINE_VERSION=3.0.0 decoupled from npm version; baseline caps: scoring.tabular / groupRules.all / duplicatePolicy.once); `requires` block in game.schema.json (TokenData `0eef578`) with BOTH real packs declaring the baseline — the gate exercises on every activation. Verified: backend 2199 unit/contract + ratchet; pack contract 37; scripts byte-parity 66. Extraction brake (R13): no matrix rows moved — pure infrastructure. **CORRECTION (2026-07-18, owner-caught):** the earlier "CI has no E2E runner" note was FALSE — read off a truncated grep. Parent CI's `backend-e2e-tier-l` job runs full Tier L (Playwright Chromium, GM dist rebuild, workers=3) on every PR to main; the F3 CI matrix over {production, toy-heist} is therefore implemented FOR REAL in `.github/workflows/test.yml` (fail-fast:false, per-leg artifacts). **DUAL-PACK TIER L RESULTS (2026-07-18, first run in project history):** production leg 112P/0F/58S; toy leg 111P/2F/57S — the 2 failures were ONE test (07a standalone scoring, both projects) and the GATE'S FIRST REAL CATCH: the E2E scoring ORACLE was pack-blind (expected ALN's 75000; the scanner CORRECTLY scored toy values 1300×2=2600 via runtime game.json — the engine was right, the oracle wrong; the live face of ledger L1's two-oracle window). Fixed: `helpers/scoring.js` `loadPackScoring()` + pack-derived `calculateExpectedScore`; 07a verified 2/2 on BOTH packs; backend expectations stay legacy-oracle until slice 2 (documented at the source, converges with L1 retirement). CI matrix committed (both legs proven). SKIP-DELTA RESOLVED (per-test JSON diff): the one differing test is 07b "completes group and backend applies multiplier bonus" (mobile-chrome) — SKIPPED on production, PASSED on toy. Classification: COVERAGE GAIN, not regression — production tokens.json currently contains exactly ONE grouped token ("Marcus Mention", 1 token), so NO completable group exists in live ALN data and 07b's networked group-bonus path has been silently self-skipping on production all along; the toy pack is now the only pack exercising it full-stack. ⚠ OWNER FINDING: group-completion bonuses can never fire with current production content — intentional content decision or Notion-sync drift? (Docs still cite "Server Logs (x5)" as canonical. First flagged 2026-06-11 in `docs/pr-drafts/2026-06-11-phase2-merge-prs.md` — "flagged, content decision"; escalated to the owner task list now that the dual-pack run made the coverage consequence concrete.) **SLICE 0 COMPLETE & CI-CONFIRMED** — all Tier L executed tests pass on both packs, every skip accounted for; PR #19 run 75 GREEN across all 8 jobs (both matrix legs ~11 min each on real runners; the one first-contact failure — scripts job missing submodule checkout for the A2 byte-parity tests — fixed in `569d7e6`). |
 | **A3 slice 1 (modes → semantics flags)** | ✅ **COMPLETE & CI-CONFIRMED 2026-07-18 — PR #20 run 82 GREEN across all 8 jobs** (both Tier L matrix legs ~10 min each on real runners; head `187c7a6`, branch chained from slice-0 tip `8a944b4`). Design **RATIFIED 2026-07-18**: `2026-07-18-phase3-a3-slice1-modes.md` (D1 `area.variant` capability ids ✓ · D2 consuming-appraise ✓ · D3 hard refusal with the two-flavor coherence refinement ✓). Census ground truth: 39 mode-literal sites (backend 8 / 4 files; scanner 31 / 10 files). The 2026-07-18 HOLISTIC REVIEW (5 parallel corpus readers + coherence critic over the full plan corpus) verified the design against every claimed companion section; the one deliberate divergence — the two-flavor refinement supersedes program-§3/R9's "contradictory" framing of `none ∧ countsTowardGroups` — was back-annotated into the program the same day (§12.2). Verified in-repo pre-build: BOTH real packs' game.json already carry complete per-mode flag records (appraise already at the D2 shape incl. `surface:"none"`, which is already schema-legal) — no pack edits needed. **SLICE GATE RECORD (what the gate + verification ladder caught this slice, in order):** (1) a masked-migration bug in `computeTeamScores` (internal isGroupComplete call omitted gameConfig, silently rode the ALN shim) — caught PRE-COMMIT by the new open-vocabulary unit suite; (2) TWO accidental ratchet raises on untouched timing-sensitive files (displayDriver/processMonitor branchy process-control code — local timing luck raised bars CI couldn't meet); (3) the scanner DEFAULT-EXPORT BOOT FAILURE (validateSettingsMode added as named export only; app.js consumes the default object; 44/50 L2 tests failed while jsdom unit tests — which mock the module — saw nothing) — caught by the L2 browser suite, now pinned by a structural default-export-completeness test; ALSO exposed that piping test runs through `| tail` masks the real exit code (first L2 run reported exit 0 falsely — test exit codes are now read directly); (4) the integration-harness stub gap (backend `browser-mocks.js` InitializationSteps lacked validateSettingsMode — 85 CI failures; the third harness surface mirroring scanner init); (5) the WALL SCOREBOARD as an OUT-OF-CENSUS mode consumer (`backend/public/scoreboard.html` filtered evidence on the 'detective' literal at both the WS ingest and sync-rebuild paths — toy tipoff evidence never rendered; now pack-driven from /api/pack/files/game.json, loaded before socket connect, legacy fallback + loud warn); (6) three E2E ALN-label assertions made pack-derived (loadPackModes/expectedModeLabels helpers). Every catch has a regression pin. Ledger: L6 row added (mode-table shims both sides + scoreboard fallback, drift tripwires). Implementation notes from the review: game.schema.json's closed enums (scoringPolicy/entityRole/surface) OPEN to plain strings in the gate commit (the capability gate takes over enforcement — openness property 2); the modeSemantics resolver normalizes absent `displayBehavior` → `{surface:'none'}`. **Backend seam LANDED** (contract-first commit): `gameRules/modeSemantics.js` (resolveMode/wireModeIds/defaultModeId, legacy shim L6 with drift tripwire pinning the baked table == real ALN game.json), all 8 census sites migrated (scoring.js threads gameConfig; transactionService gates on scoringPolicy; model keeps a STABLE legacy-history default while processScan defaults pack-aware; Joi enum → runtime wireModeIds check with the enum-era `any.only` error shape), openapi+asyncapi mode enums → type:string + runtime-validation rule. Verified: 2220 unit+contract green + ratchet. The new open-vocabulary suite caught its first bug pre-commit: computeTeamScores' internal isGroupComplete call omitted gameConfig and silently rode the ALN shim — invisible to every ALN-shaped test. **Gate + coherence LANDED** (second slice-1 commit, atomic with the TokenData schema opening `55752cf`): `_gateCheck` gains mode-drivability (ENGINE_MODE_CAPS: scoringPolicy {standard,none} / entityRole {ledger,attribution} / surface {rankings,evidence,none}; refusals name the mode + every undrivable flag); `_coherenceCheck` lands with BOTH ratified flavors — (i) timeless contradictions (empty declared modes, duplicate ids, defaultEntity∧ledger) worded "self-contradictory", (ii) none∧countsTowardGroups worded "not driveable by this engine yet (see slice 2)" with the retirement named, NEVER "incoherent" (tests pin the language rule both ways); deliberately-LEGAL combinations pinned green (attribution∧standard, surface:none, D2 appraise shape); both real packs pass gate+coherence. game.schema.json's three flag enums OPENED to strings in the same change (`when` stays closed — ungated headroom refused); manifest byte-identical (schema is authoring-time, not pack-served). Verified: 2236 unit+contract + ratchet + 342 integration. **Scanner seam LANDED** (ALNScanner `173eba6`, third slice-1 commit): `src/core/modeSemantics.js` mirrors the backend seam (applyPackModes at Phase 1A, resolveMode + sugar predicates, L6 shim + drift tripwire vs data/game.json); all 31 census sites migrated across 10 files (scoring→scoringPolicy, groups→countsTowardGroups, evidence/report/scoreboard→declared surfaces, presentation→declared labels — ALN wording untouched, 3a owns strings); segmented selector rendered from pack modes (#modeSelector) with the pill kept as the N-mode cycle control (`<label> Mode` text byte-identical for ALN — E2E page objects unchanged); stale persisted mode resets to the pack's first declared mode (loud); ?mode= override accepts any declared id, refuses undeclared; **nested data/ pin bumped to TokenData `55752cf`** (housekeeping item retired — the bundled tier now ships game.json, so Pages deployments run pack modes+scoring instead of the shims). Verified: 1416 unit + ratchet (63 files) + build + build-artifact tests. **parity-pack fixture** gained its minimal ALN-shaped game.json + manifest (design §5 — 07c parity flows now exercise the seam, not the shim; backend 2236 re-verified green). SCOPE NOTE for the slice-2 design doc: `backend/scripts/lib/` post-session validators (DetectiveModeCheck, ScoringIntegrityCheck, LogParser mode heuristics) are mode-literal consumers OUTSIDE the 39-site census (diagnostic tooling, ALN-named) — they re-point at the pack when backend scoring migrates. |
@@ -227,6 +235,13 @@ Doctrine: every deliberately-transitional construct gets a row here with a
 retirement trigger and a tripwire; retire the row in the commit that
 retires the debt.
 
+*(2026-09-05, roadmap r4: rows whose triggers name "the final
+cutover" now follow the owner's show-ready decision — the cutover's
+new timing authority (ROADMAP §3) — instead of a program-end date;
+this touches L2, L6, and L9. The no-row-without-a-named-executor
+rule is now standing doctrine everywhere with its final sweep at
+Block 6's close — ROADMAP §3, "where done lives".)*
+
 **DoD linkage (owner goal, 2026-07-18; clause REFRESHED 2026-08-29 —
 the enumeration had gone stale, per the ambiguity sweep).** Phase 3 is
 not complete while (a) any "Doc-refresh obligations" item below lacks
@@ -253,13 +268,25 @@ a DoD violation by definition.
 | ~~L5~~ | **RETIRED ON SCHEDULE 2026-07-18 (A3 slice 2, converged with L1).** Every E2E scoring expectation now uses the SINGLE pack oracle (`loadPackScoring()` from the running orchestrator, threaded through all five flows: 07a/07b/07c/07d-02/23); the calculators THROW on a missing oracle (no silent second source); the in-process legacy import and the unused `calculateExpectedTotalScore` deleted; TWO-ORACLE comment block retired. Verified: Tier L 23P/0F/0-flaky on the five touched flows | — (done) | — (retired) |
 | L6 | **[post-Phase-3, owner-ratified 2026-08-29]** Legacy ALN mode-table shims BOTH sides: backend `gameRules/modeSemantics.js` and scanner `src/core/modeSemantics.js` resolve against a baked ALN modes table when the active pack ships no game.json modes block (packless checkouts, parity fixtures, integration harness). Also covers the wall scoreboard's legacy detective evidence-filter fallback | Every pack in play ships game.json with a modes block (parity-pack gained one in slice 1; retire when the pre-pack deployment class is gone — at latest the final cutover) | LOUD once-per-process warns on all three shims ('LEGACY MODE TABLE ACTIVE'/'LEGACY SHIM ACTIVE'/'LEGACY MODE FILTER ACTIVE'); DRIFT TRIPWIRE tests both sides pin the baked tables byte-equal to the real ALN game.json modes |
 | L7 | **[in-queue, recorded 2026-08-29 at S3 — D-4.5 "lands with the code"]** `lightingRoleFallbacks` concrete-id bridge: the game.json key + schema property + gate rule 5 + the resolver fallback branch (`commandExecutor._resolveLightingRole`). One venue scene id per role, used ONLY when the installation profile has no binding; every fallback-resolved FIRE warns loudly. ALN's block itself is authored at S4 | C4 (the bindings page): delete the key from ALN game.json, the schema property, gate rule 5, and the resolver branch | LOUD warn per fallback fire; BUILD-TIME drift tripwire `backend/tests/unit/services/lightingRoleTripwire.test.js` pins fallbacks === profile `.ha` bindings (vacuous until S4 authors the block) |
-| L8 | **[post-Phase-3, owner-ratified 2026-08-29 (OQ7a); recorded at S4]** The ENDGAME cue's `target: "bluetooth"` audio literal, migrated VERBATIM into pack content (`ALN-TokenData/cues.json`, the policesounds entry). Deliberate diegetic staging (police sounds from a specific speaker), but a venue routing-target literal living in pack data | The pack-manager media page's design (ROADMAP §8.2 checkpoint): retire it via audio roles / re-authoring, or explicitly re-ratify it | This row; `grep -n '"target"' ALN-TokenData/cues.json` |
+| L8 | **[DECISION RECORDED — RETIRE (2026-09-04 pages ratification, Q3; status updated 2026-09-05 at roadmap r4). Debt still in the tree.]** The ENDGAME cue's `target: "bluetooth"` audio literal, migrated VERBATIM into pack content (`ALN-TokenData/cues.json`, the policesounds entry). Deliberate diegetic staging (police sounds from a specific speaker), but a venue routing-target literal living in pack data | The pack-manager stage EXECUTES the recorded retirement (Block 5; ROADMAP §8.2) — via audio roles or re-authoring the cue; the choice-or-re-ratify framing is closed | This row; `grep -n '"target"' ALN-TokenData/cues.json` |
 | L9 | **[post-Phase-3, same family/class as L2]** Scanner `src/core/scoring.js` shim path does not RESTORE the baked tables after a pack applied different ones (benign today: single pack load per session; 3b review note "worth a row", added 2026-08-29 per the ambiguity sweep) | Retires with L2 (the shim family dies together at cutover + one cycle) | 3b's scoring-formatting test snapshot-and-restore pattern; `grep 'LEGACY SHIM' ALNScanner/src` |
 | L10 | **[RETIRED 2026-08-29 at slice-6 open]** `scoreboard.html` numeric `7200` fallback duplicated pack `gameClock.duration` (3a "adjacent note"). RESOLVED by documentation (design doc D-6.4): the real duration is already delivered live on every sync (`sync:full.gameClock` + `service:state` domain `gameclock` → `syncCountdown`); the two literals (now at `:853` seed + `:951` `|| 7200`) are inert pre-connect chrome / defensive fallback, so there was nothing to wire — both sites now carry a source comment saying so. Line numbers in the original row (799/892) were stale | CLOSED — source comments at `scoreboard.html:853,951` | grep `7200` in scoreboard.html shows only the two commented placeholder/fallback sites |
 | L11 | **[RETIRED 2026-09-03 at theme unit ST.F]** `scoreboard.html:12-14` Google Fonts CDN links — offline-LAN risk, same class as the fixed socket.io CDN bug (3a "adjacent note", added 2026-08-29). RESOLVED by self-hosting (D-T.6): five families as woff2 latin+latin-ext subsets with unicode-range — scoreboard's three (IBM Plex Mono, Libre Baskerville, Special Elite; 16 files under `backend/public/fonts`) + config-tool's two (DM Sans, JetBrains Mono; 12 files under `config-tool/public/fonts`), generated `@font-face` css, live fallback stacks kept. Playfair Display NOT hosted — it retired with its dead `--font-display` token (zero `var()` consumers; a font nothing renders would be dead weight — the D-T.6 six-family text reconciled to five at the ST.F review, design §8). CDN stylesheet links AND both googleapis/gstatic preconnects removed from both pages | CLOSED — tripwire tests `backend/tests/unit/utils/fontSelfHosting.test.js` + `config-tool/tests/fontSelfHosting.test.js` | `grep -rlE 'fonts\.(googleapis\|gstatic)' backend/public config-tool/public` = zero (test-enforced, both halves). SCOPE NOTE (ST.F review, finding c): the row's original command used `-R` which FOLLOWS the `gm-scanner`/`player-scanner` submodule symlinks into the NFC tools — a DIFFERENT surface, tracked as L14. The engine's own served page chrome (this row's scope) is `-r` over the `public/` trees; the tests enforce exactly that (symlinks skipped) |
 | L14 | **[in-queue, recorded 2026-09-03 at theme unit ST.F review]** The NFC tools `tag-writer.html` + `token-checkin.html` (ALN-TokenData source, served through `backend/public/gm-scanner/` + `backend/public/player-scanner/data/` submodule symlinks) still carry Google Fonts CDN links — the SAME offline-LAN silent-CDN-failure class as L11, but a SEPARATE surface (NFC programming tools, not venue display chrome) out of L11/D-T.6 scope. Surfaced by the ST.F spec review's tripwire-scope catch (the `-R` vs `-r` symlink difference) | A fonts sweep when the NFC-tool surface is next touched (or the B-pages/tooling work if it subsumes these tools): self-host their families the ST.F way, or promote the fallback stacks | `grep -RlE 'fonts\.(googleapis\|gstatic)' backend/public` shows ONLY these two files (×2 symlink paths each); zero when the sweep lands |
 | L13 | **[post-Phase-3, recorded 2026-09-03 at slice-7 S7.2 — class inherited from its trigger, per the DoD-linkage rule]** ALN-flavored wording retained inside ENGINE-FIXED report structure: the `## Detective Evidence Log` heading (ALN's own mode name), the `Exposed By` column header, and the H1 `Session Report` family — every divergent pack's report inherits them, because the contract names headings/column text as structure (Change Rules #1–#2) and the external pipeline parses them | The ROADMAP §8.10 bundle migration (the pipeline stops parsing markdown; the anchors stop being load-bearing and can localize) | The golden masters + the structural-invariant suite in `ALNScanner/tests/contract/sessionReport.contract.test.js`; contract doc v2 records the retention |
-| L12 | **[in-queue, recorded 2026-08-29 at slice-6 S6.3]** The idle-loop config fallback: when a pack names an idle-loop channel (`surfaces.idleLoop`) that the installation profile has no binding for, `vlcMprisService._resolveIdleLoopFile()` falls back LOUDLY to `config.display.idleLoopFile` (the L7 lighting-role-fallback shape). A venue-media identity resolved from engine config instead of the profile | The pack-manager media page + venue-media binding UI (ROADMAP §8.1): every idle-loop channel gets a real profile binding, and the config fallback becomes a hard "no idle loop configured" refusal | LOUD warn per fallback fire ("no installation-profile binding — falling back … ledger L12"); `grep -n "ledger L12" backend/src/services/vlcMprisService.js` |
+| L12 | **[in-queue, recorded 2026-08-29 at slice-6 S6.3; REFRESHED 2026-09-05 at roadmap r4]** The idle-loop config fallback: when a pack names an idle-loop channel (`surfaces.idleLoop`) that the installation profile has no binding for, `vlcMprisService._resolveIdleLoopFile()` falls back LOUDLY to `config.display.idleLoopFile` (the L7 lighting-role-fallback shape). A venue-media identity resolved from engine config instead of the profile. Taxonomy call already made (Q-C3-1 ruling, 2026-09-04): an unbound idle-loop channel is DORMANT | Flip owner assigned: **the bindings work (Block 6)** — every idle-loop channel gets a real profile binding, and the config fallback becomes the dormant path instead of an engine-config read | LOUD warn per fallback fire ("no installation-profile binding — falling back … ledger L12"); `grep -n "ledger L12" backend/src/services/vlcMprisService.js` |
+
+## Owner rulings 2026-09-04 (B0 design ratification)
+
+B0 design r2 RATIFIED (full record: the B0 design doc §4-§6): Q10(a)
+one unit at the honest 3.5–5-session estimate (owner-signed divergence
+from the program's 1.5–2.5 — census: auth substrate entirely unbuilt;
+red-team restored the dropped served-vocabulary scope); Q11(a) publish
+refuses on base-hash conflict, re-draft is the recovery, merge waits
+for the Design-workspace pages. 18 red-team objections all folded
+(design §4 table): the observe-token requireAdmin bypass, the unnamed
+WS enforcement point, the gate-seam module-graph leak, silent-revert
+publish, and the GM-WS carve-out DELETED rather than ruled around.
 
 ## Owner rulings 2026-09-03 (batch — remaining-scope grill)
 
@@ -585,6 +612,217 @@ GM-scanner display sites only — config-tool previews + the report ★
 cell excluded), ledger L11 (scoreboard Google-Fonts CDN links retire in
 the styling-bearing slice). Census next.
 
+**B0 — 🔨 OPENED 2026-09-04** (branch `claude/phase3-b0` chained from
+the theme-unit tip `8752d53`; **draft PR #32 opened AT open**). Governed
+as a full unit (census → design → red-team → staged build). Scope
+inputs: program Track B (pack/profile store with draft→publish — the
+tool stops editing live files; app-shell shared store + model-module
+discipline + frontend test harness; operator-tier auth v1 per §7 R1 +
+§13.6 incl. the backend substrate and the scoreboard PLAIN read-scope
+token), the 2026-06-11 config-tool pre-read, and the 2026-09-03 §14
+rulings (E10 floor binds the PAGES unit, not B0 — but B0's store must
+not preclude it).
+
+Progress: census ×2-verified + design r1 + 18-objection red-team +
+design r2 + owner ratification Q10(a)/Q11(a) — full record in
+`docs/plans/2026-09-04-phase3-b0-tooling-foundation.md`. **BS.1
+CLOSED 2026-09-04** (§7 execution record): grants algebra
+(`gameRules/grants.js`), gate runner (`scripts/validate-pack.js`,
+accepted-with-pins over the in-process extraction), full O3 operator
+claims, operator floor at the commandExecutor choke point + WS actor,
+observe token (scoreboard's injected ADMIN_PASSWORD DELETED),
+`/api/vocabulary` zero-drift endpoint. Two-axis review folded (4
+lazy-require hoists, `_resolvePackHash()` extraction); gates 2772/135
++ ratchet + lint all exit 0. **BS.2 CLOSED 2026-09-04** (§8 execution
+record): draft store (`config-tool/lib/draftStore.js` +
+`packFs.js`) + publish pipeline (`lib/publish.js` — Q11(a) refusal
+first red test, engine gate via execFile'd runner, ordered rename
+manifest-LAST, landed re-verify, publish log, mutex); the two pack
+writers re-pointed at draft-bound ConfigManagers; strings/theme first
+writer; live-pack write routes refuse 409; gm:identify display-class
+fix (verified-tier, no GM registration/capacity). Two-axis review
+folded (restampBase atomicity, packFs extraction, PublishRefused
+type, 7 validator pins re-homed; PACK_PATH divergence adjudicated as
+the ruled D-4.7c posture). Gates: config-tool 144 + lint, backend
+2775/136 + ratchet + lint, all exit 0. **BS.3 CLOSED 2026-09-04** (§9 execution record): tool
+login mints the aud pair (config-tool half self-minted from
+backend/.env, orchestrator half fetched from /api/admin/auth and held
+server-side); HTTPS; EVERY API route behind the gate (r2/S8 — the
+fold flipped the shipped loopback-reads-open posture; the SPA logs in
+at boot); shared store + draft-routed editors + Design/Venue split;
+served-vocabulary re-sourcing (killed bidirectional action-set drift
++ two typeOk authoring bugs) with a tool↔backend wire cross-pin;
+PUT /api/music/playlists show-control-gated with the proxied token;
+jsdom + Playwright harness (pinned 1.57.0) whose smokes caught the
+[hidden]-vs-class CSS bug twice. Gates: config-tool 176 + 2 smokes +
+lint, backend 2778/136 + ratchet + lint, all exit 0. **BS.4 CLOSED — B0 ✅ FULLY CLOSED 2026-09-04** (§10
+execution record in the B0 design doc). §5 proofs landed (`655fe17`:
+floor rejection ×3 surfaces; pack-switch identity at issuance) + the
+scripted store tier proof (no-op publish of the REAL ALN pack =
+identical contentHash, submodule git-clean). Whole-unit adversarial
+panel (2 Opus + Fable doctrine + Haiku sweep) — all surviving
+findings folded (`f5af7c9`): service: joined the floor map; observe
+store capped/swept/reset-rotated; display identity from the token
+claim; WS aud enforced; tool refuses beyond-loopback on default
+credentials; scoreboard renews by RELOAD (retires the 24h/restart
+blank-TV residual — recovery now beats the password era); publish
+post-landing tolerance + dot-prefixed landing tmps (debris can never
+be inventoried); dirty-confirm; asyncapi second-token-class doc;
+CONTEXT.md floor entry corrected + draft/publish + observe-token
+vocabulary. Close gates ALL exit 0: backend 2785/137 + ratchet +
+lint; config-tool 180 + 2/2 smokes + lint; GM 1666; PWA 165; ESP32
+125; **dual-pack Tier L on the final tree: ALN 120P/0F/62S 0-flaky
+(+ Tier H 4P) 34.3m; toy 121P/0F/61S 0-flaky** (the theme close's
+one flaky passed first-try; identical 182 totals per leg). Accepted
+residuals recorded in §10. Tip: the close-record commit on
+`claude/phase3-b0` (draft PR #32 — owner un-drafts when the train
+reaches it; parent-only unit, NO submodule bumps: ALN-TokenData /
+ALNScanner / PWA / ESP32 all untouched by B0). NEXT in queue:
+Design-workspace pages (#11, carries the §14 rulings incl. the E10
+floor + the surfaces-editor open question).
+**CI amendment (2026-09-04, post-close):** branch CI was RED from run
+212 (the BS.1 operator-floor commit) through run 226 — the close gates
+ran unit/contract/E2E but NOT the integration suite, where the one
+casualty hid (`lighting-role-resolution.test.js` gm-sourced call
+predating the floor, carrying no actor — floor-refused correctly), and
+the Scanner Tests job had outgrown its 10-minute timeout (axed at
+10m13s in runs 222/225 — workload, not a hang). Both fixed at
+`df5c711` (operator-actor fixture matching the actorFloor idiom;
+timeout 20m); **GREEN CONFIRMED run 227** (integration 348/348,
+all 8 jobs). Process lesson folded forward: unit-close gates MUST
+include the integration suite (BS.4's list omitted it).
+
+**Design-workspace pages — 🔨 OPENED 2026-09-04, design r2 DONE,
+⏸ BUILD GATE HELD ON OWNER** (full record:
+`docs/plans/2026-09-04-phase3-design-workspace-pages.md`). Census
+(two legs: surface + 19-binding constraints; one correction — the GM
+scanner is NOT hot mid-session, packLoader loads at app start) →
+design r1 → mixed-model red-team (two Opus legs, 21 findings; the
+BLOCKINGs: E10 was missing the cue-engine reload AND the client
+re-load contract; the preview orchestrator would SIGTERM the live
+show's helpers via the singleton /tmp/aln-pm-* paths) → design r2
+(§7): E10 as FOUR named steps incl. the `pack:applied` client
+directive; the preview runtime-namespace seam designed in; per-block
+game.json writers with draft-wide referential checks; pack selection
+among on-disk roots (re-entering per the B0 §8 adjudication);
+commit&push with the sync.py credential posture + rendered
+parent-bump instructions; the three-identity staleness surface;
+honest estimate ≈ 5.25–7 sessions (above the program's 3–5; carried,
+not squeezed). **Owner batch §8: Q1 surfaces home with wireframes
+(rec: pack-manager media panel); Q2 hot-apply guard with the
+playtest cost stated (rec: refuse during active/paused); Q3 the L8
+retire-vs-re-ratify checkpoint (rec: retire); Q4 the §14.1 split +
+estimate sign-off. PS.1 does not open before Q1 + Q4.**
+**→ RATIFIED 2026-09-04 ("ratify all", after an extended owner grill
+that materially improved the design — record in the doc's §9):** Q1
+= mechanics editor owns game.json entire WITH live verdict badges
+(dissolves the a/b choice); Q2 = refuse during active/paused; Q3 =
+retire the L8 literal; Q4 = build list approved PLUS minimal
+create-new-pack pulled IN; diff/merge → multi-author anchor,
+simulation → rehearsal anchor; preview orchestrator ships a PREVIEW
+PROFILE. Estimate ≈ 6–7.5 sessions under the ratified price
+principle. **Build OPEN, sequenced AFTER C2+C3's CS.1** (badges
+consume the resolve core; owner directed all environment rungs as
+early as possible). *(Sequencing + shape SUPERSEDED 2026-09-05,
+roadmap r4 supersession 7: the hardening stages and the truth sweep
+now run BEFORE the pages, and the pages are RE-CUT so the preview
+slice ships first — ROADMAP §4 Blocks 2–5; the ≈6–7.5 figure is
+re-priced before the first page builds.)*
+
+**C2+C3 (resolution mechanism + dormant-vs-fault) — 🔨 OPENED
+2026-09-04, design r2 DONE, ⏸ BUILD GATE HELD ON OWNER** (full
+record: `docs/plans/2026-09-04-phase3-c2c3-resolution-dormancy.md`).
+Design opened while the pages build gate held — adjudicated: C2
+DECIDES the 8.5 warn→enforce question rather than waiting on it.
+Census (two legs) → design r1 → mixed-model red-team (two Opus legs,
+18 findings; the BLOCKINGs: sticky-dormant vs out-of-band `report()`
++ boot ordering; `system:reset` wiping dormancy AND disables; silent
+quick-fire success on a disabled cue; r1's endpoints interior
+CONTRADICTED the ratified C1 §1/§2 shape; role-unbound mis-folded
+into cue-level disables; plus census corrections — `setAutoDiscard`
+HAS a video_busy caller at cueEngineService.js:632, only the
+service_down cue holds + `videoQueueService._holdVideo` lack timers)
+→ design r2 (§6): ONE pure resolve() (`gameRules/packNeeds.js`
+collectPackNeeds + `gameRules/resolution.js` applying the RATIFIED
+C1 §2 table verbatim — pack-side `onAbsent` authored in
+pack-manifest.hardware, profile endpoints = C1 §1's physical keys);
+health enum `healthy|down|dormant` contract-first (3 sites +
+registry validator, `degraded` dropped pending Q-C3-2); STICKY
+dormant (report() ignored while latched; feed runs post-init, at
+session create/restore, inside system-reset re-wiring; profile
+boot-frozen); TWO disable sets (GM-persisted + dormancy-recomputed)
+with honest refusals; hold policy (video_busy 10s stays; fault holds
+get session-end expiry + recovery affordances; dormant never held);
+preflight covers all six C1 §3 groups, cert line WARN-ONLY (R8),
+unknown-never-fault inventory rule; honest estimate r2 ≈ 3.5–4.5
+sessions (carried, not squeezed). **Owner batch §7 JOINS the pages
+batch — one sitting: Q-C2-1 packHash warn-vs-refuse (rec:
+warn-only); Q-C2-2 the checklist partial-absorption split; Q-C3-1
+the unbound idle-loop taxonomy (rec: DORMANT — this decides C4's
+`_resolveIdleLoopFile` L12 flip); Q-C3-2 the enum (rec: drop
+`degraded`); Q-C3-4 estimate sign-off. CS.1 does not open before the
+batch; build sequences behind the pages build on the shared
+branch.**
+**→ RATIFIED 2026-09-04 ("ratify all") — the doc's §8 is NORMATIVE,
+and the sitting's grill upgraded the design substantially:** the
+governing architecture "one truth, three loops" captured in
+CONTEXT.md §2 (verdicts, paper/live labels, alarm integrity, status
+with verbs, self-heal, supervisor, dormant's two doors, environment
+ladder, witness lights); Q-C2-1 superseded by scanner SELF-HEAL;
+Q-C2-2 = preflight gains a Host arm (humans check the room); Q-C3-1
+= DORMANT + a session-start require-gate with typed logged override;
+Q-C3-2 = drop `degraded`; NEW: the fault SUPERVISOR (auto-restart,
+verbs, manual out-of-service). **Build OPEN with re-sequenced order:
+CS.1 (rung-1 harness + pure resolve core, red-first on the harness,
+incl. the existing-engine first real-services audit) runs FIRST,
+then the pages build, then CS.2–CS.5, then C4.** *(Order SUPERSEDED
+2026-09-05, roadmap r4 supersession 7 — the largest single re-order:
+CS.2–CS.5 [the hardening block] now run BEFORE the pages, followed
+by the truth sweep; the pack-reload integration moves to the pages'
+preview slice — ROADMAP §4 Blocks 2–5.)* Estimate ≈ 5.5–7
+sessions (C4 ≈ 1.5–2 additional). Rung-1 environment capabilities
+are MEASURED, not assumed — recipes and verdicts in
+`2026-09-04-rung1-capability-research.md` (dockerd/VLC/MPD/pipewire/
+HA all proven in the dev container incl. HA scene→light end-to-end;
+dbusmock-BlueZ workaround PROVEN; btvirt: container-impossible,
+hosted-CI pending the modules-extra probe; the GitHub GraphQL
+rate-limit mystery RESOLVED as the session's own CI storms
+exhausting the shared user×app pairing bucket — mitigations
+recorded).
+**→ CS.1 ✅ CLOSED 2026-09-04** (execution record: the c2c3 doc §9).
+LANDED: `gameRules/packNeeds.js` (collectPackNeeds) +
+`gameRules/resolution.js` (the C1 §2 table verbatim, paper/live
+depths, tier-zero, unbound-role=FAULT with verb-carrying reasons,
+rollUp `{status, dormantServices, problems}` — disabledCueIds
+deferred to CS.2 whose C3 disable walk is its producer);
+`scripts/lib/witnessConfig.js` (one-hot witness register from pack
+roles, live-proven in real HA) + `scripts/lib/simulationProfile.js`
+(profile generated from pack needs); the rung-1 harness
+(`backend/tests/rung1/`: up/engine/probe/down + generate-fixtures +
+onboard-ha + `audit-flows.js`) under the single-non-root-user model
+with the engine self-hosting MPD + VLC and Xvfb as display physics;
+`displayDriver` CHROMIUM_BIN seam. THE AUDIT: 13/13 zero-mock
+flagship chain (player scan kai001 → engine's own VLC plays under
+Xvfb → attention-before-video fires → real HA witness flips one-hot
+→ video completes → restore-after-video flips back → cue:fired both
+→ sound via pw-play → mpc + music:play + setVolume against the
+engine-spawned MPD) — the project's first full real-services
+show-chain proof. Two-axis review folded (`81768ae`; top catch: the
+unbound-role adjudication + reason wording, pinned). Engine-audit
+findings recorded for later stages: the VLC-as-root 13-restarts/40s
+loop (supervisor evidence → CS.3), MPD setvol-while-stopped "All
+outputs are disabled" (real GM-panel edge), dotenv-cwd, headless
+vout. VERDICTS: `rung1.yml` (new recurring CI workflow) GREEN runs
+4+5; main-suite Test run 259 GREEN on `5d41b9b` (first completed
+full-suite run since 239 — 243–258 were concurrency-guard
+cancellations from the design-push cadence, lesson recorded); local
+backend 2818/2818 + fresh ratchet. Deferred out with owners:
+disabledCueIds → CS.2; packNeeds video-file need kind → CS.2.
+*(NOTE: the pages build that sequences next is held by the owner's
+2026-09-04 UX pause — the ground-up foundation + grill in
+`2026-09-04-ux-foundation.md`; the pages set gets RE-CUT under the
+ratified foundation before building.)*
+
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 
 - **Slice-2 closers RATIFIED**: D1s2 gate+trim (slice-5 anchor verified in
@@ -760,18 +998,27 @@ adds its PRs to this block.
 | 2 | ALNScanner | **#15** (opened 2026-09-04 at theme-unit close) | `claude/phase3-theme-unit` @ `deddaf9` | Subsumes #14 (slice-7; which subsumes #13/#12) — owner closes #14 and earlier as subsumed. Adds the runtime pack theme (DECLINE mirror, three rating sites, bundled data re-point to themed TokenData + drift tripwire) |
 | 3 | ALNPlayerScan | **#6** | foundations | PWA is visibility-only (L3); no later train commits exist |
 | 4 | arduino-cyd-player-scanner | **#7** | foundations | ESP32 pack identity via asset manifest; no later train commits exist |
-| 5–17 | ALN-Ecosystem (parent) | **#19 → #31 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6, slice 7, theme unit) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass. #30 is slice 7, #31 the theme unit (both opened AT slice open per the corrected discipline). Train grows with remaining slices (B0…) |
+| 5–17 | ALN-Ecosystem (parent) | **#19 → #31 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6, slice 7, theme unit) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass — **watch it**. #30 is slice 7, #31 the theme unit (both opened AT slice open per the corrected discipline). |
+| 18 | ALN-Ecosystem (parent) | **#32** (added to the train 2026-09-05 at roadmap-r4 ratification) | `claude/phase3-b0` | The final recorded vehicle: the tooling foundation (B0) + CS.1 (rung-1 harness + resolve core) + the re-charter corpus (roadmap r4, audits, grill record, capability census). Stacked on #31. The train grows only if further work lands before the walk. |
 
-Timing: owner-driven, post-run (§ Final cutover below); nothing merges
-before the owner walks this table.
+Timing (superseded 2026-09-05, roadmap r4 supersession 9 — was
+"owner-driven, post-run"): the walk is the owner's call at the
+coherent-on-main readiness state. Before any vehicle merges, the
+WHOLE-TRAIN REVIEW runs — a dedicated review of the full train's
+combined diff, by a separate session with fresh context (ratified,
+grill Q1r). Nothing merges before the owner walks this table.
 
 ## Final cutover (single enumeration — 2026-08-29; program §12.1's pointer lands here)
 
 Everything parked on "the cutover," in one place. **Mechanism
-(owner-ratified 2026-08-29): the blue/green Pi swap — ROADMAP §3b.**
-Green-Pi preparation opens after Phase-3 close at the earliest (owner
-direction); the 2026-09-18 → 2026-10-18 weekly run executes on
-`production-2026-07` (blue) untouched.
+(owner-ratified 2026-08-29): the blue/green Pi swap — ROADMAP §6
+(formerly §3b).** Timing superseded 2026-09-05 (roadmap r4,
+supersession 1): green-Pi preparation opens with Block 1 — it is the
+path to the hardware-proven readiness state — and the cutover
+decision is the owner's at show-ready (mid-run swaps allowed only in
+Monday–Thursday windows against that gate, grill Q5). The 2026-09-18
+→ 2026-10-18 weekly run executes on `production-2026-07` (blue)
+untouched.
 
 Collapsed onto the cutover (with owners):
 1. **Merge train** (above) — owner walks it first; main becomes the

@@ -157,6 +157,24 @@ function jsonForScript(value) {
     .replaceAll('\u2029', '\\u2029');
 }
 
+/**
+ * GET /api/vocabulary — the engine's cue-authoring vocabulary
+ * (B0 BS.1; program Track B "backend-served trigger/action
+ * vocabulary"). Served from the SAME exported tables the activation
+ * gate validates cues against — one source, zero drift; the
+ * config-tool's editors re-source from here instead of hand-mirroring.
+ * Read-only engine metadata, no auth (the /api/tokens posture).
+ */
+router.get('/vocabulary', (req, res) => {
+  const cueValidation = require('../gameRules/cueValidation');
+  res.json({
+    triggerEvents: cueValidation.CUE_TRIGGER_EVENTS,
+    conditionOperators: cueValidation.CONDITION_OP_NAMES,
+    actions: cueValidation.CUE_ACTIONS,
+    tokenDerivedTriggerEvents: cueValidation.TOKEN_DERIVED_TRIGGER_EVENTS,
+  });
+});
+
 function renderScoreboardHtml() {
   const config = require('../config');
   const packService = require('../services/packService');
@@ -172,18 +190,19 @@ function renderScoreboardHtml() {
   // literal '%%PACK_THEME%%' get theme JSON injected INSIDE it,
   // breaking the page script's parse at serve time.
   return html.replace(
-    /%%WINDOW_MARKER%%|'%%ADMIN_PASSWORD%%'|'%%PACK_STRINGS%%'|'%%PACK_THEME%%'/g,
+    /%%WINDOW_MARKER%%|'%%OBSERVE_TOKEN%%'|'%%PACK_STRINGS%%'|'%%PACK_THEME%%'/g,
     (m) => {
       switch (m) {
         // Shared xdotool window marker (slice 3a pre-fix 1).
         case '%%WINDOW_MARKER%%':
           return config.display.scoreboardWindowMarker;
-        // Serve-time credential injection (slice 3a pre-fix 2, matrix
-        // 2.34): the placeholder is QUOTED in the page, so the
-        // replacement includes the quotes via jsonForScript —
-        // quote-safe AND script-context-safe for any env value.
-        case "'%%ADMIN_PASSWORD%%'":
-          return jsonForScript(config.security.adminPassword);
+        // Per-serve OBSERVE token (B0 BS.1 slice 5 — replaces the
+        // injected ADMIN_PASSWORD): device/display class, functions
+        // exactly ['observe'], its own store — every HTTP gate refuses
+        // it and the WS accepts it read-only. A live credential leaves
+        // every venue TV's page source.
+        case "'%%OBSERVE_TOKEN%%'":
+          return jsonForScript(require('../middleware/auth').generateObserveToken('SCOREBOARD'));
         // Pack-declared display strings (A3 slice 3a): the activation
         // snapshot (or null — page falls back to baked wording per key).
         case "'%%PACK_STRINGS%%'":

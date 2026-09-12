@@ -171,6 +171,23 @@ you intend.
 
 ## 2. The engine ↔ pack contract
 
+- **One truth, three loops.** The governing architecture for
+  readiness and failure (ratified 2026-09-04). The ONE TRUTH: the
+  pack declares what the show needs and how much each need matters
+  (`onAbsent: require` = "block the show" / `degrade` = "skip it");
+  a profile declares what an environment has; one pure
+  `resolve(needs, has)` produces per-need VERDICTS, and every
+  surface — editor badge, preflight row, session-start gate, cue-time
+  refusal, CLI — quotes those verdicts rather than forming its own
+  opinion. The THREE LOOPS, in order: the designer's (verdicts appear
+  at the moment of choice, so mistakes die at the desk), the
+  system's (self-heal: anything software can fix is fixed silently),
+  and the GM's (whatever escapes the first two arrives with verbs
+  attached). Any new design question is settled by asking which loop
+  owns it and whether it reads the answer sheet.
+- **Verdict.** resolve()'s per-need output. Always labeled with the
+  depth it reached (paper or live, §5) and the profile it was
+  computed against.
 - **Activation.** At startup, the backend adopts exactly one pack
   (`packService.activatePack()`). The choice is fixed for the life of
   the process. If someone edits the pack on disk while the process
@@ -315,10 +332,31 @@ you intend.
   *Dormant* means a service has no equipment configured tonight, on
   purpose. That is normal and must never show as an error, because
   "red that is always red trains GMs to ignore red". *Fault* means a
-  service that should be running is not. That is an error. ("Down" is
-  the health registry's status word; today it covers both cases, and
-  that is the gap.) The dormant/fault split is ratified doctrine; the
-  engine implements it in C2/C3.
+  service that should be running is not. That is an error. Ratified
+  2026-09-04: the health vocabulary is exactly three words —
+  `healthy | down | dormant` (the never-emitted `degraded` is deleted);
+  dormant is STICKY (health reports cannot un-latch it) and has TWO
+  doors — "not installed tonight" (set by resolution against the
+  profile) and "taken out of service" (set by the GM mid-show, e.g.
+  the TV died and the show goes on without it). Same state, same
+  quiet, two entrances.
+- **Alarm integrity.** The invariant behind dormant: red always means
+  "act now". Intentional absence shows grey, never red, so the one
+  night something really breaks, the red light still gets believed.
+- **Status with verbs.** A fault shown to the GM always carries its
+  actions — Restart, Re-route, Run-without-it, Release/Discard —
+  never bare bad news. Status without verbs is a dashboard; the GM
+  scanner is a control panel.
+- **Self-heal.** The system's default answer to a problem software
+  can fix: fix it, log it, stay quiet. A GM scanner with stale rules
+  re-fetches the pack and reconnects (one toast); a crashed stack
+  service gets supervised restarts before anyone is told. Humans see
+  only the residue.
+- **Supervisor.** The engine component (C3, ratified 2026-09-04) that
+  auto-restarts crashed software stack services — bounded attempts
+  with backoff, escalating to a red row with a Restart verb only when
+  exhausted. HOW each service restarts is host configuration, not
+  pack or profile content.
 - **Service domain / `service:state`.** How the backend tells GM
   clients about service status: one event type carrying
   `{domain, state}` for each of 10 domains (music, video, health, and
@@ -343,10 +381,41 @@ you intend.
   features *dormant* (definitions in §4).
 - **Preflight.** The pre-show check: one button produces a go/no-go
   list, and every line traces to a field in the profile or the pack
-  manifest. The preflight is the instrument that clears the cutover.
-  It is a ratified direction (C1, 2026-08-22), not yet built. Today
-  the engine offers per-service health probes (`service:check`) and
-  command-level resource validation only.
+  manifest. Ratified direction C1 (2026-08-22), design ratified
+  2026-09-04 (C2): the machine checks everything a machine can
+  observe — pack refs, bindings, services, media files, network,
+  staffing, and the HOST itself (disk, temperature, processes,
+  ports); the hand-run checklist shrinks to the physical room
+  (speakers placed, TV on the right input, tokens on set). Every row
+  is labeled *paper* or *live* (see below) and names the profile it
+  verified against. A required ("block the show") need left unmet
+  refuses `session:start`, with a typed, logged "start anyway"
+  override for genuine emergencies.
+- **Paper vs live checks.** The two verification depths. *Paper* =
+  pack needs vs the profile FILE (the declared inventory) — pure data,
+  runs anywhere. *Live* = the profile vs reality (the sink exists in
+  pactl right now, HA actually has that scene) — runs only where the
+  hardware is. Every verdict says which depth it reached and against
+  which profile, so a green at home is never mistaken for venue
+  readiness.
+- **Environment ladder / rung.** "The venue" is not special: a
+  profile describes ANY environment, and every environment is a
+  partial one (whatever a profile omits resolves dormant). The rungs:
+  0 = bare CI (everything dormant, logic only), 1 = CI/dev-container
+  with the real software stack and fake physics (dummy outputs, null
+  sinks, mocked BlueZ, witness lights), 2 = home test bed (real
+  substitute hardware), 3 = the venue. Same engine, same pack, same
+  checks on every rung; each runner is capability-probed and its gaps
+  recorded with reasons (see
+  docs/plans/2026-09-04-rung1-capability-research.md). Ratified
+  2026-09-04 with "all rungs as early as possible".
+- **Witness lights.** Rung-1's lighting assertion mechanism: the
+  simulation profile's HA config gets one virtual light per lighting
+  role the pack declares, one scene per role turning its own witness
+  on and the others off (one-hot). "Did the right look fire, and
+  what look is live now?" becomes a direct read. The fixture is
+  GENERATED from the pack's own needs list, so it cannot drift from
+  pack content.
 - **Planning view.** Answers "if I bring hardware X, what game
   features does that unlock?" for a hypothetical profile, before
   equipment is packed for an event. The UI for it is scheduled after
@@ -366,6 +435,71 @@ you intend.
   cutover is: unplug blue, plug in green; green takes the reserved IP.
   Rolling back means swapping the plugs back.
 
+## 5b. The production lifecycle (ratified 2026-09-04; cross-tool
+vocabulary — these words must read identically from the config tool,
+the GM scanner, and a game's own post-show tooling)
+
+- **Author / Rehearse / Run / Review.** The four stages of a
+  production's life, and the platform's organizing vocabulary. The
+  creator's practice is a LOOP, not a line: Author ⇄ Rehearse is one
+  creative cycle; Run is show night (the GM scanner's stage; the
+  preflight is its opening ritual, not a stage); Review closes the
+  loop back into Author. Venue configuration is cross-cutting
+  infrastructure surfaced in context — "Prepare" is NOT a stage.
+- **Deploy.** The config tool's FOURTH NAVIGATION ITEM (owner-ruled
+  2026-09-05), NOT a fifth lifecycle stage — the four stages above
+  stand. Deploy is where an authored show meets a venue, and it is
+  the handoff chain made visible across the two surfaces: the
+  designer hands over the pack; the venue technician satisfies its
+  tech rider and binds the installation profile (in the config
+  tool); the GM receives a system ready to Run (in the GM scanner).
+  The lifecycle word for show night remains Run.
+- **Rehearse.** Performing the show's moments without the venue:
+  every player action available in its simulated form, framed as the
+  player's act ("Team X scans the vault token"), the show reacting
+  for real (video, cues, witness lights). One concept with many
+  depths: the adopter's first-run demo, the designer's
+  try-my-change loop, Track D's simulation tooling, and engineering's
+  rung-1 rig are all Rehearse. Input transports (NFC, QR, a button)
+  are venue-bound physics, never the designer's frame.
+- **Simulation.** Not a mode and not a special artifact. A
+  simulation is an ordinary installation profile whose bindings
+  point at software stand-ins (witness scenes, placeholder files)
+  instead of physical fixtures. One can be generated from a pack's
+  own needs so every need is met. A show pack before deployment IS
+  a show realized only by such profiles; deployment never changes
+  the pack — it is the day a venue's profile realizes the same pack
+  with physical bindings. (Owner-ruled 2026-09-04: "a simulation"
+  and "an undeployed show pack" are not different things.)
+- **Review.** A CREATIVE PRODUCTION stage, not log-reading: telling
+  the story of the night and learning from it. The platform owns the
+  RECORD (the B9 session bundle), the INTAKE (Track D: roster,
+  director notes, photos, accusation — captured during Run), and the
+  HANDOFF; the GAME owns the TELLING — for ALN, the Director Console
+  crafting each session's bespoke in-fiction article for its players.
+  The platform's built-in story-of-the-night reading must stand
+  alone; a per-game console is an advanced instance, never the
+  baseline.
+- **Director.** The Review-stage hat (usually the same human as GM
+  or designer): the person who crafts the night's telling and
+  harvests design learning back into Author.
+- **Tech rider.** The pack's declared hardware needs presented
+  human-readably for the venue technician — the design-first half of
+  both-ends-inward. Derived (collectPackNeeds), never a second
+  source of truth. The bindings work is "satisfying the rider."
+- **Capability catalog.** Everything the platform can drive,
+  browsable — the palette a designer composes a venue from. A
+  DESIGNED VENUE lives in the pack as its hardware/role vocabulary
+  (no third artifact); profiles realize it; the simulation profile
+  realizes it instantly for hardware-free rehearsal.
+- **Reference kit.** A published rider defining the basic hardware
+  set that showcases the system, fulfilled simulated (the demo) or
+  physically (the rung-2 test bed / open-source starter kit).
+- **First-run state.** Getting the platform is a threshold crossed
+  once, not a stage or a room: a persistent checklist overlay,
+  teaching empty states, and templates at the threshold. "Adopt" is
+  not a stage — it has no meaning to a user who cannot yet Author.
+
 ## 6. Identity and attribution
 
 - **Actor vs device.** A *device* is hardware; its id names the
@@ -381,21 +515,37 @@ you intend.
   standing constraint (ROADMAP §2.1).
 - **The floor.** Three functions are always operator-only: session
   lifecycle, show control, and score intervention. A pack may assign
-  any other function to lower tiers (owner-fixed, 2026-07-09). Today
-  the pack schema locks the floor structurally (`game.schema.json`
-  pins the floor functions to `["staffed"]`) and a contract test
-  checks it at authoring time. The activation gate does not read the
-  `functions` block, and no runtime check enforces the full
-  function-to-tier assignment yet. One narrow execution-time floor
-  guard exists as of slice 4 (its close review):
-  `commandExecutor.executeCommand` refuses any command from a cue
-  source (`source !== 'gm'`) that is not in the `CUE_ACTIONS`
-  vocabulary. Pack content is the lowest trust tier, so it cannot
-  drive session lifecycle, score intervention, or system reset, even
-  if the activation gate is bypassed. The general issuance-time and
-  execution-time enforcement (mapping every function to its tier)
-  still arrives with the auth work; Phase 3 builds only the
-  operator-tier subset (program §13.6).
+  any other function to lower tiers (owner-fixed, 2026-07-09). Since
+  B0 (one-auth v1) enforcement is REAL at both ends: grants are
+  computed at ISSUANCE (`gameRules/grants.js` —
+  `packAssignment(class) ∩ tierCeiling(tier) − floor-if-non-operator`,
+  minted into every token's `functions` claim alongside `tier`,
+  `class`, `deviceId`, `packHash`), and re-checked at EXECUTION — the
+  `commandExecutor` operator floor refuses any gm-boundary FLOOR
+  action whose actor lacks the mapped function (deny-by-default,
+  every transport incl. the GM WebSocket path), with the older cue
+  floor beside it (cue-sourced commands may invoke only `CUE_ACTIONS`
+  — pack content is the lowest trust tier). v1's grant TABLE is the
+  baked operator-degenerate case (operator = full floor, so live ALN
+  behavior is unchanged); pack-declared function assignments and the
+  finer non-floor taxonomy are Phase-4 E4. The pack schema still
+  locks the floor structurally (`game.schema.json` pins the floor
+  functions to `["staffed"]`).
+- **Draft / publish (the pack store).** Editing pack content never
+  touches the live pack: the config-tool copies it into a tool-private
+  DRAFT (stamped with the live `base` contentHash), edits land there,
+  and PUBLISH is the one landing step — engine's own activation gate
+  (via the child-process runner), refuse-on-base-mismatch (Q11(a):
+  conflict = re-draft), ordered rename with the manifest last, landed
+  re-verify, publish log. Publish of an unedited draft is a content
+  no-op (byte-identity, proven on the production pack).
+- **Observe token.** The scoreboard's credential class: device-tier,
+  display-class, functions exactly `["observe"]`, minted per page
+  serve into its own capped store (never beside operator tokens). A
+  read-only broadcast consumer — every HTTP gate and every
+  command/transaction path refuses it, and it never registers as a GM
+  station. Replaced the ADMIN_PASSWORD that used to ship in every
+  venue TV's page source.
 - **Pseudonymous default.** The engine's only built-in identity is the
   device or session id. Whether a person is ever named is each game's
   design choice, never an engine requirement.
@@ -409,7 +559,8 @@ you intend.
   that never became shared language (owner, 2026-09-03).
 - **Resolver presentation.** One user-facing form of the C2 answer
   engine (pack needs × installed hardware → runs / degrades /
-  unavailable). Three exist: the planning view (post-Phase-3), the
+  unavailable). Three exist: the planning view (a later block —
+  ROADMAP §8.4), the
   preflight (the go/no-go checklist), and the test harness. Use
   "presentation", not the program doc's earlier word "face" (owner,
   2026-09-03).
@@ -437,11 +588,15 @@ you intend.
   held pull requests merge: submodule repos first, then the parent
   stack (PHASE3-STATUS, "Merge train").
 - **Frozen production.** No deployments to the live system until the
-  coordinated cutover. Live shows run on the `production-2026-07`
-  pinned versions.
-- **Cutover.** The one coordinated deployment that ends frozen
-  production. Its method is the blue/green Pi swap (§5). Its checklist
-  lives in PHASE3-STATUS, "Final cutover".
+  owner's SHOW-READY decision (restated 2026-09-05, roadmap r4 —
+  formerly "until the coordinated cutover"). Live shows run on the
+  `production-2026-07` pinned versions. After any cutover, the
+  steady-state rule takes over: engine updates only between events,
+  pack updates any time (ROADMAP §7.4).
+- **Cutover.** The coordinated deployment that ends frozen
+  production, timed by the owner's show-ready decision (ROADMAP §3).
+  Its method is the blue/green Pi swap (§5). Its checklist lives in
+  PHASE3-STATUS, "Final cutover".
 - **Ledger row.** The record of one deliberate temporary construct: a
   description of the debt, the trigger that retires it, a tripwire
   that detects it, and a class (retired, in-queue, post-Phase-3, or
@@ -454,15 +609,38 @@ you intend.
   decision in the slice's design document (row 1.23 was the first).
   The slice document records the reclassification; in practice the
   matrix file itself stays untouched.
+- **Readiness states.** The roadmap's organizing axis (names
+  owner-ratified 2026-09-05): five named points at which the system
+  is ready for something, replacing phase walls. **Coherent on
+  main** — everything built on branches has merged to `main` and
+  passes. **Hardware-proven** — a second machine built from the
+  deployment docs passes the home hardware pass. **Show-ready** —
+  deploying for a live show night is a defensible choice.
+  **Previewable** — an outside designer can author and rehearse a
+  toy pack. **Adoptable** — a stranger can stand the platform up and
+  learn it. The gates live in the roadmap; deployment and sharing
+  decisions are made AT states, not at phase boundaries.
+- **Retired code names.** Track letters (Track A–E), stage codes
+  (BS/CS/PS numbers, B0–B12, C1–C4, E-numbers, O-numbers), and slice
+  numbers are historical (owner-ruled 2026-09-04). Forward-looking
+  documents use plain domain names; the translation table is the
+  roadmap's Appendix A (the alias table). Archive documents keep
+  their original wording — read them with that table beside you, and
+  beware the alias table's noted false friends (outside-research
+  citation keys that look like these codes but are not).
 - **Close record / DoD.** The close record is a slice's final
   execution and verification summary in PHASE3-STATUS. The **DoD**
-  (definition of done) is Phase 3's ratified completion checklist
-  (program §7): Tracks A, B, and C are finished and the dual-pack
-  Tier L run passes. The tier-ladder proof belongs to Phase-4
-  acceptance, not Phase 3. In addition, Phase 3 is not done while any
-  ledger row, doc obligation, or residue item lacks a named executor
-  (PHASE3-STATUS, "DoD linkage"; the deferral registry in ROADMAP §8
-  is the index).
+  (definition of done) was restructured 2026-09-05 (roadmap r4, Q4):
+  the old single "Phase 3 complete" wall distributed into three
+  homes — the engine merge-and-pass proof (main green, dual-pack run
+  green) at the COHERENT-ON-MAIN readiness state; the authoring-tool
+  completeness bar (all five pages at the ruled-in depth, the toy
+  pack proving the path) at Block 6's close; and the standing rule
+  that no work is done while any ledger row, doc obligation, or
+  residue item lacks a named executor — in force everywhere at all
+  times, with one final sweep at Block 6's close (PHASE3-STATUS,
+  "DoD linkage"; the deferral registry in ROADMAP §8 is the index).
+  "Phase 3" is the era's historical name in the records.
 
 ## 8. ALN vocabulary (pack content, not engine language)
 

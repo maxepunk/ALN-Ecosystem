@@ -6,7 +6,7 @@
 const { Server } = require('socket.io');
 const config = require('../config');
 const logger = require('../utils/logger');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, verifyObserveToken } = require('../middleware/auth');
 
 /**
  * Create and configure Socket.io server
@@ -58,9 +58,16 @@ function createSocketServer(httpServer) {
         return next(new Error('AUTH_REQUIRED: deviceId required'));
       }
 
-      // Verify JWT token
-      const decoded = verifyToken(token);
-      if (!decoded || decoded.role !== 'admin') {
+      // Verify: an OPERATOR token (role admin), else a display-class
+      // OBSERVE token (read-only — B0 BS.1 slice 5). Downstream
+      // authorization reads the socket's verified claims
+      // (tier/functions), never the client-asserted deviceType (S2):
+      // an observe socket receives broadcasts but every command and
+      // transaction path refuses it.
+      let decoded = verifyToken(token, { audience: 'orchestrator' });
+      if (decoded && decoded.role !== 'admin') decoded = null;
+      if (!decoded) decoded = verifyObserveToken(token);
+      if (!decoded) {
         logger.warn('GM connection rejected: invalid token', {
           socketId: socket.id,
           deviceId
@@ -98,7 +105,19 @@ function createSocketServer(httpServer) {
       socket.isAuthenticated = true;
       socket.authRole = decoded.role;
       socket.authUserId = decoded.id;
-      socket.deviceId = deviceId;
+      // Granted functions ride the SOCKET, resolved from the verified
+      // token (B0 BS.1, red-team S2 — authorization reads these, never
+      // the client-asserted deviceType). Legacy claim-less tokens carry
+      // zero functions and fail the floor closed.
+      socket.tier = decoded.tier || null;
+      socket.functions = Array.isArray(decoded.functions) ? decoded.functions : [];
+      // Display-class identity comes from the VERIFIED token, never the
+      // client assertion (B0 close review: an observe socket asserting a
+      // real GM's deviceId would flap that station's tracking on its own
+      // disconnect — deviceTracking keys off socket.deviceId).
+      socket.deviceId = decoded.tier === 'device'
+        ? (decoded.deviceId || deviceId)
+        : deviceId;
       socket.deviceType = deviceType;
       socket.version = version || '1.0.0';
       socket.packHash = packHash || null;

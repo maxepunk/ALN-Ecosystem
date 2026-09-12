@@ -1,0 +1,132 @@
+<!-- @dsCard group="Components" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verdict badges</title>
+<style>
+  :root {
+    --bg-deep:#111114; --bg-surface:#1a1a1f; --bg-raised:#222228;
+    --amber-300:#ffd54f; --amber-glow:rgba(212,160,23,.15);
+    --text-primary:#e8e6e1; --text-secondary:#9a9890; --text-muted:#5e5d58;
+    --border-subtle:rgba(255,255,255,.06); --border-medium:rgba(255,255,255,.1);
+    --success:#4caf50; --warning:#ff9800; --danger:#ef5350; --info:#42a5f5;
+    --font-sans:'DM Sans',system-ui,sans-serif;
+    --font-mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  body { margin:0; background:var(--bg-deep); color:var(--text-primary);
+         font-family:var(--font-sans); padding:24px; }
+  h1 { font-size:15px; letter-spacing:.08em; text-transform:uppercase;
+       color:var(--amber-300); margin:0 0 4px; }
+  .sub { color:var(--text-secondary); font-size:12px; margin-bottom:6px;
+         max-width:640px; }
+  .rule { color:var(--text-muted); font-size:11px; margin-bottom:20px;
+          max-width:640px; }
+  h2 { font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+       color:var(--text-muted); margin:22px 0 10px; }
+
+  /* ── The badge ─────────────────────────────────────────────────
+     One truth, three loops (CONTEXT.md §2): every surface quotes the
+     SAME resolve() verdict. A badge = verdict pill + depth chip.
+     Alarm integrity: red always means act-now; dormant is grey and
+     calm ("not installed tonight" is not an error). */
+  .badge { display:inline-flex; align-items:center; gap:6px;
+           font-size:11px; line-height:1; padding:4px 9px 4px 7px;
+           border-radius:999px; border:1px solid var(--border-medium);
+           background:var(--bg-raised); white-space:nowrap; }
+  .badge .dot { width:7px; height:7px; border-radius:50%; }
+  .badge.runs    { border-color:rgba(76,175,80,.35); }
+  .badge.runs    .dot { background:var(--success); }
+  .badge.runs    .label { color:var(--success); }
+  .badge.dormant { border-color:var(--border-subtle); }
+  .badge.dormant .dot { background:var(--text-muted); }
+  .badge.dormant .label { color:var(--text-muted); }
+  .badge.fault   { border-color:rgba(239,83,80,.45); background:rgba(239,83,80,.08); }
+  .badge.fault   .dot { background:var(--danger); }
+  .badge.fault   .label { color:var(--danger); }
+  .badge.nogo    { border-color:var(--danger); background:rgba(239,83,80,.16); }
+  .badge.nogo    .dot { background:var(--danger); box-shadow:0 0 0 3px rgba(239,83,80,.25); }
+  .badge.nogo    .label { color:#ff8a87; font-weight:600; }
+  .depth { font-family:var(--font-mono); font-size:9px; padding:2px 5px;
+           border-radius:3px; letter-spacing:.05em; }
+  .depth.paper { color:var(--text-muted); border:1px dashed var(--border-medium); }
+  .depth.live  { color:var(--info); border:1px solid rgba(66,165,245,.4); }
+
+  .grid { display:grid; grid-template-columns:auto auto 1fr; gap:10px 18px;
+          align-items:center; max-width:720px; }
+  .why { font-size:12px; color:var(--text-secondary); }
+  .why .verbs { color:var(--text-primary); }
+
+  /* ── In context: badge at the point of choice ────────────────── */
+  .fieldrow { display:flex; align-items:center; gap:12px; max-width:720px;
+              background:var(--bg-surface); border:1px solid var(--border-subtle);
+              border-radius:6px; padding:10px 14px; margin-bottom:8px; }
+  .fieldrow .k { font-size:12px; color:var(--text-secondary); width:170px; }
+  .fieldrow .v { font-family:var(--font-mono); font-size:12px; flex:1; }
+  .profile-line { font-family:var(--font-mono); font-size:10px;
+                  color:var(--text-muted); margin-top:14px; }
+</style>
+</head>
+<body>
+  <h1>Verdict badges</h1>
+  <div class="sub">The atom every design-workspace page reuses (ratification Q1):
+    each venue-resolvable field carries the verdict the pure
+    <span style="font-family:var(--font-mono)">resolve()</span> gives it,
+    labeled with the depth it reached and the profile it was resolved against.</div>
+  <div class="rule">Alarm integrity: red always means act now. Dormant is calm grey —
+    "not installed tonight" is a choice, never an error. Every fault carries its verbs.</div>
+
+  <h2>The four verdicts × two depths</h2>
+  <div class="grid">
+    <span class="badge runs"><span class="dot"></span><span class="label">runs</span></span>
+    <span class="depth paper">paper</span>
+    <div class="why">bound: scene.hue_gameplay — declared by the profile, not yet verified live</div>
+
+    <span class="badge runs"><span class="dot"></span><span class="label">runs</span></span>
+    <span class="depth live">live</span>
+    <div class="why">'attention.wav' present — verified against the venue's asset listing</div>
+
+    <span class="badge dormant"><span class="dot"></span><span class="label">dormant</span></span>
+    <span class="depth paper">paper</span>
+    <div class="why">'display.main' not installed tonight — pack says degrade, show runs without it</div>
+
+    <span class="badge fault"><span class="dot"></span><span class="label">fault</span></span>
+    <span class="depth paper">paper</span>
+    <div class="why">role 'all-clear' unbound with no pack fallback — its cues will refuse;
+      <span class="verbs">bind the role or author a fallback</span></div>
+
+    <span class="badge fault"><span class="dot"></span><span class="label">fault</span></span>
+    <span class="depth live">live</span>
+    <div class="why">stack service 'vlc' is down —
+      <span class="verbs">Restart · Re-route · Run without it</span></div>
+
+    <span class="badge nogo"><span class="dot"></span><span class="label">no-go</span></span>
+    <span class="depth paper">paper</span>
+    <div class="why">required endpoint 'display.main' not installed at this venue —
+      session start refuses (typed, logged override only)</div>
+  </div>
+
+  <h2>At the point of choice (mechanics editor field rows)</h2>
+  <div class="fieldrow">
+    <span class="k">surfaces.idleLoop</span>
+    <span class="v">aln-idle</span>
+    <span class="badge runs"><span class="dot"></span><span class="label">runs</span></span>
+    <span class="depth paper">paper</span>
+  </div>
+  <div class="fieldrow">
+    <span class="k">lightingRoles › police-glitch</span>
+    <span class="v">fallback: scene.police_glitch_basic</span>
+    <span class="badge runs"><span class="dot"></span><span class="label">runs</span></span>
+    <span class="depth paper">paper</span>
+  </div>
+  <div class="fieldrow">
+    <span class="k">cue endgame › sound</span>
+    <span class="v">tension.wav</span>
+    <span class="badge fault"><span class="dot"></span><span class="label">fault</span></span>
+    <span class="depth live">live</span>
+  </div>
+
+  <div class="profile-line">resolved against: aln-full-kit (venue) · depth mixed · 2 paper / 1 live</div>
+</body>
+</html>

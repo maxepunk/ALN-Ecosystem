@@ -87,6 +87,7 @@ const ENGINE_MODE_CAPS = Object.freeze({
 // by build-pack-manifest.js, never edited in place).
 let manifestCache = null;
 let manifestCacheMtime = null;
+let manifestCachePath = null;
 let warnedPackPath = false;
 
 // Activation snapshot (see header). activeManifest may legitimately be
@@ -189,10 +190,16 @@ function _readDiskManifest() {
   } catch {
     return null;
   }
-  if (manifestCache && stat.mtimeMs === manifestCacheMtime) return manifestCache;
+  // Cache keyed on PATH + mtime (B0 BS.1, red-team S6/A1b): mtime alone
+  // let two directories with equal manifest mtimes (cp -p, rsync) serve
+  // each other's manifest across a PACK_PATH swap.
+  if (manifestCache && stat.mtimeMs === manifestCacheMtime && manifestPath === manifestCachePath) {
+    return manifestCache;
+  }
   try {
     manifestCache = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     manifestCacheMtime = stat.mtimeMs;
+    manifestCachePath = manifestPath;
     return manifestCache;
   } catch (err) {
     logger.warn(`Pack manifest unreadable at ${manifestPath}: ${err.message}`);
@@ -1387,6 +1394,7 @@ function resolvePackFile(relPath) {
 function _resetForTesting() {
   manifestCache = null;
   manifestCacheMtime = null;
+  manifestCachePath = null;
   warnedPackPath = false;
   activated = false;
   activeManifest = null;

@@ -50,33 +50,46 @@ async function handleGmIdentify(socket, data, io) {
       socketId: socket.id,
     });
 
-    // Transform contract data to DeviceConnection format
-    const deviceData = {
-      deviceId: identifyData.deviceId,
-      deviceType: 'gm', // GM stations always have type 'gm'
-      name: `GM Station v${identifyData.version}`,
-    };
+    // DISPLAY-class sockets (B0 BS.2 — the BS.1 review's S1 residual):
+    // the scoreboard's observe token verifies to tier 'device'. A display
+    // is a read-only broadcast consumer — it joins its rooms and gets
+    // sync:full below, but it is NOT a GM station: it never registers a
+    // session device and never spends canAcceptGmStation() capacity.
+    // Decided on the VERIFIED tier stamped at the handshake, never a
+    // client-asserted name or deviceType (red-team S2). Operator sockets
+    // (and legacy claim-less ones) keep the full station path.
+    const isDisplay = socket.tier === 'device';
 
-    // Create device connection
-    const device = DeviceConnection.fromIdentify(
-      deviceData,
-      socket.handshake.address
-    );
+    let device = null;
+    if (!isDisplay) {
+      // Transform contract data to DeviceConnection format
+      const deviceData = {
+        deviceId: identifyData.deviceId,
+        deviceType: 'gm', // GM stations always have type 'gm'
+        name: `GM Station v${identifyData.version}`,
+      };
 
-    // Store device info on socket
-    socket.deviceId = device.id;
-    socket.deviceType = device.type;
-    socket.version = identifyData.version;
+      // Create device connection
+      device = DeviceConnection.fromIdentify(
+        deviceData,
+        socket.handshake.address
+      );
 
-    // Check if can accept GM station
-    if (!sessionService.canAcceptGmStation()) {
-      // Capacity limit is display-only — must NOT use AUTH_*/PERMISSION_DENIED (scanner clears the token on those).
-      emitWrapped(socket, 'error', {
-        code: 'DEVICE_LIMIT_REACHED',
-        message: 'Maximum GM stations reached',
-      });
-      socket.disconnect(true);
-      return;
+      // Store device info on socket
+      socket.deviceId = device.id;
+      socket.deviceType = device.type;
+      socket.version = identifyData.version;
+
+      // Check if can accept GM station
+      if (!sessionService.canAcceptGmStation()) {
+        // Capacity limit is display-only — must NOT use AUTH_*/PERMISSION_DENIED (scanner clears the token on those).
+        emitWrapped(socket, 'error', {
+          code: 'DEVICE_LIMIT_REACHED',
+          message: 'Maximum GM stations reached',
+        });
+        socket.disconnect(true);
+        return;
+      }
     }
 
     // PHASE 2.2 (P1.2): Join rooms in hierarchical order
@@ -93,9 +106,10 @@ async function handleGmIdentify(socket, data, io) {
     socket.join('gm');
     logger.debug('Socket joined type room', { deviceId, room: 'gm' });
 
-    // Update session with device ONLY if session exists
+    // Update session with device ONLY if session exists (never for a
+    // display-class socket — displays are not session devices).
     const session = sessionService.getCurrentSession();
-    if (session) {
+    if (session && !isDisplay) {
       await sessionService.updateDevice(device.toJSON());
 
       // 3. Session room (legacy, maintained for compatibility)
@@ -111,7 +125,7 @@ async function handleGmIdentify(socket, data, io) {
           logger.debug('Socket joined team room', { deviceId, room: `team:${teamId}` });
         });
       }
-    } else {
+    } else if (!session) {
       // No session yet - GM is connecting to create one via Admin panel
       logger.info('GM connected without active session - awaiting session creation', {
         deviceId: socket.deviceId,
@@ -159,10 +173,11 @@ async function handleGmIdentify(socket, data, io) {
       reconnection: isReconnection,
     });
 
-    // Confirm identification with contract-compliant response
+    // Confirm identification with contract-compliant response (the
+    // socket's own identity — display-class sockets have no device record)
     emitWrapped(socket, 'gm:identified', {
       success: true,
-      deviceId: device.id,
+      deviceId,
       sessionId: session?.id,
     });
 
@@ -170,8 +185,9 @@ async function handleGmIdentify(socket, data, io) {
     // via device:updated listener (eliminates duplicate broadcasts)
 
     logger.logSocketEvent('gm:identify', socket.id, {
-      deviceId: device.id,
-      deviceType: device.type,
+      deviceId,
+      deviceType: socket.deviceType,
+      display: isDisplay || undefined,
     });
   } catch (error) {
     logger.error('Device identification failed', {

@@ -36,8 +36,18 @@ info:
                                        // pack; C1 preflight fails on mismatch.
        }
        ```
-    3. Server validates JWT in Socket.io middleware during connection handshake
-    4. **Success**: Connection established → server registers device → broadcasts device:connected → auto-sends sync:full
+    3. Server validates JWT in Socket.io middleware during connection handshake.
+       TWO token classes are accepted (B0, one-auth v1):
+       - **Operator token** (from POST /api/admin/auth): tier `operator` — the
+         full GM station path (device registration, gm:command, transactions).
+       - **Observe token** (injected into the served /scoreboard page): tier
+         `device`, class `display`, functions exactly `["observe"]` — a
+         READ-ONLY broadcast consumer. It never registers as a GM station,
+         never consumes GM capacity, and every command/transaction path
+         refuses it (the executor's operator floor + the operator-tier
+         transaction check). Its identity comes from the TOKEN's deviceId
+         claim, never the client-asserted one.
+    4. **Success**: Connection established → server registers device (operator tokens only) → broadcasts device:connected → auto-sends sync:full
     5. **Failure**: Connection rejected → client receives connect_error (transport-level, not application event)
 
     **Connection Rejection Reasons**:

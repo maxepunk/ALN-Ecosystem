@@ -1,0 +1,94 @@
+name: Rung-1 Harness
+
+# The recurring automated instance of the rung-1 environment (CS.1;
+# CONTEXT.md "Environment ladder"): real software stack, fake physics
+# only (null sinks, Xvfb, witness lights), then the live-flow audit —
+# the full show chain with zero mocks.
+#
+# Self-scoped push trigger (same pattern as capability-probe.yml):
+# workflow_dispatch only registers once the file reaches the default
+# branch, and main is merge-train-only — so this fires itself on
+# changes to the harness or this file, and nothing else.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'backend/tests/rung1/**'
+      - '.github/workflows/rung1.yml'
+
+concurrency:
+  group: rung1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rung1:
+    name: Harness + live-flow audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      # The measured rung-1 recipe (capability-research doc): VLC and
+      # MPD are spawned by the ENGINE; pipewire/Xvfb/dbus are harness
+      # arms; python3-dbusmock is the hosted-CI Bluetooth ceiling.
+      - name: Install rung-1 software stack
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            vlc-bin vlc-plugin-base mpd mpc \
+            pipewire pipewire-pulse wireplumber pulseaudio-utils \
+            xvfb xdotool wmctrl dbus \
+            python3-dbusmock bluez-test-tools
+          # The runner's system MPD service must not squat the config;
+          # the engine spawns its own.
+          sudo systemctl stop mpd mpd.socket 2>/dev/null || true
+
+      # sudo resets PATH (secure_path) which would hide setup-node's
+      # toolcache binary from the scripts' `node` calls — preserve it.
+      # RUNG1_USER=runner: the job's own non-root user IS the harness
+      # user here (VLC's root-refusal doesn't apply to it, and a
+      # created user like rung1vlc cannot traverse /home/runner/work —
+      # run 2 failed with the engine script "not found" for exactly
+      # that reason).
+      - name: "Bring up harness (root: docker/HA/users; services as harness user)"
+        run: sudo env "PATH=$PATH" "RUNG1_USER=runner" bash backend/tests/rung1/up.sh
+
+      - name: Capability probe (runner manifest)
+        run: sudo env "PATH=$PATH" "RUNG1_USER=runner" bash backend/tests/rung1/probe.sh
+
+      - name: Boot engine non-root
+        run: sudo env "PATH=$PATH" "RUNG1_USER=runner" bash backend/tests/rung1/engine.sh start
+
+      - name: Live-flow audit (13 assertions, zero mocks)
+        run: sudo env "PATH=$PATH" "RUNG1_USER=runner" node backend/tests/rung1/audit-flows.js
+
+      - name: Engine log + manifest on failure
+        if: failure()
+        run: |
+          echo "=== runner-manifest.json ==="
+          cat /tmp/rung1/runner-manifest.json 2>/dev/null || true
+          echo "=== engine.log (tail) ==="
+          sudo tail -100 /tmp/rung1/engine.log 2>/dev/null || true
+          echo "=== up/arm logs ==="
+          for f in /tmp/rung1/*.log; do
+            echo "--- $f"; sudo tail -20 "$f" 2>/dev/null || true
+          done
+
+      - name: Teardown
+        if: always()
+        run: sudo bash backend/tests/rung1/down.sh || true

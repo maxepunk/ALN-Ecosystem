@@ -6,24 +6,66 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const logger = require('../utils/logger');
+const { computeGrants } = require('../gameRules/grants');
+const packService = require('../services/packService');
 
 // Store admin tokens (in production, use Redis or database)
 const adminTokens = new Set();
 const tokenExpiry = new Map();
 
+// INDEPENDENT observe-token store (B0 BS.1 slice 5, red-team S1/S8):
+// display-class tokens NEVER enter adminTokens — every HTTP gate
+// refuses them via set membership — and flushing this store never
+// touches a live GM session.
+const observeTokens = new Map(); // token → expiry ms
+
+// The mint rides an UNAUTHENTICATED page serve (GET /scoreboard), so
+// the store is bounded (B0 close review): beyond the cap the oldest
+// entry is evicted on insert — a LAN curl loop can churn tokens but
+// never grow the heap. Far above any real venue's TV count.
+const MAX_OBSERVE_TOKENS = 500;
+
 /**
- * Generate JWT token for admin authentication
+ * Resolve the ACTIVE pack's contentHash for token claims — records
+ * which pack a token's grants were computed against (stale-grant
+ * detection after a pack switch). Null when packless or before
+ * activation (boot order): grants still mint.
+ * @private
  */
-function generateAdminToken(adminId = 'admin') {
+function _resolvePackHash() {
+  try {
+    const info = packService.getActivePackInfo();
+    return info ? info.contentHash : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Generate an OPERATOR-tier JWT (one-auth §1 full claim shape — B0
+ * BS.1). Grants are computed AT ISSUANCE via the pure gameRules
+ * algebra; packHash records which active pack the grants were computed
+ * against (stale-grant detection after a pack switch). Back-compat
+ * fields (id/role/timestamp) stay for existing consumers.
+ * @param {string} adminId
+ * @param {{aud?: string}} [opts] audience — 'orchestrator' (default) or 'config-tool'
+ */
+function generateAdminToken(adminId = 'admin', { aud = 'orchestrator' } = {}) {
   const token = jwt.sign(
     {
       id: adminId,
       role: 'admin',
       timestamp: Date.now(),
+      tier: 'operator',
+      class: 'staffed',
+      deviceId: adminId,
+      functions: computeGrants({ tier: 'operator', deviceClass: 'staffed' }),
+      packHash: _resolvePackHash(),
     },
     config.security.jwtSecret || 'test-jwt-secret',
     {
       expiresIn: config.security.jwtExpiry || '24h',
+      audience: aud,
     }
   );
 
@@ -41,15 +83,18 @@ function generateAdminToken(adminId = 'admin') {
 }
 
 /**
- * Verify JWT token
+ * Verify JWT token. When opts.audience is given, jwt.verify enforces
+ * the aud claim (red-team S4 — without the option, aud is decorative).
+ * @param {string} token
+ * @param {{audience?: string}} [opts]
  */
-function verifyToken(token) {
+function verifyToken(token, { audience } = {}) {
   try {
     // Check if token is in our valid set
     if (!adminTokens.has(token)) {
       return null;
     }
-    
+
     // Check expiry
     const expiry = tokenExpiry.get(token);
     if (expiry && Date.now() > expiry) {
@@ -57,13 +102,14 @@ function verifyToken(token) {
       tokenExpiry.delete(token);
       return null;
     }
-    
-    // Verify JWT signature
+
+    // Verify JWT signature (and audience when required)
     const decoded = jwt.verify(
       token,
-      config.security.jwtSecret || 'test-jwt-secret'
+      config.security.jwtSecret || 'test-jwt-secret',
+      audience ? { audience } : {}
     );
-    
+
     return decoded;
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -75,7 +121,74 @@ function verifyToken(token) {
 }
 
 /**
- * Clean up expired tokens
+ * Mint a device-tier, display-class OBSERVE token (one-auth §3 —
+ * the scoreboard row; B0 BS.1 slice 5). Minted per page serve; NEVER
+ * role admin, never stored beside operator tokens. Read-only by
+ * grant: functions = exactly ['observe'].
+ * @param {string} deviceId
+ */
+function generateObserveToken(deviceId = 'SCOREBOARD') {
+  const token = jwt.sign(
+    {
+      tier: 'device',
+      class: 'display',
+      deviceId,
+      functions: computeGrants({ tier: 'device', deviceClass: 'display' }),
+      packHash: _resolvePackHash(),
+    },
+    config.security.jwtSecret || 'test-jwt-secret',
+    {
+      expiresIn: config.security.jwtExpiry || '24h',
+      audience: 'orchestrator',
+    }
+  );
+  if (observeTokens.size >= MAX_OBSERVE_TOKENS) {
+    // Map preserves insertion order — the first key is the oldest mint.
+    observeTokens.delete(observeTokens.keys().next().value);
+  }
+  observeTokens.set(token, Date.now() + (24 * 60 * 60 * 1000));
+  return token;
+}
+
+/**
+ * Verify an OBSERVE token: its own store, signature+audience, and the
+ * device/display identity asserted — an operator token never passes
+ * here (the stores never cross).
+ * @param {string} token
+ * @returns {Object|null} claims or null
+ */
+function verifyObserveToken(token) {
+  try {
+    const expiry = observeTokens.get(token);
+    if (expiry === undefined) return null;
+    if (Date.now() > expiry) {
+      observeTokens.delete(token);
+      return null;
+    }
+    const decoded = jwt.verify(
+      token,
+      config.security.jwtSecret || 'test-jwt-secret',
+      { audience: 'orchestrator' }
+    );
+    if (decoded.tier !== 'device' || decoded.class !== 'display') return null;
+    return decoded;
+  } catch {
+    observeTokens.delete(token);
+    return null;
+  }
+}
+
+/**
+ * Flush every observe token (S8 rotation: kills display sessions only —
+ * GM sessions live in the separate admin store).
+ */
+function invalidateObserveTokens() {
+  observeTokens.clear();
+}
+
+/**
+ * Clean up expired tokens — BOTH stores (the observe store was
+ * lazily-reaped only until the B0 close review).
  */
 function cleanupExpiredTokens() {
   const now = Date.now();
@@ -85,46 +198,72 @@ function cleanupExpiredTokens() {
       tokenExpiry.delete(token);
     }
   }
+  for (const [token, expiry] of observeTokens.entries()) {
+    if (now > expiry) observeTokens.delete(token);
+  }
 }
 
 /**
- * Middleware to require admin authentication
+ * Shared authentication body (B0 BS.1): Bearer extraction, verified
+ * decode WITH audience, tier assertion, optional function assertion.
+ * FAIL-CLOSED throughout — a legacy-shape token (no tier/functions)
+ * never passes (red-team S1: decode alone is not authorization; the
+ * in-memory store empties on restart, so no live compat window exists).
+ * @private
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
+ * @param {Function} next - Express next
+ * @param {Object} opts
+ * @param {string} [opts.audience] - required aud claim (jwt-enforced)
+ * @param {string} [opts.requiredTier] - tier the token must carry
+ * @param {string} [opts.requiredFunction] - granted function required
+ * @returns {void} responds 401/403 or calls next
  */
-function requireAdmin(req, res, next) {
+function _authenticate(req, res, next, { audience, requiredTier, requiredFunction }) {
   try {
-    // Extract token from Authorization header
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         error: 'AUTH_REQUIRED',
         message: 'Authorization required',
       });
     }
-    
+
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
-    // Verify token
-    const decoded = verifyToken(token);
-    
+    const decoded = verifyToken(token, { audience });
+
     if (!decoded) {
       return res.status(401).json({
         error: 'AUTH_REQUIRED',
         message: 'Invalid or expired token',
       });
     }
-    
-    // Attach admin info to request
+
+    if (requiredTier && decoded.tier !== requiredTier) {
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        message: `This action requires the ${requiredTier} tier`,
+      });
+    }
+
+    if (requiredFunction &&
+        !(Array.isArray(decoded.functions) && decoded.functions.includes(requiredFunction))) {
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        message: `This action requires the '${requiredFunction}' function`,
+      });
+    }
+
     req.admin = decoded;
-    
-    // Log admin action
+
     logger.info('Admin action', {
       adminId: decoded.id,
       endpoint: req.path,
       method: req.method,
       ip: req.ip,
     });
-    
+
     next();
   } catch (error) {
     logger.error('Authentication middleware error', error);
@@ -133,6 +272,27 @@ function requireAdmin(req, res, next) {
       message: 'Authentication error',
     });
   }
+}
+
+/**
+ * Middleware factory: require a specific granted FUNCTION (and the
+ * matching audience). The one-auth enforcement primitive — routes name
+ * the function they need, never a role.
+ * @param {string} fn - required function id (e.g. 'session-lifecycle')
+ * @param {{audience?: string, tier?: string}} [opts]
+ */
+function requireFunction(fn, { audience = 'orchestrator', tier } = {}) {
+  return (req, res, next) =>
+    _authenticate(req, res, next, { audience, requiredTier: tier, requiredFunction: fn });
+}
+
+/**
+ * Middleware to require operator-tier authentication (absorbed into the
+ * shared body — decode alone no longer passes; the operator tier is
+ * asserted, so a device/display token in the store still fails).
+ */
+function requireAdmin(req, res, next) {
+  return _authenticate(req, res, next, { audience: 'orchestrator', requiredTier: 'operator' });
 }
 
 /**
@@ -197,8 +357,12 @@ function stopTokenCleanup() {
 
 module.exports = {
   generateAdminToken,
+  generateObserveToken,
   verifyToken,
+  verifyObserveToken,
+  invalidateObserveTokens,
   requireAdmin,
+  requireFunction,
   optionalAdmin,
   isAdmin,
   invalidateToken,

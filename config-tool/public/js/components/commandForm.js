@@ -4,7 +4,18 @@
  */
 import * as api from '../utils/api.js';
 import { el } from '../utils/formatting.js';
+import { getActionEntries } from '../utils/vocabulary.js';
 
+// UI DECORATION ONLY since B0 BS.3 (D1): the SERVED vocabulary
+// (GET /api/vocabulary — the gate's own action set with field specs)
+// decides which actions are OFFERED; this table supplies rich forms
+// (pickers, ranges) for the ones it knows, and doubles as the loud
+// fallback when the vocabulary fetch fails. Served actions without an
+// entry here get a form DERIVED from the engine's field spec — a new
+// engine action is authorable with no tool release. (The hand-mirror
+// era drift this killed: cue:fire/enable/disable were offered here but
+// REFUSED by the activation gate in pack cues; video:skip/seek,
+// music:seek, display:return-to-video were legal but missing.)
 const ACTION_DEFS = {
   'sound:play': { label: 'Play Sound', category: 'sound', fields: [
     { key: 'file', type: 'sound-picker', label: 'Sound File', required: true },
@@ -34,11 +45,14 @@ const ACTION_DEFS = {
   'music:setVolume': { label: 'Music Volume', category: 'music', fields: [
     { key: 'volume', type: 'range', label: 'Volume', min: 0, max: 100 },
   ]},
+  // boolean-select (not a string select): the write gate's typeOk
+  // requires a REAL boolean — the old string-'true'/'false' select
+  // authored payloads validateCuesBlock refuses (B0 BS.3 fix).
   'music:setShuffle': { label: 'Music Shuffle', category: 'music', fields: [
-    { key: 'enabled', type: 'select', label: 'Enabled', options: ['true', 'false'], required: true },
+    { key: 'enabled', type: 'boolean-select', label: 'Enabled', required: true },
   ]},
   'music:setLoop': { label: 'Music Loop', category: 'music', fields: [
-    { key: 'enabled', type: 'select', label: 'Enabled', options: ['true', 'false'], required: true },
+    { key: 'enabled', type: 'boolean-select', label: 'Enabled', required: true },
   ]},
   'music:loadPlaylist': { label: 'Load Music Playlist', category: 'music', fields: [
     { key: 'playlistId', type: 'playlist-picker', label: 'Playlist', required: true },
@@ -65,6 +79,22 @@ const ACTION_DEFS = {
 };
 
 export { ACTION_DEFS };
+
+// The offered action set + per-action defs (served-vocabulary-driven,
+// baked-decorated). Looked up fresh per render — the vocabulary loads
+// async at boot.
+function offeredActions() {
+  return getActionEntries(ACTION_DEFS);
+}
+
+function actionDef(action) {
+  const entry = offeredActions().find((e) => e.action === action);
+  // A cue authored against an older vocabulary may carry an action no
+  // longer offered — render it read-only-ish with a derived empty def
+  // rather than crash (the write gate will refuse it loudly on save).
+  return entry ? entry.def : ACTION_DEFS[action] ||
+    { label: action, category: action.split(':')[0], fields: [] };
+}
 
 // Cached asset lists
 let soundsCache = null;
@@ -151,7 +181,7 @@ export function renderCommandList(container, cue, allCues, editorCtx) {
 
 function buildCommandRow(index, cue, allCues, editorCtx, refreshFn) {
   const cmd = cue.commands[index];
-  const def = ACTION_DEFS[cmd.action];
+  const def = actionDef(cmd.action);
 
   const row = el('div', {
     style: {
@@ -223,9 +253,9 @@ function buildCommandRow(index, cue, allCues, editorCtx, refreshFn) {
 }
 
 function buildActionSelect(currentAction, onChange) {
-  // Group actions by category
+  // Group the OFFERED actions (served vocabulary) by category
   const categories = {};
-  for (const [action, def] of Object.entries(ACTION_DEFS)) {
+  for (const { action, def } of offeredActions()) {
     if (!categories[def.category]) categories[def.category] = [];
     categories[def.category].push({ action, label: def.label });
   }
@@ -371,6 +401,30 @@ export function buildPayloadField(field, cmd, allCues, editorCtx) {
       ),
     );
     group.appendChild(select);
+
+  } else if (field.type === 'boolean-select') {
+    // Stores a REAL boolean — the gate's typeOk refuses the string form.
+    const select = el('select', {
+      onChange: () => { cmd.payload[field.key] = select.value === 'true'; editorCtx.markDirty(); },
+    },
+      ...['true', 'false'].map(opt =>
+        el('option', { value: opt, ...(String(currentVal) === opt ? { selected: true } : {}) }, opt)
+      ),
+    );
+    group.appendChild(select);
+
+  } else if (field.type === 'number') {
+    // Stores a REAL number (derived vocabulary forms) — the gate's
+    // typeOk refuses a numeric string.
+    const input = el('input', {
+      type: 'number', value: currentVal ?? '',
+      onInput: () => {
+        const n = parseFloat(input.value);
+        cmd.payload[field.key] = Number.isFinite(n) ? n : undefined;
+        editorCtx.markDirty();
+      },
+    });
+    group.appendChild(input);
 
   } else {
     // text

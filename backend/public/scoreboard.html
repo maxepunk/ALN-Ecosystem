@@ -770,9 +770,10 @@
         // CONFIGURATION
         // ============================================
         const CONFIG = {
-            // Injected at serve time from config.security.adminPassword
-            // (slice 3a pre-fix 2) — never bake a credential here.
-            adminPassword: '%%ADMIN_PASSWORD%%',
+            // Per-serve OBSERVE token (B0 BS.1 slice 5): device/display
+            // class, read-only by grant — no password lives in this
+            // page. Expires in 24h; a page reload mints a fresh one.
+            observeToken: '%%OBSERVE_TOKEN%%',
             deviceId: generateDeviceId(),
             apiUrl: window.location.origin,
             reconnectDelay: 2000,
@@ -1511,28 +1512,23 @@
         // AUTHENTICATION
         // ============================================
         async function authenticate() {
-            try {
-                const response = await fetch(`${CONFIG.apiUrl}/api/admin/auth`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: CONFIG.adminPassword }),
-                });
+            // B0 BS.1 slice 5: the page holds a device/display OBSERVE
+            // token injected at serve time — no password, no auth round
+            // trip. The token is MINTED BY THE SERVE, so renewal is a
+            // page reload (refreshAuth below), never a re-present of
+            // the same token (B0 close review: re-presenting forever
+            // meant a blank TV at the 24h expiry or a backend restart).
+            state.token = CONFIG.observeToken;
+            console.log('[Scoreboard] Using injected observe token');
+            return true;
+        }
 
-                if (!response.ok) {
-                    throw new Error('Authentication failed');
-                }
-
-                const data = await response.json();
-                state.token = data.token;
-
-                console.log('[Scoreboard] Authentication successful');
-                return true;
-            } catch (error) {
-                console.error('[Scoreboard] Authentication failed:', error);
-                updateConnectionStatus('offline', STR.statusAuthFailed);
-                setTimeout(authenticate, CONFIG.reconnectDelay);
-                return false;
-            }
+        // Renew by RELOADING: a fresh serve mints a fresh observe token.
+        // Only called when the backend has ANSWERED (a handshake
+        // rejection or the timed refresh) — so the re-serve succeeds.
+        function refreshAuth(reason) {
+            console.log('[Scoreboard] Reloading for a fresh observe token:', reason);
+            window.location.reload();
         }
 
         // ============================================
@@ -1625,17 +1621,16 @@
                 console.error('[Scoreboard] Connection error:', msg);
                 updateConnectionStatus('offline', STR.statusConnError);
 
-                // Any server-side rejection (auth, device collision, etc.) needs
-                // a fresh auth + reconnect cycle — Socket.io's built-in reconnect
-                // will just retry the same broken handshake forever.
+                // A server-side rejection (expired/rotated observe token,
+                // device collision) can NEVER be fixed by re-presenting
+                // the same serve-time token — the mint IS the serve, so
+                // recover by reloading (the backend answered the
+                // handshake, so the re-serve will succeed and mint
+                // fresh). Non-AUTH transport errors (backend down) stay
+                // with Socket.io's own reconnect.
                 if (msg.includes('AUTH_') || msg.includes('DEVICE_ID_')) {
-                    console.log('[Scoreboard] Server rejected connection — re-authenticating...');
                     cleanupSocket();
-                    setTimeout(() => {
-                        authenticate().then(authenticated => {
-                            if (authenticated) connectWebSocket();
-                        });
-                    }, CONFIG.reconnectDelay);
+                    setTimeout(() => refreshAuth(msg), CONFIG.reconnectDelay);
                 }
             });
 
@@ -1852,15 +1847,10 @@
             await fetchTokenTotals();
             await connectWebSocket();
 
-            // Token refresh cycle
-            setInterval(async () => {
-                console.log('[Scoreboard] Refreshing token...');
-                await authenticate();
-                if (state.socket && state.socket.connected) {
-                    state.socket.disconnect();
-                    await connectWebSocket();
-                }
-            }, CONFIG.tokenRefreshInterval);
+            // Token refresh cycle: the mint is the SERVE, so refresh is
+            // a reload — reconnecting with the same injected token was
+            // a guaranteed blank TV at the 24h expiry (B0 close review).
+            setInterval(() => refreshAuth('timed refresh'), CONFIG.tokenRefreshInterval);
         }
 
         // Start

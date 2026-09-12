@@ -142,7 +142,9 @@ async function _doLaunch() {
 
   logger.info('[DisplayDriver] Launching persistent scoreboard kiosk', { url: SCOREBOARD_URL });
 
-  browserProcess = spawn('chromium-browser', [
+  // CHROMIUM_BIN: test-environment seam (the rung-1 harness carries
+  // Chromium at a non-default path); venue default stays PATH lookup.
+  browserProcess = spawn(process.env.CHROMIUM_BIN || 'chromium-browser', [
     '--kiosk',
     '--noerrdialogs',
     '--disable-infobars',

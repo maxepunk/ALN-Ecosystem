@@ -309,6 +309,14 @@ how-to-make-a-game-by-example.
 
 ## 7. Definition of Done — RATIFIED (owner, 2026-06-12)
 
+> **Amendment note (2026-09-05, roadmap r4 — see §15):** this
+> section's single completion wall and its "D and E are Phase 4 …
+> NOT parallel tracks" framing are SUPERSEDED. The gate's three
+> promises now live at named points on the readiness ladder
+> (ROADMAP §3, "where done lives"); the D/E work is re-sequenced
+> into value-ordered blocks (ROADMAP §4, §7). The text below stands
+> as the historical record.
+
 Phase 3 completes when **A + B + C** are done and the toy-pack gate
 passes (second game, zero engine changes, tier ladder via capability
 profiles). **D and E are Phase 4** — a clean phase of their own after the
@@ -346,6 +354,11 @@ Sub-gates either way:
 | DoD | §7 — owner ratifies |
 
 ## 9. Estimates (sessions, same gates discipline as Phase 2)
+
+> **Amendment note (2026-09-05, roadmap r4 — see §15):** this
+> rollup is superseded by ROADMAP §4's per-block figures and
+> estimating rule. The §12.3 pricing rule (owner approves an honest
+> estimate before build) remains in force everywhere.
 
 *Original (2026-06-11):* A1+C1 ≈1.5 · A2 ≈1.5 · A3 ≈2-3 · B ≈2-3 ·
 C2-C4 ≈1.5 · D ≈2-3 · E2 ≈0.5 · E3-E5 ≈2 → core gate ≈ 8-10.
@@ -557,3 +570,45 @@ vocabulary entries the same day.
    not "face". Idle-loop intent recorded: the venue TV's ambient
    resting screen, mainly pre-show atmosphere — distinct from
    game-event (token-cued) videos.
+
+## 15. Amendments — 2026-09-05 (roadmap r4 ratification)
+
+Source: the owner-ratified re-charter (`ROADMAP.md` r4; grill record
+and supersession table in `2026-09-04-roadmap-r4-draft.md`). These
+notes record what the ratification changes in THIS document; the
+sections above stand as the historical record.
+
+1. **§7 completion gate restructured (Q4):** the single "Phase 3
+   complete" wall distributes into three homes — the engine
+   merge-and-pass proof at the coherent-on-main readiness state; the
+   authoring-tool completeness bar (all five pages at the ruled-in
+   depth, the toy pack proving the path) at Block 6's close; the
+   no-orphaned-shortcuts rule (no work done while any ledger row
+   lacks a named executor) standing everywhere, with one final sweep
+   at Block 6's close. "Phase 3" survives as the era's historical
+   name in the records.
+2. **§7's "D and E are Phase 4 — NOT parallel tracks" superseded:**
+   the GM-experience work splits — capture is Block 4, the
+   GM-scanner redesign is registry row 8.17 (design in Block 5); the
+   players'-phones block keeps its own charter (ROADMAP §7.1). The D
+   and E sub-gates dissolve into those homes (the D intake gate
+   becomes Block 4's scope; Q-5-1's obligations ride row 8.17).
+3. **§9 estimate rollup superseded** by ROADMAP §4's per-block
+   figures; §12.3's pricing rule unchanged and reaffirmed.
+4. **§12.1 frozen production restated:** frozen until the owner's
+   show-ready decision (ROADMAP §3), no longer "until the program
+   completes … ONE coordinated cutover." The cutover mechanism
+   (blue/green) and the final-cutover enumeration in PHASE3-STATUS
+   are unchanged; only the timing authority moves.
+5. **§13.8 green-Pi timing superseded:** green-machine work opens
+   with Block 1 (it is the path to hardware-proven), not "after
+   Phase-3 close at the earliest."
+6. **Stage order reversed (the largest re-order):** the ratified
+   "CS.1 → pages → CS.2–CS.5 → C4" sequence becomes CS.1 (closed) →
+   the hardening stages (CS.2–CS.5) → the truth sweep → the pages
+   re-cut (preview slice first) → the depth-and-close block.
+   Recorded at the two ratification sites (PHASE3-STATUS and both
+   unit design docs) with dated notes.
+7. **Vocabulary:** forward-looking documents use plain domain names;
+   the alias table is ROADMAP Appendix A; CONTEXT.md §7 carries the
+   readiness-state names and the retirement note.

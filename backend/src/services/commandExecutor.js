@@ -26,6 +26,7 @@ const registry = require('./serviceHealthRegistry');
 const profileService = require('./profileService');
 const packService = require('./packService');
 const { CUE_ACTIONS } = require('../gameRules/cueValidation');
+const { requiredFloorFunction } = require('../gameRules/grants');
 
 // Config-tool cue authoring serializes booleans as the strings 'true'/'false'
 // via a <select>; GM Scanner live controls send real booleans. `!!"false"` is
@@ -96,9 +97,12 @@ const REQUIRED_PAYLOAD_FIELDS = {
  * @param {string} [params.trigger] - Provenance string when source is 'cue'
  * @param {string} [params.deviceId] - Device ID (for logging/transactions)
  * @param {string} [params.deviceType] - Device type (for transactions)
+ * @param {{tier?: string, functions?: string[]}} [params.actor] - The
+ *   caller's verified identity for the operator floor (gm-boundary
+ *   commands hitting a FLOOR action must present granted functions)
  * @returns {Promise<{success: boolean, message: string, data?: any, source: string}>}
  */
-async function executeCommand({ action, payload = {}, source = 'gm', trigger, deviceId, deviceType }) {
+async function executeCommand({ action, payload = {}, source = 'gm', trigger, deviceId, deviceType, actor }) {
   logger.info(`[executeCommand] action=${action} source=${source}${trigger ? ` trigger=${trigger}` : ''}`);
 
   try {
@@ -121,6 +125,26 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         message: `action '${action}' is not permitted from a ${source} source (auth floor)`,
         source,
       };
+    }
+
+    // OPERATOR floor at the SAME choke point (B0 BS.1, D-B0.3r2 —
+    // red-team S3/S7/D2): a gm-boundary command hitting a FLOOR action
+    // must present an explicit actor granted that floor function.
+    // Deny-by-default — no defaulted identity; a restricted token is
+    // restricted over EVERY transport. (The cue floor above governs
+    // non-gm sources; v1 operator tokens carry the full floor, so live
+    // GM behavior is unchanged while enforcement is real.)
+    if (source === 'gm') {
+      const floorFn = requiredFloorFunction(action);
+      if (floorFn &&
+          !(actor && Array.isArray(actor.functions) && actor.functions.includes(floorFn))) {
+        logger.warn(`[executeCommand] REFUSED floor action '${action}' — actor lacks '${floorFn}' (operator floor)`);
+        return {
+          success: false,
+          message: `action '${action}' requires the '${floorFn}' function (operator floor)`,
+          source,
+        };
+      }
     }
 
     // Lighting role → sceneId normalization (A3 slice 4 S3, D-4.4).
