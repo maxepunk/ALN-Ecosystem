@@ -173,6 +173,25 @@ function getLightingBinding(role) {
 }
 
 /**
+ * Resolve a display-surface CHANNEL name (A3 slice 6, Q6-2) to its bound
+ * concrete media file, or null when unbound. The lighting-role resolver's
+ * twin: pack names a channel (`surfaces.idleLoop`), the profile binds it
+ * to a file. Object.hasOwn: a channel named 'constructor' must not
+ * resolve off the prototype chain (C11 class).
+ * @param {string} channel
+ * @returns {string|null}
+ */
+function getSurfaceChannelFile(channel) {
+  const profile = getProfile();
+  const surfaces = profile && profile.bindings && profile.bindings.surfaces;
+  if (!surfaces || typeof surfaces !== 'object') return null;
+  if (typeof channel !== 'string' || !Object.hasOwn(surfaces, channel)) return null;
+  const binding = surfaces[channel];
+  if (!binding || typeof binding.file !== 'string' || binding.file.length === 0) return null;
+  return binding.file;
+}
+
+/**
  * The v1-read identity fields, for health/status reporting.
  * @returns {{profileId: string, forPack: (string|undefined)}|null}
  */
@@ -196,6 +215,7 @@ module.exports = {
   activateProfile,
   getProfile,
   getLightingBinding,
+  getSurfaceChannelFile,
   getProfileInfo,
   _resetForTesting,
 };

@@ -257,6 +257,7 @@ a DoD violation by definition.
 | L9 | **[post-Phase-3, same family/class as L2]** Scanner `src/core/scoring.js` shim path does not RESTORE the baked tables after a pack applied different ones (benign today: single pack load per session; 3b review note "worth a row", added 2026-08-29 per the ambiguity sweep) | Retires with L2 (the shim family dies together at cutover + one cycle) | 3b's scoring-formatting test snapshot-and-restore pattern; `grep 'LEGACY SHIM' ALNScanner/src` |
 | L10 | **[RETIRED 2026-08-29 at slice-6 open]** `scoreboard.html` numeric `7200` fallback duplicated pack `gameClock.duration` (3a "adjacent note"). RESOLVED by documentation (design doc D-6.4): the real duration is already delivered live on every sync (`sync:full.gameClock` + `service:state` domain `gameclock` → `syncCountdown`); the two literals (now at `:853` seed + `:951` `|| 7200`) are inert pre-connect chrome / defensive fallback, so there was nothing to wire — both sites now carry a source comment saying so. Line numbers in the original row (799/892) were stale | CLOSED — source comments at `scoreboard.html:853,951` | grep `7200` in scoreboard.html shows only the two commented placeholder/fallback sites |
 | L11 | **[in-queue]** `scoreboard.html:12-14` Google Fonts CDN links — offline-LAN risk, same class as the fixed socket.io CDN bug (3a "adjacent note", added 2026-08-29) | Theme unit (the styling-bearing slice): self-host or fallback-stack the fonts | This row; grep `fonts.googleapis` in scoreboard.html |
+| L12 | **[in-queue, recorded 2026-08-29 at slice-6 S6.3]** The idle-loop config fallback: when a pack names an idle-loop channel (`surfaces.idleLoop`) that the installation profile has no binding for, `vlcMprisService._resolveIdleLoopFile()` falls back LOUDLY to `config.display.idleLoopFile` (the L7 lighting-role-fallback shape). A venue-media identity resolved from engine config instead of the profile | The pack-manager media page + venue-media binding UI (ROADMAP §8.1): every idle-loop channel gets a real profile binding, and the config fallback becomes a hard "no idle loop configured" refusal | LOUD warn per fallback fire ("no installation-profile binding — falling back … ledger L12"); `grep -n "ledger L12" backend/src/services/vlcMprisService.js` |
 
 ## Owner rulings 2026-08-22 (batch — question-walkthrough chat session)
 
@@ -404,14 +405,47 @@ BILL-era headroom (ROADMAP §6/row 8.8). **Decision-free housekeeping DONE
 2026-08-29:** ledger L10 RETIRED (7200 fallback documented as inert
 pre-connect chrome — value already delivered live; source comments at
 `scoreboard.html:853,951`); the slice1-modes.md:39 "pack-extensible surface
-set" wording CORRECTED to match the ratified honesty table. **OWNER
-QUESTIONS HELD (design doc §4):** Q6-1 (does SELECT include opt-out of a
-surface?), Q6-2 (idle-loop resolution mechanism — installation-profile
-binding a la slice-4 lighting roles, a new venue-channel map, or engine-
-config passthrough?), Q6-3 (is PARAMETERIZE just idleLoop, or does
-scoreboard gain a pack parameter too?). The schema+gate (S6.1) is
-decision-free per §13.2's ratified "venue-channel name reference"; the
-RESOLVER (S6.3) waits on Q6-2.
+set" wording CORRECTED to match the ratified honesty table. **OWNER RULED
+2026-08-29 (design doc §4 — all three the EXPANSIVE way; minimal
+recommendations DECLINED):** Q6-1 → ALLOW OPT-OUT (a pack may declare no
+idle loop / no scoreboard; the display-mode state machine honors it —
+own E2E matrix); Q6-2 → PROFILE-BINDING RESOLVER NOW (reuse slice-4's
+installation-profile pattern: pack names an idle-loop CHANNEL, the
+profile binds it, `config.display.idleLoopFile` is the loud fallback —
+S6.3 UN-HELD, full resolver this slice); Q6-3 → SCOREBOARD ALSO GAINS A
+PARAM (the specific parameter is NOT yet named — a focused Q6-3
+scoreboard-parameter census runs at open, content/behavior NOT styling
+so the theme-unit boundary stays clean; D-6.7 records the pick).
+Consequence: slice 6 is a FULL slice, estimate ≈3.5–5.5 sessions
+(design doc §7). Build order (design doc §5): S6.2 housekeeping DONE;
+S6.1 schema+gate (idleLoop channel + opt-out + the ruled scoreboard
+param); S6.3 profile resolver + opt-out state machine + scoreboard
+param; S6.4 close.
+
+**SLICE 6 CLOSED 2026-08-29** (full record: design doc §8; branches
+`claude/phase3-a3-slice6` both repos, parent tip after the close
+commits, TokenData `4f29720`). Built: the `surfaces` block (schema +
+gate + `surfaces.select` capability + unknown-key refusal), the
+idle-loop profile resolver (`bindings.surfaces`, ledger L12 fallback),
+both Q6-1 opt-outs (idle-loop null; scoreboard refusal), the Q6-3
+`evidenceCycleMs` parameter, and `packService.getSurfaces()`. Dual-pack
+Tier L on the FINAL tree: ALN 119/0/61 + Tier H 4/0/18; toy 120/0/60;
+0 flaky both legs. Coverage ratchet never lowered (the one dip was
+restored with a real test). Close review: Opus refuter ("essentially
+clean", one MINOR fixed), Fable doctrine ("faithful implementation";
+its MAJOR — the missing ruled E2E — fixed with the toy-pack-surfaces
+flow), Haiku sweep 8/8 clean, plus a retroactive STANDARDS-axis pass
+(5 findings fixed, 2 rejected on the rule of three). **Process note
+(honesty rules):** the build stages ran during a fallback-model window
+outside the §1 stage frame (no per-stage reviews; implementation-first
+in places). The owner caught it; remediation is recorded in the design
+doc §8 (standards pass, CONTEXT.md vocabulary capture + §4 rework,
+frame restored). **Merge-train disclosure:** the slice-6 opening-docs
+commit `16aed91` also sits on the slice-4 branch (an ordering slip
+before the slice-6 branch was cut); PR #28 therefore carries it —
+harmless content-wise (docs only), noted so the train walk is not
+surprised. **Queue: slice 7 is NEXT but NOT opened — the owner directed
+a pause after the slice-6 close (2026-08-29).**
 
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 

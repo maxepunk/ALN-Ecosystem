@@ -192,6 +192,14 @@ class DisplayControlService extends EventEmitter {
    * @private
    */
   async _doSetScoreboard() {
+    // Q6-1 opt-out (slice 6): a pack may declare it has no scoreboard
+    // surface (surfaces.scoreboard.enabled: false). Refuse the switch
+    // cleanly — commandExecutor's handleDisplayCommand turns {success:
+    // false} into a gm:command:ack failure. Default (absent/true) allows.
+    if (!this._scoreboardEnabled()) {
+      logger.info('[DisplayControl] Scoreboard disabled by the active pack (surfaces.scoreboard.enabled: false)');
+      return { success: false, error: 'scoreboard disabled by the active pack (surfaces.scoreboard.enabled: false)' };
+    }
     logger.info('[DisplayControl] Switching to SCOREBOARD mode');
 
     const oldMode = this.currentMode;
@@ -229,6 +237,19 @@ class DisplayControlService extends EventEmitter {
       this.currentMode = oldMode;
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Whether the ACTIVE pack keeps the scoreboard surface (Q6-1, slice 6).
+   * Default true; only an explicit surfaces.scoreboard.enabled === false
+   * opts out. Lazy require: packService is frozen at boot, before this.
+   * @returns {boolean}
+   * @private
+   */
+  _scoreboardEnabled() {
+    const packService = require('./packService');
+    const sb = packService.getSurfaces().scoreboard;
+    return !(sb && typeof sb === 'object' && sb.enabled === false);
   }
 
   /**

@@ -237,6 +237,26 @@ describe('DisplayControlService - State Machine', () => {
       expect(displayControlService.getCurrentMode()).toBe('SCOREBOARD');
       expect(modeChanged).toHaveBeenCalledWith(expect.objectContaining({ mode: 'SCOREBOARD' }));
     });
+
+    it('REFUSES the switch (no mode change, no driver call) when the pack opts out of the scoreboard (Q6-1)', async () => {
+      const displayDriver = require('../../../src/utils/displayDriver');
+      displayDriver.showScoreboard.mockClear();
+      // Singleton: save + restore so the false mock never leaks to later tests.
+      const original = displayControlService._scoreboardEnabled;
+      displayControlService._scoreboardEnabled = jest.fn().mockReturnValue(false);
+      try {
+        const startMode = displayControlService.getCurrentMode();
+
+        const result = await displayControlService.setScoreboard();
+
+        expect(result.success).toBe(false);
+        expect(result.error).toMatch(/scoreboard disabled by the active pack/);
+        expect(displayControlService.getCurrentMode()).toBe(startMode); // unchanged
+        expect(displayDriver.showScoreboard).not.toHaveBeenCalled();
+      } finally {
+        displayControlService._scoreboardEnabled = original;
+      }
+    });
   });
 
   describe('Mode Switching - playVideo()', () => {

@@ -5,7 +5,8 @@
     "duplicatePolicy.once",
     "groupRules.all",
     "lighting.roles",
-    "scoring.tabular"
+    "scoring.tabular",
+    "surfaces.select"
   ],
   "id": "midnight-heist",
   "title": "Midnight Heist",
@@ -185,5 +186,12 @@
   ],
   "lightingRoleFallbacks": {
     "vault-alarm": "scene.toy_vault_alarm"
+  },
+  "surfaces": {
+    "idleLoop": null,
+    "scoreboard": {
+      "enabled": true,
+      "evidenceCycleMs": 9000
+    }
   }
 }
