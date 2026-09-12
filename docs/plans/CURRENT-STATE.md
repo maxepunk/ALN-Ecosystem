@@ -91,7 +91,8 @@ Thursday preflight.
 
 ## 6. Running, and on disk
 
-- Four workflows running since 21:40Z 2026-09-12 (owner: "go";
+- Five workflows running (owner: "go" 21:40Z; the adversarial pass
+  "agreed" 21:5xZ, 2026-09-12;
   resumable after any stop with `Workflow({scriptPath, resumeFromRunId})`,
   finished agents cached; scripts copied to the scratchpad
   `<scratchpad>/harness-minimum-build.js`, `research.js`,
@@ -105,8 +106,14 @@ Thursday preflight.
   worktree); arms fact sheet `wf_64f7562e-cc8` (three readers → recount
   → writer; scratch `preflight-arms-factsheet.md`); brief reviews
   `wf_48810aa9-f35` (three reviewers → a refuter per blocking finding;
-  scratch `<lane>-lane-review.md`). A message never stops them; the
-  stop button does, and then they resume.
+  scratch `<lane>-lane-review.md`); dormancy-core adversarial pass
+  `wf_6858337e-efa` (three attacking lenses → a refuter per finding →
+  report; scratch `dormancy-core-adversarial.md`; script
+  `dormancy-adversarial.js`). A message never stops them; the stop
+  button does, and then they resume. Ruling R26: survivors of the
+  adversarial pass are fixed before any lane merges; each brief gets a
+  red team after its review passes; each build task gets a hostile
+  tester after its task review.
 - Harness facts verified from the official docs (20:25Z): a plain
   message never stops agents; the stop button stops every running one
   and they cannot be resumed; a COMPLETED agent resumes by message;
