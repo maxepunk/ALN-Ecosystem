@@ -1,0 +1,77 @@
+{
+  "kind": "cues",
+  "schemaVersion": 2,
+  "cues": [
+    {
+      "id": "vault-alarm-hit",
+      "label": "Vault Alarm",
+      "icon": "alert",
+      "quickFire": true,
+      "commands": [
+        {
+          "action": "lighting:scene:activate",
+          "payload": {
+            "role": "vault-alarm"
+          }
+        }
+      ]
+    },
+    {
+      "id": "heist-sting",
+      "label": "Heist Sting",
+      "icon": "sound",
+      "quickFire": true,
+      "commands": [
+        {
+          "action": "sound:play",
+          "payload": {
+            "file": "attention.wav"
+          }
+        }
+      ]
+    },
+    {
+      "id": "all-clear-chime",
+      "label": "All Clear Chime",
+      "icon": "sound",
+      "quickFire": true,
+      "commands": [
+        {
+          "action": "sound:play",
+          "payload": {
+            "file": "attention.wav"
+          }
+        },
+        {
+          "action": "lighting:scene:activate",
+          "payload": {
+            "role": "all-clear"
+          }
+        }
+      ]
+    },
+    {
+      "id": "vault-sequence",
+      "label": "Vault Sequence",
+      "icon": "alert",
+      "quickFire": true,
+      "timeline": [
+        {
+          "at": 0,
+          "action": "sound:play",
+          "payload": {
+            "file": "attention.wav"
+          }
+        },
+        {
+          "at": 1,
+          "action": "lighting:scene:activate",
+          "payload": {
+            "role": "vault-alarm"
+          }
+        }
+      ],
+      "duration": 3
+    }
+  ]
+}
