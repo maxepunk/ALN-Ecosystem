@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aln.tokens/session-bundle.schema.json",
+  "title": "B9 session bundle",
+  "description": "The canonical structured record of one game session (decision B9, 2026-06-09): the engine emits this versioned JSON artifact and the markdown report is a themed rendering of it. The schema is ENGINE-versioned, never pack data. Versioning follows the house convention: an integer schemaVersion const, exact-match both directions; additive evolution adds OPTIONAL properties within the same version, a breaking change bumps the const. Only kind, schemaVersion and engine are required: the ALN-shaped data sections (session/scores/transactions/playerScans/tokens/rules) are optional so a game whose state is not a transaction list (BILL: graph + epidemic state) emits engine + gameState without fabricating empty sections. No Phase-3 emitter exists; Phase-4 D intake is the first writer.",
+  "type": "object",
+  "required": ["kind", "schemaVersion", "engine"],
+  "additionalProperties": false,
+  "$defs": {
+    "timestamp": { "type": "string", "format": "date-time" },
+    "nullableTimestamp": { "type": ["string", "null"], "format": "date-time" },
+    "id": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[^\u0000-\u001f\u007f]*$" }
+  },
+  "properties": {
+    "kind": { "const": "session-bundle" },
+    "schemaVersion": { "const": 1 },
+    "engine": {
+      "description": "Provenance stamp: which engine and which activated pack produced this bundle (the A2 staleness-identity fields every consumer already reports). Field formats carry the pack-manifest identity patterns verbatim — a free-text provenance stamp invites drift.",
+      "type": "object",
+      "required": ["engineVersion", "packId", "packVersion", "contentHash"],
+      "additionalProperties": false,
+      "properties": {
+        "engineVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "packId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "packVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "contentHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    },
+    "session": {
+      "type": "object",
+      "required": ["name", "startTime", "endTime", "teams"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "$ref": "#/$defs/id" },
+        "startTime": { "$ref": "#/$defs/nullableTimestamp" },
+        "endTime": { "$ref": "#/$defs/nullableTimestamp" },
+        "teams": {
+          "description": "Entity ids (the wire field teamId is the entity-field alias — ledger row L4).",
+          "type": "array",
+          "items": { "$ref": "#/$defs/id" }
+        }
+      }
+    },
+    "scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["teamId", "score", "adminAdjustments"],
+        "additionalProperties": false,
+        "properties": {
+          "teamId": { "$ref": "#/$defs/id" },
+          "score": { "type": "number" },
+          "adminAdjustments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["delta", "timestamp"],
+              "additionalProperties": false,
+              "properties": {
+                "delta": { "type": "number" },
+                "timestamp": { "$ref": "#/$defs/timestamp" },
+                "reason": { "type": ["string", "null"] },
+                "gmStation": { "type": ["string", "null"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "transactions": {
+      "description": "Accepted and rejected claims alike; consumers filter on status. mode is an opaque pack mode id — its semantics resolve through rules.modes, never by name.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["status", "mode", "tokenId", "teamId", "timestamp"],
+        "additionalProperties": false,
+        "properties": {
+          "status": { "$ref": "#/$defs/id" },
+          "mode": { "$ref": "#/$defs/id" },
+          "tokenId": { "$ref": "#/$defs/id" },
+          "teamId": { "$ref": "#/$defs/id" },
+          "timestamp": { "$ref": "#/$defs/timestamp" },
+          "points": { "type": "number" },
+          "summary": { "type": ["string", "null"] },
+          "valueRating": { "type": ["integer", "null"] },
+          "memoryType": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "playerScans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tokenId", "deviceId", "timestamp"],
+        "additionalProperties": false,
+        "properties": {
+          "tokenId": { "$ref": "#/$defs/id" },
+          "deviceId": { "$ref": "#/$defs/id" },
+          "timestamp": { "$ref": "#/$defs/timestamp" }
+        }
+      }
+    },
+    "tokens": {
+      "description": "The token-database projection the report render consumes: owner resolution only.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["owner"],
+        "additionalProperties": false,
+        "properties": {
+          "owner": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "rules": {
+      "description": "The ACTIVE pack's resolved rule snapshots the render depends on — the getScoringRules() normalized shape and the mode-resolver record shape. Without these a consumer cannot reproduce the ★ Detail cell or decide section membership, so each mode record REQUIRES the two membership-driving fields (scoringPolicy, displayBehavior.surface).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scoring": {
+          "type": "object",
+          "required": ["baseValues", "typeMultipliers"],
+          "additionalProperties": false,
+          "properties": {
+            "baseValues": {
+              "type": "object",
+              "additionalProperties": { "type": "number" }
+            },
+            "typeMultipliers": {
+              "type": "object",
+              "additionalProperties": { "type": "number" }
+            },
+            "display": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "format": { "type": "string" }
+              }
+            }
+          }
+        },
+        "modes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "scoringPolicy", "displayBehavior"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "$ref": "#/$defs/id" },
+              "label": { "type": "string" },
+              "verbNoun": { "type": "string" },
+              "scoringPolicy": { "$ref": "#/$defs/id" },
+              "displayBehavior": {
+                "type": "object",
+                "required": ["surface"],
+                "additionalProperties": false,
+                "properties": {
+                  "surface": { "$ref": "#/$defs/id" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "intake": {
+      "description": "RESERVED for Phase-4 D report intake (ROADMAP §4: roster before the game; director notes and photos during; accusation and whiteboard at the end). Names only — every member deliberately validates as any type; D designs the shapes.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "roster": true,
+        "directorNotes": true,
+        "photos": true,
+        "accusation": true,
+        "whiteboard": true
+      }
+    },
+    "gameState": {
+      "description": "RESERVED per-game state namespaces (BILL scoping §2.5): one key per pack id, contents never interpreted by the engine.",
+      "type": "object",
+      "patternProperties": {
+        "^[a-z0-9][a-z0-9-]*$": true
+      },
+      "additionalProperties": false
+    }
+  }
+}

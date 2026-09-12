@@ -7,8 +7,8 @@
 > · `2026-07-09-phase3-1-standalone-pack-loading.md` · `2026-07-09-phase3-1-one-auth.md`.
 > Keep this file CURRENT — update it in every commit that changes execution state.
 
-**Last updated:** 2026-07-18 · **Working branch:** `claude/phase3-a3-slice2`
-(parent; chained from the verified slice-1 tip `187c7a6`, draft PR #21).
+**Last updated:** 2026-09-03 · **Working branch:** `claude/phase3-a3-slice7`
+(parent; chained from the verified slice-6 tip `dbab5ad`, per the slice train).
 Under the frozen-production model (see the development-model row) slice
 branches CHAIN — slice N+1 branches from slice N's verified tip, each slice
 keeps a draft PR to main for CI, and the stacked PRs land in R14 order
@@ -257,6 +257,7 @@ a DoD violation by definition.
 | L9 | **[post-Phase-3, same family/class as L2]** Scanner `src/core/scoring.js` shim path does not RESTORE the baked tables after a pack applied different ones (benign today: single pack load per session; 3b review note "worth a row", added 2026-08-29 per the ambiguity sweep) | Retires with L2 (the shim family dies together at cutover + one cycle) | 3b's scoring-formatting test snapshot-and-restore pattern; `grep 'LEGACY SHIM' ALNScanner/src` |
 | L10 | **[RETIRED 2026-08-29 at slice-6 open]** `scoreboard.html` numeric `7200` fallback duplicated pack `gameClock.duration` (3a "adjacent note"). RESOLVED by documentation (design doc D-6.4): the real duration is already delivered live on every sync (`sync:full.gameClock` + `service:state` domain `gameclock` → `syncCountdown`); the two literals (now at `:853` seed + `:951` `|| 7200`) are inert pre-connect chrome / defensive fallback, so there was nothing to wire — both sites now carry a source comment saying so. Line numbers in the original row (799/892) were stale | CLOSED — source comments at `scoreboard.html:853,951` | grep `7200` in scoreboard.html shows only the two commented placeholder/fallback sites |
 | L11 | **[in-queue]** `scoreboard.html:12-14` Google Fonts CDN links — offline-LAN risk, same class as the fixed socket.io CDN bug (3a "adjacent note", added 2026-08-29) | Theme unit (the styling-bearing slice): self-host or fallback-stack the fonts | This row; grep `fonts.googleapis` in scoreboard.html |
+| L13 | **[post-Phase-3, recorded 2026-09-03 at slice-7 S7.2 — class inherited from its trigger, per the DoD-linkage rule]** ALN-flavored wording retained inside ENGINE-FIXED report structure: the `## Detective Evidence Log` heading (ALN's own mode name), the `Exposed By` column header, and the H1 `Session Report` family — every divergent pack's report inherits them, because the contract names headings/column text as structure (Change Rules #1–#2) and the external pipeline parses them | The ROADMAP §8.10 bundle migration (the pipeline stops parsing markdown; the anchors stop being load-bearing and can localize) | The golden masters + the structural-invariant suite in `ALNScanner/tests/contract/sessionReport.contract.test.js`; contract doc v2 records the retention |
 | L12 | **[in-queue, recorded 2026-08-29 at slice-6 S6.3]** The idle-loop config fallback: when a pack names an idle-loop channel (`surfaces.idleLoop`) that the installation profile has no binding for, `vlcMprisService._resolveIdleLoopFile()` falls back LOUDLY to `config.display.idleLoopFile` (the L7 lighting-role-fallback shape). A venue-media identity resolved from engine config instead of the profile | The pack-manager media page + venue-media binding UI (ROADMAP §8.1): every idle-loop channel gets a real profile binding, and the config fallback becomes a hard "no idle loop configured" refusal | LOUD warn per fallback fire ("no installation-profile binding — falling back … ledger L12"); `grep -n "ledger L12" backend/src/services/vlcMprisService.js` |
 
 ## Owner rulings 2026-08-22 (batch — question-walkthrough chat session)
@@ -447,6 +448,89 @@ harmless content-wise (docs only), noted so the train walk is not
 surprised. **Queue: slice 7 is NEXT but NOT opened — the owner directed
 a pause after the slice-6 close (2026-08-29).**
 
+**RE-ENGAGEMENT 2026-09-03 (task-#23 review, owner-confirmed).** The
+owner returned, reset the goal, and the progress/codebase review
+against ROADMAP.md ran first as directed. Verified: both slice-6
+branches clean at their recorded tips (parent `dbab5ad`, TokenData
+`4f29720`, in sync with origin); backend suite re-run live 2624/2624;
+remaining queue matches ROADMAP §3 exactly (slice 7 → theme unit → B0
+→ B pages → C2+C3 → C4 + DoD close-out); ledger classes all sound
+(in-queue rows L7→C4, L11→theme unit, L12→§8.1 all have named
+executors ahead). The review caught TWO merge-train gaps, both fixed
+with owner approval: (1) slice 6 had NO draft-PR CI vehicle — the
+standing draft-PR-per-slice step was skipped during the fallback
+window and missed by remediation, so the slice-6 tree had ZERO CI runs
+at close; **parent PR #29 opened 2026-09-03** (its first run is the
+tree's first CI pass — watch it). (2) The TokenData train entry still
+pointed at #3/closers, orphaning the slice-4 cues + slice-6 surfaces
+pack data from the train; **TokenData PR #4 opened 2026-09-03** from
+its slice-6 branch (subsumes #3), train table re-pointed. **Slice 7
+OPENED by owner confirmation 2026-09-03** under the restored stage
+frame.
+
+**Regression found and fixed via PR #29's first CI run (2026-09-03).**
+PR #29/#30's first runs failed on backend LINT — and PR #28's tip run
+174 had already failed the same way on 2026-08-29, unnoticed. Root
+cause: the slice-4 S4 cutover (`726b552`) retired the venue cues.json
+block from `app.js initializeServices` and removed the function-scoped
+`fs` require with it, while the ducking-rules block below still called
+`fs.readFile`. The ReferenceError was swallowed by that block's own
+catch, so every boot of the post-S4 tree logged "Failed to load
+ducking rules" and ran with the DUCKING ENGINE INACTIVE — invisible to
+the unit suite, caught only by eslint `no-undef`. The slice-4/6 close
+gates omitted `npm run lint` (fallback-window drift; the close records
+made no lint claim, but the step was skipped). Fixed red-first:
+contract pin `backend/tests/contract/app/duckingConfig.test.js`
+(initializeServices must hand routing.json's ducking array to
+audioRoutingService) + the one-line require restore, committed at the
+point of introduction (`d68948f` on slice-4, backend 2598/2598 +
+ratchet + lint) and merged up the chain (slice-6 `11893cd` verified
+2598 green, then slice-7). Frozen production (`production-2026-07`)
+predates S4 and is unaffected. Standing correction: every close gate
+runs `npm run lint` alongside the suite from now on.
+
+**SLICE 7 (report wording + B9 bundle schema) — ✅ CLOSED & CI-CONFIRMED
+2026-09-03.** Final heads: parent `9a16dcd`+close-record commit /
+ALNScanner `46db231` / ALN-TokenData `c44a8ef`; CI green on every head
+(parent runs 184–188 incl. both Tier L matrix legs; scanner runs 96–97).
+Design + full execution record (census ×2, r2 red-team 19/19, per-stage
+two-axis reviews, the whole-slice adversarial review, all adjudications):
+`2026-09-03-phase3-a3-slice7-report-wording.md` §8. **LANDED:** the
+program-§13.4 ruling executed both halves — (a) B9 session-bundle schema
+as a versioned engine contract artifact
+(`backend/contracts/session-bundle.schema.json`, kind/schemaVersion
+consts, engine stamp required, optional closed data sections, reserved
+`intake`/`gameState` namespaces, hardened id shape; 24 contract pins; NO
+Phase-3 consumer by design); (b) the report generator's wording/structure
+split — engine-fixed parse anchors (headings, table headers, `---`,
+H1/metadata formats, ★ cell) stay literal and contract-doc-v2-governed,
+ALL other rendered text pack-declared via `strings.report.*` + per-mode
+`verbNoun` (schema + both value twins + gate refusal twin + scanner
+DECLINE, code-point caps pinned at all three layers), bake-is-ALN's-voice
+(inverted pin holds ALN's strings.json silent on report wording; goldens
+pin the rendered tier byte-for-byte), ONE cell-once sanitizer for pack
+wording AND session data (backslash-then-pipe escaping, control/bidi/
+U+2028-9 stripped), currency affixes through the pack money spec (3b's
+deferral closed), counted class census (residue exact, both-class
+overlap loud), export provenance warn (non-network tier OR
+declared-but-unapplied sidecar, via tokenManager's retained load record),
+template mechanism tombstoned everywhere (schema stub, both manifest
+builders, role enum, doc drafts). **The whole-slice mixed-model review
+earned its keep: 3 MAJORs fixed red-first** (13 unsanitized data-carried
+sinks — deviceId rides the unauthenticated /api/scan; a double-escape
+regression producing GFM-LIVE pipes that the invariant helper's
+lookbehind then green-lit; the unpinned bake-voice premise) — record in
+the design doc §8. **CLOSE GATE (all green on final heads):** backend
+2661 unit+contract + fresh ratchet (82 files, raises only) + lint;
+scanner 1604 + fresh ratchet (65 files, raises only) + build + lint;
+pack contract 113; bundle contract 24; config-tool 114; PWA 165; Python
+75; ESP32 leg unrun (zero slice-7 changes, pio absent — slice-4
+posture); dual-pack Tier L locally on the FINAL tree (ALN 119P/0F/61
+capability-gated skips + 4 Tier-H, 0 flaky; toy 120P/0F/60S, 0 flaky)
+AND both CI legs green. Merge-train vehicles: TokenData #5, ALNScanner
+#14, parent #30 (table below current). **Queue: theme unit (§13.5) is
+NEXT.**
+
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 
 - **Slice-2 closers RATIFIED**: D1s2 gate+trim (slice-5 anchor verified in
@@ -618,11 +702,11 @@ adds its PRs to this block.
 
 | Order | Repo | PR | Head | Close condition / note |
 |---|---|---|---|---|
-| 1 | ALN-TokenData | **#3** (opened 2026-08-29, the previously-missing vehicle) | `claude/phase3-a3-closers` @ `1d323a7` | Subsumes #2 (foundations-only) — owner closes #2 as subsumed or merges it first; slice-4's TokenData work will chain and re-point this entry |
-| 2 | ALNScanner | **#13** (closers) | `claude/phase3-a3-closers` @ `567dfa8` | Subsumes #12 (foundations/A2, source of the PR-review residue block) — owner closes #12 as subsumed |
+| 1 | ALN-TokenData | **#5** (opened 2026-09-03 at slice-7 close) | `claude/phase3-a3-slice7` @ `c44a8ef` | Subsumes #4 (slice-6; which subsumes #3, which subsumes #2) — owner closes #4/#3/#2 as subsumed. Adds the slice-7 verbNoun field + report-stub removal (+ review-fold schema precision) on top of slice-4 cues + slice-6 surfaces |
+| 2 | ALNScanner | **#14** (opened 2026-09-03 at slice-7 close) | `claude/phase3-a3-slice7` @ `46db231` | Subsumes #13 (closers; which subsumes #12 foundations/A2, source of the PR-review residue block) — owner closes #13 and #12 as subsumed. Adds the slice-7 report-wording rewrite + nested data pin (scanner CI runs 96–97 green) |
 | 3 | ALNPlayerScan | **#6** | foundations | PWA is visibility-only (L3); no later train commits exist |
 | 4 | arduino-cyd-player-scanner | **#7** | foundations | ESP32 pack identity via asset manifest; no later train commits exist |
-| 5–14 | ALN-Ecosystem (parent) | **#19 → #28 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #28 (slice 4) is OPEN — train grows with remaining slices (6, 7, theme, B0…) |
+| 5–16 | ALN-Ecosystem (parent) | **#19 → #30 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6, slice 7) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass. #30 is slice 7 (opened AT slice open per the corrected discipline). Train grows with remaining slices (theme, B0…) |
 
 Timing: owner-driven, post-run (§ Final cutover below); nothing merges
 before the owner walks this table.

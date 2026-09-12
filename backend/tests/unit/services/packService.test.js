@@ -427,6 +427,20 @@ describe('packService', () => {
         expect(() => packService.activatePack()).toThrow(/mode 'bad2' is not driveable.*icon/);
       });
 
+      it('refuses a table-breaking or empty verbNoun; a DECLARED usable one activates (slice 7)', () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'bad', verbNoun: 'Sa|le' })));
+        expect(() => packService.activatePack())
+          .toThrow(/mode 'bad' is not driveable.*verbNoun "Sa\|le".*never split a table row/);
+
+        packService._resetForTesting();
+        writeGame(tmpDir, gameWith(mode({ id: 'bad2', verbNoun: '' })));
+        expect(() => packService.activatePack()).toThrow(/mode 'bad2' is not driveable.*verbNoun/);
+
+        packService._resetForTesting();
+        writeGame(tmpDir, gameWith(mode({ id: 'ok', verbNoun: 'Fence' })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
       it('refuses a declared-but-unusable entities.label; an ABSENT entities block gates nothing', () => {
         writeGame(tmpDir, {
           ...gameWith(mode({ id: 'ok' })),

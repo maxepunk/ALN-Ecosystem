@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
 const { parseMoneyFormat } = require('../gameRules/formatting');
-const { normalizedClaimedLabel, normalizedIcon, normalizedEntityLabel } = require('../gameRules/modeSemantics');
+const { normalizedClaimedLabel, normalizedIcon, normalizedVerbNoun, normalizedEntityLabel } = require('../gameRules/modeSemantics');
 const { validateCuesBlock } = require('../gameRules/cueValidation');
 
 const DEFAULT_PACK_DIR = path.join(__dirname, '../../../ALN-TokenData');
@@ -803,6 +803,11 @@ function _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad) {
         if (mode.icon !== undefined && normalizedIcon(mode.icon) === null) {
           undrivable.push(
             `icon ${JSON.stringify(mode.icon)} (1-4 plain text glyphs, no markup characters — icons render as content, never as class keys)`
+          );
+        }
+        if (mode.verbNoun !== undefined && normalizedVerbNoun(mode.verbNoun) === null) {
+          undrivable.push(
+            `verbNoun ${JSON.stringify(mode.verbNoun)} (a short noun of 1-24 plain characters, no pipes or braces — the report Type cell must never split a table row)`
           );
         }
         if (undrivable.length > 0) {

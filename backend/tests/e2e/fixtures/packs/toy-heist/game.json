@@ -14,6 +14,7 @@
     {
       "id": "fence",
       "label": "Fence",
+      "verbNoun": "Fence",
       "verb": "Fence",
       "scoringPolicy": "standard",
       "entityRole": "ledger",

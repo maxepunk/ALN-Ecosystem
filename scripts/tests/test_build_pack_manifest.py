@@ -112,5 +112,7 @@ def test_role_inference():
     assert role("assets/images/kaa001.bmp") == "asset-image"
     assert role("assets/audio/kaa001.wav") == "asset-audio"
     assert role("intro.mp4") == "asset-video"
-    assert role("templates/report.md") == "template"
+    # Slice 7 (no template language): the template role is RETIRED — a
+    # templates/ path is plain "other" inventory, promising nothing.
+    assert role("templates/report.md") == "other"
     assert role("misc.txt") == "other"
