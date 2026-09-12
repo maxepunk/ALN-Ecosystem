@@ -81,14 +81,29 @@ describe('resolve (pure, C1 §2 table)', () => {
   });
 
   it('an endpoint the profile does not declare is DORMANT under onAbsent degrade', () => {
-    // Honest current truth: aln-full-kit has no endpoints block yet,
-    // so display.main resolves "not installed tonight" until CS.1
-    // adds the block (C1 §2: absent endpoint => dormant, never red).
-    const { verdicts } = resolve(alnNeeds, ALN_PROFILE);
+    // The real ALN full-kit profile now DECLARES its endpoints (Block 2
+    // T1b, D2) — see "the ALN full-kit profile declares every family"
+    // below for that world. The omitted-endpoint row is exercised here
+    // on a profile DERIVED from the real one with its endpoints block
+    // cleared (C1 §2: absent endpoint => dormant, never red).
+    const noEndpoints = { ...ALN_PROFILE, endpoints: {} };
+    const { verdicts } = resolve(alnNeeds, noEndpoints);
     const ep = verdicts.find((v) => v.need.kind === 'endpoint');
     expect(ep.need.id).toBe('display.main');
     expect(ep.verdict).toBe('dormant');
     expect(ep.reason).toMatch(/not installed/);
+  });
+
+  it('the ALN full-kit profile declares every family — its endpoint needs all resolve runs, nothing dormant', () => {
+    // Block 2 T1b (D2): aln-full-kit.json now declares display.main,
+    // audio.sinks, and lighting.instruments, all installed.
+    const { verdicts, rollup } = resolve(alnNeeds, ALN_PROFILE);
+    const endpoints = verdicts.filter((v) => v.need.kind === 'endpoint');
+    expect(endpoints).toHaveLength(3);
+    for (const ep of endpoints) {
+      expect(ep.verdict).toBe('runs');
+    }
+    expect(rollup.dormantServices).toEqual([]);
   });
 
   it('a declared endpoint resolves runs', () => {
@@ -102,11 +117,15 @@ describe('resolve (pure, C1 §2 table)', () => {
   });
 
   it('an absent endpoint under onAbsent require is NO-GO', () => {
+    // Same derived (endpoints-cleared) profile as the DORMANT case above
+    // — the real ALN_PROFILE declares display.main now, which would
+    // resolve runs and never reach the require branch.
     const needs = [{
       kind: 'endpoint', id: 'display.main',
       onAbsent: 'require', sources: [],
     }];
-    const { verdicts, rollup } = resolve(needs, ALN_PROFILE);
+    const noEndpoints = { ...ALN_PROFILE, endpoints: {} };
+    const { verdicts, rollup } = resolve(needs, noEndpoints);
     expect(verdicts[0].verdict).toBe('no-go');
     expect(rollup.status).toBe('no-go');
   });
@@ -151,15 +170,17 @@ describe('resolve (pure, C1 §2 table)', () => {
   });
 
   it('rollup carries dormantServices and problems (D-C2.1 shape)', () => {
-    // The real ALN pack against the real full-kit profile: display.main
-    // is the honest dormant endpoint (no endpoints block yet), and a
-    // live inventory missing one cue-referenced sound produces a fault
-    // whose reason lands in problems. disabledCueIds is deliberately
-    // NOT produced here — its true producer is C3's session-start
-    // disable walk (CS.2), and a resolve-time guess would duplicate it.
+    // The real ALN pack against a profile DERIVED from the real
+    // full-kit with its endpoints block cleared: display.main is
+    // dormant again (see the two cases above), and a live inventory
+    // missing one cue-referenced sound produces a fault whose reason
+    // lands in problems. disabledCueIds is deliberately NOT produced
+    // here — its true producer is C3's session-start disable walk
+    // (CS.2), and a resolve-time guess would duplicate it.
+    const noEndpoints = { ...ALN_PROFILE, endpoints: {} };
     const soundIds = alnNeeds
       .filter((n) => n.kind === 'sound').map((n) => n.id);
-    const { rollup } = resolve(alnNeeds, ALN_PROFILE, {
+    const { rollup } = resolve(alnNeeds, noEndpoints, {
       soundFiles: soundIds.filter((id) => id !== 'tension.wav'),
     });
     expect(rollup.dormantServices).toContain('display.main');
@@ -168,7 +189,7 @@ describe('resolve (pure, C1 §2 table)', () => {
     );
     expect(rollup.status).toBe('go-degraded');
 
-    const clean = resolve(alnNeeds, ALN_PROFILE, { soundFiles: soundIds });
+    const clean = resolve(alnNeeds, noEndpoints, { soundFiles: soundIds });
     expect(clean.rollup.problems).toEqual([]);
   });
 
