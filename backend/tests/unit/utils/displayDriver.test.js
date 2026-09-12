@@ -1281,4 +1281,83 @@ describe('displayDriver — exit-handler crash detection (T1a follow-up 2, rulin
     // needed to flip anything, so health:changed never reported 'healthy'.
     expect(changes).not.toContain('healthy');
   });
+
+  // ────────────────────────────────────────────────────────────────────
+  // Fix round 1 (review finding): `terminating` was being cleared inside
+  // cleanup() itself, synchronously, right after sending SIGKILL. But
+  // process.kill(pid, 'SIGKILL') never fires the child's 'exit' event
+  // synchronously — that always lands on a LATER event-loop tick. So by
+  // the time the real exit arrived, `terminating` had already been reset
+  // to false, and the exit handler misreported the driver's own
+  // deliberate shutdown as a crash. The fix: cleanup() sets `terminating`
+  // and never clears it itself; the exit handler is the sole reader AND
+  // clearer, once it has actually observed the exit.
+  // ────────────────────────────────────────────────────────────────────
+  test('SIGKILL escalation after an unresponsive SIGTERM is still a deliberate stop when hidden', async () => {
+    const { spawn } = require('child_process');
+    const handlers = {};
+    const mockProc = {
+      pid: 1234, killed: false,
+      on: (event, handler) => { handlers[event] = handler; },
+      kill: jest.fn(), // SIGTERM is ignored — the mock never fires 'exit' itself
+    };
+    spawn.mockReturnValue(mockProc);
+    armExecFile();
+
+    await displayDriver.ensureBrowserRunning();
+    expect(displayDriver.isScoreboardVisible()).toBe(false);
+    registry.report.mockClear();
+
+    // process.kill(pid, 0) must NOT throw (process still alive after the
+    // 1s SIGTERM grace period), so cleanup() escalates to SIGKILL.
+    const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+    try {
+      // cleanup() fully resolves — SIGTERM sent, grace period elapsed,
+      // SIGKILL escalation sent and logged — WITHOUT the mocked process
+      // ever having fired 'exit'. If `terminating` were cleared inside
+      // cleanup(), it would already be false here.
+      await displayDriver.cleanup();
+      expect(killSpy).toHaveBeenCalledWith(1234, 'SIGKILL');
+
+      // The real OS kill is asynchronous: the 'exit' event arrives on a
+      // LATER tick, well after cleanup() has already returned.
+      handlers.exit(null, 'SIGKILL');
+
+      expect(registry.report).toHaveBeenCalledWith(
+        'display', 'healthy', 'kiosk closed while hidden; relaunches on show'
+      );
+      expect(registry.report).not.toHaveBeenCalledWith(
+        'display', 'down', expect.stringContaining('crashed')
+      );
+    } finally {
+      killSpy.mockRestore();
+    }
+  });
+
+  test('a foreign SIGKILL while visible is still down — visible always wins over terminating', async () => {
+    // Companion to the case above: confirms the SIGKILL-escalation fix
+    // didn't loosen the visible branch, which must stay unconditional
+    // regardless of `terminating`. (A cleanup()-initiated kill can never
+    // itself produce this shape — cleanup() clears `visible` synchronously
+    // in the same tick it sends the kill, before any real exit can ever
+    // arrive — so this drives the general "visible always wins" rule
+    // directly, the same way a foreign SIGKILL unrelated to cleanup() would.)
+    const { spawn } = require('child_process');
+    const handlers = {};
+    spawn.mockReturnValue({
+      pid: 1234, killed: false,
+      on: (event, handler) => { handlers[event] = handler; },
+    });
+    armExecFile();
+
+    await displayDriver.showScoreboard();
+    expect(displayDriver.isScoreboardVisible()).toBe(true);
+    registry.report.mockClear();
+
+    handlers.exit(null, 'SIGKILL');
+
+    expect(registry.report).toHaveBeenCalledWith(
+      'display', 'down', 'kiosk exited while visible (code null, signal SIGKILL)'
+    );
+  });
 });

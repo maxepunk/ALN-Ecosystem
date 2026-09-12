@@ -214,6 +214,13 @@ async function _doLaunch() {
     browserProcess = null;
     visible = false;
     launched = false;
+    // Fix round 1: this handler is the sole reader AND clearer of
+    // `terminating` — cleanup() sets it but deliberately never clears it,
+    // because the real exit can land on a later tick than cleanup()'s own
+    // synchronous kill sequence (see cleanup()'s comment). Clearing it here,
+    // only once it has actually been read above, is what makes it survive
+    // long enough for an escalated SIGKILL to still read as deliberate.
+    terminating = false;
   });
 
   // Write PID file for orphan recovery on next server start
@@ -393,10 +400,14 @@ async function cleanup() {
   if (browserProcess && !browserProcess.killed) {
     const pid = browserProcess.pid;
     logger.info('[DisplayDriver] Killing browser process on shutdown', { pid });
-    // Ruling 27: mark this a deliberate stop BEFORE sending any signal, so
-    // the exit handler — which may run mid-await, as soon as the process
-    // actually dies — can tell it apart from a crash however it ends up
-    // dying (the SIGTERM below, or the SIGKILL escalation further down).
+    // Ruling 27 fix round 1: set `terminating` here and do NOT clear it in
+    // this function — the exit handler is the one that reads it and clears
+    // it, once it has actually observed the exit. The real OS kill is
+    // asynchronous, and doubly so after a SIGKILL escalation below (SIGKILL
+    // never fires 'exit' synchronously either): clearing the flag here,
+    // right after this synchronous kill sequence returns, would race the
+    // exit event, which may not land until a LATER event-loop tick — long
+    // after this function (and any await on it) has already resolved.
     terminating = true;
     browserProcess.kill('SIGTERM');
     await new Promise(r => setTimeout(r, 1000));
@@ -409,8 +420,11 @@ async function cleanup() {
     } catch {
       // Process is dead — SIGTERM worked
     }
+  } else {
+    // Nothing to kill — no 'exit' will ever arrive to read/clear the flag,
+    // so make sure a stale `true` from some earlier run isn't left set.
+    terminating = false;
   }
-  terminating = false;
   browserProcess = null;
   visible = false;
 
