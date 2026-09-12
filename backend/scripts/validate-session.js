@@ -16,11 +16,13 @@ const TokenLoader = require('./lib/TokenLoader');
 const ScoringCalculator = require('./lib/ScoringCalculator');
 const LogParser = require('./lib/LogParser');
 const ReportGenerator = require('./lib/ReportGenerator');
+const { resolveSessionPack } = require('./lib/packResolver');
+const modeSemantics = require('../src/gameRules/modeSemantics');
 
 // Validators (9 holistic validators)
 const TransactionFlowCheck = require('./lib/validators/TransactionFlowCheck');
 const ScoringIntegrityCheck = require('./lib/validators/ScoringIntegrityCheck');
-const DetectiveModeCheck = require('./lib/validators/DetectiveModeCheck');
+const NonScoringModeCheck = require('./lib/validators/NonScoringModeCheck');
 const VideoPlaybackCheck = require('./lib/validators/VideoPlaybackCheck');
 const DeviceConnectivityCheck = require('./lib/validators/DeviceConnectivityCheck');
 const GroupCompletionCheck = require('./lib/validators/GroupCompletionCheck');
@@ -66,21 +68,31 @@ async function main() {
       process.exit(1);
     }
 
-    // Load tokens
-    const tokenLoader = new TokenLoader();
-    const tokens = tokenLoader.loadTokens();
+    // Resolve WHICH pack this session should be validated against (D4s2:
+    // the session's stamped pack identity, or the on-disk pack for
+    // unstamped/legacy sessions — loud notes either way).
+    const pack = resolveSessionPack(session);
+    // The modeSemantics L6 shim warns loudly when a null gameConfig rides
+    // the baked ALN table — collect it into the report instead of letting
+    // it splat into the report stream mid-render.
+    modeSemantics.setLegacyWarnHook((msg) => pack.notes.push(`mode seam: ${msg}`));
 
-    // Initialize calculator with tokens
-    const calculator = new ScoringCalculator(tokens);
+    // Load tokens + calculator FROM the resolved pack
+    const tokenLoader = new TokenLoader(pack.packDir);
+    const tokens = tokenLoader.loadTokens();
+    const calculator = new ScoringCalculator(tokens, {
+      gameConfig: pack.gameConfig,
+      packDir: pack.packDir,
+    });
 
     // Initialize log parser
     const logParser = new LogParser(LOG_FILE);
 
     // Run all validators
-    const results = await runValidators(session, tokens, calculator, logParser);
+    const results = await runValidators(session, tokens, calculator, logParser, pack);
 
     // Generate report
-    const report = ReportGenerator.generate(session, results);
+    const report = ReportGenerator.generate(session, results, pack);
     console.log(report);
 
     // Exit with appropriate code
@@ -117,13 +129,13 @@ async function listSessions(sessionLoader) {
   console.log('');
 }
 
-async function runValidators(session, tokens, calculator, logParser) {
+async function runValidators(session, tokens, calculator, logParser, pack) {
   const results = [];
   const tokensMap = new Map(tokens.map(t => [t.id, t]));
 
-  // 1. Transaction Flow Check
+  // 1. Transaction Flow Check (valid modes = the resolved pack's declared ids)
   console.error('Running Transaction Flow Check...');
-  const txFlowCheck = new TransactionFlowCheck(tokensMap);
+  const txFlowCheck = new TransactionFlowCheck(tokensMap, { gameConfig: pack.gameConfig });
   results.push(await txFlowCheck.run(session));
 
   // 2. Scoring Integrity Check (CRITICAL - compares against log broadcasts, NOT session.scores)
@@ -131,10 +143,10 @@ async function runValidators(session, tokens, calculator, logParser) {
   const scoringCheck = new ScoringIntegrityCheck(calculator, logParser);
   results.push(await scoringCheck.run(session));
 
-  // 3. Detective Mode Check
-  console.error('Running Detective Mode Check...');
-  const detectiveCheck = new DetectiveModeCheck(tokensMap);
-  results.push(await detectiveCheck.run(session));
+  // 3. Non-Scoring Mode Check (was DetectiveModeCheck — generalized D4s2)
+  console.error('Running Non-Scoring Mode Check...');
+  const nonScoringCheck = new NonScoringModeCheck(tokensMap, calculator);
+  results.push(await nonScoringCheck.run(session));
 
   // 4. Video Playback Check
   console.error('Running Video Playback Check...');

@@ -65,7 +65,7 @@ describe('resolveMode — pack-declared flags', () => {
     expect(record).toEqual({
       id: 'blackmarket', label: 'Black Market', verb: 'Sell',
       scoringPolicy: 'standard', entityRole: 'ledger', defaultEntity: null,
-      countsTowardGroups: true,
+      countsTowardGroups: true, claims: 'consuming',
       displayBehavior: { surface: 'scoreboard-rankings', fields: [], when: 'immediate' },
     });
   });
@@ -104,6 +104,19 @@ describe('resolveMode — pack-declared flags', () => {
   it('coerces countsTowardGroups strictly (only literal true counts)', () => {
     const config = { modes: [{ id: 'm', label: 'M', scoringPolicy: 'none', entityRole: 'ledger', countsTowardGroups: 'yes' }] };
     expect(resolveMode(config, 'm').countsTowardGroups).toBe(false);
+  });
+
+  it('normalizes absent claims to consuming — the legacy behavior (D3s2)', () => {
+    const config = {
+      modes: [
+        { id: 'm', label: 'M', scoringPolicy: 'none', entityRole: 'ledger', countsTowardGroups: false },
+        { id: 'nc', label: 'NC', scoringPolicy: 'none', entityRole: 'ledger', countsTowardGroups: false, claims: 'non-consuming' },
+      ],
+    };
+    expect(resolveMode(config, 'm').claims).toBe('consuming');
+    expect(resolveMode(config, 'nc').claims).toBe('non-consuming');
+    // The baked ALN shim modes are consuming too (no claims field)
+    expect(resolveMode(null, 'blackmarket').claims).toBe('consuming');
   });
 
   it('returns a defensive copy — mutating the record cannot corrupt the config', () => {

@@ -66,11 +66,11 @@ describe('ALN-TokenData/tokens.json schema contract', () => {
     expect(inconsistent).toEqual([]);
   });
 
-  it('SF_MemoryType values are scoreable against scoring-config.json (or null = intentional 0x)', () => {
-    const scoringConfig = JSON.parse(
-      fs.readFileSync(path.join(TOKEN_DATA_DIR, 'scoring-config.json'), 'utf8')
+  it('SF_MemoryType values are scoreable against game.json scoring (or null = intentional 0x)', () => {
+    const { scoring } = JSON.parse(
+      fs.readFileSync(path.join(TOKEN_DATA_DIR, 'game.json'), 'utf8')
     );
-    const knownTypes = new Set(Object.keys(scoringConfig.typeMultipliers || {}));
+    const knownTypes = new Set(Object.keys(scoring.typeMultipliers || {}));
     const unscoreable = Object.entries(tokens)
       .filter(([, t]) => t.SF_MemoryType !== null && !knownTypes.has(t.SF_MemoryType))
       .map(([key, t]) => `${key}: '${t.SF_MemoryType}'`);

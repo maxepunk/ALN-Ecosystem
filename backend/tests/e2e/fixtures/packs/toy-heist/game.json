@@ -139,17 +139,10 @@
     "overtimeAt": 3300,
     "phases": [
       {
-        "id": "casing",
-        "label": "Casing the Joint",
+        "id": "the-heist",
+        "label": "The Heist",
         "start": {
           "at": 0
-        }
-      },
-      {
-        "id": "the-job",
-        "label": "The Job",
-        "start": {
-          "at": 1800
         }
       }
     ]

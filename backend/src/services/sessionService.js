@@ -59,9 +59,14 @@ class SessionService extends EventEmitter {
         return;
       }
 
+      // A3 slice 2: expected duration comes from the ACTIVE pack's clock
+      // (wire payload stays in MINUTES per the session:overtime contract)
+      const expectedDurationMinutes = Math.round(
+        require('./packService').getClockRules().durationSeconds / 60
+      );
       logger.warn('Session overtime - exceeded expected duration', {
         sessionId: this.currentSession.id,
-        expectedDuration: config.session.sessionTimeout,
+        expectedDuration: expectedDurationMinutes,
         startTime: this.currentSession.startTime,
         elapsed: payload.elapsed
       });
@@ -71,7 +76,7 @@ class SessionService extends EventEmitter {
         sessionId: this.currentSession.id,
         sessionName: this.currentSession.name,
         startTime: this.currentSession.startTime,
-        expectedDuration: config.session.sessionTimeout,
+        expectedDuration: expectedDurationMinutes,
         overtimeDuration: 0 // Will be calculated by listener
       });
     }, 'sessionService->gameClockService:gameclock:overtime');
@@ -244,9 +249,11 @@ class SessionService extends EventEmitter {
     // Record game start time on the session
     this.currentSession.gameStartTime = new Date().toISOString();
 
-    // Set overtime threshold before starting the clock
-    const overtimeThresholdSeconds = config.session.sessionTimeout * 60; // Convert minutes to seconds
-    gameClockService.setOvertimeThreshold(overtimeThresholdSeconds);
+    // Set overtime threshold before starting the clock (A3 slice 2: the
+    // ACTIVE pack's gameClock.overtimeAt; SESSION_TIMEOUT only as the
+    // packless fallback inside getClockRules)
+    const packService = require('./packService');
+    gameClockService.setOvertimeThreshold(packService.getClockRules().overtimeAtSeconds);
 
     // Start the game clock
     gameClockService.start();

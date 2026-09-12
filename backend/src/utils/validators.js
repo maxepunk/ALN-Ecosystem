@@ -132,7 +132,12 @@ const deviceConnectionSchema = Joi.object({
 // TeamScore validation schema
 const teamScoreSchema = Joi.object({
   teamId: teamId.required(),
-  currentScore: Joi.number().integer().min(0).required(),
+  // Signed (A3 slice 2, D2s2): negative scores are legal when the pack
+  // declares scoring.semantics.allowNegative — the floor is enforced at
+  // ADJUSTMENT time per pack (transactionService), never at hydration.
+  // A construction-time min(0) here made session RESTORE throw on any
+  // persisted negative (the latent crash the census found).
+  currentScore: Joi.number().integer().required(),
   tokensScanned: Joi.number().integer().min(0).required(),
   bonusPoints: Joi.number().integer().min(0).required(),
   completedGroups: Joi.array().items(Joi.string()).required(),

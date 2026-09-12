@@ -80,10 +80,10 @@ async function _findScoreboardWindow() {
   try {
     const ids = await run('xdotool', ['search', '--name', 'Case File']);
     if (ids) {
-      const idList = ids.split('\n').filter(Boolean);
-      if (idList.length > 0) {
-        return idList[0];
-      }
+      // run() trims stdout, so a truthy result always splits to at least
+      // one non-empty id — no length check needed (a dead length>0 branch
+      // lived here until the 100%-coverage pass proved it unreachable)
+      return ids.split('\n').filter(Boolean)[0];
     }
   } catch {
     // Window not found

@@ -9,7 +9,6 @@
  * Callers merge context-specific fields (e.g., deviceScannedTokens, reconnection).
  */
 
-const config = require('../config');
 const serviceHealthRegistry = require('../services/serviceHealthRegistry');
 const displayControlService = require('../services/displayControlService');
 const { DisplayMode } = displayControlService;
@@ -160,7 +159,9 @@ async function buildSyncFullPayload({
  * @returns {Object} Game clock state
  */
 function buildGameClockState(gameClockService) {
-  const expectedDuration = config.session.sessionTimeout * 60;
+  // A3 slice 2: the ACTIVE pack's declared duration (seconds); packless
+  // checkouts fall back to SESSION_TIMEOUT inside getClockRules
+  const expectedDuration = require('../services/packService').getClockRules().durationSeconds;
   try {
     if (!gameClockService) {
       return { status: 'stopped', elapsed: 0, expectedDuration };

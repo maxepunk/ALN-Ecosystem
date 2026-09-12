@@ -1,10 +1,15 @@
 # Phase 3 A3 Slice 2 — Rules Migration & Gate Headroom-Rejection (design)
 
 **Date:** 2026-07-18
-**Status:** DRAFT for owner ratification (program §12.3: slice 2 does NOT
-open without this consolidated restatement + honest re-price; it also does
-not open before the slice-1 gate is CI-green). Decisions D1s2–D4s2 in §6
-need owner answers.
+**Status:** ✅ EXECUTED IN FULL — SLICE CLOSED 2026-07-18. Decision-free
+core + all four owner-ratified closers (§6a rulings, §6b execution
+record) + the 35-agent closer adversarial review (25 confirmed findings
+fixed + pinned at parent `4b9464c` / scanner `10d7467`, 4 refuted).
+Close gate: backend 2328 + integration 342 + scanner 1442
+(fresh-coverage ratchet) + PWA/config-tool/ESP32 green + dual-pack
+Tier L twice (112P+113P/0F/0-flaky both times) + CI green on both heads.
+Actual cost ≈ the honest estimate's upper band (§5 priced 2.5–3.5
+sessions; the fallout line priced the gate catching things — it did).
 **Ground truth this draft is built on (censused 2026-07-18, not
 estimated):** every consumer/obligation in §2 was located by grep/read the
 day this doc was written; both real packs' rule blocks were diffed (§3).
@@ -135,6 +140,13 @@ the active pack's game.json; `ScoringCalculator`/`ScoringIntegrityCheck`/
 seam family. Owner decision D4s2 on depth (recommendation: in-scope —
 they mis-validate any non-ALN session today and the wall-scoreboard
 precedent shows out-of-census consumers bite at the gate).
+*Execution note (2026-07-18):* the FORCED minimal fix landed with the L1
+retirement — `scoringConfigLoader` re-points at `ALN-TokenData/game.json`
+scoring with a loud throw on a missing block (no baked fallback: a
+validator must never silently validate against wrong constants). Depth
+beyond that (stamped-pack resolution, mode-literal seams, AND §2f
+scored-only bonus math in `ScoringCalculator` — which diverges for any
+future none∧counting pack, though not for ALN) still rides D4s2.
 
 **o. Wall scoreboard rankings side (precedent check).** Slice 1 made the
 scoreboard's EVIDENCE filter pack-driven after the gate caught it; slice
@@ -173,6 +185,81 @@ semantics BOTH sides with parity tests ≈0.75 · scripts/lib re-point
 §4.4) ≈0.5 · dual-pack gate runs + fallout (slice-1 precedent: the gate
 WILL catch something) ≈0.5 → **≈2.5–3.5 sessions** (A2 ran 2.3–2.7× its
 estimate; this figure already prices the fallout line).
+
+## 6b. CLOSER EXECUTION RECORD (2026-07-18 — all four rulings BUILT)
+
+- **D1s2 BUILT** (parent `5ab7fdc`): phases gate in `_gateCheck` — anything
+  beyond the degenerate single-phase-at-0 (multi-phase, non-zero start,
+  trigger-start) refuses with "not driveable by this engine yet (see
+  slice 5)"; language rule pinned both directions. The gate's FIRST catch
+  was the toy pack itself (casing@0/the-job@1800, the §2g census shape) —
+  trimmed to a single phase until slice 5 restores it, manifest regen'd.
+- **D2s2 BUILT** (parent `d2e69f5`, scanner `41381c8`): contract-first
+  signed-currentScore descriptions (wire schemas never had a minimum);
+  `getScoringRules().allowNegative` (strict === true; shim mirrors ALN
+  true, tripwire extended); adjustTeamScore REJECTS zero-crossing
+  adjustments under a no-negatives pack (before the audit push — ledger
+  stays additive for the validators); rebuild path floors loudly (the one
+  reachable negative); **LATENT CRASH FIXED**: the Joi min(0) fired at
+  session-restore hydration, so any persisted negative (reachable — no
+  mutation path checked) crashed restore at boot. Scanner parity + TWO
+  pre-existing standalone bugs fixed (adjustment wiped by next scan's
+  invariant recompute; rebuild dropping adminAdjustments entirely).
+- **D3s2 BUILT** (parent `e6877c5`, scanner `67996b3`, TokenData
+  `ca90dc0`): schema+gate+engine+scanner as ONE change. `claims` open
+  string on modes[] (absent → 'consuming' — the legacy behavior, so
+  NEITHER real pack changes and every tripwire stays green);
+  duplicatePolicy: non-consuming never blocked AND never registers
+  (findOriginalTransaction skips it; deviceTracking emission gated —
+  single decision point); ENGINE_MODE_CAPS.claims; flavor-ii
+  re-instantiated per its header (separate limitations channel):
+  non-consuming ∧ countsTowardGroups refuses with the named retirement.
+  Scanner: isConsumingMode + all five local claim sites gated (incl. the
+  transaction:new broadcast that would otherwise lock a non-consuming
+  token fleet-wide). Group math needed NO change under the v1 constraint.
+- **D4s2 BUILT** (parent `6b96917`): `packResolver.js` resolves the
+  session's STAMPED pack (match/mismatch/unstamped verdicts, PACK_PATH,
+  logger-free so validation can't pollute its own evidence; report opens
+  with a Pack Resolution section); TokenLoader/scoringConfigLoader
+  parameterized by pack dir (no silent fallback under an explicit dir);
+  every mode literal through the seam (ScoringCalculator's old literal
+  paid UNKNOWN modes full catalog value); DetectiveModeCheck →
+  NonScoringModeCheck; TransactionFlowCheck's closed enum → wireModeIds;
+  §2f bonus math reused from gameRules (scored∧counting only); dead
+  LogParser method deleted; the two UNWIRED validators swept (fixing
+  GroupBonusCheck's mode-blind completion set); scripts/lib gained its
+  FIRST tests (11); backend/CLAUDE.md's "15 validators" corrected to the
+  9 wired. Full pipeline smoke-verified against a synthetic stamped
+  session.
+- **CI ratchet catch** (scanner `cd0a9d6`, parent `8a7df6f`): the
+  closers' new gameOps branches dropped coverage below the floor — CI's
+  fresh-coverage run caught what the stale local check passed; six
+  App-facade tests cover the claims gates + floor surfacing (60-floor →
+  69.04% branches). Lesson recorded: scanner coverage:check is only as
+  fresh as the last local --coverage run.
+
+## 6a. RULINGS (owner, 2026-07-18) — slice 2 decision items CLOSED
+
+- **D1s2 = GATE + TOY TRIM.** Owner challenged whether act support is
+  SPECIFICALLY planned; verified against program §3: "Slice 5 —
+  clock/phase params (B11): duration/overtime landed in slice 2; phases +
+  trigger-starts here" — a concrete named slice, not a vague deferral.
+  Build: refuse multi-phase packs with the named "see slice 5" retirement;
+  trim toy to single phase until slice 5 restores it.
+- **D2s2 = IMPLEMENT allowNegative.** Pack-conditional score floor:
+  admin adjustments may take a team negative when the pack declares
+  allowNegative true. Contract-first (teamScore schema min(0) becomes
+  pack-conditional); both sides + validators aligned.
+- **D3s2 = BOTH claim policies available.** Supersedes the keep-consuming
+  recommendation: a per-mode claims flag (consuming default,
+  non-consuming available to pack authors) lands WITH its full
+  enforcement — schema + gate + duplicatePolicy + scanner parity in one
+  change, never schema-dead. v1 constraint: non-consuming ∧
+  countsTowardGroups gates as a flavor-ii limitation (non-consumed
+  presence in group completion needs its own design — named retirement).
+- **D4s2 = FULL validator sweep.** Validators resolve the session's
+  stamped pack, mode literals go through the semantics seam,
+  ScoringCalculator adopts §2f scored-only bonus math.
 
 ## 6. Owner decisions needed before opening
 

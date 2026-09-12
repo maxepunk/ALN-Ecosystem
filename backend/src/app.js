@@ -182,16 +182,20 @@ async function initializeServices() {
     // Initialize persistence first
     await persistenceService.init();
 
+    // A2/A3: freeze the pack identity + serving whitelist BEFORE loading
+    // token data, so token values bake from the SAME frozen snapshot the
+    // process advertises (/health contentHash). Ordering matters (review
+    // finding): activating after loadTokens left a window where a pack
+    // edit landed between the two — token values from one game.json,
+    // identity from another — and made every per-token getScoringRules()
+    // call take the uncached live-disk path.
+    require('./services/packService').activatePack();
+
     // Load tokens from service (handles submodule paths and fallback)
     const tokenService = require('./services/tokenService');
     const tokens = tokenService.loadTokens();
     await persistenceService.saveTokens(tokens);
     await transactionService.init(tokens);
-
-    // A2: freeze the pack identity + serving whitelist at the same moment
-    // the engine loads its token data — pack edits on disk after this
-    // point are neither advertised nor served until restart.
-    require('./services/packService').activatePack();
 
     // Initialize other services
     await sessionService.init();

@@ -1758,7 +1758,9 @@ components:
                 example: "Team Alpha"
               currentScore:
                 type: integer
-                description: Total score (base + bonus)
+                description: >-
+                  Total score (base + bonus). Signed: may be negative when the
+                  active pack declares scoring.semantics.allowNegative (A3 slice 2).
                 example: 11500
               baseScore:
                 type: integer

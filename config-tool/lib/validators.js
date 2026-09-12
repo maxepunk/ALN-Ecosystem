@@ -30,7 +30,7 @@ function isFiniteNumber(v) {
   return typeof v === 'number' && Number.isFinite(v);
 }
 
-/** scoring-config.json: baseValues for ratings 1-5 + numeric typeMultipliers map. */
+/** game.json `scoring` block: baseValues for ratings 1-5 + numeric typeMultipliers map (extra keys like display/semantics pass through untouched). */
 function validateScoring(data) {
   const errors = [];
   if (!isPlainObject(data)) return ['scoring config must be a JSON object'];

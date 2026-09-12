@@ -374,6 +374,215 @@ describe('packService', () => {
       expect(err.message).toMatch(/bad2.*displayBehavior\.surface 'holo'/);
       expect(err.message).not.toMatch(/mode 'ok'/);
     });
+
+    it('refuses an unimplemented claims value; drives both implemented policies (D3s2)', () => {
+      writeGame(tmpDir, gameWith(mode({ id: 'weird', claims: 'per-actor' })));
+      expect(() => packService.activatePack())
+        .toThrow(/mode 'weird' is not driveable.*claims 'per-actor'/);
+
+      packService._resetForTesting();
+      writeGame(tmpDir, gameWith(
+        mode({ id: 'sell', claims: 'consuming' }),
+        mode({ id: 'appraise', scoringPolicy: 'none', countsTowardGroups: false, claims: 'non-consuming' })
+      ));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+  });
+
+  describe('rules-block drivability (A3 slice 2 — §2i/§2j: the engine implements the declared table only)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    const base = () => ({ kind: 'game', schemaVersion: 1, id: 'rules' });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it("refuses duplicatePolicy.claim other than 'once' (non-consuming claims arrive WITH their enforcement)", () => {
+      writeGame(tmpDir, { ...base(), duplicatePolicy: { claim: 'unlimited', view: 'unlimited' } });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*duplicatePolicy\.claim 'unlimited'/);
+    });
+
+    it("refuses duplicatePolicy.view other than 'unlimited'", () => {
+      writeGame(tmpDir, { ...base(), duplicatePolicy: { claim: 'once', view: 'once' } });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*duplicatePolicy\.view 'once'/);
+    });
+
+    it('accepts the declared table (once / unlimited) — the policy the engine implements', () => {
+      writeGame(tmpDir, { ...base(), duplicatePolicy: { claim: 'once', view: 'unlimited' } });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it("refuses groupRules.type other than 'all' with the named slice-2 message", () => {
+      writeGame(tmpDir, { ...base(), groupRules: { type: 'any', minSize: 2 } });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*groupRules\.type 'any'.*declared table only/);
+    });
+
+    it('refuses groupRules.minSize other than 2', () => {
+      writeGame(tmpDir, { ...base(), groupRules: { type: 'all', minSize: 3 } });
+      expect(() => packService.activatePack())
+        .toThrow(/groupRules\.minSize 3/);
+    });
+
+    it("refuses an unimplemented completion.bonusFormula", () => {
+      writeGame(tmpDir, { ...base(), groupRules: { type: 'all', minSize: 2, completion: { bonusFormula: 'flat-thousand' } } });
+      expect(() => packService.activatePack())
+        .toThrow(/bonusFormula 'flat-thousand'/);
+    });
+
+    it('accepts the full declared ALN/toy table and an ABSENT block alike', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        groupRules: { type: 'all', minSize: 2, completion: { bonusFormula: 'multiplier-minus-one-times-base' } },
+        duplicatePolicy: { claim: 'once', view: 'unlimited' },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+      packService._resetForTesting();
+      writeGame(tmpDir, base()); // nothing declared gates nothing
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+  });
+
+  describe('phases gate (A3 slice 2 — D1s2: multi-phase clocks refuse until slice 5)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    const base = () => ({ kind: 'game', schemaVersion: 1, id: 'phases' });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('refuses a multi-phase clock with the named slice-5 retirement', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+            { id: 'the-job', label: 'The Job', start: { at: 1800 } },
+          ],
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*gameClock\.phases.*not driveable by this engine yet \(see slice 5\)/);
+    });
+
+    it('refuses a single phase that does not start at 0', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: { phases: [{ id: 'late', label: 'Late', start: { at: 600 } }] },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases.*not driveable by this engine yet \(see slice 5\)/);
+    });
+
+    it('refuses a trigger-started phase (trigger-starts are slice 5 too)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: { phases: [{ id: 'main', label: 'Game', start: { trigger: 'cue:fired' } }] },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases.*not driveable by this engine yet \(see slice 5\)/);
+    });
+
+    it('is a drivability LIMITATION, never a contradiction (language rule pinned)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: { phases: [{ id: 'a', start: { at: 0 } }, { id: 'b', start: { at: 10 } }] },
+      });
+      let message = '';
+      try {
+        packService.activatePack();
+      } catch (err) {
+        message = err.message;
+      }
+      expect(message).toMatch(/not driveable by this engine yet \(see slice 5\)/);
+      expect(message).not.toMatch(/incoherent/i);
+      expect(message).not.toMatch(/self-contradictory/i);
+    });
+
+    it('a NULL/malformed phase entry refuses with the NAMED message, never a raw TypeError (review pin)', () => {
+      writeGame(tmpDir, { ...base(), gameClock: { phases: [null] } });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases.*not driveable by this engine yet \(see slice 5\)/);
+
+      packService._resetForTesting();
+      writeGame(tmpDir, { ...base(), gameClock: { phases: [{ id: 'x', start: null }] } });
+      expect(() => packService.activatePack())
+        .toThrow(/not driveable by this engine yet \(see slice 5\)/);
+    });
+
+    it('accepts the degenerate single-phase-at-0 (the ALN shape)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 7200,
+          overtimeAt: 7200,
+          phases: [{ id: 'main', label: 'Game', start: { at: 0 } }],
+        },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('accepts absent gameClock, absent phases, and an empty phases array (nothing declared gates nothing)', () => {
+      writeGame(tmpDir, base());
+      expect(() => packService.activatePack()).not.toThrow();
+      packService._resetForTesting();
+      writeGame(tmpDir, { ...base(), gameClock: { duration: 3600 } });
+      expect(() => packService.activatePack()).not.toThrow();
+      packService._resetForTesting();
+      writeGame(tmpDir, { ...base(), gameClock: { duration: 3600, phases: [] } });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+  });
+
+  describe('activation-frozen rules memo + operator warns (review fixes)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('caches the LEGACY shim tables after activating a scoring-absent pack', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'memo' }); // absent scoring = legal
+      packService.activatePack();
+      const first = packService.getScoringRules();
+      expect(first.baseValues[5]).toBe(150000); // baked ALN shim
+      expect(packService.getScoringRules()).toBe(first); // memoized reference
+    });
+
+    it('caches the pack tables after activation (per-token loads reuse the snapshot)', () => {
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'memo',
+        scoring: { baseValues: { 1: 5 }, typeMultipliers: { A: 2 } },
+      });
+      packService.activatePack();
+      const first = packService.getScoringRules();
+      expect(packService.getScoringRules()).toBe(first);
+    });
+
+    it('warns ONCE that SESSION_TIMEOUT is ignored when the pack clock differs (review finding)', () => {
+      const logger = require('../../../src/utils/logger');
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'clock',
+        gameClock: { duration: 3600, overtimeAt: 3300 },
+      });
+      logger.warn.mockClear();
+      packService.getClockRules();
+      packService.getClockRules();
+      const warns = logger.warn.mock.calls.filter(c => /SESSION_TIMEOUT.*IGNORED/.test(c[0]));
+      expect(warns).toHaveLength(1); // loud, once — config default 120min != 3600s
+    });
   });
 
   describe('coherence check (A3 slice 1 — R9, two flavors per the 2026-07-18 ratification)', () => {
@@ -393,6 +602,19 @@ describe('packService', () => {
     });
 
     describe('flavor (i) — timeless self-contradictions', () => {
+      it('refuses a DECLARED-but-unusable scoring block (empty tables must not ride the shim)', () => {
+        // Review finding: pre-fix, scoring:{baseValues:{},...} activated
+        // cleanly and silently ran the baked ALN economy behind one warn.
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'coh', scoring: { baseValues: {}, typeMultipliers: { A: 1 } } });
+        expect(() => packService.activatePack())
+          .toThrow(/self-contradictory.*scoring block is DECLARED.*missing\/empty/);
+      });
+
+      it('tolerates an ABSENT scoring block (packless checkouts ride the loud shim by design)', () => {
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'coh' });
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
       it('refuses a DECLARED-but-empty modes array', () => {
         writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'coh', modes: [] });
         expect(() => packService.activatePack())
@@ -417,26 +639,43 @@ describe('packService', () => {
       });
     });
 
-    describe('flavor (ii) — drivability limitations with NAMED retirements', () => {
-      it("refuses scoringPolicy 'none' ∧ countsTowardGroups with the RETIREMENT message, never 'incoherent'", () => {
+    // The flavor-(ii) FOUNDING member (scoringPolicy 'none' ∧
+    // countsTowardGroups) was RETIRED ON SCHEDULE in slice 2: scored-only
+    // contribution semantics landed in gameRules/scoring (§2f — completion
+    // counts any counting claim, the bonus base sums only scored
+    // contributions), so unscored claims can no longer mint catalog-priced
+    // bonuses and the combination is legal. Its legality is pinned below.
+
+    describe('flavor (ii) — drivability limitations (named retirement, honest language)', () => {
+      it("refuses non-consuming ∧ countsTowardGroups (D3s2 v1 constraint) with the limitation wording", () => {
         writeGame(tmpDir, gameWith(mode({
-          id: 'ritual', scoringPolicy: 'none', entityRole: 'attribution',
-          countsTowardGroups: true, displayBehavior: { surface: 'none' },
+          id: 'sample', scoringPolicy: 'none', countsTowardGroups: true, claims: 'non-consuming',
         })));
-        let err = null;
-        try { packService.activatePack(); } catch (e) { err = e; }
-        expect(err).not.toBeNull();
-        // The ratified language rule (design doc §4): honest gate-family
-        // wording with the named slice-2 retirement — this combination is
-        // a legitimate event-only-groups design, not a contradiction.
-        expect(err.message).toMatch(/not driveable by this engine yet \(see slice 2\)/);
-        expect(err.message).toMatch(/'ritual'/);
-        expect(err.message).not.toMatch(/incoheren/i);
-        expect(err.message).not.toMatch(/self-contradictory/);
+        expect(() => packService.activatePack())
+          .toThrow(/COHERENCE CHECK.*'sample'.*non-consuming.*not driveable by this engine yet.*contribution-semantics design/);
+      });
+
+      it('the limitation is NEVER called incoherent or self-contradictory (language rule pinned)', () => {
+        writeGame(tmpDir, gameWith(mode({
+          id: 'sample', scoringPolicy: 'none', countsTowardGroups: true, claims: 'non-consuming',
+        })));
+        let message = '';
+        try { packService.activatePack(); } catch (err) { message = err.message; }
+        expect(message).toMatch(/not driveable by this engine yet/);
+        expect(message).not.toMatch(/incoherent/i);
+        expect(message).not.toMatch(/self-contradictory/i);
       });
     });
 
     describe('deliberately LEGAL combinations (documented so nobody "fixes" them)', () => {
+      it("accepts none ∧ countsTowardGroups — event-only groups (§2f semantics landed, flavor-ii retired)", () => {
+        writeGame(tmpDir, gameWith(mode({
+          id: 'ritual', scoringPolicy: 'none', entityRole: 'attribution',
+          countsTowardGroups: true, displayBehavior: { surface: 'none' },
+        })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
       it("accepts attribution ∧ standard (future scored-attributed modes)", () => {
         writeGame(tmpDir, gameWith(mode({ id: 'bounty', entityRole: 'attribution', defaultEntity: 'Nova' })));
         expect(() => packService.activatePack()).not.toThrow();
@@ -451,6 +690,14 @@ describe('packService', () => {
         writeGame(tmpDir, gameWith(mode({
           id: 'appraise', scoringPolicy: 'none', countsTowardGroups: false,
           displayBehavior: { surface: 'none' },
+        })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it("accepts non-consuming with countsTowardGroups FALSE — the drivable half of D3s2", () => {
+        writeGame(tmpDir, gameWith(mode({
+          id: 'inspect', scoringPolicy: 'none', countsTowardGroups: false,
+          claims: 'non-consuming', displayBehavior: { surface: 'none' },
         })));
         expect(() => packService.activatePack()).not.toThrow();
       });
@@ -469,6 +716,129 @@ describe('packService', () => {
       packService._resetForTesting();
       process.env.PACK_PATH = TOY_PACK;
       expect(() => packService.activatePack()).not.toThrow();
+    });
+  });
+
+  describe('getScoringRules (A3 slice 2 — the rules read that retires ledger L1)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+
+    it('serves the TOY pack tables normalized (numeric ratings, lowercase types, unknown present)', () => {
+      process.env.PACK_PATH = TOY_PACK;
+      const rules = packService.getScoringRules();
+      expect(rules.baseValues[4]).toBe(1300);
+      expect(rules.typeMultipliers.personal).toBe(2);
+      expect(rules.typeMultipliers.technical).toBe(6);
+      expect(rules.typeMultipliers.unknown).toBe(0);
+    });
+
+    it('serves the ALN pack tables from the default dir', () => {
+      delete process.env.PACK_PATH;
+      const rules = packService.getScoringRules();
+      expect(rules.baseValues[5]).toBe(150000);
+      expect(rules.typeMultipliers.party).toBe(5);
+    });
+
+    it('carries allowNegative (D2s2): ALN true, toy false, shim mirrors ALN (true)', () => {
+      delete process.env.PACK_PATH;
+      expect(packService.getScoringRules().allowNegative).toBe(true);
+
+      packService._resetForTesting();
+      process.env.PACK_PATH = TOY_PACK;
+      expect(packService.getScoringRules().allowNegative).toBe(false);
+
+      packService._resetForTesting();
+      process.env.PACK_PATH = tmpDir; // empty dir → baked legacy shim
+      expect(packService.getScoringRules().allowNegative).toBe(true);
+    });
+
+    it('declared scoring WITHOUT a semantics block gets the conservative floor (allowNegative false)', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'nosem',
+        scoring: { baseValues: { 1: 7 }, typeMultipliers: { Personal: 3 } },
+      });
+      expect(packService.getScoringRules().allowNegative).toBe(false);
+    });
+
+    it('snapshot semantics: activation freezes the tables; later disk edits are invisible', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'rules',
+        scoring: { baseValues: { 1: 7 }, typeMultipliers: { Personal: 3 } },
+      });
+      packService.activatePack();
+
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'rules',
+        scoring: { baseValues: { 1: 999 }, typeMultipliers: { Personal: 999 } },
+      });
+
+      expect(packService.getScoringRules().baseValues[1]).toBe(7);
+    });
+
+    it('a pack with NO usable scoring block rides the baked legacy shim with a LOUD warn (once)', () => {
+      process.env.PACK_PATH = tmpDir; // empty dir: no game.json at all
+      const rules = packService.getScoringRules();
+      packService.getScoringRules();
+
+      expect(rules.baseValues[5]).toBe(150000);
+      expect(rules.typeMultipliers.mention).toBe(3);
+      const shimWarns = logger.warn.mock.calls.filter(([m]) =>
+        m.includes('LEGACY SCORING TABLES ACTIVE')
+      );
+      expect(shimWarns).toHaveLength(1);
+    });
+
+    it('EMPTY-but-present tables ride the shim too (an empty table must never silently zero every token)', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'empty',
+        scoring: { baseValues: {}, typeMultipliers: { Personal: 1 } },
+      });
+      const rules = packService.getScoringRules();
+      expect(rules.baseValues[1]).toBe(10000); // legacy, not undefined
+      expect(logger.warn.mock.calls.some(([m]) => m.includes('LEGACY SCORING TABLES ACTIVE'))).toBe(true);
+    });
+
+    it('getClockRules serves the pack clock in seconds (toy: 3600 duration, 3300 overtime)', () => {
+      process.env.PACK_PATH = TOY_PACK;
+      expect(packService.getClockRules()).toEqual({ durationSeconds: 3600, overtimeAtSeconds: 3300 });
+    });
+
+    it('getClockRules: ALN declares overtime == duration (7200/7200)', () => {
+      delete process.env.PACK_PATH;
+      expect(packService.getClockRules()).toEqual({ durationSeconds: 7200, overtimeAtSeconds: 7200 });
+    });
+
+    it('getClockRules: absent overtimeAt defaults to the declared duration', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'clk', gameClock: { duration: 500 } });
+      expect(packService.getClockRules()).toEqual({ durationSeconds: 500, overtimeAtSeconds: 500 });
+    });
+
+    it('getClockRules: a PACKLESS checkout falls back to SESSION_TIMEOUT with a LOUD warn (once)', () => {
+      process.env.PACK_PATH = tmpDir; // empty dir
+      const rules = packService.getClockRules();
+      packService.getClockRules();
+      const config = require('../../../src/config');
+      expect(rules.durationSeconds).toBe(config.session.sessionTimeout * 60);
+      expect(rules.overtimeAtSeconds).toBe(rules.durationSeconds);
+      const warns = logger.warn.mock.calls.filter(([m]) => m.includes('LEGACY CLOCK CONFIG ACTIVE'));
+      expect(warns).toHaveLength(1);
+    });
+
+    it('DRIFT TRIPWIRE: the baked legacy tables mirror the real ALN game.json scoring block', () => {
+      const gamePath = path.resolve(__dirname, '../../../../ALN-TokenData/game.json');
+      const real = JSON.parse(fs.readFileSync(gamePath, 'utf8')).scoring;
+      expect(JSON.parse(JSON.stringify(packService.LEGACY_ALN_SCORING.baseValues)))
+        .toEqual(Object.fromEntries(Object.entries(real.baseValues).map(([k, v]) => [k, v])));
+      expect(JSON.parse(JSON.stringify(packService.LEGACY_ALN_SCORING.typeMultipliers)))
+        .toEqual(real.typeMultipliers);
+      expect(JSON.parse(JSON.stringify(packService.LEGACY_ALN_SCORING.semantics)))
+        .toEqual(real.semantics);
     });
   });
 });

@@ -60,6 +60,7 @@ const ENGINE_MODE_CAPS = Object.freeze({
   scoringPolicy: new Set(['standard', 'none']),
   entityRole: new Set(['ledger', 'attribution']),
   surface: new Set(['scoreboard-rankings', 'scoreboard-evidence', 'none']),
+  claims: new Set(['consuming', 'non-consuming']), // D3s2: both policies driven
 });
 
 // Manifest cache, invalidated on file mtime change (same pattern as the
@@ -76,6 +77,48 @@ let activated = false;
 let activeManifest = null;
 let activeGameConfig = null;
 let warnedDriftHash = false;
+let warnedLegacyScoring = false;
+
+// Mirrors ALN-TokenData/game.json `scoring` tables — the pre-pack ALN
+// game, baked (A3 slice 2, ledger L1 retirement: scoring-config.json is
+// gone; a pack without a usable scoring block runs THIS table with a loud
+// warn — the same shim doctrine as the L6 mode tables, and a unit drift
+// tripwire pins it equal to the real ALN game.json).
+const LEGACY_ALN_SCORING = Object.freeze({
+  baseValues: Object.freeze({ 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 }),
+  typeMultipliers: Object.freeze({ Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 }),
+  semantics: Object.freeze({ allowNegative: true }),
+});
+
+/** A usable scoring block has NON-EMPTY value and multiplier tables —
+ *  the same guard the scanner's applyPackScoring enforces (an empty
+ *  table must never silently zero every token). */
+function _isUsableScoring(scoring) {
+  return !!scoring
+    && scoring.baseValues && Object.keys(scoring.baseValues).length > 0
+    && scoring.typeMultipliers && Object.keys(scoring.typeMultipliers).length > 0;
+}
+
+/** Normalize a scoring block for engine consumption: numeric rating keys,
+ *  LOWERCASED type keys (tokenService lowercases lookups), always an
+ *  `unknown` entry. */
+function _normalizeScoring(scoring) {
+  return {
+    baseValues: Object.fromEntries(
+      Object.entries(scoring.baseValues).map(([k, v]) => [parseInt(k, 10), v])
+    ),
+    typeMultipliers: {
+      unknown: 0,
+      ...Object.fromEntries(
+        Object.entries(scoring.typeMultipliers).map(([k, v]) => [k.toLowerCase(), v])
+      ),
+    },
+    // D2s2: pack-conditional score floor. Strict === true so a pack that
+    // declares scoring but omits semantics gets the conservative floor;
+    // the packless shim mirrors ALN (true) like every other shim value.
+    allowNegative: !!(scoring.semantics && scoring.semantics.allowNegative === true),
+  };
+}
 
 /**
  * Absolute path of the ACTIVE pack directory.
@@ -122,8 +165,8 @@ function _readDiskManifest() {
 /**
  * Live disk read of the pack's game.json (rules file). Null when the pack
  * ships none (pre-pack checkouts, tokens-only fixtures) — every consumer
- * must tolerate null through the L1 transitional window (backend rules
- * still come from scoring-config.json until slice 2).
+ * must tolerate null; the rules getters (getScoringRules, getClockRules,
+ * modeSemantics) fall back to their loud baked legacy shims.
  * @returns {Object|null}
  */
 function _readDiskGameConfig() {
@@ -181,6 +224,64 @@ function _gateCheck(manifest, gameConfig) {
         problems.push(`pack requires unsupported engine capabilities: ${missing.join(', ')}`);
       }
     }
+    // Rules-block drivability (A3 slice 2 §2i/§2j): the engine implements
+    // exactly the table both real packs declare — anything else is refused
+    // with a named message, never silently ignored. A future variant
+    // arrives WITH its enforcement (schema + gate + engine in one change).
+    const dp = gameConfig.duplicatePolicy;
+    if (dp) {
+      if (dp.claim !== undefined && dp.claim !== 'once') {
+        problems.push(
+          `duplicatePolicy.claim '${dp.claim}' — this engine implements 'once' only ` +
+          `(gameRules/duplicatePolicy.js; per-MODE non-consuming claims landed as the ` +
+          `modes[].claims flag in D3s2 — pack-LEVEL variants like 'per-entity' still ` +
+          `arrive WITH their enforcement, never schema-dead)`
+        );
+      }
+      if (dp.view !== undefined && dp.view !== 'unlimited') {
+        problems.push(
+          `duplicatePolicy.view '${dp.view}' — this engine implements 'unlimited' only (design §2i)`
+        );
+      }
+    }
+    const gr = gameConfig.groupRules;
+    if (gr) {
+      if (gr.type !== undefined && gr.type !== 'all') {
+        problems.push(`groupRules.type '${gr.type}' — slice 2 implements the declared table only ('all')`);
+      }
+      if (gr.minSize !== undefined && gr.minSize !== 2) {
+        problems.push(`groupRules.minSize ${gr.minSize} — slice 2 implements the declared table only (2)`);
+      }
+      const bf = gr.completion && gr.completion.bonusFormula;
+      if (bf !== undefined && bf !== 'multiplier-minus-one-times-base') {
+        problems.push(
+          `groupRules.completion.bonusFormula '${bf}' — slice 2 implements the declared table only ('multiplier-minus-one-times-base')`
+        );
+      }
+    }
+    // Phases drivability (A3 slice 2 §2g, owner ruling D1s2): the engine
+    // reads gameClock.duration/overtimeAt but drives NO phase machinery —
+    // anything beyond the degenerate single-phase-at-0 is declared
+    // headroom the doctrine refuses. Flavor-ii family: a NAMED retirement
+    // ("see slice 5" — program §3: phases + trigger-starts land there),
+    // never "incoherent". Absent/empty phases declare nothing and pass.
+    const phases = gameConfig.gameClock && gameConfig.gameClock.phases;
+    if (Array.isArray(phases) && phases.length > 0) {
+      // Null/malformed entries are NOT degenerate (they refuse with the
+      // named message below, never a raw TypeError — review finding)
+      const p = phases[0];
+      const degenerate =
+        phases.length === 1 &&
+        !!p && !!p.start && p.start.at === 0 &&
+        p.start.trigger === undefined;
+      if (!degenerate) {
+        problems.push(
+          `gameClock.phases (${phases.length} phase${phases.length === 1 ? '' : 's'}) — ` +
+          'multi-phase and trigger-started clocks are not driveable by this engine yet (see slice 5); ' +
+          'the engine drives only the degenerate single-phase-at-0'
+        );
+      }
+    }
     // Mode drivability (slice 1): every declared mode's flag VALUES must
     // be in the engine's implemented sets — schema-open, gate-enforced.
     if (Array.isArray(gameConfig.modes)) {
@@ -195,6 +296,12 @@ function _gateCheck(manifest, gameConfig) {
         const surface = (mode.displayBehavior && mode.displayBehavior.surface) || 'none';
         if (!ENGINE_MODE_CAPS.surface.has(surface)) {
           undrivable.push(`displayBehavior.surface '${surface}'`);
+        }
+        // claims is OPTIONAL (absent normalizes to 'consuming' — the
+        // legacy behavior), so only a DECLARED unknown value is undrivable
+        const claims = mode.claims === undefined ? 'consuming' : mode.claims;
+        if (!ENGINE_MODE_CAPS.claims.has(claims)) {
+          undrivable.push(`claims '${claims}'`);
         }
         if (undrivable.length > 0) {
           problems.push(`mode '${mode.id}' is not driveable by this engine: ${undrivable.join(', ')} not implemented`);
@@ -225,19 +332,26 @@ function _gateCheck(manifest, gameConfig) {
  *   semantics).
  *
  * Flavor (ii) — DRIVABILITY LIMITATIONS (gate family; each carries a
- *   NAMED retirement and must NEVER be called incoherent):
- *   scoringPolicy:'none' ∧ countsTowardGroups — a legitimate
- *   event-only-groups design (group:completed already feeds the cue
- *   engine), blocked ONLY because groupBonusAmount computes from token
- *   CATALOG values, so unscored claims completing a group would mint a
- *   full catalog-priced bonus. RETIRES in slice 2: scored-only
- *   contribution semantics land, then this refusal is DELETED.
+ *   NAMED retirement and must NEVER be called incoherent). The founding
+ *   member — scoringPolicy:'none' ∧ countsTowardGroups — RETIRED ON
+ *   SCHEDULE in slice 2: gameRules/scoring's §2f scored-only contribution
+ *   semantics landed (completion counts any counting claim; the bonus
+ *   base sums only scored contributions), so unscored claims can no
+ *   longer mint catalog-priced bonuses and event-only groups are legal.
+ *   CURRENT member (D3s2 v1 constraint): claims:'non-consuming' ∧
+ *   countsTowardGroups — a non-consumed claim never registers with the
+ *   duplicate rules, so what "presence in a group" means for a
+ *   repeatable action (count once? every scan? survives deletion how?)
+ *   needs its own contribution-semantics design before the engine can
+ *   drive it. RETIREMENT: that design, when a pack wants the combination.
  *
  * Deliberately LEGAL (documented so nobody "fixes" them):
  *   entityRole:'attribution' ∧ scoringPolicy:'standard' (future
  *   scored-attributed modes) · displayBehavior.surface:'none' with any
  *   scoringPolicy (silent modes are a real design tool) ·
- *   scoringPolicy:'none' ∧ entityRole:'ledger' (D2 consuming-appraise).
+ *   scoringPolicy:'none' ∧ entityRole:'ledger' (D2 consuming-appraise) ·
+ *   scoringPolicy:'none' ∧ countsTowardGroups (event-only groups, since
+ *   the §2f retirement).
  *
  * An ABSENT modes block is tolerated (nothing declared gates nothing —
  * the modeSemantics L6 shim covers it); a DECLARED-but-empty one is a
@@ -245,8 +359,28 @@ function _gateCheck(manifest, gameConfig) {
  * @throws {Error} on any flavor-(i) contradiction or flavor-(ii) limitation
  */
 function _coherenceCheck(gameConfig) {
-  if (!gameConfig || !Array.isArray(gameConfig.modes)) return;
+  if (!gameConfig) return;
 
+  // DECLARED-but-unusable scoring is a contradiction (same doctrine as
+  // declared-but-empty modes): a pack that ships a scoring block with
+  // missing/empty tables would silently run the baked ALN economy behind
+  // one scrolling warn — refuse at boot instead (review finding). An
+  // ABSENT scoring block stays legal: packless checkouts and rules-only
+  // fixtures ride the loud shim by design.
+  if (gameConfig.scoring !== undefined && !_isUsableScoring(gameConfig.scoring)) {
+    throw new Error(
+      `COHERENCE CHECK: refusing to activate pack at ${getPackDir()} — ` +
+      'self-contradictory pack: the scoring block is DECLARED but has missing/empty ' +
+      'baseValues or typeMultipliers; a declared economy must be usable (omit the ' +
+      'block entirely to run the legacy shim).'
+    );
+  }
+
+  if (!Array.isArray(gameConfig.modes)) return;
+
+  // Two problem channels, deliberately separate (the ratified language
+  // rule): contradictions say "self-contradictory"; limitations use
+  // gate-family wording with a NAMED retirement and NEVER "incoherent".
   const contradictions = [];
   const limitations = [];
 
@@ -267,26 +401,34 @@ function _coherenceCheck(gameConfig) {
       );
     }
 
-    if (mode.scoringPolicy === 'none' && mode.countsTowardGroups === true) {
+    // (The none∧countsTowardGroups flavor-(ii) refusal that lived here
+    // was DELETED in slice 2 — see the header. Event-only groups are
+    // legal now that the bonus base sums only scored contributions.)
+
+    // Flavor (ii), D3s2 v1 constraint: a non-consuming claim never
+    // registers, so group presence for a repeatable action has no
+    // defined contribution semantics yet (see header for the named
+    // retirement). Legal design, undrivable engine — say so honestly.
+    if (mode.claims === 'non-consuming' && mode.countsTowardGroups === true) {
       limitations.push(
-        `mode '${mode.id}' combines scoringPolicy 'none' with countsTowardGroups — ` +
-        'not driveable by this engine yet (see slice 2): group bonuses compute from token catalog values, ' +
-        'so unscored claims completing a group would mint money; slice 2 defines scored-only contribution ' +
-        'semantics and deletes this refusal'
+        `mode '${mode.id}' combines claims 'non-consuming' with countsTowardGroups — ` +
+        'not driveable by this engine yet (non-consumed presence in group completion ' +
+        "needs its own contribution-semantics design); declare countsTowardGroups: false " +
+        "or claims: 'consuming'"
       );
     }
   }
 
-  const problems = [];
   if (contradictions.length > 0) {
-    problems.push(`self-contradictory pack: ${contradictions.join('; ')}`);
+    throw new Error(
+      `COHERENCE CHECK: refusing to activate pack at ${getPackDir()} — ` +
+      `self-contradictory pack: ${contradictions.join('; ')}.`
+    );
   }
   if (limitations.length > 0) {
-    problems.push(`engine drivability limitation: ${limitations.join('; ')}`);
-  }
-  if (problems.length > 0) {
     throw new Error(
-      `COHERENCE CHECK: refusing to activate pack at ${getPackDir()} — ${problems.join(' — ')}.`
+      `COHERENCE CHECK: refusing to activate pack at ${getPackDir()} — ` +
+      `${limitations.join('; ')}.`
     );
   }
 }
@@ -307,6 +449,7 @@ function activatePack() {
   activeGameConfig = gameConfig;
   activated = true;
   warnedDriftHash = false;
+  _cachedScoringRules = null;
   if (activeManifest) {
     logger.info(`Pack ACTIVATED: ${activeManifest.packId} v${activeManifest.version} (${activeManifest.contentHash})`);
   } else {
@@ -351,6 +494,101 @@ function getManifest() {
 function getGameConfig() {
   if (!activated) return _readDiskGameConfig();
   return activeGameConfig;
+}
+
+/**
+ * The ACTIVE pack's scoring tables, normalized for the engine (A3 slice 2
+ * — the backend's rules read; retires ledger L1's scoring-config.json).
+ * Snapshot semantics ride getGameConfig(): frozen at activation, live
+ * pre-activation. A pack without a USABLE scoring block (absent game.json,
+ * missing/empty tables) runs the baked legacy ALN tables with a LOUD
+ * once-per-process warn — never a silent zero.
+ * @returns {{baseValues: Object, typeMultipliers: Object, allowNegative: boolean}}
+ */
+let _cachedScoringRules = null;
+
+function getScoringRules() {
+  // Activation-frozen memo: post-activation the snapshot cannot change,
+  // so normalize once (calculateTokenValue calls this per token during
+  // the full token load). Pre-activation reads stay live (uncached).
+  if (activated && _cachedScoringRules) {
+    return _cachedScoringRules;
+  }
+  const gameConfig = getGameConfig();
+  const scoring = gameConfig && gameConfig.scoring;
+  if (_isUsableScoring(scoring)) {
+    const rules = _normalizeScoring(scoring);
+    if (activated) _cachedScoringRules = rules;
+    return rules;
+  }
+  if (!warnedLegacyScoring) {
+    warnedLegacyScoring = true;
+    logger.warn(
+      'LEGACY SCORING TABLES ACTIVE (debt ledger L1 shim): the active pack ships no usable ' +
+      'game.json scoring block — token values are running on the baked ALN tables. ' +
+      'Fine for pre-pack checkouts; a real pack should declare its scoring.'
+    );
+  }
+  const rules = _normalizeScoring(LEGACY_ALN_SCORING);
+  if (activated) _cachedScoringRules = rules;
+  return rules;
+}
+
+let warnedLegacyClock = false;
+
+/**
+ * The ACTIVE pack's game-clock parameters in SECONDS (A3 slice 2 —
+ * consumes gameClock.duration/overtimeAt, deleting the masking contract
+ * pin; audit F2's "toy pack already diverges silently" ends here).
+ * Snapshot semantics ride getGameConfig(). A pack without a usable
+ * gameClock block falls back to config.session.sessionTimeout (minutes,
+ * env-tunable) for BOTH values — the pre-pack behavior, where overtime
+ * fires exactly at expected duration — with a LOUD once-per-process warn.
+ * @returns {{durationSeconds: number, overtimeAtSeconds: number}}
+ */
+let warnedIgnoredSessionTimeout = false;
+
+function getClockRules() {
+  const gameConfig = getGameConfig();
+  const clock = gameConfig && gameConfig.gameClock;
+  if (clock && typeof clock.duration === 'number' && clock.duration > 0) {
+    // The pack clock is authoritative — but SESSION_TIMEOUT was the
+    // operator's knob for years, and silently ignoring a set-and-
+    // differing value would burn a real event (review finding: overtime
+    // firing 30 min late with zero log output). Loud, once.
+    if (!warnedIgnoredSessionTimeout) {
+      // eslint-disable-next-line global-require
+      const config = require('../config');
+      const envSeconds = config.session.sessionTimeout * 60;
+      if (envSeconds !== clock.duration) {
+        warnedIgnoredSessionTimeout = true;
+        logger.warn(
+          `SESSION_TIMEOUT (${config.session.sessionTimeout} min) is IGNORED: the active pack declares ` +
+          `gameClock.duration=${clock.duration}s, which is authoritative since A3 slice 2. ` +
+          'Edit the pack\'s game.json to change game duration.'
+        );
+      }
+    }
+    return {
+      durationSeconds: clock.duration,
+      overtimeAtSeconds: (typeof clock.overtimeAt === 'number' && clock.overtimeAt > 0)
+        ? clock.overtimeAt
+        : clock.duration,
+    };
+  }
+  if (!warnedLegacyClock) {
+    warnedLegacyClock = true;
+    logger.warn(
+      'LEGACY CLOCK CONFIG ACTIVE: the active pack ships no usable game.json gameClock block — ' +
+      'game duration/overtime are running on SESSION_TIMEOUT. Fine for pre-pack checkouts; ' +
+      'a real pack should declare its clock.'
+    );
+  }
+  // Lazy require: config never imports packService, so this stays acyclic;
+  // lazy keeps module-load order irrelevant.
+  const config = require('../config');
+  const fallbackSeconds = config.session.sessionTimeout * 60;
+  return { durationSeconds: fallbackSeconds, overtimeAtSeconds: fallbackSeconds };
 }
 
 /**
@@ -399,6 +637,10 @@ function _resetForTesting() {
   activeManifest = null;
   activeGameConfig = null;
   warnedDriftHash = false;
+  warnedLegacyScoring = false;
+  warnedLegacyClock = false;
+  warnedIgnoredSessionTimeout = false;
+  _cachedScoringRules = null;
 }
 
-module.exports = { getPackDir, getManifest, getGameConfig, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, _resetForTesting };
+module.exports = { getPackDir, getManifest, getGameConfig, getScoringRules, getClockRules, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };

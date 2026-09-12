@@ -25,3 +25,42 @@ describe('Environment Control Config', () => {
     expect(config.lighting).toHaveProperty('homeAssistantToken');
   });
 });
+
+describe('validateConfig error branches (A3 slice 2 coverage — config shrank when scoring moved to the pack)', () => {
+  const reload = () => {
+    jest.resetModules();
+    return () => require('../../src/config');
+  };
+  const withEnv = (key, value, fn) => {
+    const orig = process.env[key];
+    process.env[key] = value;
+    try { fn(); } finally {
+      if (orig !== undefined) process.env[key] = orig; else delete process.env[key];
+      jest.resetModules();
+    }
+  };
+
+  it('rejects an invalid server port', () => {
+    withEnv('PORT', '99999', () => {
+      expect(reload()).toThrow(/Invalid server port/);
+    });
+  });
+
+  it('rejects maxPlayers < 1', () => {
+    withEnv('MAX_PLAYERS', '0', () => {
+      expect(reload()).toThrow(/maxPlayers must be at least 1/);
+    });
+  });
+
+  it('rejects maxGmStations < 1', () => {
+    withEnv('MAX_GM_STATIONS', '0', () => {
+      expect(reload()).toThrow(/maxGmStations must be at least 1/);
+    });
+  });
+
+  it('rejects duplicateWindow < 1', () => {
+    withEnv('DUPLICATE_WINDOW', '0', () => {
+      expect(reload()).toThrow(/duplicateWindow must be at least 1 second/);
+    });
+  });
+});

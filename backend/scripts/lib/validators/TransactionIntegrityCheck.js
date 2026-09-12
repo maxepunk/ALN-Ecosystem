@@ -40,12 +40,12 @@ class TransactionIntegrityCheck {
         continue;
       }
 
-      // Skip detective mode (should have 0 points)
-      if (tx.mode === 'detective') {
+      // Non-scoring modes (seam-resolved, D4s2) must record 0 points
+      if (!this.calculator.isScoringMode(tx.mode)) {
         if (tx.points && tx.points !== 0) {
           findings.push({
             severity: 'WARNING',
-            message: `Detective mode transaction has non-zero points`,
+            message: `Non-scoring mode transaction has non-zero points`,
             details: {
               transactionId: tx.id,
               tokenId: tx.tokenId,
@@ -57,7 +57,7 @@ class TransactionIntegrityCheck {
         continue;
       }
 
-      // Only check accepted blackmarket transactions
+      // Only check accepted scoring-mode transactions
       if (tx.status !== 'accepted') continue;
 
       checkedCount++;
@@ -94,7 +94,7 @@ class TransactionIntegrityCheck {
           totalTransactions: transactions.length,
           acceptedChecked: checkedCount,
           duplicatesSkipped: transactions.filter(t => t.status === 'duplicate').length,
-          detectiveSkipped: transactions.filter(t => t.mode === 'detective').length
+          nonScoringSkipped: transactions.filter(t => !this.calculator.isScoringMode(t.mode)).length
         }
       });
     }
@@ -108,7 +108,7 @@ class TransactionIntegrityCheck {
         checkedCount,
         errorCount,
         skippedDuplicates: transactions.filter(t => t.status === 'duplicate').length,
-        skippedDetective: transactions.filter(t => t.mode === 'detective').length
+        skippedNonScoring: transactions.filter(t => !this.calculator.isScoringMode(t.mode)).length
       }
     };
   }

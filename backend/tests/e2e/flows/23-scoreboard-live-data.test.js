@@ -30,7 +30,7 @@ const { createBrowserContext, createPage, closeAllContexts } = require('../setup
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { selectTestTokens } = require('../helpers/token-selection');
-const { calculateExpectedScore } = require('../helpers/scoring');
+const { calculateExpectedScore, loadPackScoring } = require('../helpers/scoring');
 const { ScoreboardPage } = require('../helpers/page-objects/ScoreboardPage');
 
 // Tests are serial — they share one orchestrator instance and must not race each other
@@ -42,6 +42,7 @@ test.skip(({ isMobile }) => !isMobile, 'Scoreboard live-data tests only run on m
 let browser = null;
 let orchestratorInfo = null;
 let testTokens = null;
+let packScoring = null; // ACTIVE pack scoring block — the single score oracle (L5 retired)
 
 test.describe('Scoreboard Live Data', () => {
 
@@ -58,6 +59,7 @@ test.describe('Scoreboard Live Data', () => {
       ]
     });
     testTokens = await selectTestTokens(orchestratorInfo.url);
+    packScoring = await loadPackScoring(orchestratorInfo.url);
   });
 
   test.afterAll(async () => {
@@ -194,7 +196,7 @@ test.describe('Scoreboard Live Data', () => {
       const score = await scoreboard.getTeamScoreNumeric('Scoring Team');
       expect(score).toBeGreaterThan(0);
 
-      const expectedScore = calculateExpectedScore(token);
+      const expectedScore = calculateExpectedScore(token, packScoring);
       expect(score).toBe(expectedScore);
 
       console.log(`Black market transaction updated ticker: $${score} (expected $${expectedScore})`);
