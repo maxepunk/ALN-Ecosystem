@@ -108,6 +108,20 @@ Thursday preflight.
   first start; the acceptance checklist blind to a missing browser or a
   Wayland session; MPD's major-version step); revision 2 runs now
   (`wf_a50361c3-286`), then the final commit and the guide repair.
+- 23:24:08Z (written): the session's usage limit tripped mid-run (reset 23:20Z):
+  the research revision, both re-reviews, two hostile-tester refuters,
+  twenty dormancy-pass refuters and its writer failed on it; finished
+  agents are cached; all four runs resumed at 23:23Z from their ids.
+  Hostile tester so far: one major refuted (the reproduction's real
+  orchestrator boot runs `pkill -f "pactl subscribe"` and HDMI card
+  probing machine-wide — not new, every Tier L boot does it; the test's
+  header sentence is overbroad and gets fixed; an audio-init off switch
+  for harness children is a rig-hygiene follow-up), two minors standing
+  (the Playwright worker's own logger still writes the shared
+  `backend/logs`; the slot root is a predictable `/tmp` path and
+  `clearSessionData` follows a planted symlink). Dormancy pass so far:
+  29 findings (11 major), 4 refuted, 6 standing, 19 refuters pending.
+  My gate on f778f15 runs in the background (`gate-f778f15.log`).
 - Workflows still running (owner: "go" 21:40Z; the adversarial pass
   "agreed" 21:59:19Z, 2026-09-12;
   resumable after any stop with `Workflow({scriptPath, resumeFromRunId})`,
