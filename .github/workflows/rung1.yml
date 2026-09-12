@@ -43,6 +43,17 @@ jobs:
         working-directory: backend
         run: npm ci
 
+      # The hosted runner has no browser at all; the dev container's
+      # /opt/pw-browsers/chromium is a symlink into Playwright's own
+      # cache, so recreate that shape here (playwright is a backend
+      # devDependency, already installed by npm ci above).
+      - name: Install Playwright Chromium (the rung-1 kiosk)
+        run: |
+          sudo mkdir -p /opt/pw-browsers && sudo chown "$USER" /opt/pw-browsers
+          (cd backend && PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright install chromium --with-deps)
+          ln -sfn "$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome | head -1)" /opt/pw-browsers/chromium
+          test -x /opt/pw-browsers/chromium
+
       # The measured rung-1 recipe (capability-research doc): VLC and
       # MPD are spawned by the ENGINE; pipewire/Xvfb/dbus are harness
       # arms; python3-dbusmock is the hosted-CI Bluetooth ceiling.
