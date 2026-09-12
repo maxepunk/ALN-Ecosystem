@@ -36,6 +36,12 @@ describe('service:state Push Integration', () => {
   });
 
   afterAll(async () => {
+    // T1a follow-up 2: each beforeEach's resetAllServicesForTesting() runs
+    // performSystemReset(), which restarts health revalidation but is never
+    // stopped again — the last beforeEach leaves a live 15s timer running
+    // past this file's teardown, which later fires musicService.checkConnection()
+    // after Jest has torn down the environment (ReferenceError in CI logs).
+    serviceHealthRegistry.stopRevalidation();
     await cleanupIntegrationTestServer(testContext);
   });
 

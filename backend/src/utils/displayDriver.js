@@ -34,6 +34,20 @@ const registry = require('../services/serviceHealthRegistry');
 let browserProcess = null;
 let visible = false;
 let launchPromise = null;  // Guard against concurrent spawns
+// Block 2 T1a follow-up 2 (ruling 27): lets the exit handler tell a crash
+// apart from a deliberate stop.
+//   launched     — true once THIS browserProcess's 1s alive-check has
+//                  passed; cleared the moment it exits. An exit that
+//                  happens before this ever flips is a launch that never
+//                  succeeded — its own exit must never be reported healthy.
+//   terminating  — true from the moment the driver itself calls kill() on
+//                  the process (cleanup()) until that kill sequence is
+//                  done. Distinguishes "I killed it on purpose" from
+//                  "something else killed it", even when both end in the
+//                  same signal name (e.g. an escalated SIGKILL after an
+//                  unresponsive SIGTERM).
+let launched = false;
+let terminating = false;
 
 // PID file for orphan recovery (matches ProcessMonitor pattern)
 const PID_FILE = '/tmp/aln-pm-scoreboard-chromium.pid';
@@ -177,17 +191,29 @@ async function _doLaunch() {
 
   browserProcess.on('exit', (code, signal) => {
     logger.warn('[DisplayDriver] Browser process exited', { code, signal });
-    // An exit while VISIBLE is a fault: the scoreboard vanished mid-show.
-    // An exit while HIDDEN is not — nothing is being displayed and
-    // showScoreboard() relaunches, so reporting red would put a permanent
-    // alarm on a healthy idle system (R13; alarm integrity).
+    // Block 2 T1a follow-up 2 (ruling 27, refines ruling 13/R13): an exit
+    // while VISIBLE is always a fault — the scoreboard vanished mid-show.
+    // An exit while HIDDEN is judged by HOW it exited and WHETHER this
+    // process ever launched successfully — nothing is being displayed and
+    // showScoreboard() relaunches, so a CLEAN close there is not a fault
+    // (alarm integrity, R13), but a CRASH is a fault regardless of
+    // visibility. A clean close is: this process's alive-check already
+    // passed (`launched`), AND it exited with code 0 OR the driver itself
+    // was the one terminating it (`terminating` — e.g. cleanup()'s
+    // SIGTERM, or its SIGKILL escalation). Anything else while hidden —
+    // a non-zero code, a foreign signal (SIGABRT, SIGSEGV, an
+    // externally-sent SIGKILL, …), or an exit before the alive-check ever
+    // passed — is down, same as a visible crash.
     if (visible) {
-      registry.report('display', 'down', 'kiosk exited while visible');
-    } else {
+      registry.report('display', 'down', `kiosk exited while visible (code ${code}, signal ${signal})`);
+    } else if (launched && (code === 0 || terminating)) {
       registry.report('display', 'healthy', 'kiosk closed while hidden; relaunches on show');
+    } else {
+      registry.report('display', 'down', `kiosk crashed while hidden (code ${code}, signal ${signal})`);
     }
     browserProcess = null;
     visible = false;
+    launched = false;
   });
 
   // Write PID file for orphan recovery on next server start
@@ -212,6 +238,7 @@ async function _doLaunch() {
     pid: browserProcess?.pid
   });
   registry.report('display', 'healthy', 'kiosk launched');
+  launched = true;
   return true;
 }
 
@@ -270,6 +297,8 @@ async function showScoreboard() {
  * Looks up the window by title fresh each time — catches orphaned windows too.
  * Minimizing (not windowunmap) preserves fullscreen state for next windowactivate.
  * Non-fatal: VLC renders underneath even if minimize fails.
+ * (Ruling 27's `terminating` bookkeeping does not apply here — this function
+ * never calls kill(); only cleanup() does.)
  * @returns {Promise<boolean>} Always true (non-fatal hide)
  */
 async function hideScoreboard() {
@@ -364,6 +393,11 @@ async function cleanup() {
   if (browserProcess && !browserProcess.killed) {
     const pid = browserProcess.pid;
     logger.info('[DisplayDriver] Killing browser process on shutdown', { pid });
+    // Ruling 27: mark this a deliberate stop BEFORE sending any signal, so
+    // the exit handler — which may run mid-await, as soon as the process
+    // actually dies — can tell it apart from a crash however it ends up
+    // dying (the SIGTERM below, or the SIGKILL escalation further down).
+    terminating = true;
     browserProcess.kill('SIGTERM');
     await new Promise(r => setTimeout(r, 1000));
     // .killed reflects kill() was CALLED, not that process died.
@@ -376,6 +410,7 @@ async function cleanup() {
       // Process is dead — SIGTERM worked
     }
   }
+  terminating = false;
   browserProcess = null;
   visible = false;
 
