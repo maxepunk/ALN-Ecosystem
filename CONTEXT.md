@@ -388,9 +388,10 @@ you intend.
   ports); the hand-run checklist shrinks to the physical room
   (speakers placed, TV on the right input, tokens on set). Every row
   is labeled *paper* or *live* (see below) and names the profile it
-  verified against. A required ("block the show") need left unmet
-  refuses `session:start`, with a typed, logged "start anyway"
-  override for genuine emergencies.
+  verified against. A required ("block the show") need left unmet, or an installation
+  profile file that fails its own schema check (Block 2 ruling R12),
+  refuses `session:start`, with a typed, logged "start anyway" override
+  for genuine emergencies.
 - **Paper vs live checks.** The two verification depths. *Paper* = pure
   data, checkable anywhere: pack needs against the profile FILE (the
   declared inventory), and the profile file against its own schema.

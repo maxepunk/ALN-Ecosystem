@@ -99,7 +99,7 @@ The sequence (owner: "go" pending on this exact list):
    to green.
 9. After the rehearsal: the delta with its own review; the owner's go
    at Thursday's preflight.
-Step 1 done-marks: [ ] rulings rows  [ ] task section  [ ] page cut
+Step 1 done-marks: [x] rulings rows  [x] task section  [ ] page cut
 [ ] rule 6  [ ] handoff retired  [ ] progress file renamed.
 
 Running now: the fresh-install researcher → `docs/plans/2026-09-12-green-fresh-install-research.md`.

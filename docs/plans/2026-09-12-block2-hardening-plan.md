@@ -1,4 +1,4 @@
-# Block 2 (the hardening block) — re-open plan and task ledger
+# The hardening block (Block 2 in the roadmap) — re-open plan and task record
 
 **Status: RED-TEAMED (three lenses, 99 findings, every one ruled in
 `2026-09-12-block2-redteam-adjudication.md`); awaiting the owner's
@@ -45,6 +45,11 @@ Schedule decisions are the owner's at the §8 checkpoints.
 | R10 | Re-slice recorded: dormant's operator door rides T3 with the verb commands (ratified CS.2 text put both doors in CS.2) | orchestrator, 2026-09-12 (D-26) |
 | R11 | The kit's network values were already in the repo (owner, checkpoint 1: "don't you have the ssid, ip, dns name in our repos already?"); T1b authors the ALN profile's `network` block: SSID `aboutlastnetwork`, IP `192.168.0.191` (owner-stated production values; the ESP32 sample config's `Sidewinder` / `10.0.0.177` are not the production values), `localDnsOverride: true` per CONTEXT.md §5. The DNS name is NOT in the repo as a decision (the July design's `play.aboutlastnightgame.com` sits beside placeholder SSID/IP values) — `orchestratorName` stays omitted until the owner states it. SEC-25's "owner task" narrows to that one value | owner + orchestrator, 2026-09-12 |
 | R12 | A profile that fails its check blocks `session:start`, with the typed override; `blocking` widens from two rules to three (P19), superseding P7's two-rule closure and narrowing spec §8 R-C3-1's "while any `onAbsent: require` need is unresolved" (supersession note added there) | owner, 2026-09-12 |
+| R13 | The supervisor ships ENABLED (R6 stands); the venue rehearsal exercises it; the host-config switch turns it off only if the rehearsal finds a problem that cannot be fixed that day | owner, 2026-09-12 |
+| R14 | The whole remaining scope of the hardening block and the truth sweep is built this week in parallel lanes; what fits before the rehearsal is the owner's call, never a scope cut by the orchestrator | owner, 2026-09-12 |
+| R15 | Lane policy: parallel lanes may edit different functions of a shared file; the orchestrator merges in a fixed order and runs the full suite after each merge; same-section edits are serialized (the command executor's switch and the contract's action enum: the supervisor before the preflight's run command; the scanner router's sync:full case: the self-heal before the panel) — cost if wrong: a merge conflict resolved by hand, visible in the suite run that follows | owner, 2026-09-12 |
+| R16 | Documentation: one-screen state page edited in place as the entry point; the plan's decisions replaced in place with history in its record; briefs and reviews as pointed-to working material; the delegation skill's scratch progress file is not the ledger (that word is reserved for temporary-construct rows); the post-walk handoff retired into the state page; process rule 6 reads the state page first, then its pointers | owner, 2026-09-12 |
+| R17 | Green becomes the home development environment (real substitute hardware, rung 2) once it is ready and the work reaches the pre-rehearsal checkpoint; at that point every lane is merged or pushed and the state page is current, because worktrees and the container rig do not travel | owner, 2026-09-12 |
 
 ## 2. Census delta that changes the design (from the re-open census)
 
@@ -290,24 +295,35 @@ Schedule decisions are the owner's at the §8 checkpoints.
 
 
 
-Worktrees: task branches `claude/nice-curie-hescfv-<task>` cut from the
-designated branch; each merged back by the orchestrator after its task
-review; the designated branch is the only one pushed. Scanner tasks run
-in the ALNScanner submodule on its own task branches the same way. No
-contract entry precedes its implementation (D-6): each task carries its
-own contract edits. the equipment families and fixtures runs first; the dormancy core after it.
+**The order (owner-ruled 2026-09-12; R14, R15).** Two pieces run
+alone in the main checkout first, because every later verdict depends
+on them; then four lanes at once in worktrees; then the pieces that
+depend on those lanes; then the wiring; then two reviews.
 
-| Task | Stage | Repos | Runs with | Model |
+| Piece | What the GM gets | Repos | Runs | Model |
 |---|---|---|---|---|
-| the equipment families and fixtures families, fixtures, endpoint map | CS.2 | backend, ALN-TokenData (manifest) | first | sonnet |
-| the dormancy core dormancy core, enum, gate + dialog, render-safe scanner | CS.2 | backend + contracts + ALNScanner + e2e helpers | after the equipment families and fixtures | opus |
-| the supervisor and the fault buttons supervisor, host config, verbs both sides, holds, display | CS.3 | backend + contracts + ALNScanner | the preflight arms and the command line, the scanner's pack self-heal | opus |
-| credentials on every connection every connection presents a credential | CS.3 | backend + contracts | with the supervisor and the fault buttons | sonnet |
-| the preflight arms and the command line preflight arms, domain, CLI, video-file need, pack integrity | CS.4 | backend + contracts + docs | the supervisor and the fault buttons, the scanner's pack self-heal | opus |
-| the scanner's pack self-heal scanner self-heal + the two §8.5 tests | CS.3 | ALNScanner (+ one backend E2E flow) | the supervisor and the fault buttons, the preflight arms and the command line | opus |
-| the preflight panel scanner preflight panel | CS.4 | ALNScanner | after the preflight arms and the command line, the scanner's pack self-heal | sonnet |
-| the sweep rows the §2.2 sweep rows | CS.5 | all | after the preflight panel | sonnet |
-| the close review close | CS.5 | all | after the sweep rows | sonnet + review workflow |
+| the equipment families and fixtures | done | backend, ALN-TokenData | done | — |
+| the dormancy core | done | backend, contracts, ALNScanner | done | — |
+| the harness minimum (the log guard; one data directory per test worker) | nothing directly; trustworthy runs | backend tests, logger | first, alone | opus |
+| the profile file check at boot | a broken venue file refuses the start and names the field | backend, contracts | second, alone | opus |
+| the supervisor and the fault buttons (incl. the operator-only room join in the socket authentication file) | bounded restarts, a Restart button, the out-of-service door, holds that expire | backend, contracts, ALNScanner | lane, after the harness minimum | opus |
+| credentials on every connection | the tokenless read path closed | backend, contracts | lane, after the harness minimum | opus |
+| the scanner's pack self-heal | tablets pick up a new pack with one toast | ALNScanner (+ one backend E2E flow) | lane, after the harness minimum | opus |
+| the preflight arms and the command line (the run command, its enum entry and the display row's Restart button move to the wiring step) | the machine checks scenes, sinks, media, host, integrity before the show | backend, contracts, docs | lane, after the profile check | opus |
+| the preflight panel | the checks in the GM's panel | ALNScanner | after the arms and the self-heal | opus |
+| the truth sweep: audit (reading) | — | — | starts now, as a workflow | sonnet readers |
+| the truth sweep: fixes | the panel stops showing false state | backend, ALNScanner | after the supervisor, the self-heal and the panel | opus |
+| the wiring | the run command, the enum entry, the display Restart button, contract reconciliation | backend | after the lanes | sonnet |
+| the pre-rehearsal review | — | all | before the venue rehearsal | opus + refuters |
+| the delta review | — | all | after the rehearsal, for what lands later | opus |
+
+Merge order with the full suite after each: credentials, the supervisor,
+the self-heal, the preflight arms; then the panel; then the wiring;
+then the sweep's fixes. Worktrees: one per lane, cut from the merge
+they depend on, provisioned with `npm ci`, the submodules and the
+scanner `dist`; task branches `claude/nice-curie-hescfv-<piece>`; the
+designated branch is the only one pushed. No contract entry precedes
+its implementation (D-6): each piece carries its own contract edits.
 
 ### the equipment families and fixtures — families, fixtures, endpoint map (CS.2)
 
@@ -524,23 +540,19 @@ lenses: state machine and security, Opus high; parity re-executing the
 enum on both sides; refuters, Fable high for MAJORs); every finding
 dispositioned; execution record appended.
 
-### Pre-round tasks (owner-ruled 2026-09-12: before round 3; nothing from memory — each task's brief follows a reader's fact sheet and a review of plan section plus brief)
+### The two pieces that run first (owner-ruled 2026-09-12; formerly "pre-round")
 
 Fact sheets: `.superpowers/sdd/2026-09-12-block2-hardening-plan/p1-factsheet.md`
-(profile check; reader brief `briefs/2026-09-12-p1-profile-check-factsheet-reader.md`)
-and `p2-factsheet.md` (rig hygiene; reader brief
-`briefs/2026-09-12-p2-rig-hygiene-factsheet-reader.md`).
+(profile check) and `p2-factsheet.md` (harness). Both plans were reviewed
+before any implementer (reviews in the same directory); the profile
+check's review verdict is DISPATCH after one revision; the harness
+review returned six blocking findings, ruled in step 3 of the sequence.
 
-| Task | Serves | Repos | Runs with | Model |
-|---|---|---|---|---|
-| the log guard, the health timer and deterministic fixtures log guard, health timer, fixture generation | the engineering loop only (a dead pipe can fill the disk in minutes: 7.3 GB free here) | backend + tests + rung-1 scripts | first | opus |
-| test isolation, run teardown and the merge gate worker isolation, run teardown, merge gate, probe user, PID-file test | the engineering loop only | backend tests + scripts | after the log guard, the health timer and deterministic fixtures | opus |
-| the profile file check at boot the installation profile check at boot | the one truth (a profile that lies makes every verdict wrong); the GM's loop (the NO-GO names the broken field) | backend + contracts | after test isolation, run teardown and the merge gate | opus |
-
-Sequential, all in the main checkout on task branches cut from the
-designated branch: the log guard lands before any local Tier L leg runs
-again (the disk is thin); the merge gate then gates the profile file check at boot's merge. No
-worktrees: nothing here is worth the node_modules cost.
+Scope ruling (owner, 2026-09-12): of the harness pins below, only P22
+(the log guard) and P21 (one data directory and one log directory per
+worker) build now — the harness minimum. P23–P27 (the health timer,
+deterministic fixtures, run teardown, the merge gate, the small hygiene
+items) wait for the weekly engineering windows after the run opens.
 
 **Design pins for the test-harness repair (from the fact sheet; each a ruling of this plan):**
 
@@ -787,7 +799,7 @@ delivers and whether the tree is a coherent stopping point after it.
 | the sweep rows | The enumerated sweep rows | the preflight panel | Yes. |
 | the close review | Close | the sweep rows | Required before ANY merge, wherever the owner stops. |
 
-Dependency rounds: the equipment families and fixtures → the dormancy core → the supervisor and the fault buttons‖credentials on every connection‖the preflight arms and the command line‖the scanner's pack self-heal → the preflight panel → the sweep rows → the close review.
+Dependency order: the harness minimum → the profile file check → [credentials ‖ the supervisor ‖ the self-heal ‖ the preflight arms] → the panel → the wiring → the sweep's fixes → the pre-rehearsal review (then the delta review).
 
 ## 8. Checkpoints and reporting (owner decides; wording ruled 2026-09-12)
 
@@ -800,7 +812,7 @@ words, and nowhere else:
 2. **After the dormancy core lands** (the equipment families and fixtures and the dormancy core reviewed and
    merged). The owner decides: continue, stop here and move to the
    green machine, or change the order.
-3. **After the supervisor, the preflight, and the self-heal land**
+3. **Before the venue rehearsal** (the supervisor, the credentials, the self-heal, the preflight arms and, where landed, the panel and the sweep's fixes reviewed and merged; the pre-rehearsal review done). Anything that lands after the rehearsal gets its own delta review and the owner's go at the Thursday preflight.
    (the supervisor and the fault buttons, credentials on every connection, the preflight arms and the command line, the scanner's pack self-heal, and the panel the preflight panel reviewed and merged).
 4. **After the close review** (the sweep rows and the close review done; the tree is ready to
    merge).
@@ -823,8 +835,8 @@ ruled method.
 ### 2026-09-12 — block opened (owner: "go ahead and start T1b")
 
 - Draft PR opened at block open (R4): maxepunk/ALN-Ecosystem#35. TokenData and ALNScanner draft PRs open with their first commits.
-- Method frame: `superpowers:subagent-driven-development` + `verification-before-completion`; briefs under `docs/plans/briefs/`; the skill's ledger at `.superpowers/sdd/2026-09-12-block2-hardening-plan/progress.md` mirrors here.
-- Pre-flight conflict scan run (ledger table). Rulings recorded, each with its cost if wrong:
+- Method frame: `superpowers:subagent-driven-development` + `verification-before-completion`; briefs under `docs/plans/briefs/`; the delegation skill's scratch progress file at `.superpowers/sdd/2026-09-12-block2-hardening-plan/progress.md` mirrors here.
+- Pre-flight conflict scan run (table in the scratch progress file). Rulings recorded, each with its cost if wrong:
   1. T1b runs in the main checkout on task branch `claude/nice-curie-hescfv-t1b`; worktrees begin when tasks run in parallel (a worktree lacks node_modules, submodules and the scanner dist the Tier L legs need).
   2. The simulation generator emits the pinned endpoints interior with stand-in VALUES (`display.main.output: 'rung1-xvfb'`, sinks `rung1_hdmi`/`rung1_bt`, `provider: 'home-assistant'`); `harnessProvides()` recognizes those markers in place of `provider: 'rung1-harness'`, which the pinned interior forbids.
   3. `toy-dormant-lighting.json` is toy-test-rig minus `lighting.instruments`, bindings kept (P2 ignores them with a warn from T1a).
@@ -838,8 +850,8 @@ ruled method.
 
 - Commits `34571c0..2152b9f` (9 parent commits, fast-forwarded into the designated branch at `2152b9f`); ALN-TokenData `6f9bc30` on its `claude/nice-curie-hescfv` (draft PR opened). Base `7caeef3`.
 - Tests: unit + contract 2909/2909 (146 suites), ratchet 85/85, lint clean, workflow YAML parses with four legs (`production`, `toy-heist`, `toy-dormant-lighting`, `toy-require-dormant`). Four Tier L legs run locally: zero failures outside the container's recorded base set (see ruling 9). Orchestrator re-ran the suite and ratchet fresh before merging.
-- Review (Opus): spec ✅, quality Approved; one Important finding (pinned-profile legs never generated the witness register on a clean runner) fixed in round 1 and verified by a scoped re-review; seven Minor findings deferred to the close review (ledger).
-- Rulings made during the task, each with its cost if wrong (ledger holds the long form):
+- Review (Opus): spec ✅, quality Approved; one Important finding (pinned-profile legs never generated the witness register on a clean runner) fixed in round 1 and verified by a scoped re-review; seven Minor findings deferred to the close review (listed in the scratch progress file).
+- Rulings made during the task, each with its cost if wrong (the scratch progress file holds the long form):
   7. The four pre-existing tests pinning the "no endpoints block" world were re-pinned in T1b, not deferred.
   8. `contentHash` covers only `files[]`; the manifest's `hardware` block escapes pack identity — accepted finding, home: T4's pack-integrity arm (both builders + parity tests). Ruling 4 amended: fixture packs are distinguished by directory.
   9. The container's Tier L baseline is not green (6 production / 14 toy failures from 3-worker contention and a pre-existing `generate-fixtures.js` parity-pack race); local bar = no failures outside that set; CI is the gate; the race goes to T7a rig hygiene.
@@ -853,9 +865,9 @@ ruled method.
 
 - Commits `95d69c6..c222dbe` (22 parent commits, fast-forwarded into the designated branch); ALNScanner `cb5395c` + `be0d701` on its `claude/nice-curie-hescfv` (the scanner's nested `data` pin at `6f9bc30`); base `04a94b9`.
 - Tests: backend unit + contract 3104/3104 (150 suites), ratchet 85/85, lint clean, integration 348/348; scanner 1717/1717 (90 suites), ratchet, lint, `dist` rebuilt; rung-1 audit 13/13 with the 8-real-services line including `display`; all four Tier L legs ZERO failures locally (144/143/141/141), both new flows (`30-dormancy-lighting`, `31-preflight-require-gate`) 16/16 on every leg. The orchestrator re-ran the backend and scanner suites fresh before merging.
-- Review (Opus, four passes over 81 files): spec ✅, quality Approved; one Important (plan-mandated: `familyInstalled` for `stations`/`personal`) and two test-hygiene minors fixed in round 1 with three rulings; scoped re-review: all addressed. Eight Minor findings deferred to the close review (ledger).
+- Review (Opus, four passes over 81 files): spec ✅, quality Approved; one Important (plan-mandated: `familyInstalled` for `stations`/`personal`) and two test-hygiene minors fixed in round 1 with three rulings; scoped re-review: all addressed. Eight Minor findings deferred to the close review (listed in the scratch progress file).
 - Three real defects surfaced by the Tier L legs and fixed inside the task: a runtime E2E fixture bound a lighting role without declaring the family (P2 made it bite); four ALN-pinned flows never pinned the ALN profile; ruling 15's override reached one of three `session:start` seams (now one shared `startGameOnSocket` helper).
-- Rulings 21–24 (ledger holds the long form): `dormancyWording` lives in `gameRules/` (pure); `service:check` gains a read-only `display` probe; profile schema validation at boot is a real gap → T4; `stations` installed iff `count >= 1`, `personal` iff `expected === true`. Ruling 9 amended: with the log storm capped the container runs all four legs clean, so the local bar is zero failures.
+- Rulings 21–24 (the scratch progress file holds the long form): `dormancyWording` lives in `gameRules/` (pure); `service:check` gains a read-only `display` probe; profile schema validation at boot is a real gap → T4; `stations` installed iff `count >= 1`, `personal` iff `expected === true`. Ruling 9 amended: with the log storm capped the container runs all four legs clean, so the local bar is zero failures.
 - Findings carried: (i) a Winston EPIPE loop fills `backend/logs` at ~40 MB/s when a Playwright worker dies with an orchestrator alive (T7a rig hygiene: guard stdout errors; per-orchestrator LOGS_DIR); (ii) the scanner has no CSS for `health-service--down/--ok` — the dashboard never rendered red before this task (Block 3 truth sweep); (iii) `display` reads `down` on any host without a kiosk (honest; a dev profile omitting `display.main` makes it dormant); (iv) health `message` maxLength 300 is contracted but not enforced (T3).
 - Docs updated in this record's commit: root and backend CLAUDE.md say nine services and the three health words.
 - Checkpoint 2 ("after the dormancy core lands") reached; report sent to the owner.
@@ -868,13 +880,13 @@ Three small tasks closed T1a's CI after the dormancy core merged. Briefs: `brief
 - **CI kiosk launch** (worktree branch, commits `2bca350..928d521`, merged `--no-ff` at `fae51b6`): Rung-1 run 13 on `c222dbe` failed 12/13 because the hosted runner has no Chromium, so T1a's ninth service reported `down`. Fix: `rung1.yml` installs Playwright's Chromium into `/opt/pw-browsers` with the container-identical symlink; `up.sh` resolves `CHROMIUM_BIN` by a chain (env → the symlink → Playwright's `executablePath()` → empty with a note). Runs 14–16 stayed red (Chrome-for-Testing directory layout; then "No usable sandbox": Ubuntu 24.04 runners restrict unprivileged user namespaces); run 17 green 13/13 after the sysctl; run 18 green on the merge. Review: Approved, no findings.
 - **Scanner review-bot findings** (ALNScanner `8bc9e68`, `e7f9c6f`, `e83723c`, fast-forwarded into its `claude/nice-curie-hescfv`; parent pin `6b223d0`): the Claude Code Review bot's three findings on ALNScanner PR #17 were real — quick-fire and standing-row change detection keyed on the dormant command COUNT (a changed service or door left stale text), and the collapsed health summary was a `div` a keyboard could reach but not activate. Fixed: signatures key on `disabledBy` plus the first dormant command's service and door; the summary is a real `<button>`; passthrough tests for `toggleHealthDetail`. Scanner 1726/1726, ratchet, lint, build. Review: Approved, no findings. One reply posted on the PR #17 thread.
 - **Display exit semantics** (branch from `6b223d0`, commits `af6940c` + `019f1cf`, merged `--no-ff` at `fb2c29c`): Test run 297's integration job saw the debounce test take two health pushes because the runner's `chromium-browser` stub died of SIGABRT while hidden and T1a's exit handler called that `healthy`. Ruling 27 (below). Review: Approved with one Important (the SIGKILL-escalation path cleared `terminating` before the async exit event could read it) fixed in round 1 (`019f1cf`: only the exit handler reads and clears the flag); scoped re-review: all addressed. Backend 3111/3111, displayDriver 58/58, integration 348/348, ratchet, lint. One minor deferred (a long comment on a one-line teardown); one out-of-scope note for the close review (`cleanup()` has no re-entrancy guard against a double shutdown signal — pre-existing, inert).
-- Rulings 25–28, each with its cost if wrong (ledger holds the long form):
+- Rulings 25–28, each with its cost if wrong (the scratch progress file holds the long form):
   25. `rung1.yml` installs Playwright's Chromium with the container-identical symlink; `up.sh` resolves `CHROMIUM_BIN` by the chain above and says so when none exists; the audit's expectation stays. — cost: none.
   26. A CI-fix task branch may be pushed for verification (the Rung-1 workflow self-triggers on its paths) and is deleted after merge. — cost: one extra remote branch per CI fix. (The session credential could not delete `claude/nice-curie-hescfv-t1a-ci`; owner cleanup.)
   27. (refines 13) The display exit handler reports `healthy` "closed while hidden" only for a clean close (code 0 or the driver's own SIGTERM, including its SIGKILL escalation) after a successful launch; any other exit while hidden, or an exit before the alive-check, is `down` with the code and signal; an exit while visible stays `down`. — cost: none; a crash showing red is the alarm-integrity rule.
   28. `rung1.yml` sets `kernel.apparmor_restrict_unprivileged_userns=0` before bring-up (runner physics; engine launch flags unchanged). — cost: none (a runner-only sysctl).
 - CI verdicts on the designated branch: run 297 (`3345b6d`, dispatched by hand after a `[skip ci]` docs push superseded the PR sync) 9/10 — integration red on the debounce test → ruling 27; run 298 (`6b223d0`) 10/10; run 299 (`fae51b6`) 9/10 — Tier L `toy-require-dormant` red on `24-scoreboard-restart-recovery` "data survives restart" 3/3 attempts; Rung-1 run 18 green. Run 300 (`fb2c29c`, the PR sync after the display-exit merge) 10/10 — all four Tier L legs green including `toy-require-dormant`, the integration job green with the ruling-27 fix in place; Rung-1 run 18 green. **T1a's CI is closed** on the designated branch.
-- Run 299's red leg is a pre-existing harness race, not T1a's (evidence in the ledger): with `workers=3` every worker's non-preserving `startOrchestrator` calls `clearSessionData()`, which in the Playwright process takes the file branch and deletes every file in the SHARED `backend/data/`; a restart test's restored instance reads its session from that directory a few seconds after its stop. In all three attempts a parallel worker's wipe landed inside that window (0.3–1.3 s after the stop). The same test was green on the other three legs and on this leg in runs 297/298. Home: T7a rig hygiene, beside the per-orchestrator LOGS_DIR finding — a per-worker DATA_DIR in `test-server.js` with `clearSessionData` scoped to it. No fix dispatched: a go-to-green call for the owner at checkpoint 2.
+- Run 299's red leg is a pre-existing harness race, not T1a's (evidence in the scratch progress file): with `workers=3` every worker's non-preserving `startOrchestrator` calls `clearSessionData()`, which in the Playwright process takes the file branch and deletes every file in the SHARED `backend/data/`; a restart test's restored instance reads its session from that directory a few seconds after its stop. In all three attempts a parallel worker's wipe landed inside that window (0.3–1.3 s after the stop). The same test was green on the other three legs and on this leg in runs 297/298. Home: T7a rig hygiene, beside the per-orchestrator LOGS_DIR finding — a per-worker DATA_DIR in `test-server.js` with `clearSessionData` scoped to it. No fix dispatched: a go-to-green call for the owner at checkpoint 2.
 - Findings carried: (v) the shared-`data/` wipe race above (T7a); (vi) `displayDriver.cleanup()` re-entrancy (close review); (vii) the revalidation timer imports after Jest teardown — eight other integration files lack a `stopRevalidation()` teardown (rig hygiene); (viii) the Winston EPIPE loop and the LOGS_DIR finding stand (T7a).
 - Owner-visible carries: delete the remote branch `claude/nice-curie-hescfv-t1a-ci`; the DNS name, the Bluetooth sink name, and the station count at Stage B.
 - Process notes for the record (owner asked whether the process was followed): the orchestrator re-ran the backend and scanner suites fresh before every merge; the Tier L legs and the rung-1 audit were run by the implementer, not re-run by the orchestrator, before T1a's merge (CI ran them instead — an accepted gap, recorded); the `[skip ci]` docs push that superseded a PR sync is why records now push only after the code push's run has finished.
