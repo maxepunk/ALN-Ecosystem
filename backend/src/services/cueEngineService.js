@@ -26,7 +26,7 @@ const EventEmitter = require('events');
 const logger = require('../utils/logger');
 const { executeCommand, SERVICE_DEPENDENCIES } = require('./commandExecutor');
 const registry = require('./serviceHealthRegistry');
-const { doorWording } = require('./dormancyWording');
+const { doorWording } = require('../gameRules/dormancyWording');
 const HeldItemsStore = require('./heldItemsStore');
 const TimelineRuntime = require('./cue/timelineRuntime');
 const {

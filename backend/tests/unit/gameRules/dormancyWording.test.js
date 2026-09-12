@@ -7,7 +7,7 @@
  * refusal, cue refusal, registry message, renderer summary).
  */
 
-const { doorWording } = require('../../../src/services/dormancyWording');
+const { doorWording } = require('../../../src/gameRules/dormancyWording');
 
 describe('doorWording', () => {
   it('profile → "not installed tonight"', () => {

@@ -9,7 +9,7 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const vlcService = require('./vlcMprisService'); // Load at top to avoid lazy require in timer callbacks
 const registry = require('./serviceHealthRegistry');
-const { doorWording } = require('./dormancyWording');
+const { doorWording } = require('../gameRules/dormancyWording');
 const fs = require('fs');
 const path = require('path');
 

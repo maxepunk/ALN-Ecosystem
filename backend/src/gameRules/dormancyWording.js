@@ -11,7 +11,7 @@
  *   operator → a human latched the service out of service mid-run
  *
  * Pure and tiny by design: `gameRules/resolution.js` imports it, so it must
- * never require anything from `services/` and must never do I/O.
+ * never import a service and must never do I/O.
  *
  * The GM Scanner carries a PARITY COPY at
  * `ALNScanner/src/ui/renderers/dormancyWording.js` — change both together.

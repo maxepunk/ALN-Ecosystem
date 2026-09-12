@@ -30,7 +30,7 @@
 
 const logger = require('../utils/logger');
 const { dormantServicesFor, familyInstalled } = require('../gameRules/endpointServices');
-const { doorWording } = require('./dormancyWording');
+const { doorWording } = require('../gameRules/dormancyWording');
 const registrySingleton = require('./serviceHealthRegistry');
 
 /**

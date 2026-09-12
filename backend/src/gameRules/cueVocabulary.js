@@ -10,7 +10,7 @@
  * in docs/reviews/2026-06-platform-review/showcontrol-internals-review.md.
  *
  * Only game-transaction vocabulary lives here. Engine events are defined in
- * src/services/cue/standingEvaluator.js.
+ * `standingEvaluator.js`, in the cue service directory.
  */
 
 /**

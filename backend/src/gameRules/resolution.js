@@ -1,10 +1,11 @@
 const { familyInstalled } = require('./endpointServices');
-// The one exception to "gameRules/ never requires services/": dormancyWording
-// is a frozen two-entry lookup with no state and no I/O, and the whole point
-// of it is that the resolver, the executor, the cue engine and the dashboard
-// all say the SAME sentence. A second copy here would be the drift it exists
-// to prevent.
-const { doorWording } = require('../services/dormancyWording');
+// doorWording is a frozen two-entry lookup with no state and no I/O, and the
+// whole point of it is that the resolver, the executor, the cue engine and
+// the dashboard all say the SAME sentence. It used to sit among the services
+// and forced an exception to this directory's no-service-imports rule; it is
+// itself a rule, so Block 2 T1a fix round 1 (ruling 21) moved it here and the
+// exception is gone.
+const { doorWording } = require('./dormancyWording');
 
 /**
  * resolve — the ratified C1 §2 resolution table as one pure function
