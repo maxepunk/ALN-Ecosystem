@@ -36,7 +36,7 @@ Per-mode fields (all already in game.schema.json):
 | `scoringPolicy` | `standard` (tables), `none` | Schema: string. GATE: a mode whose scoringPolicy the engine doesn't implement is UNDRIVABLE → activation refused (the F2 principle at mode level). Future values (`graph`, …) arrive WITH their engine module + capability id. |
 | `entityRole` | `ledger`, `attribution` | Same gate rule. Orthogonal to scoringPolicy by design — a future scored-attributed mode is schema-legal today. |
 | `countsTowardGroups` | `true`/`false` | Boolean, engine-complete. |
-| `displayBehavior.surface` | `scoreboard-rankings`, `scoreboard-evidence`, `none` | Same gate rule. `none` = transaction accepted, nothing publicly displayed (toy `appraise`). B12/slice 6 later makes the surface set itself pack-extensible; the RESOLUTION seam built here is what it plugs into. |
+| `displayBehavior.surface` | `scoreboard-rankings`, `scoreboard-evidence`, `none` | Same gate rule. `none` = transaction accepted, nothing publicly displayed (toy `appraise`). Slice 6 makes the three built-in surfaces pack-SELECTABLE/parameterizable; the surface SET stays engine-fixed at three (a genuinely NEW surface — the constellation renderer — is BILL-era headroom, ROADMAP §6/row 8.8). The RESOLUTION seam built here is what that parameterization plugs into. *(Corrected 2026-08-29 per program §13.2 — the earlier "pack-extensible surface set" wording overstated Phase-3 scope.)* |
 | `verb`, `label`, `defaultEntity` | strings | Presentation/prefill — never branched on. |
 
 **Openness = three concrete properties** (BILL scoping §2.1 made real):

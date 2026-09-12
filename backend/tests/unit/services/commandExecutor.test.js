@@ -121,6 +121,18 @@ jest.mock('../../../src/services/musicService', () => ({
   checkConnection: jest.fn(),
 }));
 
+// Slice 4 S3: lighting role normalization collaborators
+jest.mock('../../../src/services/profileService', () => ({
+  getLightingBinding: jest.fn(),
+  activateProfile: jest.fn(),
+  getProfile: jest.fn(),
+  getProfileInfo: jest.fn(),
+}));
+jest.mock('../../../src/services/packService', () => ({
+  getGameConfig: jest.fn(),
+  getLightingRoleFallback: jest.fn(),
+}));
+
 jest.mock('../../../src/services/serviceHealthRegistry', () => ({
   isHealthy: jest.fn().mockReturnValue(true),
   getStatus: jest.fn().mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() }),
@@ -228,15 +240,47 @@ describe('commandExecutor', () => {
       expect(result.source).toBe('gm');
     });
 
-    it('should execute session:create with source cue', async () => {
+    it('REFUSES session:create from a cue source — the auth floor (S6 review, F2-sec)', async () => {
+      // Session lifecycle is operator-only (CONTEXT.md §6). Before the
+      // dispatch-time guard this executed with source 'cue'; a refuter
+      // demonstrated exactly this as the pack-drives-operator-functions
+      // vulnerability. session:create is not in CUE_ACTIONS, so a
+      // non-'gm' source now fails closed regardless of the gate.
       const result = await executeCommand({
         action: 'session:create',
         payload: { name: 'Auto Game' },
         source: 'cue',
         trigger: 'manual'
       });
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/not permitted from a cue source \(auth floor\)/);
       expect(result.source).toBe('cue');
+    });
+
+    it('REFUSES a prototype-named action from a cue source (hasOwn, not truthy-index)', async () => {
+      // 'constructor' resolves off Object.prototype under a truthy-index
+      // guard; Object.hasOwn(CUE_ACTIONS, 'constructor') is false, so it
+      // fails closed like any other off-vocabulary action.
+      const result = await executeCommand({
+        action: 'constructor',
+        payload: {},
+        source: 'cue'
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/not permitted from a cue source \(auth floor\)/);
+    });
+
+    it('ALLOWS an in-vocabulary action from a cue source (the floor does not block cue content)', async () => {
+      // sound:stop IS in CUE_ACTIONS, so the auth-floor guard lets a
+      // cue-sourced dispatch through to the normal execution path.
+      const result = await executeCommand({
+        action: 'sound:stop',
+        payload: {},
+        source: 'cue'
+      });
+      // Reaches soundService (success depends on the mock), NOT the
+      // auth-floor refusal — that's the point.
+      expect(result.message).not.toMatch(/auth floor/);
     });
 
     it('should execute session:pause', async () => {
@@ -914,17 +958,24 @@ describe('commandExecutor', () => {
       expect(cueEngineService.fireCue).toHaveBeenCalledWith('opening', 'manual', undefined, 'gm');
     });
 
-    it('cue-source cue:fire keeps source cue with no manual trigger (F-SHOW-15)', async () => {
+    it('REFUSES cue:fire from a cue source — cue chaining is not a gated capability (S6 review, F2-sec)', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      // A cue whose command list contains cue:fire (cue chaining)
+      // cue:fire is not in CUE_ACTIONS, so the activation gate (rule 2)
+      // already rejects any pack cue declaring a cue:fire command — cue
+      // chaining is not a supported pack capability. No production path
+      // dispatches cue:fire with source 'cue' (the engine fires cues via
+      // fireCue() directly, never through executeCommand). The dispatch
+      // guard makes that alignment explicit: a non-'gm' source cannot
+      // reach cue:fire, so fireCue is never called.
       const result = await executeCommand({
         action: 'cue:fire',
         payload: { cueId: 'chained' },
         source: 'cue'
       });
-      expect(result.success).toBe(true);
-      expect(cueEngineService.fireCue).toHaveBeenCalledWith('chained', undefined, undefined, 'cue');
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/not permitted from a cue source \(auth floor\)/);
+      expect(cueEngineService.fireCue).not.toHaveBeenCalled();
     });
 
     it('should reject cue:fire without cueId', async () => {
@@ -1546,5 +1597,100 @@ describe('commandExecutor', () => {
       expect(result.errors[0].type).toBe('resource');
       expect(result.errors[0].message).toContain('undefined');
     });
+  });
+});
+
+describe('lighting role normalization (slice 4 S3 — D-4.4)', () => {
+  const profileService = require('../../../src/services/profileService');
+  const packService = require('../../../src/services/packService');
+  const lightingService = require('../../../src/services/lightingService');
+  const registry = require('../../../src/services/serviceHealthRegistry');
+  const logger = require('../../../src/utils/logger');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    registry.isHealthy.mockReturnValue(true);
+    registry.getStatus.mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() });
+    lightingService.activateScene.mockResolvedValue(true);
+    lightingService.sceneExists.mockReturnValue(true);
+    profileService.getLightingBinding.mockReturnValue(null);
+    packService.getLightingRoleFallback.mockReturnValue(null);
+  });
+
+  it('a bound role normalizes to its profile sceneId BEFORE the required-fields guard (red-team R1 kill case)', async () => {
+    profileService.getLightingBinding.mockReturnValue('scene.police_1');
+    const result = await executeCommand({
+      action: 'lighting:scene:activate',
+      payload: { role: 'police-arrival-1' },
+      source: 'cue',
+    });
+    expect(result.success).toBe(true);
+    expect(result.message).not.toMatch(/sceneId is required/);
+    expect(profileService.getLightingBinding).toHaveBeenCalledWith('police-arrival-1');
+    expect(lightingService.activateScene).toHaveBeenCalledWith('scene.police_1');
+  });
+
+  it('an unbound role falls to the pack lightingRoleFallbacks with a LOUD warn per fire (ledger L7)', async () => {
+    packService.getLightingRoleFallback.mockReturnValue('scene.police_1');
+    const result = await executeCommand({
+      action: 'lighting:scene:activate',
+      payload: { role: 'police-arrival-1' },
+      source: 'cue',
+    });
+    expect(result.success).toBe(true);
+    expect(lightingService.activateScene).toHaveBeenCalledWith('scene.police_1');
+    const fallbackWarns = logger.warn.mock.calls.filter(([msg]) => /lightingRoleFallbacks/.test(msg));
+    expect(fallbackWarns).toHaveLength(1);
+  });
+
+  it('an unresolvable role fails with the contracted message and never touches the service', async () => {
+    const result = await executeCommand({
+      action: 'lighting:scene:activate',
+      payload: { role: 'disco-mode' },
+      source: 'cue',
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/unresolvable lighting role 'disco-mode'/);
+    expect(lightingService.activateScene).not.toHaveBeenCalled();
+  });
+
+  it('a prototype-chain role name is unresolvable, never a TypeError (C11 class)', async () => {
+    // The real accessor's Object.hasOwn guard is pinned in the
+    // packService suite; here the mock returns null like any unknown.
+    const result = await executeCommand({
+      action: 'lighting:scene:activate',
+      payload: { role: 'constructor' },
+      source: 'cue',
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/unresolvable lighting role/);
+  });
+
+  it('a concrete GM sceneId payload bypasses normalization entirely (panel unchanged)', async () => {
+    const result = await executeCommand({
+      action: 'lighting:scene:activate',
+      payload: { sceneId: 'scene.interrogation_red' },
+      source: 'gm',
+    });
+    expect(result.success).toBe(true);
+    expect(profileService.getLightingBinding).not.toHaveBeenCalled();
+    expect(lightingService.activateScene).toHaveBeenCalledWith('scene.interrogation_red');
+  });
+
+  it('validateCommand mirrors the normalization before its sceneExists check — and stays warn-silent (pre-show sweep, not a fire)', async () => {
+    profileService.getLightingBinding.mockReturnValue(null);
+    packService.getLightingRoleFallback.mockReturnValue('scene.police_1');
+    lightingService.sceneExists.mockReturnValue(true);
+    const result = await validateCommand('lighting:scene:activate', { role: 'police-arrival-1' });
+    expect(result.valid).toBe(true);
+    expect(lightingService.sceneExists).toHaveBeenCalledWith('scene.police_1');
+    const fallbackWarns = logger.warn.mock.calls.filter(([msg]) => /lightingRoleFallbacks/.test(msg));
+    expect(fallbackWarns).toHaveLength(0);
+  });
+
+  it('validateCommand reports an unresolvable role as a resource error', async () => {
+    const result = await validateCommand('lighting:scene:activate', { role: 'disco-mode' });
+    expect(result.valid).toBe(false);
+    expect(JSON.stringify(result.errors)).toMatch(/unresolvable lighting role/);
   });
 });

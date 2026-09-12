@@ -14,8 +14,11 @@ const ACTION_DEFS = {
   'sound:stop': { label: 'Stop Sound', category: 'sound', fields: [
     { key: 'file', type: 'sound-picker', label: 'Sound File (blank = all)' },
   ]},
+  // A3 slice 4 (D-4.7c): pack cues address lights by ROLE, never a
+  // concrete Home Assistant sceneId — the installation profile (outside
+  // this tool's scope) binds each role to an instrument.
   'lighting:scene:activate': { label: 'Activate Scene', category: 'lighting', fields: [
-    { key: 'sceneId', type: 'scene-picker', label: 'Scene', required: true },
+    { key: 'role', type: 'role-picker', label: 'Lighting Role', required: true },
   ]},
   'video:queue:add': { label: 'Queue Video', category: 'video', fields: [
     { key: 'videoFile', type: 'video-picker', label: 'Video File', required: true },
@@ -66,7 +69,7 @@ export { ACTION_DEFS };
 // Cached asset lists
 let soundsCache = null;
 let videosCache = null;
-let scenesCache = null;
+let rolesCache = null;
 let playlistsCache = null;
 
 export async function ensureAssets() {
@@ -76,8 +79,12 @@ export async function ensureAssets() {
   if (!videosCache) {
     try { videosCache = await api.getVideos(); } catch { videosCache = []; }
   }
-  if (!scenesCache) {
-    try { scenesCache = await api.getScenes(); } catch { scenesCache = []; }
+  if (!rolesCache) {
+    // A3 slice 4 (D-4.7d): the lighting-role vocabulary for pack cues
+    // comes from game.json (via GET /config `pack.lightingRoles`), not
+    // the old Home Assistant scene list — the config bundle the page
+    // already fetches carries it, so no dedicated endpoint is needed.
+    try { rolesCache = (await api.getConfig()).pack?.lightingRoles || []; } catch { rolesCache = []; }
   }
   if (!playlistsCache) {
     try { playlistsCache = (await api.getMusicPlaylists()).playlists || []; } catch { playlistsCache = []; }
@@ -87,7 +94,7 @@ export async function ensureAssets() {
 export function invalidateAssetCache() {
   soundsCache = null;
   videosCache = null;
-  scenesCache = null;
+  rolesCache = null;
   playlistsCache = null;
 }
 
@@ -298,21 +305,22 @@ export function buildPayloadField(field, cmd, allCues, editorCtx) {
     );
     group.appendChild(select);
 
-  } else if (field.type === 'scene-picker') {
-    if (scenesCache && scenesCache.length > 0) {
+  } else if (field.type === 'role-picker') {
+    if (rolesCache && rolesCache.length > 0) {
       const select = el('select', {
         onChange: () => { cmd.payload[field.key] = select.value; editorCtx.markDirty(); },
       },
         el('option', { value: '' }, '— select —'),
-        ...scenesCache.map(s =>
-          el('option', { value: s.id, ...(s.id === currentVal ? { selected: true } : {}) }, `${s.name} (${s.id})`)
+        ...rolesCache.map(r =>
+          el('option', { value: r, ...(r === currentVal ? { selected: true } : {}) }, r)
         ),
       );
       group.appendChild(select);
     } else {
-      // Fallback to text input when HA is unreachable
+      // Fallback to text input when the pack declares no lightingRoles
+      // yet — still emits {role}, never a concrete sceneId (D-4.7c).
       const input = el('input', {
-        type: 'text', value: currentVal || '', placeholder: 'e.g. scene.game',
+        type: 'text', value: currentVal || '', placeholder: 'e.g. gameplay',
         onInput: () => { cmd.payload[field.key] = input.value; editorCtx.markDirty(); },
       });
       group.appendChild(input);

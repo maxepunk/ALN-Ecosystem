@@ -366,7 +366,7 @@ function buildPayloadSummary(entry) {
   const parts = [];
   if (p.file) parts.push(p.file);
   if (p.videoFile) parts.push(p.videoFile);
-  if (p.sceneId) parts.push(p.sceneId);
+  if (p.role) parts.push(p.role);
   if (p.cueId) parts.push(p.cueId);
   if (p.uri) parts.push(p.uri);
   if (p.playlistId) parts.push(p.playlistId);

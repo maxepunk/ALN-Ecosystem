@@ -25,6 +25,7 @@ const { createBrowserContext, createPage, closeAllContexts } = require('../setup
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { connectWithAuth, waitForEvent, disconnectSocket } = require('../../helpers/websocket-core');
+const { sendGMCommand } = require('../helpers/gm-command');
 
 let browser = null;
 let orchestratorInfo = null;
@@ -32,31 +33,6 @@ let vlcInfo = null;
 const { getCapabilities, refreshCapabilities, requireCapabilities, requireDegraded, formatManifest } = require('../helpers/capabilities');
 let caps = null;
 
-/**
- * Send a GM command via temporary WebSocket connection.
- * Follows the same pattern as GMScannerPage.startGame().
- *
- * @param {string} orchestratorUrl - Backend URL
- * @param {string} action - Command action (e.g., 'service:check')
- * @param {Object} payload - Command payload
- * @returns {Promise<Object>} Command acknowledgement
- */
-async function sendGMCommand(orchestratorUrl, action, payload = {}) {
-  const deviceId = `CMD_HELPER_${Date.now()}`;
-  const socket = await connectWithAuth(orchestratorUrl, ADMIN_PASSWORD, deviceId, 'gm');
-  try {
-    const ackPromise = waitForEvent(socket, 'gm:command:ack',
-      (ack) => ack?.data?.action === action, 10000);
-    socket.emit('gm:command', {
-      event: 'gm:command',
-      data: { action, payload },
-      timestamp: new Date().toISOString()
-    });
-    return await ackPromise;
-  } finally {
-    disconnectSocket(socket);
-  }
-}
 
 /**
  * Parse clock display text (MM:SS) to total seconds.
@@ -76,7 +52,11 @@ test.describe('GM Scanner - Show Control', () => {
     await clearSessionData();
     vlcInfo = await setupVLC();
     console.log(`VLC started: ${vlcInfo.type} mode`);
-    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
+    // ALN-pack-PINNED (slice 4 S4, D-4.7e — the 07c precedent): this flow
+    // asserts on ALN cue ids/behavior, which live in the ALN pack since the
+    // cutover. An explicit pin wins over E2E_PACK_PATH by design, so the
+    // flow tests identical ALN cue behavior on BOTH Tier L legs.
+    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000, packPath: require('path').resolve(__dirname, '../../../../ALN-TokenData') });
     browser = await chromium.launch({
       headless: true,
       args: ['--disable-dev-shm-usage', '--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors']
@@ -96,7 +76,7 @@ test.describe('GM Scanner - Show Control', () => {
     await closeAllContexts();
     await stopOrchestrator();
     await clearSessionData();
-    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
+    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000, packPath: require('path').resolve(__dirname, '../../../../ALN-TokenData') });
 
     // Refresh capabilities after restart (services may change state)
     try {

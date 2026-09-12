@@ -13,6 +13,7 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const Ajv2020 = require('ajv/dist/2020');
 const addFormats = require('ajv-formats');
@@ -27,6 +28,22 @@ const PACKS = [
 ];
 
 const readJson = (...p) => JSON.parse(fs.readFileSync(path.join(...p), 'utf8'));
+
+const FIXTURE_PACKS_DIR = path.resolve(__dirname, '../../e2e/fixtures/packs');
+
+// Every fixture pack directory as {name, dir}.
+const fixturePacks = () => fs.readdirSync(FIXTURE_PACKS_DIR, { withFileTypes: true })
+  .filter(e => e.isDirectory())
+  .map(e => ({ name: e.name, dir: path.join(FIXTURE_PACKS_DIR, e.name) }));
+
+// All packs (production + fixtures) whose game.json declares the given
+// sidecar pointer (e.g. 'strings', 'cues').
+const declaringPacks = (pointerKey) => [
+  { name: 'about-last-night', dir: TOKEN_DATA_DIR },
+  ...fixturePacks(),
+].filter(({ dir }) => {
+  try { return !!readJson(dir, 'game.json')[pointerKey]; } catch { return false; }
+});
 
 describe('game pack schema contract (A1)', () => {
   let ajv;
@@ -178,15 +195,7 @@ describe('game pack schema contract (A1)', () => {
     // that satisfies the schema — the engine gate walks leaves at
     // activation; this is the authoring-time contract twin.
     const stringsSchema = readJson(TOKEN_DATA_DIR, 'strings.schema.json');
-    const packsDir = path.resolve(__dirname, '../../e2e/fixtures/packs');
-    const declaring = [
-      { name: 'about-last-night', dir: TOKEN_DATA_DIR },
-      ...fs.readdirSync(packsDir, { withFileTypes: true })
-        .filter(e => e.isDirectory())
-        .map(e => ({ name: e.name, dir: path.join(packsDir, e.name) })),
-    ].filter(({ dir }) => {
-      try { return !!readJson(dir, 'game.json').strings; } catch { return false; }
-    });
+    const declaring = declaringPacks('strings');
 
     it('at least one pack declares a strings sidecar (the contract has a consumer)', () => {
       expect(declaring.length).toBeGreaterThan(0);
@@ -216,17 +225,124 @@ describe('game pack schema contract (A1)', () => {
     // packs may carry PARTIAL game.json overlays (parity-pack does), but
     // any pack the PACK_PATH seam can boot still needs a fresh manifest —
     // slice 2b edited parity-pack twice relying on manual regen alone.
-    const packsDir = path.resolve(__dirname, '../../e2e/fixtures/packs');
-    const fixturePacks = fs.readdirSync(packsDir, { withFileTypes: true })
-      .filter(e => e.isDirectory())
-      .map(e => e.name);
-
-    it.each(fixturePacks)('%s manifest sha1s/contentHash match the tree', (pack) => {
-      const dir = path.join(packsDir, pack);
+    it.each(fixturePacks().map(p => [p.name, p.dir]))('%s manifest sha1s/contentHash match the tree', (name, dir) => {
       const manifest = readJson(dir, 'pack-manifest.json');
       const files = buildFiles(dir);
       expect(manifest.files).toEqual(files);
       expect(manifest.contentHash).toBe(contentHash(files));
+    });
+  });
+
+  describe('cues pointer + lightingRoleFallbacks (slice 4 S1, D-4.2/D-4.5)', () => {
+    // Apply one mutation to the committed ALN game.json and return validity.
+    const validateMutated = (fn) => {
+      const game = readJson(TOKEN_DATA_DIR, 'game.json');
+      const copy = JSON.parse(JSON.stringify(game));
+      fn(copy);
+      return validateGame(copy);
+    };
+
+    it('the cues pointer is const-pinned to the canonical filename (3a strings precedent)', () => {
+      // Both manifest builders and the loader key on the literal
+      // 'cues.json'; a free-form pointer rebrands one consumer while the
+      // others stay keyed to the canonical name.
+      expect(validateMutated(g => { g.cues = 'cues.json'; })).toBe(true);
+      expect(validateMutated(g => { g.cues = 'show.json'; })).toBe(false);
+    });
+
+    it('lightingRoleFallbacks maps role names to concrete scene ids (ledger L7 — temporary)', () => {
+      expect(validateMutated(g => {
+        g.lightingRoles = ['gameplay', 'blackout'];
+        g.lightingRoleFallbacks = { gameplay: 'scene.game', blackout: 'scene.off' };
+      })).toBe(true);
+      // non-string scene id refused
+      expect(validateMutated(g => {
+        g.lightingRoleFallbacks = { gameplay: 7 };
+      })).toBe(false);
+      // a key outside the role-name convention refused
+      expect(validateMutated(g => {
+        g.lightingRoleFallbacks = { 'Scene.Game': 'scene.game' };
+      })).toBe(false);
+    });
+  });
+
+  describe('declared cues sidecars validate against cues.schema.json (slice 4 S1)', () => {
+    // Authoring-time twin of the S2 activation gate.
+    const cuesSchema = readJson(TOKEN_DATA_DIR, 'cues.schema.json');
+    const declaring = declaringPacks('cues');
+
+    it('at least one pack declares a cues sidecar (the contract has a consumer — S4 cutover)', () => {
+      expect(declaring.length).toBeGreaterThan(0);
+    });
+
+    it('every pack declaring a cues pointer ships a schema-valid sidecar', () => {
+      const validate = ajv.compile(cuesSchema);
+      for (const { name, dir } of declaring) {
+        const cues = readJson(dir, readJson(dir, 'game.json').cues);
+        if (!validate(cues)) {
+          throw new Error(`${name} cues violations:\n  ${explain(validate)}`);
+        }
+      }
+    });
+  });
+
+  describe('schema files never enter pack inventory (slice 4 S1, red-team Gm1)', () => {
+    // The EXCLUDE sets used to enumerate schema filenames literally, so
+    // every NEW schema (cues.schema.json here; slice 6/7 schemas next)
+    // silently entered inventory, got served, and moved contentHash —
+    // strings.schema.json had already slipped through when this landed.
+    // Both builders now exclude by the `.schema.json` suffix.
+    const allPacks = [
+      ...PACKS,
+      ...fixturePacks().map(p => ({ name: `${p.name} (fixture)`, dir: p.dir })),
+    ];
+
+    it.each(allPacks.map(p => [p.name, p.dir]))(
+      '%s: no committed or rebuilt inventory path ends .schema.json',
+      (name, dir) => {
+        const manifest = readJson(dir, 'pack-manifest.json');
+        const offenders = manifest.files
+          .map(f => f.path)
+          .filter(p => p.endsWith('.schema.json'));
+        expect(offenders).toEqual([]);
+        const rebuilt = buildFiles(dir)
+          .map(f => f.path)
+          .filter(p => p.endsWith('.schema.json'));
+        expect(rebuilt).toEqual([]);
+      }
+    );
+
+    it('the suffix rule covers schemas the literal EXCLUDE set never named', () => {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-suffix-'));
+      try {
+        fs.writeFileSync(path.join(tmp, 'tokens.json'), '{}');
+        fs.writeFileSync(path.join(tmp, 'cues.schema.json'), '{}');
+        fs.writeFileSync(path.join(tmp, 'theme.schema.json'), '{}');
+        // S5: a stray runtime logs/ dir (winston mkdirs relative to cwd)
+        // must never enter served inventory either
+        fs.mkdirSync(path.join(tmp, 'logs'));
+        fs.writeFileSync(path.join(tmp, 'logs', 'combined.log'), '');
+        expect(buildFiles(tmp).map(f => f.path)).toEqual(['tokens.json']);
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    it('the scoring-config.json tombstone stays excluded (S6 review — Node-side twin of the Python test)', () => {
+      // The Python builder pins this directly (test_excludes_schemas_
+      // legacy_and_tooling); the Node side asserted the exclusion only
+      // via the "byte-parity-pinned" comment, which binds only if a real
+      // pack still carries the retired file — none does. Plant it here so
+      // deleting the tombstone from the Node EXCLUDE fails a Node test.
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-tombstone-'));
+      try {
+        fs.writeFileSync(path.join(tmp, 'tokens.json'), '{}');
+        fs.writeFileSync(path.join(tmp, 'game.json'), '{}');
+        fs.writeFileSync(path.join(tmp, 'scoring-config.json'), '{}');
+        expect(buildFiles(tmp).map(f => f.path)).toEqual(['game.json', 'tokens.json']);
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
     });
   });
 

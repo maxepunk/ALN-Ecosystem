@@ -23,6 +23,9 @@ const soundService = require('./soundService');
 const musicService = require('./musicService');
 const scoreboardControlService = require('./scoreboardControlService');
 const registry = require('./serviceHealthRegistry');
+const profileService = require('./profileService');
+const packService = require('./packService');
+const { CUE_ACTIONS } = require('../gameRules/cueValidation');
 
 // Config-tool cue authoring serializes booleans as the strings 'true'/'false'
 // via a <select>; GM Scanner live controls send real booleans. `!!"false"` is
@@ -99,6 +102,48 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
   logger.info(`[executeCommand] action=${action} source=${source}${trigger ? ` trigger=${trigger}` : ''}`);
 
   try {
+    // Auth-floor enforcement at DISPATCH (S6 review, F2-sec — defense in
+    // depth). The pack activation gate restricts cue content to the
+    // cue-action vocabulary, but before this guard that gate was the ONLY
+    // line: nothing re-checked membership at execution, so any path that
+    // reached loadCues with un-gated cues (a mid-boot cues.json swap, a
+    // pre-activation read, an injected fixture) could drive operator-only
+    // functions. Cue-sourced commands (source !== 'gm') may invoke ONLY
+    // CUE_ACTIONS — the auth floor (session lifecycle, score
+    // intervention, transaction surgery, system:reset) stays operator-
+    // only even when the gate does not hold. Object.hasOwn, not
+    // truthy-index: an action named 'constructor' must not resolve off
+    // the prototype chain (C11 class).
+    if (source !== 'gm' && !Object.hasOwn(CUE_ACTIONS, action)) {
+      logger.warn(`[executeCommand] REFUSED off-vocabulary action '${action}' from source '${source}' (auth floor)`);
+      return {
+        success: false,
+        message: `action '${action}' is not permitted from a ${source} source (auth floor)`,
+        source,
+      };
+    }
+
+    // Lighting role → sceneId normalization (A3 slice 4 S3, D-4.4).
+    // MUST run before the REQUIRED_PAYLOAD_FIELDS loop: that loop maps
+    // lighting:scene:activate → ['sceneId'] and would reject every
+    // role-form payload with a misleading "sceneId is required" on all
+    // four dispatch paths (red-team R1). After this block, every
+    // downstream guard sees a normalized sceneId. Concrete-sceneId
+    // payloads (the GM panel form) bypass entirely.
+    if (action === 'lighting:scene:activate'
+        && payload && payload.sceneId === undefined
+        && typeof payload.role === 'string' && payload.role.length > 0) {
+      const sceneId = _resolveLightingRole(payload.role, { warnOnFallback: true });
+      if (!sceneId) {
+        return {
+          success: false,
+          message: `unresolvable lighting role '${payload.role}' (no profile binding, no pack fallback)`,
+          source,
+        };
+      }
+      payload = { ...payload, sceneId };
+    }
+
     // Required-field validation FIRST (see REQUIRED_PAYLOAD_FIELDS rationale)
     for (const field of REQUIRED_PAYLOAD_FIELDS[action] || []) {
       if (!payload?.[field]) {
@@ -814,6 +859,32 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
   }
 }
 
+/**
+ * Resolve a pack lighting role to a concrete scene id (A3 slice 4 S3).
+ * Order: installation-profile binding, then the pack's TEMPORARY
+ * lightingRoleFallbacks block (ledger L7 — every fallback-resolved FIRE
+ * warns loudly; validateCommand's pre-show sweep resolves silently).
+ * Returns null when unresolvable.
+ * @param {string} role
+ * @param {{warnOnFallback: boolean}} opts
+ * @returns {string|null}
+ */
+function _resolveLightingRole(role, { warnOnFallback }) {
+  const bound = profileService.getLightingBinding(role);
+  if (bound) return bound;
+  const sceneId = packService.getLightingRoleFallback(role);
+  if (sceneId) {
+    if (warnOnFallback) {
+      logger.warn(
+        `[executeCommand] lighting role '${role}' resolved via pack lightingRoleFallbacks → '${sceneId}' — ` +
+        'TEMPORARY (ledger L7, retires at C4): bind the role in the installation profile'
+      );
+    }
+    return sceneId;
+  }
+  return null;
+}
+
 async function validateCommand(action, payload = {}) {
   const requiredService = SERVICE_DEPENDENCIES[action];
   const errors = [];
@@ -833,10 +904,22 @@ async function validateCommand(action, payload = {}) {
       if (!videoQueueService.videoFileExists(payload.videoFile))
         errors.push({ type: 'resource', message: `Video file not found: ${payload.videoFile}` });
       break;
-    case 'lighting:scene:activate':
-      if (!lightingService.sceneExists(payload.sceneId))
-        errors.push({ type: 'resource', message: `Scene not found: ${payload.sceneId}` });
+    case 'lighting:scene:activate': {
+      // Mirror the executeCommand role normalization (S3) so the
+      // pre-show sweep checks the scene a role-form cue will really hit
+      // — silently: validation is not a fire, no L7 warn.
+      let sceneId = payload.sceneId;
+      if (sceneId === undefined && typeof payload.role === 'string' && payload.role.length > 0) {
+        sceneId = _resolveLightingRole(payload.role, { warnOnFallback: false });
+        if (!sceneId) {
+          errors.push({ type: 'resource', message: `unresolvable lighting role '${payload.role}' (no profile binding, no pack fallback)` });
+          break;
+        }
+      }
+      if (!lightingService.sceneExists(sceneId))
+        errors.push({ type: 'resource', message: `Scene not found: ${sceneId}` });
       break;
+    }
     case 'audio:route:set':
       if (!audioRoutingService.sinkExists(payload.sink))
         errors.push({ type: 'resource', message: `Audio sink not found: ${payload.sink}` });

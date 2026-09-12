@@ -35,7 +35,11 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
         // VLC must be set up BEFORE orchestrator starts (vlcService connects on startup)
         vlcInfo = await setupVLC();
         console.log(`VLC started: ${vlcInfo.type} mode`);
-        orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
+        // ALN-pack-PINNED (slice 4 S4, D-4.7e — the 07c precedent): this flow
+        // asserts on ALN cue ids/behavior, which live in the ALN pack since the
+        // cutover. An explicit pin wins over E2E_PACK_PATH by design, so the
+        // flow tests identical ALN cue behavior on BOTH Tier L legs.
+        orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000, packPath: require('path').resolve(__dirname, '../../../../ALN-TokenData') });
         browser = await chromium.launch({
             headless: true,
             args: ['--disable-dev-shm-usage', '--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors']

@@ -479,3 +479,21 @@ SF_Summary: [Optional summary]
 - 'SUBMODULE_MANAGEMENT.md' - Git submodule workflows
 - 'backend/contracts/README.md' - API contracts
 - 'logs/README_LOG_ARCHIVAL.md' - Log maintenance procedures
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `maxepunk/ALN-Ecosystem`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), labels equal to role names. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context: root `CONTEXT.md` (the ubiquitous language — SEEDED 2026-08-29, read it before designing or naming anything) + per-component `CONTEXT.md` files created lazily via `CONTEXT-MAP.md`; root `docs/adr/` for system-wide decisions. See `docs/agents/domain.md`.
+
+### Process
+
+Skill wiring (mattpocock-skills by trigger), the five session/continuity rules (the stage is the unit; workflows carry bulk reads; write for the cold agent), and workflow-prompt standards. See `docs/agents/process.md`.

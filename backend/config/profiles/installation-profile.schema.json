@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aln.engine/installation-profile.schema.json",
+  "title": "Installation Profile — v1",
+  "description": "The venue document (C1, ratified 2026-08-22; design: docs/plans/2026-07-09-phase3-1-installation-profile.md §1). It records what is installed for one event and binds the pack's abstract names to physical things. It is engine-side config, never pack content, homed here per owner answer OQ6 (slice 4). profileService loads one profile frozen at boot, through the PROFILE_PATH seam. The v1 engine reads kind, schemaVersion, profileId, forPack, and bindings.lighting; nothing else. The other sections are the ratified C1 shape. They are typed to catch authoring typos, and C2/C3 (resolution, preflight) consume them as they build. Open interiors (endpoints) get pinned by the slice that consumes them. Venue details never enter the pack. Pack content never names venue instruments.",
+  "type": "object",
+  "required": ["kind", "schemaVersion", "profileId"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "const": "installation-profile"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "profileId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "description": "Bumped on every save (F-TOOL-12).",
+      "type": "integer",
+      "minimum": 1
+    },
+    "forPack": {
+      "description": "Optional pack pin; tooling warns on mismatch, never refuses.",
+      "type": "string",
+      "minLength": 1
+    },
+    "network": {
+      "description": "Network posture (2026-07-09 decision). kit-network is standard: the kit carries its own router, the orchestrator Pi has a reserved IP and answers the public DNS name on the LAN. venue-wifi is the fallback; its dynamic-DNS fields arrive with the Track-E E2 build (schema evolution).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": ["kit-network", "venue-wifi"]
+        },
+        "kitNetwork": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "ssid": {
+              "type": "string",
+              "minLength": 1
+            },
+            "orchestratorIp": {
+              "type": "string",
+              "minLength": 1
+            },
+            "orchestratorName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "localDnsOverride": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "orchestrator": {
+      "description": "The stack is ONE switch (kit-model decision). true: every stack service is expected live, and a missing one is a FAULT. false: the minimum install tier (player scanners and tokens only) — no orchestrator features.",
+      "type": "boolean"
+    },
+    "endpoints": {
+      "description": "What equipment is installed tonight. An absent endpoint makes its features DORMANT by configuration, never an error (C2/C3 semantics). The interior shape stays open in v1; C2 pins it when resolution becomes the consumer.",
+      "type": "object"
+    },
+    "bindings": {
+      "description": "B8: pack lighting roles → venue instruments. Keys must be declared in the pack's game.json lightingRoles (tooling/preflight check, not expressible here). v1 drives the ha provider only; WLED and friends are schema-evolution headroom.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lighting": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "required": ["ha"],
+            "additionalProperties": false,
+            "properties": {
+              "ha": {
+                "description": "A concrete Home Assistant scene id, e.g. 'scene.police_1'. Concrete instrument names live HERE, never in pack cues.",
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "audio": {
+      "description": "B7: venue audio config (routes + ducking stay venue, never pack).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "routes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "ducking": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["when", "duck", "to"],
+            "additionalProperties": false,
+            "properties": {
+              "when": {
+                "type": "string",
+                "minLength": 1
+              },
+              "duck": {
+                "type": "string",
+                "minLength": 1
+              },
+              "to": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "fadeMs": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    "env": {
+      "description": "The venue-owned slice of .env (network/infra keys only; game-scoped keys live in game.json per B11). null = use the engine default.",
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "null"]
+      }
+    }
+  }
+}

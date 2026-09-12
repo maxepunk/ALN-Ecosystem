@@ -26,15 +26,20 @@ from pathlib import Path
 
 EXCLUDE = {
     "pack-manifest.json",
-    "game.schema.json",
-    "pack-manifest.schema.json",
-    "tokens.schema.json",
     "scoring-config.json",  # TOMBSTONE: retired by ledger L1 — a resurrected copy must never re-enter served pack inventory
     "CLAUDE.md",
     "README.md",
 }
 
-SKIP_DIRS = {"node_modules", "shared"}
+
+def _is_schema_file(rel):
+    """Slice 4 S1 (red-team Gm1): schemas are excluded by SUFFIX, not by a
+    literal name list — cues.schema.json and every future schema stay out
+    of served inventory without another builder edit."""
+    return rel.endswith(".schema.json")
+
+
+SKIP_DIRS = {"node_modules", "shared", "logs"}  # logs: a stray runtime log dir must never enter served inventory
 
 
 def role_for(rel_path):
@@ -69,7 +74,7 @@ def _walk(directory, base, out):
                 continue
             _walk(entry, base, out)
         elif entry.is_file():
-            if rel in EXCLUDE:
+            if rel in EXCLUDE or _is_schema_file(rel):
                 continue
             if rel.endswith(".html"):
                 continue

@@ -103,10 +103,15 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       }
     }
 
+    // ALN-pack-PINNED (slice 4 S4, D-4.7e — the 07c precedent): this flow
+    // asserts on ALN cue ids/behavior, which live in the ALN pack since the
+    // cutover. An explicit pin wins over E2E_PACK_PATH by design, so the
+    // flow tests identical ALN cue behavior on BOTH Tier L legs.
     orchestratorInfo = await startOrchestrator({
       https: true,
       // Dynamic port assignment (port=0) prevents conflicts when running parallel workers
-      timeout: 30000
+      timeout: 30000,
+      packPath: require('path').resolve(__dirname, '../../../../ALN-TokenData'),
     });
 
     // Select test tokens dynamically from production database

@@ -83,6 +83,15 @@ describe('standingEvaluator', () => {
         { x: 1 }
       )).toBe(false);
     });
+
+    it('fails closed for a prototype-named operator, never truthy off the chain (S6 review, F5-sec)', () => {
+      // 'constructor'/'toString' resolve to Object.prototype members
+      // under a truthy-index lookup and would evaluate truthy — a cue
+      // that matches on everything. Object.hasOwn makes them unknown ops.
+      expect(evaluateConditions([{ field: 'x', op: 'constructor', value: 1 }], { x: 1 })).toBe(false);
+      expect(evaluateConditions([{ field: 'x', op: 'toString', value: 1 }], { x: 1 })).toBe(false);
+      expect(evaluateConditions([{ field: 'x', op: 'valueOf', value: 1 }], { x: 1 })).toBe(false);
+    });
   });
 
   describe('parseClockTime()', () => {
@@ -97,6 +106,33 @@ describe('standingEvaluator', () => {
 
     it('throws for invalid format', () => {
       expect(() => parseClockTime('not-a-time')).toThrow(/invalid/i);
+    });
+  });
+
+  describe('findMatchingClockCues() invalid-clock warn latch (S6 review, F5-state)', () => {
+    const {
+      findMatchingClockCues, resetClockWarnings,
+    } = require('../../../../src/services/cue/standingEvaluator');
+    const logger = require('../../../../src/utils/logger');
+
+    it('warns ONCE per bad cue across many ticks, and re-warns after resetClockWarnings()', () => {
+      resetClockWarnings();
+      const cues = new Map([['bad', { id: 'bad', trigger: { clock: '90 minutes' } }]]);
+      const warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+      try {
+        // 10 ticks (a real show ticks ~7,200 times) — one warn total.
+        for (let s = 0; s < 10; s++) findMatchingClockCues(cues, new Set(), new Set(), s);
+        const badClockWarns = () => warnSpy.mock.calls.filter(([m]) => /invalid time/.test(m)).length;
+        expect(badClockWarns()).toBe(1);
+
+        // A new cue set (loadCues/reset) clears the latch → re-warns.
+        resetClockWarnings();
+        findMatchingClockCues(cues, new Set(), new Set(), 11);
+        expect(badClockWarns()).toBe(2);
+      } finally {
+        warnSpy.mockRestore();
+        resetClockWarnings();
+      }
     });
   });
 

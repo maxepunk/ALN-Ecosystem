@@ -91,7 +91,11 @@ test.describe('Player Video Lifecycle @hardware', () => {
     await clearSessionData();
     vlcInfo = await setupVLC();
     console.log(`VLC started: ${vlcInfo.type} mode`);
-    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
+    // ALN-pack-PINNED (slice 4 S4, D-4.7e — the 07c precedent): this flow
+    // asserts on ALN cue ids/behavior, which live in the ALN pack since the
+    // cutover. An explicit pin wins over E2E_PACK_PATH by design, so the
+    // flow tests identical ALN cue behavior on BOTH Tier L legs.
+    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000, packPath: require('path').resolve(__dirname, '../../../../ALN-TokenData') });
 
     browser = await chromium.launch({
       headless: true,
@@ -189,7 +193,7 @@ test.describe('Player Video Lifecycle @hardware', () => {
     // Fresh orchestrator: previous test's video/session state would interfere
     await stopOrchestrator();
     await clearSessionData();
-    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
+    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000, packPath: require('path').resolve(__dirname, '../../../../ALN-TokenData') });
 
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
@@ -242,7 +246,7 @@ test.describe('Player Video Lifecycle @hardware', () => {
     // Fresh orchestrator: previous test's video/session state would interfere
     await stopOrchestrator();
     await clearSessionData();
-    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
+    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000, packPath: require('path').resolve(__dirname, '../../../../ALN-TokenData') });
 
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);

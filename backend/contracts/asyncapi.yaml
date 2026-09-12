@@ -1629,7 +1629,18 @@ components:
         - `audio:route:set` — `{stream: 'video'|'music'|'sound', sink: 'hdmi'|'bluetooth'|<pipewire-sink-name>}`. The logical aliases `hdmi`/`bluetooth` resolve to the first matching sink; a specific PipeWire sink name (e.g. `bluez_output.AA_BB_CC_DD_EE_FF.1`) targets that exact device. The GM dropdown sends the specific sink name.
           Per-stream routing for all three streams. The GM sends a logical alias;
           audioRoutingService resolves it to an actual PipeWire sink name.
-        - `lighting:scene:activate` — `{sceneId: string}` (required, HA entity ID)
+        - `lighting:scene:activate` — exactly one of two payload forms.
+          `{sceneId: string}` is the concrete form (an HA entity ID; the GM
+          panel sends this, unchanged). `{role: string}` is the pack form
+          (a lighting role from game.json `lightingRoles` — B8, slice 4):
+          pack cues address lights by role, and the engine normalizes
+          role → sceneId at the top of executeCommand, before any payload
+          or health checks. Resolution order: the installation profile's
+          `bindings.lighting[role].ha`, else the pack's
+          `lightingRoleFallbacks[role]` (each such fire warns loudly),
+          else the command fails with "unresolvable lighting role" on the
+          `cue:error` channel. A payload with a concrete `sceneId`
+          bypasses normalization entirely.
         - `lighting:scenes:refresh` — `{}`
 
         **Breaking Changes**: Admin commands moved from HTTP POST to WebSocket (proper transport).
@@ -1791,6 +1802,14 @@ components:
               payload:
                 sceneId: "scene.interrogation_red"
             timestamp: "2025-10-15T19:30:00.000Z"
+        - name: Lighting Scene Activate by Role (pack cue form, slice 4)
+          payload:
+            event: gm:command
+            data:
+              action: lighting:scene:activate
+              payload:
+                role: "police-arrival-1"
+            timestamp: "2026-08-29T19:30:00.000Z"
         - name: Lighting Scenes Refresh
           payload:
             event: gm:command

@@ -191,6 +191,11 @@ async function initializeServices() {
     // call take the uncached live-disk path.
     require('./services/packService').activatePack();
 
+    // A3 slice 4 S3: freeze the installation profile at the same boot
+    // moment (packService template). A broken venue profile degrades
+    // with a loud warn — it never refuses the boot.
+    require('./services/profileService').activateProfile();
+
     // Load tokens from service (handles submodule paths and fallback)
     const tokenService = require('./services/tokenService');
     const tokens = tokenService.loadTokens();
@@ -233,20 +238,13 @@ async function initializeServices() {
     }
 
     // Initialize Phase 1 services (game clock, cue engine, sound)
-    // Load cue definitions from config
-    const fs = require('fs').promises;
-    const path = require('path');
-    const cuesPath = path.join(__dirname, '../config/environment/cues.json');
-    try {
-      const cuesData = await fs.readFile(cuesPath, 'utf8');
-      const cuesConfig = JSON.parse(cuesData);
-      // Support both plain array and wrapped {cues: [...]} formats
-      const cuesArray = Array.isArray(cuesConfig) ? cuesConfig : (cuesConfig.cues || []);
-      cueEngineService.loadCues(cuesArray);
-      logger.info('Cue engine loaded cue definitions', { count: cuesArray.length });
-    } catch (err) {
-      logger.warn('Failed to load cue definitions - cue engine will be empty', { error: err.message });
-    }
+    // Cues are PACK content (A3 slice 4 S4): the frozen activation
+    // snapshot, already gate-validated. A pack with no cues declares
+    // nothing and the engine runs with an empty cue set — benign
+    // emptiness, no warn.
+    const packCues = require('./services/packService').getCues() || [];
+    cueEngineService.loadCues(packCues);
+    logger.info('Cue engine loaded cue definitions', { count: packCues.length, source: 'pack' });
 
     // Wire game events to cue engine (shared with systemReset re-initialization)
     const listenerRegistry = require('./websocket/listenerRegistry');
@@ -263,6 +261,7 @@ async function initializeServices() {
     });
 
     // Load ducking rules from routing config
+    const fs = require('fs').promises;
     const routingPath = path.join(__dirname, '../config/environment/routing.json');
     try {
       const routingData = await fs.readFile(routingPath, 'utf8');

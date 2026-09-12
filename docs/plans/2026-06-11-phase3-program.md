@@ -450,3 +450,64 @@ Phase 4 sub-gates remain UNCHANGED.
    in-repo fully-bound ALN installation profile, which presupposes a
    ratified C1 schema — C1 (still DRAFT; legacy-preset import decision
    pending) is now an explicit slice-4 prerequisite.
+
+## 13. Amendments — 2026-08-29 (roadmap ratification + owner grill)
+
+Source: the 2026-08-29 four-round owner grill (slice-4 OQs + plan
+ambiguity sweep `wf_f2fb3614` + post-Phase-3 corpus read `wf_284511f8`).
+Full-arc frame now lives in `ROADMAP.md` (RATIFIED r2) — the standing
+rule there binds this doc too: every deferral must point at a NAMED
+roadmap entry. DoD (§7) substance unchanged except item 3 below.
+
+1. **§3 slice-4 scope narrowing (owner-ruled):** cue SOUND references
+   ship as concrete filenames this slice — a logged deviation from the
+   "never concrete venue filenames" clause; packaging lands at the
+   B-pages pack-manager media page (ROADMAP §8.1). The music/playlist
+   REFERENCE move is DEFERRED entirely (zero ALN cue music refs; the
+   definitions carry a contracted live-write surface — ROADMAP §8.1).
+   Media FILE carriage is out of Phase 3 for good reason: media never
+   lives in git packs (ROADMAP §2.3, the ratified media-bundle model).
+2. **§3 slice-6 reading ratified (minimal):** packs SELECT and
+   parameterize the built-in three surfaces; pack-DEFINED new surfaces
+   stay headroom (constellation renderer rides ROADMAP §6). Matrix row
+   2.4's reclassification is logged at slice-6 open (R13's next
+   exercise). `display.idleLoop` ships as a venue-channel NAME
+   reference (3a's deferral re-pointed at ROADMAP §8.3). The
+   slice1-modes.md:39 "pack-extensible" wording is corrected by this
+   amendment to match the pack-schemas honesty table.
+3. **§1/§7 toy-gate wording reconciled:** Phase 3's completion gate is
+   the DUAL-PACK TIER L run (exercised every slice); the tier-ladder /
+   scripted-capability-profiles proof is Phase 4 acceptance, where the
+   kit-model decision already assigns it. §1's parenthetical reads
+   accordingly.
+4. **§3 slice-7 ruled:** (a) the B9 session-bundle schema lands in
+   slice 7 as an engine contract artifact (versioned, reserved
+   per-game namespaces, no Phase-3 consumer — unblocks the Phase-4 D
+   gate); (b) report mechanism = structured WORDING block, no template
+   language (headings/structure stay engine-fixed as the external
+   pipeline's parse anchors — the report `★` is a contracted delimiter,
+   session-report-contract.md:64; wording becomes pack-declared incl.
+   the missing `verbNoun`); ALN renders byte-identical under the
+   golden master; the toy pack diverges. Scope = the scanner generator
+   only.
+5. **Theme unit boundary ruled:** star-drop = the three GM-scanner
+   display sites only (config-tool previews + the report ★ excluded);
+   "Q5 depth" declared discharged by the closers; the unit is governed
+   as a full A3 slice (design doc, honest estimate, red-team,
+   dual-pack gate).
+6. **§7 B0.3 auth scope ruled (narrow):** v1 enforces functions only on
+   operator-credentialed surfaces; `/api/scan` stays anonymous with a
+   ledger row naming Phase-4 E4 as its retirement; zero scanner
+   firmware work in Phase 3. Standing constraint ratified: players and
+   scanners NEVER get user-facing logins (ROADMAP §2.1).
+7. **C2/C4 scope ruled:** the C1 §4 headroom table governs — planning
+   view is post-Phase-3 (a free CLI/JSON face of resolve() is
+   permitted, not owed). Phase-3 Venue minimum = C4's lighting-bindings
+   page + a thin profile-manager page (list/open/save/version/
+   export-import); other proposed venue pages carry a Phase-4/5
+   pointer (ROADMAP §8.4).
+8. **§12.1 pointer made real:** PHASE3-STATUS now carries the single
+   "Final cutover" enumeration, and the cutover MECHANISM is ratified
+   as the blue/green Pi swap (ROADMAP §3b) — green-Pi work opens after
+   Phase-3 close at the earliest (owner direction). The 2026-09-18 →
+   2026-10-18 weekly ALN run executes on `production-2026-07`.

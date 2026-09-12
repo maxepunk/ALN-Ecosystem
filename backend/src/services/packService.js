@@ -25,6 +25,7 @@ const path = require('path');
 const logger = require('../utils/logger');
 const { parseMoneyFormat } = require('../gameRules/formatting');
 const { normalizedClaimedLabel, normalizedIcon, normalizedEntityLabel } = require('../gameRules/modeSemantics');
+const { validateCuesBlock } = require('../gameRules/cueValidation');
 
 const DEFAULT_PACK_DIR = path.join(__dirname, '../../../ALN-TokenData');
 
@@ -52,6 +53,9 @@ const ENGINE_CAPABILITIES = new Set([
   'scoring.tabular',      // baseValues × typeMultipliers tables
   'groupRules.all',       // all-of-group completion
   'duplicatePolicy.once', // FCFS session-scoped claims
+  'cues.standing',        // event/clock-triggered standing cues (slice 4)
+  'cues.timeline',        // compound cue timelines, three-segment clock (slice 4)
+  'lighting.roles',       // role-addressed lighting, profile-bound (slice 4)
 ]);
 
 // Per-mode flag VALUES this engine can drive (A3 slice 1 — mode
@@ -83,6 +87,7 @@ let activated = false;
 let activeManifest = null;
 let activeGameConfig = null;
 let activeStrings = null;
+let activeCues = null;
 let warnedDriftHash = false;
 let warnedLegacyScoring = false;
 
@@ -205,6 +210,93 @@ function _readDiskGameConfig() {
 }
 
 /**
+ * The pack's TEMPORARY concrete-id fallback for one lighting role
+ * (ledger L7 — retires at C4). Null when undeclared. Keeps pack-shape
+ * knowledge here, behind a normalized accessor (the getScoringRules
+ * idiom); Object.hasOwn so prototype-chain names never resolve (C11).
+ * @param {string} role
+ * @returns {string|null}
+ */
+function getLightingRoleFallback(role) {
+  const gameConfig = getGameConfig();
+  const fallbacks = gameConfig && gameConfig.lightingRoleFallbacks;
+  if (!fallbacks || typeof fallbacks !== 'object') return null;
+  if (typeof role !== 'string' || !Object.hasOwn(fallbacks, role)) return null;
+  const sceneId = fallbacks[role];
+  return (typeof sceneId === 'string' && sceneId.length > 0) ? sceneId : null;
+}
+
+/**
+ * Read the pack's tokens.json, or null when absent/unreadable (the
+ * token loader refuses separately). Shared by every gate block that
+ * resolves against the token database — one read shape, three readers.
+ * @returns {Object|null}
+ */
+function _readPackTokens() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Load and shape-check the declared show-cues sidecar (A3 slice 4 S2).
+ * Mirrors _loadDeclaredStrings: declared means present, canonical, and
+ * the header form {kind: 'cues', schemaVersion, cues: [...]}. Returns
+ * the cues ARRAY on success; rule validation happens in
+ * gameRules/cueValidation (the dep-free seam the config-tool shares).
+ * @param {Object} gameConfig
+ * @returns {{value: Array<Object>|null, problems: string[]}}
+ */
+function _loadDeclaredCues(gameConfig) {
+  const declared = gameConfig && gameConfig.cues;
+  if (!declared) return { value: null, problems: [] };
+
+  // Canonical filename is the CONTRACT (game.schema.json const): the
+  // manifest role and the engine's pack-file resolution are keyed to
+  // 'cues.json'. Hand-authored PACK_PATH packs bypass the schema, so
+  // the gate enforces it too.
+  if (declared !== 'cues.json') {
+    return {
+      value: null,
+      problems: [`game.json declares cues '${declared}' — the sidecar must be named 'cues.json' (canonical filename contract; manifest role + engine loader are keyed to it)`],
+    };
+  }
+
+  const cuesPath = path.join(getPackDir(), declared);
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(cuesPath, 'utf8'));
+  } catch (err) {
+    return {
+      value: null,
+      problems: [`game.json declares cues '${declared}' but ${declared} is unreadable (${err.message})`],
+    };
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return {
+      value: null,
+      problems: [`game.json declares cues '${declared}' but ${declared} is not the header form (a JSON object {kind, schemaVersion, cues: [...]})`],
+    };
+  }
+
+  const problems = [];
+  if (parsed.schemaVersion !== undefined && parsed.schemaVersion !== PACK_SCHEMA_VERSION) {
+    problems.push(`${declared} schemaVersion ${parsed.schemaVersion} (engine reads ${PACK_SCHEMA_VERSION})`);
+  }
+  if (parsed.kind !== undefined && parsed.kind !== 'cues') {
+    problems.push(`${declared} kind '${parsed.kind}' (expected 'cues')`);
+  }
+  if (!Array.isArray(parsed.cues)) {
+    problems.push(`${declared} — 'cues' must be an array`);
+    return { value: null, problems };
+  }
+  return { value: problems.length === 0 ? parsed.cues : null, problems };
+}
+
+/**
  * Load the pack's DECLARED strings sidecar (A3 slice 3a). Posture:
  * an UNDECLARED file gates nothing (missing strings are benign wording —
  * consumers keep their baked defaults, the opposite class from silent
@@ -300,7 +392,7 @@ function _compareVersions(a, b) {
  * loud shims.
  * @throws {Error} when the pack requires what this engine lacks
  */
-function _gateCheck(manifest, gameConfig) {
+function _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad) {
   const problems = [];
 
   if (manifest) {
@@ -460,10 +552,7 @@ function _gateCheck(manifest, gameConfig) {
     // are LEGAL (the UNKNOWN bucket, 3 in ALN production data); packs
     // without a usable scoring block gate nothing (shim path).
     if (_isUsableScoring(gameConfig.scoring)) {
-      let tokensForTypes = null;
-      try {
-        tokensForTypes = JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
-      } catch { /* no tokens.json — the loader refuses separately */ }
+      const tokensForTypes = _readPackTokens();
       if (tokensForTypes) {
         const uncovered = new Set();
         for (const token of Object.values(tokensForTypes)) {
@@ -494,10 +583,7 @@ function _gateCheck(manifest, gameConfig) {
     // (tokens.schema.json makes a "(xN)" suffix illegal; the sync is the
     // sole parser of the authoring shorthand — D3b).
     {
-      let tokensObj = null;
-      try {
-        tokensObj = JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
-      } catch { /* no tokens.json — the loader refuses separately */ }
+      const tokensObj = _readPackTokens();
       if (tokensObj) {
         const declaredGroups = (gameConfig.groups && typeof gameConfig.groups === 'object')
           ? gameConfig.groups
@@ -542,8 +628,34 @@ function _gateCheck(manifest, gameConfig) {
       );
     }
     // Strings sidecar (A3 slice 3a): declared ⇒ must load + validate.
-    for (const prob of _loadDeclaredStrings(gameConfig).problems) {
+    // Use the SINGLE hoisted read (S6 review, F1-sec) so the gate
+    // validates the exact bytes activatePack freezes; a caller that
+    // passed nothing falls back to a fresh read (backward-compat).
+    const stringsCheck = stringsLoad || _loadDeclaredStrings(gameConfig);
+    for (const prob of stringsCheck.problems) {
       problems.push(prob);
+    }
+    // Show-cues gate (A3 slice 4 S2 — D-4.3). Pack-internal PURE reads
+    // only: activation is the FIRST act of initializeServices, every
+    // service is health-seeded down, and referenced venue files may
+    // exist only on the venue machine — so nothing here touches a
+    // service or checks a venue resource (that stays at preflight,
+    // C1 §3 item 5). Rules 1-7 live in gameRules/cueValidation, the
+    // dep-free seam the config-tool imports directly at S4 (the
+    // writeScoring precedent). Runs even with NO cues file: rule 5
+    // (fallbacks ⊆ roles) and the rule-6 requires lint are file-less.
+    {
+      // The SINGLE hoisted cues read (S6 review, F1-sec): the gate MUST
+      // validate the exact array activatePack freezes and the engine
+      // runs. Reading here AND again at freeze let a cues.json swapped
+      // between the two reads pass the gate but execute unvalidated
+      // (a FIFO/rename primitive an Opus refuter demonstrated reaching
+      // session:end / score:adjust / transaction:delete).
+      const cuesCheck = cuesLoad || _loadDeclaredCues(gameConfig);
+      problems.push(...cuesCheck.problems);
+      // Absent tokens.json: the token loader refuses separately; rule 3
+      // then has nothing to resolve against.
+      problems.push(...validateCuesBlock(cuesCheck.value, gameConfig, _readPackTokens() || {}));
     }
     // Mode drivability (slice 1): every declared mode's flag VALUES must
     // be in the engine's implemented sets — schema-open, gate-enforced.
@@ -730,11 +842,19 @@ function _coherenceCheck(gameConfig) {
 function activatePack() {
   const manifest = _readDiskManifest();
   const gameConfig = _readDiskGameConfig();
-  _gateCheck(manifest, gameConfig); // throws = boot fails, by design
+  // Read the declared sidecars ONCE (S6 review, F1-sec) and reuse the
+  // SAME parsed objects for both the gate and the freeze — the gate's
+  // guarantee is meaningless if it validates a different read than the
+  // one the engine runs (a disk swap between two reads, or a sync
+  // landing mid-boot, would otherwise execute unvalidated cues).
+  const cuesLoad = _loadDeclaredCues(gameConfig);
+  const stringsLoad = _loadDeclaredStrings(gameConfig);
+  _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad); // throws = boot fails, by design
   _coherenceCheck(gameConfig);      // throws = boot fails, by design (D3)
   activeManifest = manifest;
   activeGameConfig = gameConfig;
-  activeStrings = _loadDeclaredStrings(gameConfig).value;
+  activeStrings = stringsLoad.value;
+  activeCues = cuesLoad.value;
   activated = true;
   warnedDriftHash = false;
   _cachedScoringRules = null;
@@ -794,6 +914,21 @@ function getGameConfig() {
 function getStrings() {
   if (!activated) return _loadDeclaredStrings(_readDiskGameConfig()).value;
   return activeStrings;
+}
+
+/**
+ * The ACTIVE pack's show cues (A3 slice 4 S4): the parsed cues array,
+ * frozen at activation like every other pack read — a cues file edited
+ * on disk mid-run is ignored until restart. Null when the pack declares
+ * no cues (benign emptiness: the engine loads an empty cue set) or the
+ * declared file is broken (the gate refused activation in that case, so
+ * post-activation null means undeclared). Before activation, reads fall
+ * through to live disk for selective-init harnesses.
+ * @returns {Array<Object>|null}
+ */
+function getCues() {
+  if (!activated) return _loadDeclaredCues(getGameConfig()).value;
+  return activeCues;
 }
 
 /**
@@ -945,6 +1080,7 @@ function _resetForTesting() {
   activeManifest = null;
   activeGameConfig = null;
   activeStrings = null;
+  activeCues = null;
   warnedDriftHash = false;
   warnedLegacyScoring = false;
   warnedLegacyClock = false;
@@ -952,4 +1088,4 @@ function _resetForTesting() {
   _cachedScoringRules = null;
 }
 
-module.exports = { getPackDir, getManifest, getGameConfig, getStrings, getScoringRules, getClockRules, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };
+module.exports = { getPackDir, getManifest, getGameConfig, getStrings, getCues, getScoringRules, getClockRules, getLightingRoleFallback, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };

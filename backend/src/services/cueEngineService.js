@@ -35,6 +35,7 @@ const {
   evaluateConditions,
   findMatchingEventCues,
   findMatchingClockCues,
+  resetClockWarnings,
   toPersistence: standingToPersistence,
   fromPersistence: standingFromPersistence,
 } = require('./cue/standingEvaluator');
@@ -51,6 +52,9 @@ class CueEngineService extends EventEmitter {
   }
 
   _reset() {
+    // A new/empty cue set: forget prior invalid-clock warn latches so a
+    // fixed pack re-warns (S6 review, F5-state).
+    resetClockWarnings();
     /** @type {Map<string, Object>} All loaded cues indexed by ID */
     this.cues = new Map();
     /** @type {Set<string>} IDs of disabled cues */
@@ -109,6 +113,12 @@ class CueEngineService extends EventEmitter {
     for (const cue of cuesArray) {
       if (cue.commands && cue.timeline) {
         throw new Error(`Cue "${cue.id}": commands and timeline are mutually exclusive`);
+      }
+      // Slice 4 S2 hardening: the Map used to silently last-win on a
+      // duplicate id, dropping a cue. The pack gate refuses duplicates
+      // upstream; this defends venue files and injected fixtures.
+      if (newCues.has(cue.id)) {
+        throw new Error(`Cue "${cue.id}": duplicate cue id (cue ids must be unique)`);
       }
 
       newCues.set(cue.id, {
@@ -561,7 +571,17 @@ class CueEngineService extends EventEmitter {
           source: 'cue',
           trigger: `cue:${cueId}`,
         });
-        if (result.data?.completion) await result.data.completion;
+        // executeCommand catches its own throws and returns
+        // {success:false} — a failed command must never count as
+        // completed (slice 4 S3, D-4.4: an unresolvable lighting role
+        // fails through the cue:error channel).
+        if (result?.success === false) {
+          logger.error(`[CueEngine] Command rejected in cue "${cueId}": ${cmd.action} — ${result.message}`);
+          failedCommands.push({ action: cmd.action, error: result.message });
+          this.emit('cue:error', { cueId, action: cmd.action, position: null, error: result.message });
+          continue;
+        }
+        if (result?.data?.completion) await result.data.completion;
         completedCommands.push({ action: cmd.action });
       } catch (err) {
         logger.error(`[CueEngine] Command failed in cue "${cueId}": ${cmd.action}`, err.message);

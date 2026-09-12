@@ -1414,4 +1414,292 @@ describe('packService', () => {
         .toEqual(real.semantics);
     });
   });
+
+  describe('getCues (slice 4 S4 — the frozen pack cues the engine loads)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    const declaringGame = () => ({
+      kind: 'game', schemaVersion: 2, id: 'cues-get',
+      cues: 'cues.json', requires: ['cues.standing'],
+    });
+    const cuesDoc = () => ({
+      kind: 'cues', schemaVersion: 2,
+      cues: [{
+        id: 'only', label: 'Only',
+        trigger: { event: 'session:created' },
+        commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
+      }],
+    });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      fs.writeFileSync(path.join(tmpDir, 'tokens.json'), '{}');
+    });
+
+    it('returns the declared cues array, FROZEN at activation (disk edits ignored)', () => {
+      writeGame(tmpDir, declaringGame());
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify(cuesDoc()));
+      packService.activatePack();
+      expect(packService.getCues()).toHaveLength(1);
+      expect(packService.getCues()[0].id).toBe('only');
+
+      const edited = cuesDoc();
+      edited.cues.push({ id: 'later', label: 'Later', commands: [{ action: 'sound:stop', payload: {} }] });
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify(edited));
+      expect(packService.getCues()).toHaveLength(1);
+    });
+
+    it('returns null when the pack declares no cues (benign emptiness — the engine loads [])', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      packService.activatePack();
+      expect(packService.getCues()).toBeNull();
+    });
+
+    it('before activation, reads fall through to live disk (selective-init harnesses)', () => {
+      writeGame(tmpDir, declaringGame());
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify(cuesDoc()));
+      expect(packService.getCues()).toHaveLength(1);
+    });
+  });
+
+  describe('getLightingRoleFallback (slice 4 S3 — the normalized L7 accessor)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('resolves a declared fallback; unknown, prototype-chain, and non-string entries resolve null', () => {
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'fb',
+        lightingRoleFallbacks: { gameplay: 'scene.game', broken: 7 },
+      });
+      expect(packService.getLightingRoleFallback('gameplay')).toBe('scene.game');
+      expect(packService.getLightingRoleFallback('disco-mode')).toBeNull();
+      expect(packService.getLightingRoleFallback('constructor')).toBeNull();
+      expect(packService.getLightingRoleFallback('broken')).toBeNull();
+    });
+
+    it('a pack with no fallbacks block (and a packless dir) resolves null', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      expect(packService.getLightingRoleFallback('gameplay')).toBeNull();
+    });
+  });
+
+  describe('show-cues gate (A3 slice 4 S2 — D-4.3: pack-internal pure reads, zero services)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    function writeCues(dir, doc) {
+      fs.writeFileSync(path.join(dir, 'cues.json'), JSON.stringify(doc));
+    }
+    function writeTokens(dir, tokens) {
+      fs.writeFileSync(path.join(dir, 'tokens.json'), JSON.stringify(tokens));
+    }
+    const base = () => ({
+      kind: 'game',
+      schemaVersion: 2,
+      id: 'cues-pack',
+      cues: 'cues.json',
+      requires: ['cues.standing', 'cues.timeline', 'lighting.roles'],
+      lightingRoles: ['gameplay', 'video-playback', 'police-arrival-1'],
+      lightingRoleFallbacks: { gameplay: 'scene.game' },
+    });
+    // The two REAL guard cues in migrated role-form: their condition
+    // tokenId ('policesequencewoverlay') is the engine's filename-derived
+    // namespace, NOT a pack token — gate rule 3 must never refuse them
+    // (red-team G2; these are the mandated green fixtures).
+    const guardCues = () => ([
+      {
+        id: 'attention-before-video',
+        label: 'Pre-Video Alert',
+        trigger: {
+          event: 'video:loading',
+          conditions: [{ field: 'tokenId', op: 'neq', value: 'policesequencewoverlay' }],
+        },
+        commands: [
+          { action: 'sound:play', payload: { file: 'attention.wav' } },
+          { action: 'lighting:scene:activate', payload: { role: 'video-playback' } },
+        ],
+      },
+      {
+        id: 'restore-after-video',
+        label: 'Post-Video Restore',
+        trigger: {
+          event: 'video:completed',
+          conditions: [{ field: 'tokenId', op: 'neq', value: 'policesequencewoverlay' }],
+        },
+        commands: [{ action: 'lighting:scene:activate', payload: { role: 'gameplay' } }],
+      },
+    ]);
+    const cuesDoc = (cues) => ({ kind: 'cues', schemaVersion: 2, cues });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeTokens(tmpDir, { kaa001: { SF_RFID: 'kaa001' } });
+    });
+
+    it('ACCEPTS a full migrated-form cue set — guard cues, clock cue, compound timeline (and proves the three capability ids exist)', () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, cuesDoc([
+        ...guardCues(),
+        {
+          id: 'halftime',
+          label: 'Halftime',
+          trigger: { clock: '01:00:00' },
+          commands: [{ action: 'sound:play', payload: { file: '60min.wav' } }],
+        },
+        {
+          id: 'endgame',
+          label: 'ENDGAME',
+          quickFire: true,
+          trigger: null,
+          timeline: [
+            { at: 1, action: 'video:queue:add', payload: { videoFile: 'police.mp4' } },
+            { at: 180, action: 'lighting:scene:activate', payload: { role: 'police-arrival-1' } },
+          ],
+        },
+      ]));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('benign emptiness: no cues pointer, no lighting declarations — nothing refused, nothing warned', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      expect(() => packService.activatePack()).not.toThrow();
+      const cueWarns = logger.warn.mock.calls.filter(([msg]) => /cue/i.test(msg));
+      expect(cueWarns).toEqual([]);
+    });
+
+    it('refuses an undeclared lighting role as SELF-CONTRADICTORY (rule 1, flavor-i language pinned)', () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, cuesDoc([{
+        id: 'x', label: 'X',
+        commands: [{ action: 'lighting:scene:activate', payload: { role: 'disco-mode' } }],
+      }]));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/CAPABILITY GATE.*disco-mode/);
+      expect(message).toMatch(/self-contradictory/);
+      expect(message).not.toMatch(/incoherent/i);
+    });
+
+    it('refuses an unknown action as a DRIVABILITY limitation naming the vocabulary (rule 2, flavor-ii language pinned)', () => {
+      writeGame(tmpDir, { ...base(), lightingRoles: undefined, lightingRoleFallbacks: undefined, requires: [] });
+      writeCues(tmpDir, cuesDoc([{
+        id: 'x', label: 'X',
+        commands: [{ action: 'confetti:launch', payload: {} }],
+      }]));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/confetti:launch/);
+      expect(message).toMatch(/not driveable by this engine yet/);
+      expect(message).toMatch(/sound:play/); // vocabulary embedded
+      expect(message).not.toMatch(/self-contradictory/);
+      expect(message).not.toMatch(/incoherent/i);
+    });
+
+    it('refuses a duplicate cue id and an unparseable clock string (rule 7a/7b)', () => {
+      writeGame(tmpDir, { ...base(), lightingRoles: undefined, lightingRoleFallbacks: undefined, requires: ['cues.standing'] });
+      writeCues(tmpDir, cuesDoc([
+        { id: 'twin', label: 'A', commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }] },
+        { id: 'twin', label: 'B', commands: [{ action: 'sound:play', payload: { file: 'b.wav' } }] },
+        { id: 'clocky', label: 'C', trigger: { clock: '90 minutes' }, commands: [{ action: 'sound:stop', payload: {} }] },
+      ]));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/duplicate cue id 'twin'/);
+      expect(message).toMatch(/90 minutes/);
+    });
+
+    it('refuses standing triggers without cues.standing in requires (rule 6 authoring lint)', () => {
+      writeGame(tmpDir, { ...base(), lightingRoles: undefined, lightingRoleFallbacks: undefined, requires: [] });
+      writeCues(tmpDir, cuesDoc([{
+        id: 'x', label: 'X',
+        trigger: { event: 'transaction:accepted' },
+        commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
+      }]));
+      expect(() => packService.activatePack())
+        .toThrow(/cues\.standing/);
+    });
+
+    it('refuses a fallback for an undeclared role even with NO cues file (rule 5 runs file-less)', () => {
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'x',
+        lightingRoles: ['gameplay'],
+        lightingRoleFallbacks: { 'disco-mode': 'scene.disco' },
+        requires: ['lighting.roles'],
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/disco-mode/);
+    });
+
+    it("refuses a non-canonical cues filename (declared means presence — 'cues.json' is the contract)", () => {
+      writeGame(tmpDir, { ...base(), cues: 'show.json' });
+      writeCues(tmpDir, cuesDoc([]));
+      expect(() => packService.activatePack())
+        .toThrow(/cues\.json/);
+    });
+
+    it('refuses a declared-but-missing or unparseable cues file (declared-but-broken must refuse loudly)', () => {
+      writeGame(tmpDir, base());
+      expect(() => packService.activatePack()).toThrow(/unreadable|missing/i);
+
+      packService._resetForTesting();
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), '{nope');
+      expect(() => packService.activatePack()).toThrow(/unreadable/i);
+    });
+
+    it('refuses a cues file that is not the header form (kind + schemaVersion + cues array)', () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, [{ id: 'bare', label: 'Bare', commands: [{ action: 'sound:stop', payload: {} }] }]);
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/cues/);
+      expect(message).toMatch(/kind|header|object/i);
+    });
+
+    it('refuses a wrong sidecar kind or schemaVersion (strings-loader precedent)', () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, { kind: 'strings', schemaVersion: 1, cues: [] });
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/kind 'strings'/);
+      expect(message).toMatch(/schemaVersion 1/);
+    });
+
+    it("refuses a correct header whose 'cues' is not an array", () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, { kind: 'cues', schemaVersion: 2, cues: { oops: 'an object' } });
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/'cues' must be an array/);
+    });
+
+    it('reads cues.json EXACTLY ONCE during activation — the gate validates the bytes it freezes (S6 review, F1-sec)', () => {
+      // Before the single-read hoist, activatePack read cues.json twice
+      // (gate + freeze); a swap between the two reads passed the gate but
+      // ran unvalidated. One read closes the TOCTOU.
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'unit-pack', cues: 'cues.json', requires: ['cues.standing'] });
+      writeCues(tmpDir, cuesDoc([{
+        id: 'x', label: 'X', trigger: { event: 'transaction:accepted' },
+        commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
+      }]));
+      const cuesPath = path.join(tmpDir, 'cues.json');
+      const spy = jest.spyOn(fs, 'readFileSync');
+      try {
+        packService.activatePack();
+        const cuesReads = spy.mock.calls.filter(([p]) => String(p).endsWith('cues.json') && String(p) === cuesPath);
+        expect(cuesReads).toHaveLength(1);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+  });
+
 });
