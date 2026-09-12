@@ -6,23 +6,31 @@ what's next, and who each open item waits on. The full frame is
 `ROADMAP.md` (r4); the deep archive is `PHASE3-STATUS.md`.
 
 **RESUME HERE (2026-09-12, Block 2 at checkpoint 2, "after the dormancy
-core lands").** T1b and T1a are reviewed, merged and pushed on the
-designated branch `claude/nice-curie-hescfv` (parent `c222dbe`; ALNScanner
-`be0d701`; ALN-TokenData `6f9bc30`); draft PRs: ALN-Ecosystem #35,
-ALN-TokenData #8 (ALNScanner's opens with the T1a merge). What the GM has
-now: the three health words with dormant grey and its door, the display
-as the ninth service, cues silenced by absent equipment, the
-session-start require gate with the typed override, the preflight stamp,
-the profile identity in `sync:full` and `/health`. Records: plan §9
-(execution record through T1a), the ledger at
+core lands"; T1a's follow-ups closed).** T1b, T1a and T1a's three
+follow-ups (CI kiosk launch, scanner review-bot fixes, display exit
+semantics — plan §9, rulings 25–28) are reviewed, merged and pushed on
+the designated branch `claude/nice-curie-hescfv` (parent `fb2c29c` plus
+this records commit; ALNScanner `e83723c`; ALN-TokenData `6f9bc30`);
+draft PRs: ALN-Ecosystem #35, ALN-TokenData #8, ALNScanner #17. What the
+GM has now: the three health words with dormant grey and its door, the
+display as the ninth service (a crashed kiosk reads red), cues silenced
+by absent equipment, the session-start require gate with the typed
+override, the preflight stamp, the profile identity in `sync:full` and
+`/health`. CI: Rung-1 green on the designated branch (run 18); the Test
+workflow's last complete run (299, `fae51b6`) was 9/10 with one red Tier
+L leg caused by a pre-existing harness race (a parallel worker wipes the
+shared `backend/data/` during a restart test — home T7a, plan §9); run
+300 on `fb2c29c` is the current verdict. Records: plan §9 (execution
+record through the follow-ups), the ledger at
 `.superpowers/sdd/2026-09-12-block2-hardening-plan/progress.md` (rulings
-1–24, deferred minors), briefs under `docs/plans/briefs/`. **Owner
+1–28, deferred minors), briefs under `docs/plans/briefs/`. **Owner
 decision pending (checkpoint 2):** continue into round 3 (T3b → T3 ‖ T5
 → T4, per ruling 6), stop here as "Block 2a" and turn to the green
-machine, or change the order. No agents are running. The rung-1 rig is
-provisioned in this container (recipe in `2026-09-12-container-baseline.md`
-§7); a container restart loses it. Blue containment rules (handoff §3)
-stand.
+machine, or change the order; and whether T7a's rig hygiene (the data
+directory and log directory per worker) moves ahead of round 3. No
+agents are running. The rung-1 rig is provisioned in this container
+(recipe in `2026-09-12-container-baseline.md` §7); a container restart
+loses it. Blue containment rules (handoff §3) stand.
 
 **Last updated: 2026-09-12 — THE MERGE TRAIN IS WALKED.** All 22
 PRs merged across the five repos; `main` is the deployable truth
