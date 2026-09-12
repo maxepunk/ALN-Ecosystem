@@ -81,21 +81,32 @@ rules:
 5. **Write for the cold agent.** The test for every execution record:
    a fresh agent, given only this record and the repo, could continue
    the work.
-6. **Reload before resuming (owner-directed 2026-09-06).** The
-   compaction summary is a pointer to the paper trail, not a working
-   context. After any compaction or container restart, and before the
-   first change to any file: read this file, the root `CONTEXT.md`,
-   `docs/plans/CURRENT-STATE.md`, and the active unit's design
-   document with its execution record, in full. Read the component
-   `CLAUDE.md` for each area the work will touch. Then check the
-   summary's claims against the repository (`git status`, `git log`,
-   the records) before acting on them. A summary claim the record does
-   not back is false. Then read any subagent output files from the
-   round in flight from disk, re-read the briefs for the next round,
-   and send the owner a reload report in the checkpoint template
-   before dispatching anything. This rule exists because resuming from
-   the summary alone has caused real errors: stale verdicts restated as
-   current, and invented vocabulary in place of the project's own terms.
+6. **Reload before resuming (owner-directed 2026-09-06; ordered
+   checklist adopted 2026-09-12).** The compaction summary is a pointer
+   to the paper trail, not a working context. After any compaction or
+   container restart, run these steps in this order. Write the result
+   of each step into the ledger before starting the next.
+   1. Read in full: this file, the root `CONTEXT.md`,
+      `docs/plans/CURRENT-STATE.md`, the active unit's design document
+      with its execution record, and the component `CLAUDE.md` for
+      each area the work will touch.
+   2. Check every claim in the summary against the repository: `git
+      status`, `git log`, the submodule pins, and the records. A claim
+      the record does not back is false. Correct the record or the
+      claim before going on.
+   3. Reconcile live state. List the agents, list the background
+      tasks, and list the processes that the rig and the test runs
+      leave behind. Compare the three lists with the ledger's
+      live-state section. Stop anything that is not on the list, and
+      record what was stopped.
+   4. Read from disk the output files of the round in flight. Re-read
+      the briefs for the next round.
+   5. Send the owner a reload report in the checkpoint template.
+   Only after step 5 may the agent change a file or dispatch anything.
+   This rule exists because resuming from the summary alone has caused
+   real errors: stale verdicts restated as current, invented vocabulary
+   in place of the project's own terms, and twelve dead background
+   waits left running for ten hours because no step looked for them.
 7. **Compact only at a checkpoint, with the tree pushed (owner-directed
    2026-09-12).** What survives: committed and pushed files survive
    everything; scratchpad files survive compaction but not a container
