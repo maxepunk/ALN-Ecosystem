@@ -2452,7 +2452,7 @@ components:
                   contract test). Summary:
                   - **music**: `{connected, state, volume, track, playlist, pausedByGameClock}` (playlist CATALOG rides sync:full only)
                   - **video**: `{status, currentVideo, queue[], queueLength, connected}`
-                  - **health**: `{vlc: {status, message, lastChecked}, music: {...}, ...}` (all 8 services)
+                  - **health**: `{vlc: {status, message, lastChecked}, music: {...}, ...}` (all 9 services)
                   - **bluetooth**: `{scanning, pairedDevices[], connectedDevices[]}`
                   - **audio**: `{routes, defaultSink, ducking, availableSinks, volumes}`
                   - **lighting**: `{connected, activeScene, scenes[]}`

@@ -244,7 +244,7 @@ describe('service:state Push Integration', () => {
       const event = await statePromise;
       const payload = event.data || event;
 
-      // Full snapshot includes all 8 services, not just the one that changed
+      // Full snapshot includes all 9 services, not just the one that changed
       expect(Object.keys(payload.state).length).toBeGreaterThanOrEqual(8);
       expect(payload.state).toHaveProperty('vlc');
       expect(payload.state).toHaveProperty('music');
@@ -268,7 +268,7 @@ describe('service:state Push Integration', () => {
 
       // Debounce coalesces bursts: exactly 1 push with the latest full snapshot
       expect(events.length).toBe(1);
-      // The single push should contain full health snapshot with all 8 services
+      // The single push should contain full health snapshot with all 9 services
       const payload = (events[0].data || events[0]);
       expect(Object.keys(payload.state).length).toBeGreaterThanOrEqual(8);
     });

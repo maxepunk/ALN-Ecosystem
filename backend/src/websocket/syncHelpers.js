@@ -97,7 +97,8 @@ async function buildSyncFullPayload({
     }));
   }
 
-  // Registry snapshot: all 8 services with status, message, lastChecked
+  // Registry snapshot: all 9 services with status, message, lastChecked
+  // (T1a: `display` is the ninth; a dormant entry also carries `door`)
   const serviceHealth = serviceHealthRegistry.getSnapshot();
 
   const environment = await buildEnvironmentState({
