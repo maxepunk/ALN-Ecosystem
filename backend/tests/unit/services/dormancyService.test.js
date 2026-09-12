@@ -221,7 +221,7 @@ describe('dormancyService (T1a D4, pin P6)', () => {
       expect(registry.isDormant('lighting')).toBe(true);
     });
 
-    it('with no profile loaded, nothing is profile-dormant', () => {
+    it('with no profile loaded, EVERY family the pack declares is dormant', () => {
       const packService = require('../../../src/services/packService');
       const profileService = require('../../../src/services/profileService');
       jest.spyOn(packService, 'getManifest').mockReturnValue(TOY_MANIFEST);
