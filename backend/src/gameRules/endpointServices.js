@@ -3,7 +3,7 @@
  * that exist only to drive them (Block 2 T1b, plan §3 pin P1;
  * CONTEXT.md §5 "Endpoints vs stack").
  *
- * Pure: no I/O, no requires from services/. The C1 §1 endpoints
+ * Pure: no I/O, and nothing here imports a service. The C1 §1 endpoints
  * interior (installation-profile.schema.json, D1) names exactly five
  * physical equipment families. This module is the SOLE map from a
  * family to the service ids a dormant declaration marks dormant —
@@ -12,7 +12,8 @@
  *
  * Dormancy keys on a family the pack MANIFEST declares as a need
  * (hardware.endpoints.<family>) that the profile omits or declares
- * installed: false (audio.sinks: no entry with installed: true).
+ * uninstalled — see isInstalled() for the per-family rule, which is
+ * NOT one shared `installed` flag (ruling 24).
  * `audio` is additionally dormant only when NO sink is installed AND
  * display.main is also uninstalled — an installed display implies the
  * HDMI sink is present for it. The Bluetooth service is the adapter,
@@ -68,14 +69,36 @@ function familyInstalled(profile, familyId) {
 
 /**
  * Is this family INSTALLED per the profile's C1 §1 endpoints interior?
- * audio.sinks is an array (installed when at least one entry is
- * installed: true); every other family is an object carrying
- * `installed`. An absent declaration is always uninstalled.
+ *
+ * Each family answers through the field the SCHEMA actually gives it —
+ * there is no single `installed` flag across the five, and asking for one
+ * is how this predicate was wrong (Block 2 T1a fix round 1, ruling 24):
+ *
+ *   display.main, lighting.instruments  `installed: true`
+ *   audio.sinks (an array)              SOME entry `installed: true`
+ *   stations                            `count >= 1`
+ *   personal                            `expected === true`
+ *
+ * `stations` and `personal` carry NO `installed` key — the profile schema
+ * declares them `{count}` and `{expected}` with additionalProperties:
+ * false, so writing `installed` there is illegal. Reading one anyway
+ * answered false for every profile that has ever existed, which made a
+ * pack declaring `hardware.endpoints.stations` resolve DORMANT against a
+ * venue with its stations set up, and (under `onAbsent: require`) a
+ * permanent NO-GO that only `startAnyway` could pass.
+ *
+ * An absent or null declaration is always uninstalled.
  */
 function isInstalled(familyId, declared) {
   if (declared === undefined || declared === null) return false;
   if (familyId === 'audio.sinks') {
     return Array.isArray(declared) && declared.some((sink) => sink && sink.installed === true);
+  }
+  if (familyId === 'stations') {
+    return Number.isFinite(declared.count) && declared.count >= 1;
+  }
+  if (familyId === 'personal') {
+    return declared.expected === true;
   }
   return declared.installed === true;
 }

@@ -91,6 +91,37 @@ describe('resolve (pure, C1 §2 table)', () => {
     expect(verdicts[0].reason).toMatch(/bind .*or author a fallback/);
   });
 
+  // Block 2 T1a fix round 1, ruling 24. The two counted families answer
+  // the installed question through their OWN field — `stations.count` and
+  // `personal.expected` — because the profile schema gives them nothing
+  // else (additionalProperties: false, no `installed`). Before the fix
+  // resolve() called a fully-equipped four-station venue dormant.
+  it('a stations endpoint need resolves runs against the real full-kit (count: 3)', () => {
+    const { verdicts, rollup } = resolve(
+      [{ kind: 'endpoint', id: 'stations', onAbsent: 'degrade', sources: [] }],
+      ALN_PROFILE
+    );
+    expect(verdicts[0].verdict).toBe('runs');
+    expect(rollup.dormantNeeds).toEqual([]);
+  });
+
+  it('a stations endpoint need is DORMANT when the venue set none up (count: 0)', () => {
+    const noStations = { ...ALN_PROFILE, endpoints: { stations: { count: 0 } } };
+    const { verdicts } = resolve(
+      [{ kind: 'endpoint', id: 'stations', onAbsent: 'degrade', sources: [] }],
+      noStations
+    );
+    expect(verdicts[0].verdict).toBe('dormant');
+  });
+
+  it('a personal endpoint need follows `expected`, not a non-existent `installed`', () => {
+    const expected = { ...ALN_PROFILE, endpoints: { personal: { expected: true } } };
+    const notExpected = { ...ALN_PROFILE, endpoints: { personal: { expected: false } } };
+    const need = [{ kind: 'endpoint', id: 'personal', onAbsent: 'degrade', sources: [] }];
+    expect(resolve(need, expected).verdicts[0].verdict).toBe('runs');
+    expect(resolve(need, notExpected).verdicts[0].verdict).toBe('dormant');
+  });
+
   it('an endpoint the profile does not declare is DORMANT under onAbsent degrade', () => {
     // The real ALN full-kit profile now DECLARES its endpoints (Block 2
     // T1b, D2) — see "the ALN full-kit profile declares every family"

@@ -187,6 +187,40 @@ describe('familyInstalled(profile, familyId)', () => {
     expect(familyInstalled(undefined, 'display.main')).toBe(false);
   });
 
+  // Block 2 T1a fix round 1, ruling 24. `stations` and `personal` do NOT
+  // carry `installed` — the profile schema gives them `{count}` and
+  // `{expected}` with additionalProperties: false, so `installed` is
+  // ILLEGAL there. Asking `installed === true` of them answered false for
+  // every profile ever written, which made a pack that declares
+  // hardware.endpoints.stations dormant on a venue with four stations set
+  // up (or, under onAbsent: require, a permanent NO-GO only startAnyway
+  // could pass). Each family is installed per the field it actually has.
+  it('stations is installed when count >= 1', () => {
+    expect(familyInstalled({ endpoints: { stations: { count: 4 } } }, 'stations')).toBe(true);
+    expect(familyInstalled({ endpoints: { stations: { count: 1 } } }, 'stations')).toBe(true);
+  });
+
+  it('stations with a count of zero is NOT installed — the venue set none up', () => {
+    expect(familyInstalled({ endpoints: { stations: { count: 0 } } }, 'stations')).toBe(false);
+  });
+
+  it('personal is installed when expected === true', () => {
+    expect(familyInstalled({ endpoints: { personal: { expected: true } } }, 'personal')).toBe(true);
+  });
+
+  it('personal with expected false is NOT installed — no personal devices tonight', () => {
+    expect(familyInstalled({ endpoints: { personal: { expected: false } } }, 'personal')).toBe(false);
+  });
+
+  it('agrees with the real ALN full-kit profile on all five families', () => {
+    const aln = readJson(REPO_ROOT, 'backend', 'config', 'profiles', 'aln-full-kit.json');
+    expect(familyInstalled(aln, 'display.main')).toBe(true);
+    expect(familyInstalled(aln, 'audio.sinks')).toBe(true);
+    expect(familyInstalled(aln, 'lighting.instruments')).toBe(true);
+    expect(familyInstalled(aln, 'stations')).toBe(true);       // count: 3
+    expect(familyInstalled(aln, 'personal')).toBe(false);      // expected: false
+  });
+
   it('agrees with the real toy profiles', () => {
     const rig = readJson(REPO_ROOT, 'backend', 'tests', 'e2e', 'fixtures',
       'profiles', 'toy-test-rig.json');
