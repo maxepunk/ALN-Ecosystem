@@ -65,7 +65,7 @@ Thursday preflight.
 
 ## 5. Open items, and who owns them
 
-- Owner decisions pending (asked 2026-09-12 ~20:30Z, with the
+- Owner decisions pending (asked 2026-09-12 ~20:26Z, with the
   consequence analysis in the conversation): (a) host-config modes
   become `self | adopt` only — pin P11 loses `off` (the profile is the
   one truth for whether a process runs tonight); (b) P15's "observe
@@ -91,7 +91,7 @@ Thursday preflight.
 
 ## 6. Running, and on disk
 
-- Nothing is running (2026-09-12 20:30Z). Six agents (harness
+- Nothing is running (2026-09-12 20:27Z). Six agents (harness
   implementer, researcher, three brief reviewers, arms reader) were
   stopped at 19:59:41Z by the owner's stop button; stopped agents cannot
   be resumed (documented). The harness implementer's two commits survive
