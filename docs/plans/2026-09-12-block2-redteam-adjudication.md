@@ -75,7 +75,7 @@ DEFER (with the home). Owner-visible rulings are marked ★ for the
 | SEC-22 | MINOR | ACCEPT | `/health` carries `{profileId, forPack}` only; the HTTP read-plane posture is stated beside P15. |
 | SEC-23 | NOTE | ACCEPT-MOD | T3 tightens the orphan match to an exact argv comparison; the runtime-dir move is recorded as `host.json` headroom. |
 | SEC-24 | NOTE | ACCEPT (via D-6) | No contract entry precedes its implementation, so nothing to ledger; the code-side pre-registration is noted in T1a. |
-| SEC-25 | NOTE | ACCEPT-MOD ★ | T4 states `unknown` as the expected ALN network verdict until the owner records the kit's network values (SSID, orchestrator IP and name); an owner task, not a fixture guess. |
+| SEC-25 | NOTE | ACCEPT-MOD ★ | T4 states `unknown` as the expected ALN network verdict until the owner records the kit's network values (SSID, orchestrator IP and name); an owner task, not a fixture guess. **Amended at checkpoint 1 (plan R11):** the values were already in the repo; T1b authors the block. |
 
 ## State machine and lifecycle lens (43 findings: 9 blocking, 24 major, 9 minor, 1 note)
 

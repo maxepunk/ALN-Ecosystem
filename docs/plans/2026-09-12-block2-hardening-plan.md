@@ -43,6 +43,7 @@ Schedule decisions are the owner's at the §8 checkpoints.
 | R8 | Schedule, pauses, and the go-to-green decision are the owner's, taken at the §8 checkpoints on observable reports; no time pricing in this plan | owner, 2026-09-12 |
 | R9 | The pre-build red team's 100 findings are ruled in the adjudication record; the twelve owner-visible rulings (★ there) are reported at the "before any code" checkpoint | orchestrator, 2026-09-12 |
 | R10 | Re-slice recorded: dormant's operator door rides T3 with the verb commands (ratified CS.2 text put both doors in CS.2) | orchestrator, 2026-09-12 (D-26) |
+| R11 | The kit's network values were already in the repo (owner, checkpoint 1: "don't you have the ssid, ip, dns name in our repos already?"); T1b authors the ALN profile's `network` block from them (SSID and IP from the ESP32 sample config, the name from the July profile design, dnsmasq posture from CONTEXT.md §5). SEC-25's "owner task" is closed; the certificate spike at Stage B confirms the name | owner + orchestrator, 2026-09-12 |
 
 ## 2. Census delta that changes the design (from the re-open census)
 
@@ -292,8 +293,13 @@ own contract edits. T1b runs first; T1a after it.
 
 Files: `backend/config/profiles/installation-profile.schema.json`
 (P1 interior, `additionalProperties: false`); `backend/config/profiles/aln-full-kit.json`
-(endpoints: all families installed; `network` left absent — owner
-task, SEC-25 ★); `ALN-TokenData/pack-manifest.json` (`hardware.endpoints`
+(endpoints: all families installed; `network` authored per R11:
+`mode: kit-network`, `kitNetwork: {ssid: "Sidewinder", orchestratorIp:
+"10.0.0.177", orchestratorName: "play.aboutlastnightgame.com",
+localDnsOverride: true}` — sources: ESP32 `sample_config.txt` and
+`CLAUDE.md` for the SSID and IP, `2026-07-09-phase3-1-installation-profile.md`
+for the name, `CONTEXT.md` §5 "Kit network" for the dnsmasq posture; the
+certificate spike confirms the name at Stage B); `ALN-TokenData/pack-manifest.json` (`hardware.endpoints`
 gains `audio.sinks` and `lighting.instruments`, degrade; manifest
 rebuilt; parent pin bumped); `backend/tests/e2e/fixtures/packs/toy-heist/`
 (manifest gains `lighting.instruments` and `audio.sinks` degrade; cues
@@ -421,8 +427,10 @@ Files: `gameRules/packNeeds.js` (+ `video-file`), `gameRules/resolution.js`
 `validateCommand`; bindings with live scene existence when lighting is
 healthy else `unknown`; services incl. dormant and severity; media;
 `sinks.<id>` rows; `stations.pack` row; network from
-`profile.network.kitNetwork` else `unknown` (the expected ALN verdict
-until the owner records the kit's values ★); devices; host (disk,
+`profile.network.kitNetwork` (paper: the block is present and complete;
+live: the host holds `orchestratorIp` on an interface and
+`orchestratorName` resolves to it — rung 3 only, `unknown` elsewhere;
+`unknown` with the label when the block is absent, R11); devices; host (disk,
 temperature, load, ports, PID files); certificate as `warn`; display
 liveness with `service:restart display`; pack integrity: sha1 per
 manifest file and `realpathSync` containment (F-P2-3/F-P2-7); the exec
