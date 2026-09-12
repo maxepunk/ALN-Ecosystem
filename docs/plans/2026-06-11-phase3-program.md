@@ -511,3 +511,49 @@ roadmap entry. DoD (§7) substance unchanged except item 3 below.
    as the blue/green Pi swap (ROADMAP §3b) — green-Pi work opens after
    Phase-3 close at the earliest (owner direction). The 2026-09-18 →
    2026-10-18 weekly ALN run executes on `production-2026-07`.
+
+## 14. Amendments — 2026-09-03 (remaining-scope grill)
+
+Source: the 2026-09-03 grill-with-docs batch (two rounds + two
+follow-ups, owner-ruled in-session). CONTEXT.md gained the matching
+vocabulary entries the same day.
+
+1. **Track B completion bar ruled:** ALL five Design-workspace pages
+   ship in Phase 3. The per-page split between "Phase-3 build" and
+   "deferred depth" is ruled inside the pages' design doc, and EVERY
+   deferred feature gets its own named ROADMAP §8 registry row with a
+   landing slot — the owner approves the split before build. Owner
+   prior recorded: of the three nominated candidates, only pack
+   version diffing (pack manager) reads as a genuine deferral; the
+   real-device scoreboard preview (reaffirming the earlier Q3
+   decision) and the true-duration cue timeline are expected IN
+   Phase-3 scope.
+2. **E10 ruled in-gate:** E10 hot-apply is INSIDE the Phase-3
+   completion gate. Floor: the mechanics editor's
+   draft→publish→hot-apply path and E10 are ONE deliverable — neither
+   can be minimized independently (an apply button without hot-apply
+   is a lie; hot-apply without an editor has no user).
+3. **Surfaces-editor home = named open question:** no page was ever
+   assigned to edit the game.json `surfaces` block (the page list
+   predates slice 6). Ruled (c): decided at page-design time with
+   wireframes in view; logged here so it cannot fall off. The
+   Design-workspace-pages design doc MUST resolve it.
+4. **C2 scope confirmed:** Phase-3 C2 = the resolution engine + the
+   preflight presentation only (reaffirms §13.7). Planning view is
+   post-Phase-3; a CLI presentation is permitted, never owed.
+5. **GM-scan video cueing gap named (ROADMAP §8.16):** the
+   scan→video trigger is engine-keyed to player scanners
+   (transactionService's deviceType branch) — a baked ALN opinion
+   (§2.6 residue). A GM-scanner-only game CAN reach video today as
+   pure pack content via standing cues (`transaction:accepted`
+   conditions incl. `tokenId`/`deviceType` → `video:queue:add`; one
+   static cue per token→video pairing — verified legal in
+   cueValidation.js/cueVocabulary.js). The ergonomic pack-declared
+   form lands at Phase-4 E5 (owner-ruled), where scan→consequence
+   mappings become pack-composable.
+6. **Vocabulary corrections (CONTEXT.md carries both):** say "the
+   Design-workspace pages", not "the B pages" (track-letter shorthand
+   that never became shared language); say resolver "presentation",
+   not "face". Idle-loop intent recorded: the venue TV's ambient
+   resting screen, mainly pre-show atmosphere — distinct from
+   game-event (token-cued) videos.

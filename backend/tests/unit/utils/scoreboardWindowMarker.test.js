@@ -90,6 +90,124 @@ describe('scoreboard admin credential injection (slice 3a pre-fix 2 — matrix 2
     expect(sb.unknownOwner).toBe('Unknown');
   });
 
+  it('renderScoreboardHtml injects the ACTIVE pack theme as JSON (theme unit ST.3 — D-T.2)', () => {
+    // The default pack dir is ALN-TokenData, whose theme.json is the
+    // ruled star-drop — the rendered page must carry it verbatim (the
+    // scoreboard ignores rating; it reads only t?.scoreboard?.*, absent
+    // for ALN, so the baked palette stands — benign emptiness).
+    const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
+    const packService = require('../../../src/services/packService');
+    const html = renderScoreboardHtml();
+    expect(html).not.toContain('%%PACK_THEME%%');
+    expect(html).toContain(`const PACK_THEME = ${JSON.stringify(packService.getTheme())}`);
+    // The snapshot is SECTIONS-ONLY — kind/schemaVersion are transport
+    // framing, validated then stripped by _loadDeclaredTheme (the
+    // getStrings posture). ALN's ruled star-drop is the sole section.
+    expect(packService.getTheme()).toEqual({ rating: { display: 'none' } });
+  });
+
+  it('pack-controlled text can NEVER become a substitution pattern — a strings leaf carrying the theme placeholder survives as DATA and the page still parses (close review SEC-1)', () => {
+    // The ordering attack: with chained replaceAll passes, a
+    // gate-legal strings leaf containing the literal '%%PACK_THEME%%'
+    // was rewritten by the LATER theme pass — theme JSON injected
+    // mid-string broke the inline script's parse and the venue TV
+    // went dead at serve time. A single-pass replacer never rescans
+    // replaced output.
+    const vm = require('vm');
+    const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
+    const packService = require('../../../src/services/packService');
+    const hostileLeaf = "OWNED'%%PACK_THEME%%'END";
+    const sSpy = jest.spyOn(packService, 'getStrings')
+      .mockReturnValue({ scoreboard: { header: hostileLeaf } });
+    const tSpy = jest.spyOn(packService, 'getTheme')
+      .mockReturnValue({ scoreboard: { accent: '#ff0000', accentDark: '#00ff00' } });
+    try {
+      const html = renderScoreboardHtml();
+      // The hostile leaf survives VERBATIM as JSON data.
+      expect(html).toContain(JSON.stringify(hostileLeaf));
+      // And every inline script still PARSES — the page must never be
+      // served as a syntax error.
+      const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+      expect(scripts.length).toBeGreaterThan(0);
+      for (const s of scripts) new vm.Script(s);
+      // The real theme injection still landed at its own site.
+      expect(html).toContain(`const PACK_THEME = ${JSON.stringify(packService.getTheme())}`);
+    } finally {
+      sSpy.mockRestore();
+      tSpy.mockRestore();
+    }
+  });
+
+  it('packless serve path: PACK_THEME renders as null (baked palette stands, no loud shim — D-T.2)', () => {
+    const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
+    const packService = require('../../../src/services/packService');
+    const spy = jest.spyOn(packService, 'getTheme').mockReturnValue(null);
+    try {
+      const html = renderScoreboardHtml();
+      expect(html).toContain('const PACK_THEME = null;');
+      expect(html).not.toContain('%%PACK_THEME%%');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('the on-disk page re-validates theme colors at the CSS sink (defense in depth — the closers\' posture)', () => {
+    // The gate already refused non-hex at activation; the page must not
+    // TRUST that — applyPackTheme applies a value to --evidence-red /
+    // --evidence-red-dark only after its own strict 6-digit hex test.
+    const html = fs.readFileSync(scoreboardPath, 'utf8');
+    expect(html).toContain("const PACK_THEME = '%%PACK_THEME%%'");
+    expect(html).toMatch(/#\[0-9a-fA-F\]\{6\}/); // the sink-side hex re-check
+    expect(html).toContain('--evidence-red-dark');
+    expect(html).toMatch(/setProperty\('--evidence-red'/);
+  });
+
+  describe('the sink guard is LOAD-BEARING — the page function executed with hostile values (ST.3 review fold)', () => {
+    // The source-text pin above proves PLACEMENT only — a stripped guard
+    // with the regex literal left behind stayed green (the ST.2
+    // vacuous-pin class, caught again here). This pin EXECUTES the
+    // page's own applyPackTheme: extract the THEME_HEX + function span
+    // from the served source and drive it against a recording document
+    // stub. Refactoring the page's theme block moves this span and
+    // fails the extraction LOUDLY — that is the pin working.
+    const extractApplyPackTheme = () => {
+      const html = fs.readFileSync(scoreboardPath, 'utf8');
+      const m = html.match(/const THEME_HEX[\s\S]*?\n {8}\}/);
+      if (!m) throw new Error('scoreboard.html theme block not found — the sink pin must move with it');
+      return m[0];
+    };
+    const drive = (themeValue) => {
+      const calls = [];
+      const doc = { documentElement: { style: { setProperty: (p, v) => calls.push([p, v]) } } };
+      // eslint-disable-next-line no-new-func -- executing the page's own inline script under test
+      new Function('document', 'PACK_THEME',
+        `${extractApplyPackTheme()}\napplyPackTheme(PACK_THEME);`)(doc, themeValue);
+      return calls;
+    };
+
+    it.each([
+      ['CSS breakout', 'red; background: url(//evil)'],
+      ['url() smuggle', 'url(javascript:alert(1))'],
+      ['var() indirection', 'var(--evil)'],
+      ['3-digit hex (schema-illegal shorthand)', '#f00'],
+      ['non-string', { toString: () => '#c41e3a' }],
+    ])('a hostile accent NEVER reaches setProperty: %s', (_label, evil) => {
+      expect(drive({ scoreboard: { accent: evil, accentDark: evil } })).toEqual([]);
+    });
+
+    it('a strict 6-digit hex pair lands on both tokens', () => {
+      expect(drive({ scoreboard: { accent: '#0e7490', accentDark: '#164e63' } })).toEqual([
+        ['--evidence-red', '#0e7490'],
+        ['--evidence-red-dark', '#164e63'],
+      ]);
+    });
+
+    it('an undeclared scoreboard section (ALN) and a null theme touch NOTHING', () => {
+      expect(drive({ rating: { display: 'none' } })).toEqual([]);
+      expect(drive(null)).toEqual([]);
+    });
+  });
+
   it('packless serve path: PACK_STRINGS renders as null and the page keeps its baked STR fallbacks', () => {
     const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
     const packService = require('../../../src/services/packService');

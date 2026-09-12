@@ -7,8 +7,8 @@
 > · `2026-07-09-phase3-1-standalone-pack-loading.md` · `2026-07-09-phase3-1-one-auth.md`.
 > Keep this file CURRENT — update it in every commit that changes execution state.
 
-**Last updated:** 2026-09-03 · **Working branch:** `claude/phase3-a3-slice7`
-(parent; chained from the verified slice-6 tip `dbab5ad`, per the slice train).
+**Last updated:** 2026-09-04 (theme unit CLOSED) · **Working branch:** `claude/phase3-theme-unit` (B0 branch chains next)
+(parent; chained from the verified slice-7 tip `4923575`, per the slice train).
 Under the frozen-production model (see the development-model row) slice
 branches CHAIN — slice N+1 branches from slice N's verified tip, each slice
 keeps a draft PR to main for CI, and the stacked PRs land in R14 order
@@ -256,9 +256,31 @@ a DoD violation by definition.
 | L8 | **[post-Phase-3, owner-ratified 2026-08-29 (OQ7a); recorded at S4]** The ENDGAME cue's `target: "bluetooth"` audio literal, migrated VERBATIM into pack content (`ALN-TokenData/cues.json`, the policesounds entry). Deliberate diegetic staging (police sounds from a specific speaker), but a venue routing-target literal living in pack data | The pack-manager media page's design (ROADMAP §8.2 checkpoint): retire it via audio roles / re-authoring, or explicitly re-ratify it | This row; `grep -n '"target"' ALN-TokenData/cues.json` |
 | L9 | **[post-Phase-3, same family/class as L2]** Scanner `src/core/scoring.js` shim path does not RESTORE the baked tables after a pack applied different ones (benign today: single pack load per session; 3b review note "worth a row", added 2026-08-29 per the ambiguity sweep) | Retires with L2 (the shim family dies together at cutover + one cycle) | 3b's scoring-formatting test snapshot-and-restore pattern; `grep 'LEGACY SHIM' ALNScanner/src` |
 | L10 | **[RETIRED 2026-08-29 at slice-6 open]** `scoreboard.html` numeric `7200` fallback duplicated pack `gameClock.duration` (3a "adjacent note"). RESOLVED by documentation (design doc D-6.4): the real duration is already delivered live on every sync (`sync:full.gameClock` + `service:state` domain `gameclock` → `syncCountdown`); the two literals (now at `:853` seed + `:951` `|| 7200`) are inert pre-connect chrome / defensive fallback, so there was nothing to wire — both sites now carry a source comment saying so. Line numbers in the original row (799/892) were stale | CLOSED — source comments at `scoreboard.html:853,951` | grep `7200` in scoreboard.html shows only the two commented placeholder/fallback sites |
-| L11 | **[in-queue]** `scoreboard.html:12-14` Google Fonts CDN links — offline-LAN risk, same class as the fixed socket.io CDN bug (3a "adjacent note", added 2026-08-29) | Theme unit (the styling-bearing slice): self-host or fallback-stack the fonts | This row; grep `fonts.googleapis` in scoreboard.html |
+| L11 | **[RETIRED 2026-09-03 at theme unit ST.F]** `scoreboard.html:12-14` Google Fonts CDN links — offline-LAN risk, same class as the fixed socket.io CDN bug (3a "adjacent note", added 2026-08-29). RESOLVED by self-hosting (D-T.6): five families as woff2 latin+latin-ext subsets with unicode-range — scoreboard's three (IBM Plex Mono, Libre Baskerville, Special Elite; 16 files under `backend/public/fonts`) + config-tool's two (DM Sans, JetBrains Mono; 12 files under `config-tool/public/fonts`), generated `@font-face` css, live fallback stacks kept. Playfair Display NOT hosted — it retired with its dead `--font-display` token (zero `var()` consumers; a font nothing renders would be dead weight — the D-T.6 six-family text reconciled to five at the ST.F review, design §8). CDN stylesheet links AND both googleapis/gstatic preconnects removed from both pages | CLOSED — tripwire tests `backend/tests/unit/utils/fontSelfHosting.test.js` + `config-tool/tests/fontSelfHosting.test.js` | `grep -rlE 'fonts\.(googleapis\|gstatic)' backend/public config-tool/public` = zero (test-enforced, both halves). SCOPE NOTE (ST.F review, finding c): the row's original command used `-R` which FOLLOWS the `gm-scanner`/`player-scanner` submodule symlinks into the NFC tools — a DIFFERENT surface, tracked as L14. The engine's own served page chrome (this row's scope) is `-r` over the `public/` trees; the tests enforce exactly that (symlinks skipped) |
+| L14 | **[in-queue, recorded 2026-09-03 at theme unit ST.F review]** The NFC tools `tag-writer.html` + `token-checkin.html` (ALN-TokenData source, served through `backend/public/gm-scanner/` + `backend/public/player-scanner/data/` submodule symlinks) still carry Google Fonts CDN links — the SAME offline-LAN silent-CDN-failure class as L11, but a SEPARATE surface (NFC programming tools, not venue display chrome) out of L11/D-T.6 scope. Surfaced by the ST.F spec review's tripwire-scope catch (the `-R` vs `-r` symlink difference) | A fonts sweep when the NFC-tool surface is next touched (or the B-pages/tooling work if it subsumes these tools): self-host their families the ST.F way, or promote the fallback stacks | `grep -RlE 'fonts\.(googleapis\|gstatic)' backend/public` shows ONLY these two files (×2 symlink paths each); zero when the sweep lands |
 | L13 | **[post-Phase-3, recorded 2026-09-03 at slice-7 S7.2 — class inherited from its trigger, per the DoD-linkage rule]** ALN-flavored wording retained inside ENGINE-FIXED report structure: the `## Detective Evidence Log` heading (ALN's own mode name), the `Exposed By` column header, and the H1 `Session Report` family — every divergent pack's report inherits them, because the contract names headings/column text as structure (Change Rules #1–#2) and the external pipeline parses them | The ROADMAP §8.10 bundle migration (the pipeline stops parsing markdown; the anchors stop being load-bearing and can localize) | The golden masters + the structural-invariant suite in `ALNScanner/tests/contract/sessionReport.contract.test.js`; contract doc v2 records the retention |
 | L12 | **[in-queue, recorded 2026-08-29 at slice-6 S6.3]** The idle-loop config fallback: when a pack names an idle-loop channel (`surfaces.idleLoop`) that the installation profile has no binding for, `vlcMprisService._resolveIdleLoopFile()` falls back LOUDLY to `config.display.idleLoopFile` (the L7 lighting-role-fallback shape). A venue-media identity resolved from engine config instead of the profile | The pack-manager media page + venue-media binding UI (ROADMAP §8.1): every idle-loop channel gets a real profile binding, and the config fallback becomes a hard "no idle loop configured" refusal | LOUD warn per fallback fire ("no installation-profile binding — falling back … ledger L12"); `grep -n "ledger L12" backend/src/services/vlcMprisService.js` |
+
+## Owner rulings 2026-09-03 (batch — remaining-scope grill)
+
+Full text: program doc §14 (the authoritative amendment). Summary:
+
+1. **Track B bar:** all five Design-workspace pages ship in Phase 3;
+   per-page build-vs-deferred split ruled in the pages' design doc,
+   every deferral gets a NAMED ROADMAP §8 row, owner approves before
+   build. Owner prior: only pack-version diffing reads as a genuine
+   luxury; scoreboard real-device preview + true-duration timeline
+   are IN.
+2. **E10 hot-apply is INSIDE the Phase-3 gate**; the mechanics
+   editor's draft→publish→hot-apply path and E10 are one deliverable.
+3. **Surfaces-editor home:** named open question, resolved in the
+   Design-workspace-pages design doc (which page edits `surfaces`).
+4. **C2 = resolver + preflight presentation only** (reaffirms §13.7).
+5. **GM-scan video cueing** named ROADMAP §8.16 → Phase-4 E5;
+   standing-cue-per-token is the interim (works today, pack content).
+6. **Vocabulary:** "Design-workspace pages" (not "B pages"),
+   "presentation" (not "face"); idle-loop intent = ambient resting
+   screen / pre-show atmosphere. CONTEXT.md updated same-day.
 
 ## Owner rulings 2026-08-22 (batch — question-walkthrough chat session)
 
@@ -531,6 +553,38 @@ AND both CI legs green. Merge-train vehicles: TokenData #5, ALNScanner
 #14, parent #30 (table below current). **Queue: theme unit (§13.5) is
 NEXT.**
 
+**THEME UNIT — ✅ FULLY CLOSED 2026-09-04** (branch
+`claude/phase3-theme-unit` chained from the slice-7 tip `4923575`;
+draft PR #31 opened AT open per the corrected discipline). Full record:
+the unit design doc §8 (2026-09-03/04 entries). Landed: theme.schema.json
++ the gate twin + getTheme() snapshot; scanner theme DECLINE mirror +
+packLoader theme role + the three rating sites (ALN's ruled star-drop:
+the detective result screen hides the whole Value Rating row) + the
+four-rule mode-token recolor; ALN theme.json (one-deep-equal pin) + toy
+divergent theme (💎/gold/sky/teal); scoreboard %%PACK_THEME%% single-pass
+injection + sink-side hex guard; fonts self-hosted (L11 RETIRED, L14
+recorded). Whole-unit adversarial panel: 8 findings ALL folded red-first
+(top: the substitution-ordering DoS this unit introduced — one-pass
+replacer; the zero-survivors DECLINE hole — convergent 2 refuters; the
+stale bundled submodule — re-pointed + NEW drift tripwire; the enforced
+config-tool suite — the vacuous-tripwire class's 4th instance). The
+2026-09-03 remaining-scope grill batch rode the close (program §14,
+ROADMAP §8.16, CONTEXT.md terms). CLOSE GATE (final heads, bare exits):
+backend 2732 + ratchet + lint; scanner 1666 + ratchet + lint + dist;
+config-tool 119 ENFORCED; dual-pack Tier L — **ALN 120P/0F/62S+4H,
+0 flaky** + **toy 120P/0F/61S, 1 flaky (restart-timing class, passed on
+retry, diagnosed theme-untouched)**. Heads: parent close-record tip /
+ALNScanner `deddaf9` / TokenData `491c513`. Vehicles: TokenData **#6**
+(subsumes #5), ALNScanner **#15** (subsumes #14), parent #31. **Queue:
+B0 (tooling foundation) is NEXT.** Original scope inputs for the record: Governed as a full A3 slice (program
+§13.5): design doc, honest estimate, red-team, dual-pack gate. Scope
+inputs: Q-3c-1(a) minimal theme.json (semantic mode colors, rating
+glyph/display, scoreboard accent), Q-3b-2 (glyphs are visual identity;
+star map confirmed), the ALN star-drop (§13.5 boundary: the THREE
+GM-scanner display sites only — config-tool previews + the report ★
+cell excluded), ledger L11 (scoreboard Google-Fonts CDN links retire in
+the styling-bearing slice). Census next.
+
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 
 - **Slice-2 closers RATIFIED**: D1s2 gate+trim (slice-5 anchor verified in
@@ -702,11 +756,11 @@ adds its PRs to this block.
 
 | Order | Repo | PR | Head | Close condition / note |
 |---|---|---|---|---|
-| 1 | ALN-TokenData | **#5** (opened 2026-09-03 at slice-7 close) | `claude/phase3-a3-slice7` @ `c44a8ef` | Subsumes #4 (slice-6; which subsumes #3, which subsumes #2) — owner closes #4/#3/#2 as subsumed. Adds the slice-7 verbNoun field + report-stub removal (+ review-fold schema precision) on top of slice-4 cues + slice-6 surfaces |
-| 2 | ALNScanner | **#14** (opened 2026-09-03 at slice-7 close) | `claude/phase3-a3-slice7` @ `46db231` | Subsumes #13 (closers; which subsumes #12 foundations/A2, source of the PR-review residue block) — owner closes #13 and #12 as subsumed. Adds the slice-7 report-wording rewrite + nested data pin (scanner CI runs 96–97 green) |
+| 1 | ALN-TokenData | **#6** (opened 2026-09-04 at theme-unit close) | `claude/phase3-theme-unit` @ `491c513` | Subsumes #5 (slice-7; which subsumes #4/#3/#2) — owner closes #5 and earlier as subsumed. Adds theme.schema.json + the ALN star-drop theme.json + game.json theme pointer/requires on top of the slice-7 tree |
+| 2 | ALNScanner | **#15** (opened 2026-09-04 at theme-unit close) | `claude/phase3-theme-unit` @ `deddaf9` | Subsumes #14 (slice-7; which subsumes #13/#12) — owner closes #14 and earlier as subsumed. Adds the runtime pack theme (DECLINE mirror, three rating sites, bundled data re-point to themed TokenData + drift tripwire) |
 | 3 | ALNPlayerScan | **#6** | foundations | PWA is visibility-only (L3); no later train commits exist |
 | 4 | arduino-cyd-player-scanner | **#7** | foundations | ESP32 pack identity via asset manifest; no later train commits exist |
-| 5–16 | ALN-Ecosystem (parent) | **#19 → #30 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6, slice 7) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass. #30 is slice 7 (opened AT slice open per the corrected discipline). Train grows with remaining slices (theme, B0…) |
+| 5–17 | ALN-Ecosystem (parent) | **#19 → #31 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6, slice 7, theme unit) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass. #30 is slice 7, #31 the theme unit (both opened AT slice open per the corrected discipline). Train grows with remaining slices (B0…) |
 
 Timing: owner-driven, post-run (§ Final cutover below); nothing merges
 before the owner walks this table.
