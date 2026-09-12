@@ -300,6 +300,49 @@ function isScoreboardVisible() {
 }
 
 /**
+ * Re-report the kiosk's CURRENT state to the health registry, and say
+ * whether it is healthy (Block 2 T1a fix round 1, ruling 22).
+ *
+ * This is the read-only `display` arm of `service:check`. It LAUNCHES
+ * NOTHING: a pre-show health sweep must not seize the HDMI output while
+ * VLC is on it. Everything it answers is already known to this module —
+ * the process handle and the visible flag — so it needs no I/O either.
+ *
+ *   video playback off (host config)  down    the host is not doing video
+ *   process alive                     healthy 'kiosk running'
+ *   no process, hidden                healthy R13 — nothing is displayed
+ *                                             and showScoreboard() relaunches
+ *   no process, should be visible     down    'kiosk not running'
+ *
+ * The host-config arm wins over a live process for the same reason
+ * displayControlService.init() gives it the final word: a host with video
+ * playback disabled is not using this output, whatever happens to be open.
+ *
+ * @returns {boolean} true when the kiosk is healthy
+ */
+function probe() {
+  if (!config.features.videoPlayback) {
+    registry.report('display', 'down', 'video playback disabled (host config)');
+    return false;
+  }
+
+  if (browserProcess && !browserProcess.killed) {
+    registry.report('display', 'healthy', 'kiosk running');
+    return true;
+  }
+
+  // No process. Hidden is the idle posture, not a fault (R13) — red here
+  // would put a permanent alarm on a system working exactly as intended.
+  if (!visible) {
+    registry.report('display', 'healthy', 'kiosk closed while hidden; relaunches on show');
+    return true;
+  }
+
+  registry.report('display', 'down', 'kiosk not running');
+  return false;
+}
+
+/**
  * Get current display driver status.
  * @returns {Object} Status object
  */
@@ -349,6 +392,7 @@ module.exports = {
   showScoreboard,
   hideScoreboard,
   isScoreboardVisible,
+  probe,
   getStatus,
   cleanup
 };

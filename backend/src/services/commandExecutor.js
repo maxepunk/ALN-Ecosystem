@@ -891,6 +891,12 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
           sound: () => soundService.checkHealth(),
           gameclock: () => true,
           cueengine: () => getCueEngine().checkHealth(),
+          // T1a fix round 1 (ruling 22): the kiosk is the ninth service
+          // everywhere else, so it must answer here too. probe() is
+          // READ-ONLY — a pre-show sweep must not seize the HDMI output
+          // while VLC is on it. Lazy-required like vlc above so the spy
+          // in the unit tests lands on the same module object.
+          display: () => require('../utils/displayDriver').probe(),
         };
 
         const { serviceId } = payload;

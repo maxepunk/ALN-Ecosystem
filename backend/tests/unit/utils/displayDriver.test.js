@@ -1001,3 +1001,121 @@ describe('displayDriver — health reporting (T1a D9, pin P16)', () => {
     );
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════
+// Block 2 T1a fix round 1, ruling 22: probe().
+//
+// `service:check` could ask eight of the nine services how they are and
+// answered "Unknown service: display" for the ninth — the one service a GM
+// is most likely to poke at, because the kiosk is the piece of equipment
+// they can SEE. probe() is the read-only answer: it re-reports what the
+// driver already knows and LAUNCHES NOTHING. A probe that launched would
+// turn a pre-show health sweep into an unrequested takeover of the HDMI
+// output while VLC was on it.
+// ══════════════════════════════════════════════════════════════════════
+describe('displayDriver — probe() (T1a fix round 1, ruling 22)', () => {
+  let registry;
+
+  const armExecFile = () => {
+    const { execFile } = require('child_process');
+    execFile.mockImplementation((cmd, args, opts, cb) => {
+      if (typeof opts === 'function') { cb = opts; }
+      if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
+      else cb(null, '', '');
+    });
+  };
+
+  // jest.config.base.js pins ENABLE_VIDEO_PLAYBACK=false for the whole
+  // unit run so nothing spawns a real VLC. That is the HOST-CONFIG arm of
+  // probe(), which would shadow every other branch here — so each test
+  // states the posture it is actually about instead of inheriting the
+  // harness default, and the host-config test sets it back to 'false'.
+  beforeEach(() => {
+    process.env.ENABLE_VIDEO_PLAYBACK = 'true';
+    jest.resetModules();
+    displayDriver = require('../../../src/utils/displayDriver');
+    registry = require('../../../src/services/serviceHealthRegistry');
+    registry.clearDormant('display');
+    registry.report('display', 'down', 'Not yet checked');
+    jest.spyOn(registry, 'report');
+  });
+
+  afterEach(() => {
+    process.env.ENABLE_VIDEO_PLAYBACK = 'false';
+    jest.restoreAllMocks();
+  });
+
+  test('a live kiosk probes healthy and says so', async () => {
+    const { spawn } = require('child_process');
+    spawn.mockReturnValue({ pid: 1234, on: jest.fn(), killed: false });
+    armExecFile();
+    await displayDriver.ensureBrowserRunning();
+    registry.report.mockClear();
+
+    expect(displayDriver.probe()).toBe(true);
+    expect(registry.report).toHaveBeenCalledWith('display', 'healthy', 'kiosk running');
+  });
+
+  test('probe() LAUNCHES NOTHING — it is read-only', async () => {
+    const { spawn } = require('child_process');
+    spawn.mockReturnValue({ pid: 1234, on: jest.fn(), killed: false });
+    armExecFile();
+
+    displayDriver.probe();
+
+    expect(spawn).not.toHaveBeenCalled();
+  });
+
+  test('no kiosk while hidden stays healthy — it relaunches on the next show (R13)', () => {
+    // Never launched, nothing visible: the idle posture. Red here would put
+    // a permanent alarm on a system that is working exactly as intended.
+    expect(displayDriver.isScoreboardVisible()).toBe(false);
+
+    expect(displayDriver.probe()).toBe(true);
+    expect(registry.report).toHaveBeenCalledWith(
+      'display', 'healthy', 'kiosk closed while hidden; relaunches on show'
+    );
+  });
+
+  test('no kiosk while it should be VISIBLE is down', async () => {
+    const { spawn } = require('child_process');
+    const proc = { pid: 1234, killed: false, on: jest.fn() };
+    spawn.mockReturnValue(proc);
+    armExecFile();
+    await displayDriver.showScoreboard();
+    expect(displayDriver.isScoreboardVisible()).toBe(true);
+
+    // The process died but the driver still believes it is on screen — the
+    // exit event has not been delivered yet, so `visible` is still true.
+    // This is the same aliveness predicate ensureBrowserRunning() uses.
+    proc.killed = true;
+    registry.report.mockClear();
+
+    expect(displayDriver.probe()).toBe(false);
+    expect(registry.report).toHaveBeenCalledWith('display', 'down', 'kiosk not running');
+  });
+
+  test('host config wins over everything: video playback off is down', async () => {
+    // A host with video playback disabled is not using this output at all,
+    // whatever happens to be open on it — the same final word
+    // displayControlService.init() gives the setting.
+    process.env.ENABLE_VIDEO_PLAYBACK = 'false';
+    jest.resetModules();
+    const driver = require('../../../src/utils/displayDriver');
+    const reg = require('../../../src/services/serviceHealthRegistry');
+    reg.clearDormant('display');
+    jest.spyOn(reg, 'report');
+
+    const { spawn } = require('child_process');
+    spawn.mockReturnValue({ pid: 1234, on: jest.fn(), killed: false });
+    armExecFile();
+    await driver.ensureBrowserRunning();   // a live kiosk...
+    reg.report.mockClear();
+
+    // ...still probes DOWN.
+    expect(driver.probe()).toBe(false);
+    expect(reg.report).toHaveBeenCalledWith(
+      'display', 'down', 'video playback disabled (host config)'
+    );
+  });
+});

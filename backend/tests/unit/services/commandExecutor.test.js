@@ -931,6 +931,74 @@ describe('commandExecutor', () => {
       // service:check should NOT appear in SERVICE_DEPENDENCIES
       expect(SERVICE_DEPENDENCIES['service:check']).toBeUndefined();
     });
+
+    // Block 2 T1a fix round 1, ruling 22. `display` is the ninth service
+    // everywhere else — the registry, the contracts, the dashboard, the
+    // audit — but service:check answered "Unknown service: display" for it.
+    // The probe closes that hole read-only.
+    it('checks the display kiosk through the driver probe', async () => {
+      const displayDriver = require('../../../src/utils/displayDriver');
+      jest.spyOn(displayDriver, 'probe').mockReturnValue(true);
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+
+      const result = await executeCommand({ actor: TEST_OPERATOR,
+        action: 'service:check',
+        payload: { serviceId: 'display' },
+        source: 'gm'
+      });
+
+      expect(result.success).toBe(true);
+      expect(displayDriver.probe).toHaveBeenCalled();
+      expect(result.data.display).toBe(true);
+      expect(result.message).toBe('Health check: display = healthy');
+      displayDriver.probe.mockRestore();
+    });
+
+    it('reports the display kiosk down when the probe says so', async () => {
+      const displayDriver = require('../../../src/utils/displayDriver');
+      jest.spyOn(displayDriver, 'probe').mockReturnValue(false);
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+
+      const result = await executeCommand({ actor: TEST_OPERATOR,
+        action: 'service:check',
+        payload: { serviceId: 'display' },
+        source: 'gm'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.display).toBe(false);
+      expect(result.message).toBe('Health check: display = down');
+      displayDriver.probe.mockRestore();
+    });
+
+    it('the all-services sweep includes display', async () => {
+      const displayDriver = require('../../../src/utils/displayDriver');
+      jest.spyOn(displayDriver, 'probe').mockReturnValue(true);
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+      const vlcService = require('../../../src/services/vlcMprisService');
+      const musicService = require('../../../src/services/musicService');
+      const lightingService = require('../../../src/services/lightingService');
+      const bluetoothService = require('../../../src/services/bluetoothService');
+      const audioRoutingService = require('../../../src/services/audioRoutingService');
+      const soundService = require('../../../src/services/soundService');
+
+      vlcService.checkConnection.mockResolvedValue(true);
+      musicService.checkConnection.mockResolvedValue(true);
+      lightingService.checkConnection.mockResolvedValue(undefined);
+      bluetoothService.isAvailable.mockResolvedValue(true);
+      audioRoutingService.checkHealth.mockResolvedValue(true);
+      soundService.checkHealth.mockResolvedValue(true);
+
+      const result = await executeCommand({ actor: TEST_OPERATOR,
+        action: 'service:check',
+        payload: {},
+        source: 'gm'
+      });
+
+      expect(displayDriver.probe).toHaveBeenCalled();
+      expect(result.data).toHaveProperty('display', true);
+      displayDriver.probe.mockRestore();
+    });
   });
 
   describe('cue lifecycle commands', () => {
