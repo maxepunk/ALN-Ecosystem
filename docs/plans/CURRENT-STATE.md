@@ -91,90 +91,50 @@ Thursday preflight.
 
 ## 6. Running, and on disk
 
-- Harness build DONE 22:19:55Z (head f778f15, review clean, five minors
-  ledgered in the progress file); its hostile tester runs now,
-  `wf_dfd702f3-067` (script `hostile-harness.js`); then one fixer
-  commit + scoped re-review, my fresh gate, the merge, the lane
-  worktrees. Arms fact sheet DONE (scratch `preflight-arms-factsheet.md`,
-  20 design-changing facts, recount clean on substance).
-- Brief reviews DONE (all three REVISE; findings refuted independently);
-  the three briefs rewritten to revision 2 (44c331f): credentials as one
-  task, supervisor and self-heal as three reviewed tasks each. Scoped
-  re-reviews of credentials and self-heal run now (`wf_ce9f7fcc-512`);
-  the supervisor's re-review waits for the dormancy-core adversarial
-  pass (it builds on that core; survivors fold in first).
-- Research DONE once (10 differences; document in the docs worktree);
-  its critic left three show-night gaps (the environment PM2 freezes at
-  first start; the acceptance checklist blind to a missing browser or a
-  Wayland session; MPD's major-version step); revision 2 runs now
-  (`wf_a50361c3-286`), then the final commit and the guide repair.
-- 23:24:08Z (written): the session's usage limit tripped mid-run (reset 23:20Z):
-  the research revision, both re-reviews, two hostile-tester refuters,
-  twenty dormancy-pass refuters and its writer failed on it; finished
-  agents are cached; all four runs resumed at 23:23Z from their ids.
-  Hostile tester so far: one major refuted (the reproduction's real
-  orchestrator boot runs `pkill -f "pactl subscribe"` and HDMI card
-  probing machine-wide — not new, every Tier L boot does it; the test's
-  header sentence is overbroad and gets fixed; an audio-init off switch
-  for harness children is a rig-hygiene follow-up), two minors standing
-  (the Playwright worker's own logger still writes the shared
-  `backend/logs`; the slot root is a predictable `/tmp` path and
-  `clearSessionData` follows a planted symlink). Dormancy pass so far:
-  29 findings (11 major), 4 refuted, 6 standing, 19 refuters pending.
-  My gate on f778f15 runs in the background (`gate-f778f15.log`).
-- Workflows still running (owner: "go" 21:40Z; the adversarial pass
-  "agreed" 21:59:19Z, 2026-09-12;
-  resumable after any stop with `Workflow({scriptPath, resumeFromRunId})`,
-  finished agents cached; scripts copied to the scratchpad
-  `<scratchpad>/harness-minimum-build.js`, `research.js`,
-  `arms-factsheet.js`, `brief-reviews.js`):
-  harness build `wf_e025191e-511` (implementer → task review → fix
-  rounds; main checkout on `claude/nice-curie-hescfv-harness-minimum`,
-  base 33b2128, two commits carried; report `harness-minimum-report.md`);
-  research `wf_c1fcc10c-87d` (nine topic readers + a repository reader
-  → synthesis → critic; writes
-  `docs/plans/2026-09-12-green-fresh-install-research.md` in the docs
-  worktree); arms fact sheet `wf_64f7562e-cc8` (three readers → recount
-  → writer; scratch `preflight-arms-factsheet.md`); brief reviews
-  `wf_48810aa9-f35` (three reviewers → a refuter per blocking finding;
-  scratch `<lane>-lane-review.md`); dormancy-core adversarial pass
-  `wf_6858337e-efa` (three attacking lenses → a refuter per finding →
-  report; scratch `dormancy-core-adversarial.md`; script
-  `dormancy-adversarial.js`). A message never stops them; the stop
-  button does, and then they resume. Ruling R26: survivors of the
-  adversarial pass are fixed before any lane merges; each brief gets a
-  red team after its review passes; each build task gets a hostile
-  tester after its task review.
-- Harness facts verified from the official docs (20:25Z): a plain
-  message never stops agents; the stop button stops every running one
-  and they cannot be resumed; a COMPLETED agent resumes by message;
-  compaction leaves running agents alone; a container restart ends all
-  background work; workflows resume from their run id; cap here = 2
-  concurrent agents per workflow; the harness's own worktree tool
-  branches from the default branch and inits no submodules, so lane
-  worktrees are hand-cut under `.worktrees/`.
-- Main checkout is on the harness task branch (the workflow's
-  implementer edits there); docs commits go through the worktree
-  `.worktrees/docs` (designated branch, now a92a76a). Remove that
-  worktree before checking the designated branch out in the main
-  checkout again. Never commit in a checkout where an implementer edits.
+- Harness minimum: build workflow clean at f778f15 (review pass /
+  approved; five minors); the hostile tester's seven findings all
+  refuted on evidence, seventeen attacks held; MY gate on f778f15 green
+  (unit+contract 3121, ratchet 85/85, lint, integration 349/349). A
+  fixer (sonnet) is applying the five one-line minors now; then a scoped
+  re-review, my rerun of the touched suites, the merge (remove
+  `.worktrees/docs` first, then check the designated branch out in the
+  main checkout), the three lane worktrees.
+- Lane briefs: credentials and self-heal at revision 3 (e3d8474) after
+  two review passes; a third-pass scoped re-review runs
+  (`wf_c6d1f39c-7ba`, script `rereview-pass3.js`). The supervisor
+  brief (revision 2, three tasks) waits for the dormancy-core
+  adversarial pass to fold its survivors in, then its re-review.
+- Dormancy-core adversarial pass resumed (`wf_6858337e-efa`): 29
+  findings (11 major), refuters and the writer running; the standing
+  majors so far are the null-profile whole-kit dormancy (a duplicate of
+  the ruled profile check, not new), an unknown endpoint family
+  throwing at boot, and the display health word (probe reports healthy
+  while hidden; nothing returns it from down without a launch). Per
+  R26 survivors are fixed as one task before any lane merges.
+- Research: revision 2 running (`wf_a50361c3-286`) to close the three
+  show-night gaps; the document (revision 1) is committed in the docs
+  worktree; then the guide repair (R24) and your guide-ready note.
+- Every workflow resumes with `Workflow({scriptPath, resumeFromRunId})`;
+  scripts under `<scratchpad>/` (`harness-minimum-build.js`,
+  `research.js`, `research-revision-2.js`, `arms-factsheet.js`,
+  `brief-reviews.js`, `rereviews-cred-selfheal.js`, `rereview-pass3.js`,
+  `dormancy-adversarial.js`, `hostile-harness.js`). A message never
+  stops them; the stop button does, and then they resume. The session's
+  usage limit stopped twenty-five agents at 23:0xZ (reset 23:20Z); all
+  were resumed.
+- Main checkout is on the harness task branch (the fixer edits there);
+  docs commits go through `.worktrees/docs` (designated branch,
+  e3d8474). Never commit in a checkout where an implementer edits.
 - Rig: shared arms up under `/tmp/rung1` (engine stopped); E2E and
-  Tier L runs take `/tmp/rung1/e2e.lock` with `flock` (lanes share the
-  rig); a restart loses the arms (recipe `2026-09-12-container-baseline.md` §7).
+  Tier L runs take `/tmp/rung1/e2e.lock` with `flock` (a convention,
+  not yet harness machinery); a restart loses the arms (recipe
+  `2026-09-12-container-baseline.md` §7).
 - Scratch `.superpowers/sdd/2026-09-12-block2-hardening-plan/`: the
-  progress file (append-only; live-state lines at its end); six fact
-  sheets, each opening with a Conclusions section — read only that;
-  earlier reviews `p1-…` (DISPATCH), `p2-…` (REVISE),
-  `harness-minimum-rereview.md` (DISPATCH).
-- Lane briefs, rewritten to rulings R18–R25 and committed (a92a76a):
-  `docs/plans/briefs/2026-09-12-<lane>-lane.md` (+ `-review.md`) for
-  credentials, supervisor, self-heal; worktrees `.worktrees/<lane>` are
-  cut after the harness minimum merges (recipe in the progress file).
-- Next, in order: the harness build's result → my fresh gate → merge →
-  cut the three lane worktrees; the reviews' verdicts → brief fixes →
-  lanes dispatched as build workflows; the profile check after the
-  merge; the arms brief from its fact sheet; the guide repair from the
-  research (then the owner's guide-ready note).
+  progress file (append-only; live-state lines at its end); seven fact
+  sheets (`supervisor-`, `credentials-`, `self-heal-`,
+  `preflight-arms-factsheet.md`, `sweep-audit-producers/-renderers/-restore.md`),
+  each opening with a Conclusions section — read only that; reviews
+  and re-reviews per lane; `harness-minimum-report.md`.
 
 ## 7. Pointers (open when)
 
