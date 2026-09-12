@@ -108,6 +108,45 @@ async function loadPackStrings(orchestratorUrl) {
 }
 
 /**
+ * Money display spec from the pack oracle (A3 slice 3b, R-3b-1): the
+ * scoring block's `display.format` parsed with the same minimal grammar
+ * as the engine (one '#,###' token + literal affixes). Baked ALN spec
+ * when the pack declares none — mirrors every consumer's fallback.
+ * @param {Object|null} packScoring - loadPackScoring() result
+ * @returns {{prefix: string, suffix: string}}
+ */
+function moneySpec(packScoring) {
+  const m = typeof packScoring?.display?.format === 'string'
+    ? packScoring.display.format.match(/^([^#]*)#,###([^#]*)$/)
+    : null;
+  return m ? { prefix: m[1], suffix: m[2] } : { prefix: '$', suffix: '' };
+}
+
+/**
+ * Expected rendered money under a spec — the assertion-side twin of the
+ * engine's formatMoney (gameRules/formatting.js).
+ * @param {number} value
+ * @param {{prefix: string, suffix: string}} spec - moneySpec() result
+ * @returns {string}
+ */
+function formatMoneyExpected(value, spec) {
+  return spec.prefix + (value || 0).toLocaleString('en-US') + spec.suffix;
+}
+
+/**
+ * Format-AGNOSTIC numeric parse of a rendered money string: strips
+ * everything but digits and '-', so '$1,500', '1,500 cr' and '$-25,000'
+ * all parse without threading the pack spec into every page object.
+ * @param {string|null} text
+ * @returns {number|null}
+ */
+function parseMoneyText(text) {
+  if (!text) return null;
+  const n = parseInt(text.replace(/[^\d-]/g, ''), 10);
+  return Number.isNaN(n) ? null : n;
+}
+
+/**
  * Pack-derived UI labels for mode assertions (lowercase, as the pill
  * renders them minus the ' Mode' suffix). Tests written against ALN's
  * "black market"/"detective" literals use these so the same assertion
@@ -220,6 +259,9 @@ function calculateExpectedGroupBonus(tokens, packScoring, packGroups) {
 
 module.exports = {
   loadPackScoring,
+  moneySpec,
+  formatMoneyExpected,
+  parseMoneyText,
   loadPackModes,
   loadPackGroups,
   loadPackStrings,

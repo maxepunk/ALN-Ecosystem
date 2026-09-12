@@ -23,6 +23,7 @@
 const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
+const { parseMoneyFormat } = require('../gameRules/formatting');
 
 const DEFAULT_PACK_DIR = path.join(__dirname, '../../../ALN-TokenData');
 
@@ -93,6 +94,9 @@ const LEGACY_ALN_SCORING = Object.freeze({
   baseValues: Object.freeze({ 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 }),
   typeMultipliers: Object.freeze({ Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 }),
   semantics: Object.freeze({ allowNegative: true }),
+  // R-3b-1 shim twin: the packless engine formats money like ALN, same
+  // as its tables (drift-mirrored against the real game.json in tests).
+  display: Object.freeze({ unit: 'currency-usd', format: '$#,###' }),
 });
 
 /** A usable scoring block has NON-EMPTY value and multiplier tables —
@@ -127,6 +131,14 @@ function _normalizeScoring(scoring) {
     // declares scoring but omits semantics gets the conservative floor;
     // the packless shim mirrors ALN (true) like every other shim value.
     allowNegative: !!(scoring.semantics && scoring.semantics.allowNegative === true),
+    // R-3b-1: the declared money display spec rides the rules snapshot
+    // (the old normalizer DROPPED it — zero readers existed). Kept only
+    // when the format is drivable; the activation gate refuses declared
+    // undrivable formats, so null here means "nothing declared" and
+    // consumers fall back to the baked ALN spec.
+    display: (scoring.display && parseMoneyFormat(scoring.display.format))
+      ? { unit: scoring.display.unit, format: scoring.display.format }
+      : null,
   };
 }
 
@@ -441,6 +453,19 @@ function _gateCheck(manifest, gameConfig) {
           );
         }
       }
+    }
+    // Money display drivability (A3 slice 3b, R-3b-1 — the gate twin of
+    // the game.schema.json format pattern): a declared format the engine
+    // cannot parse must refuse loudly, never half-render. Absent
+    // display/format gates nothing (baked ALN spec).
+    if (gameConfig.scoring && gameConfig.scoring.display
+        && gameConfig.scoring.display.format !== undefined
+        && !parseMoneyFormat(gameConfig.scoring.display.format)) {
+      problems.push(
+        `scoring.display.format ${JSON.stringify(gameConfig.scoring.display.format)} is not drivable — `
+        + `the engine renders exactly one '#,###' number token wrapped by literal affixes `
+        + `(e.g. "$#,###", "#,### cr")`
+      );
     }
     // Strings sidecar (A3 slice 3a): declared ⇒ must load + validate.
     for (const prob of _loadDeclaredStrings(gameConfig).problems) {

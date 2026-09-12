@@ -2,14 +2,35 @@
  * Shared formatting utilities.
  */
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-});
+// Pack-driven money spec (A3 slice 3b, R-3b-1): the edited pack's
+// scoring.display.format drives rendering — one '#,###' signed
+// grouped-integer token wrapped by literal affixes (grammar twin of
+// backend gameRules/formatting.js). Baked ALN spec fallback; applied by
+// app.js from GET /api/config after each load. Replaces the old
+// hardcoded Intl USD formatter — byte-identical for the ALN spec on
+// NON-NEGATIVE values (the tool's previews never render negatives);
+// negatives now follow the engine convention ($-25,000, the sign on
+// the number token) instead of Intl's -$25,000.
+let MONEY_SPEC = { prefix: '$', suffix: '' };
+
+export function applyPackMoneyFormat(format) {
+  const m = typeof format === 'string' ? format.match(/^([^#]*)#,###([^#]*)$/) : null;
+  MONEY_SPEC = m ? { prefix: m[1], suffix: m[2] } : { prefix: '$', suffix: '' };
+  return m !== null;
+}
 
 export function formatCurrency(value) {
-  return currencyFormatter.format(value);
+  return MONEY_SPEC.prefix + (value || 0).toLocaleString('en-US') + MONEY_SPEC.suffix;
+}
+
+/**
+ * Star construction (slice 3b twin of the scanner's formatStars):
+ * clamped to the pack's rating scale so out-of-range data never throws
+ * a negative-repeat RangeError. Glyphs stay per-surface (Q-3b-2 held).
+ */
+export function formatStars(rating, scale = 5, { filled = '\u2605', empty = null } = {}) {
+  const r = Math.max(0, Math.min(scale, rating || 0));
+  return filled.repeat(r) + (empty ? empty.repeat(scale - r) : '');
 }
 
 export function formatFileSize(bytes) {

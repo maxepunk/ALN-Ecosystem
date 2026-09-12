@@ -144,6 +144,35 @@ describe('game pack schema contract (A1)', () => {
     // that divergence for real).
   });
 
+  describe('scoring.display.format grammar (A3 slice 3b, R-3b-1)', () => {
+    // Exactly one '#,###' number token wrapped by literal affixes — the
+    // schema pattern is the authoring-time twin of the activation gate's
+    // drivability check (schema-open elsewhere, gate-enforced).
+    it.each([
+      ['$#,###', true],       // ALN
+      ['#,### cr', true],     // toy-heist (suffix unit)
+      ['€ #,###', true],
+      ['#,###', true],        // bare token
+      ['dollars', false],     // no token
+      ['$#,###-#,###', false], // two tokens
+      ['##,###', false],      // malformed token
+      ['$#,##', false],
+      ['', false],
+    ])('format %j is %s under the schema pattern', (format, valid) => {
+      const game = readJson(TOKEN_DATA_DIR, 'game.json');
+      const mutated = JSON.parse(JSON.stringify(game));
+      mutated.scoring.display = { unit: 'x', format };
+      expect(validateGame(mutated)).toBe(valid);
+    });
+
+    it('both real packs declare a drivable format (the grammar has two live consumers)', () => {
+      for (const { dir } of PACKS) {
+        const game = readJson(dir, 'game.json');
+        expect(game.scoring.display.format).toMatch(/^[^#]*#,###[^#]*$/);
+      }
+    });
+  });
+
   describe('declared strings sidecars validate against strings.schema.json (A3 slice 3a)', () => {
     // Every pack whose game.json declares `strings` must ship a sidecar
     // that satisfies the schema — the engine gate walks leaves at

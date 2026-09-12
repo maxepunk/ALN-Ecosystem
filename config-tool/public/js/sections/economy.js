@@ -4,7 +4,7 @@
  * live formula preview, read-only token browser.
  */
 import * as api from '../utils/api.js';
-import { formatCurrency, el } from '../utils/formatting.js';
+import { formatCurrency, formatStars, el } from '../utils/formatting.js';
 import { renderTokenBrowser } from '../components/tokenBrowser.js';
 
 let scoringData = null;
@@ -55,7 +55,7 @@ export function render(container, config, context) {
         });
         return el('tr', {},
           el('td', {}, rating),
-          el('td', {}, '\u2605'.repeat(parseInt(rating))),
+          el('td', {}, formatStars(parseInt(rating), Object.keys(scoringData.baseValues).length || 5)),
           el('td', {}, input),
         );
       }),

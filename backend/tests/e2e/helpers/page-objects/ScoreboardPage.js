@@ -10,6 +10,8 @@
  * - Detective mode evidence cards + Black Market scores
  */
 
+const { parseMoneyText } = require('../scoring');
+
 class ScoreboardPage {
   constructor(page) {
     this.page = page;
@@ -309,9 +311,9 @@ class ScoreboardPage {
    */
   async getTeamScoreNumeric(teamId) {
     const scoreText = await this.getTeamScore(teamId);
-    if (!scoreText) return null;
-    // Parse "$1,500" -> 1500
-    return parseInt(scoreText.replace(/[$,]/g, ''), 10);
+    // Format-agnostic (slice 3b): the ticker renders the PACK's money
+    // spec ('$1,500' or '1,500 cr') — parse digits/sign only.
+    return parseMoneyText(scoreText);
   }
 
   /**
@@ -418,7 +420,9 @@ class ScoreboardPage {
         if (!entry) return false;
         const amountEl = entry.querySelector('.ticker-entry__score');
         if (!amountEl) return false;
-        const currentScore = parseInt(amountEl.textContent.replace(/[$,]/g, ''), 10);
+        // In-browser twin of parseMoneyText (waitForFunction bodies are
+        // serialized — no imports): format-agnostic digits/sign strip.
+        const currentScore = parseInt(amountEl.textContent.replace(/[^\d-]/g, ''), 10);
         return currentScore >= score;
       },
       { team: teamId, score: expectedScore },

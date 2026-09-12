@@ -44,7 +44,7 @@ const { selectTestTokens, fetchTokenDatabase } = require('../helpers/token-selec
 const { GMScannerPage } = require('../helpers/page-objects/GMScannerPage');
 const PlayerScannerPage = require('../helpers/page-objects/PlayerScannerPage');
 const { ScoreboardPage } = require('../helpers/page-objects/ScoreboardPage');
-const { loadPackModes, expectedModeLabels } = require('../helpers/scoring');
+const { loadPackModes, expectedModeLabels, loadPackScoring, moneySpec, formatMoneyExpected } = require('../helpers/scoring');
 
 let browser = null;
 let orchestratorInfo = null;
@@ -710,6 +710,14 @@ test.describe('Full Game Session Multi-Device Flow', () => {
 
     // CONDITION-BASED WAITING: Wait for scoreboard DOM to show expected score
     await gmScanner1.waitForTeamScoreInScoreboard(teamBeta, expectedScore, 10000);
+
+    // Rendered-AFFIX pin (3b review C): the SCANNER's scoreboard text
+    // must carry the PACK's money spec verbatim — the Tier-L tripwire
+    // for the scanner's formatCurrency wiring (the numeric waits above
+    // are deliberately affix-blind). Dual-pack: dollar-prefixed / 'X cr'.
+    const renderedAfter = await gmScanner1.getTeamScoreFromScoreboard(teamBeta);
+    const spec = moneySpec(await loadPackScoring(orchestratorInfo.url));
+    expect(renderedAfter.trim()).toBe(formatMoneyExpected(expectedScore, spec));
 
     // Get Team Beta's score AFTER adjustment (now guaranteed to be updated)
     const teamBetaScoreAfter = await gmScanner1.getTeamScoreNumericFromScoreboard(teamBeta);
