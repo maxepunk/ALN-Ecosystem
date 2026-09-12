@@ -430,6 +430,12 @@ you intend.
   features does that unlock?" for a hypothetical profile, before
   equipment is packed for an event. The UI for it is scheduled after
   Phase 3 (ROADMAP §8.4).
+- **Remote display.** A display on another device that shows only the
+  scoreboard page over the kit network (today a Pi 4 with a browser in
+  fullscreen at the scoreboard link). In the profile it is the family
+  `display.remote`, a count, modeled like `stations`; the preflight
+  counts connected display-class connections against it. It is not a
+  fallback for the TV (`display.main`). (Added 2026-09-12, owner-ruled.)
 - **Kit network.** The kit carries its own router and WiFi. The
   orchestrator has one reserved IP address and one public DNS name.
   The **orchestrator Pi** answers that name on the LAN: it runs

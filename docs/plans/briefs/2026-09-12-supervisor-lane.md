@@ -87,33 +87,43 @@ read §1–§10 in full before the first edit. The load-bearing facts:
 ## The pins (plan §3 P10–P13, verbatim scope; rulings below settle what they leave open)
 
 P10 Supervision; P11 Host config is the single source; P12 Verbs are
-commands; P13 Hold policy. Read them in the plan before the first edit
-(search `P10.`). Every number and message in them is binding.
+commands; P13 Hold policy — as amended on 2026-09-12 by rulings R18
+(two modes, `maxFailures` 0–20) and R20 (one supervision path). Read
+them in the plan before the first edit (search `P10.`). Every number
+and message in them is binding.
 
 ## Orchestrator rulings on what the pins leave open (each recorded in the plan's record; cost if wrong stated there)
 
-- **R-S1 Chromium.** Extract the restart POLICY from `ProcessMonitor`
-  into a pure module `utils/restartPolicy.js` (sliding flap window over
-  exit timestamps, `maxFailures` inside `flapWindowMs`, delay =
+- **R-S1 One supervision path (owner ruling R20).** Chromium becomes
+  a `ProcessMonitor` consumer. `ProcessMonitor` gains four optional
+  hooks a consumer may supply: `preStart()` (the display's two-stage
+  orphan sweep, moved from `_doLaunch` 123-159), `postStart()` (the
+  1 s alive check, 237-249), `mayRestart()` (true only while the
+  scoreboard is the intended visible mode; dead-while-hidden relaunches
+  on show), and `classifyExit({code, signal, terminating, launched,
+  visible})` returning `{status, message}` (ruling 27's logic, 192-224,
+  moved verbatim). The restart POLICY (sliding flap window over exit
+  timestamps, `maxFailures` inside `flapWindowMs`, delay =
   `restartDelayMs * backoffMultiplier ** failuresInWindow` capped at
   `backoffCapMs` for observers and at `flapWindowMs` for services, a
   non-finite result falls back to `restartDelayMs`; `kind: 'service' |
-  'observer'`; observers never give up). `ProcessMonitor` uses it;
-  `displayDriver.js` keeps its own spawn and ruling 27's exit
-  classification and asks the SAME policy whether and when to relaunch,
-  with the existing two-stage orphan kill as the pre-start hook.
-  Chromium relaunches only while the scoreboard is the intended visible
-  mode; dead-while-hidden relaunches on show, as today.
+  'observer'`; observers never give up) lives in `utils/restartPolicy.js`
+  and `ProcessMonitor` alone applies it. `displayDriver.js` keeps window
+  management (`showScoreboard`/`hideScoreboard`, `probe()`) and supplies
+  the hooks; the 58 existing display tests stay green, adapted only
+  where they reached into the removed spawn code.
 - **R-S2 What counts as a failure.** An exit not initiated by `stop()`
   or `restart()`, whatever the exit code and whether or not the child
   ever wrote to stdout. The `receivedData` reset rule goes.
-- **R-S3 Host-config modes.** `self`: spawn at boot and supervise.
-  `adopt`: never spawn; attach to the external process; on its exit
-  re-resolve (VLC: the bus-name owner) and never restart. `off`: spawn
-  once at boot, never restart automatically; the GM's Restart verb still
-  works. `off` is R13's fallback: it removes every automatic kill and
-  restart and keeps the venue booting as today. (Owner to confirm; the
-  brief ships with this meaning.)
+- **R-S3 Host-config modes (owner ruling R18).** `self`: spawn at boot
+  and supervise. `adopt`: never spawn; attach to the external process;
+  on its exit re-resolve (VLC: the bus-name owner) and never restart;
+  with nothing to adopt the service reports `down` with a message naming
+  what it looked for. There is NO `off`: whether a program runs tonight
+  is the profile's truth through the dormancy map. `maxFailures` ranges
+  0–20; 0 means manual restarts only (no automatic relaunch, escalation
+  to the red card at the first death, the GM's Restart verb works) —
+  R13's rehearsal fallback.
 - **R-S4 One expiry method.** `services/holdExpiry.js` exports
   `expireHolds({reason, blockedBy})`: iterates the cue engine's store and
   the video queue's list, calls each item's owning-service discard, and
@@ -149,8 +159,9 @@ commands; P13 Hold policy. Read them in the plan before the first edit
    out-of-range field clamped with a loud warn). `VLC_SELF_SPAWN` and
    `ENABLE_MUSIC_PLAYBACK` become deprecated aliases read once with a
    warn and mapped onto modes (`VLC_SELF_SPAWN=false` → vlc `adopt`;
-   `ENABLE_MUSIC_PLAYBACK=false` → mpd `off`). Red-first: one test per
-   out-of-range field; alias env vars warn; absent file silent.
+   `ENABLE_MUSIC_PLAYBACK=false` → mpd `adopt`). Red-first: one test per
+   out-of-range field (21 clamps to 20; 0 is accepted for
+   `maxFailures`); alias env vars warn; absent file silent.
 4. **The owning services.** VLC, MPD, Chromium (via R-S1), the three
    observers, HA: each reads its host-config row; on `gave-up` the
    owner reports `down` with `crashed N times in Ws — supervision
@@ -181,11 +192,14 @@ commands; P13 Hold policy. Read them in the plan before the first edit
    `video_busy` keeps its 10 s auto-discard. Red-first: expiry at
    session end and at reset (both stores, per-item discard observed);
    already-queued video fails under a latch.
-7. **Display.** `displayDriver.js` on the shared policy (R-S1);
-   `service:restart display` relaunches; the `display:*` dependency rows
-   in `commandExecutor.js`. Red-first: Chromium restarts only while
+7. **Display.** `displayDriver.js` supplies the four hooks and
+   `ProcessMonitor` owns the spawn (R-S1); `service:restart display`
+   relaunches through the monitor; the `display:*` dependency rows in
+   `commandExecutor.js`. Red-first: Chromium restarts only while
    visible; five exits inside the window → `gave-up` → `down` with the
-   message; the 58 existing tests stay green.
+   message; a latched display is not relaunched on show; `maxFailures:
+   0` never relaunches and reports `down` at the first death; the 58
+   existing display tests stay green.
 8. **The scanner's verbs.** `HealthRenderer.js` renders verbs per
    status: down → Check Now, Restart, Run without it; dormant with the
    operator door → Put back in service; dormant with the profile door →

@@ -21,7 +21,9 @@ pin, one brief, three checks.
 ## Inputs
 
 1. The pin: `docs/plans/2026-09-12-block2-hardening-plan.md` §3 P15
-   (search `P15.`), the ruling R5 in §1, the lane policy R15 in §1, the
+   as amended on 2026-09-12 (search `P15.`), the rulings R5 and R19 in
+   §1 (R19 retires the handshake `deviceType` on both sides and drops
+   the eviction clause), the lane policy R15 in §1, the
    task section "credentials on every connection" in §4, and §6 Global
    constraints.
 2. The implementer brief: `docs/plans/briefs/2026-09-12-credentials-lane.md`.
@@ -44,7 +46,10 @@ pin, one brief, three checks.
    whether refusing every non-`gm` deviceType breaks any real client
    (fact sheet §4 lists them all) and whether the scoreboard's path
    (`verifyObserveToken` fall-through) survives the brief's handshake
-   order (a)–(f) unchanged.
+   order (a)–(f) unchanged. Verify the brief's consumer list of the
+   handshake type against a fresh grep (server, scanner, scoreboard
+   page, helpers, contracts) and name any consumer it misses; confirm
+   the scan-record `deviceType` is correctly left alone.
 2. **Brief against the pin.** Every clause of P15 that is in scope has a
    deliverable and a red-first seam, except the held eviction clause —
    confirm the brief holds it and says why. Every deliverable traces to

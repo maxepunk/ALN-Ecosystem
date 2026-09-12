@@ -69,6 +69,17 @@ paste the count line.
     `service:restart display`, `KNOWN_SERVICES`); name the functions the
     arms will call and what they look like today.
 
+11. The `stations` family end to end, as the template for the new
+    count-only family `display.remote` (ruling R21, 2026-09-12: a
+    display on another device showing only the scoreboard page): the
+    schema, the profile, `gameRules/endpointServices.js` (list, map,
+    `isInstalled`), `scripts/lib/simulationProfile.js`, every test that
+    enumerates the families (name each), and how a scoreboard display's
+    connection is identified in the device records today (the
+    `SCOREBOARD_` id prefix at `socketServer.js:85`; the credentials
+    lane replaces it with the credential class `display`), so the
+    devices row can count connected remote displays against the count.
+
 ## Completion criterion
 
 Every question answered with file:line citations; every test file named

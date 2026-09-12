@@ -42,6 +42,10 @@ build in parallel; the preflight panel comes after you):
 - `ALNScanner/src/ui/renderers/HealthRenderer.js`,
   `AdminOperations.js`, `domEventBindings.js`: not yours (supervisor
   lane).
+- `ALNScanner/src/network/connectionManager.js`: your edit is
+  `_doConnect`'s collision retry (178–199) only; the credentials lane
+  edits the auth payload (lines 28, 147; the handshake loses
+  `deviceType`, ruling R19) and merges before you — rebase on it.
 
 ## The facts you build on
 

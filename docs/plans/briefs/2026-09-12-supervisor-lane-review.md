@@ -23,7 +23,9 @@ brief, four checks.
 ## Inputs
 
 1. The pins: `docs/plans/2026-09-12-block2-hardening-plan.md` §3 P10,
-   P11, P12, P13 (search `P10.`), P7 (the reason normalization P12
+   P11, P12, P13 as amended on 2026-09-12 (search `P10.`), the rulings
+   R18 (two host-file modes; `maxFailures` 0–20) and R20 (one
+   supervision path) in §1, P7 (the reason normalization P12
    cites), P3 and P5 (dormant never holds; the dormant branch), the
    rulings R6, R13, R15 in §1, the task section "the supervisor and the
    fault buttons" in §4, §6 Global constraints.
@@ -46,13 +48,14 @@ brief, four checks.
    code does today — name the sentence on each side. In particular:
    does R-S2 (an exit not initiated by stop/restart counts, whatever the
    stdout) agree with alarm integrity, and is there any process whose
-   normal behaviour would trip it? Does R-S3's meaning of `off` serve
-   R13's fallback (removes every automatic kill and restart; boots as
-   today), and is there a better reading of P11's three modes? Does
-   R-S1 (a shared pure policy; Chromium keeps its own spawn) satisfy
-   P10's "chromium is display-aware" without duplicating ruling 27's
-   logic? Does R-S4 satisfy P13 given the two hold stores are different
-   implementations?
+   normal behaviour would trip it? Does R-S3 (two modes; `maxFailures`
+   0 = manual restarts only) serve R13's fallback without a second
+   truth about what runs tonight? Does R-S1 (Chromium as a
+   `ProcessMonitor` consumer through four hooks) carry ruling 27's exit
+   semantics and the visibility rule intact, and is the hook set
+   sufficient (name any display behaviour in `displayDriver.js` the
+   four hooks cannot express)? Does R-S4 satisfy P13 given the two hold
+   stores are different implementations?
 2. **Brief against the pins.** Every clause of P10–P13 has a
    deliverable and a red-first seam; every deliverable traces to a
    clause; nothing exceeds the pins. Name any pin clause the brief

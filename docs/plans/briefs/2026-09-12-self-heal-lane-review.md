@@ -64,7 +64,9 @@ pin, five orchestrator rulings, one brief, four checks.
    forced interleaving)?
 4. **Collision and size.** The shared-file rules against R15 and the
    matrix (the router's `sync:full` case; `test-server.js` after the
-   harness minimum; the supervisor lane's scanner files). Is the lane
+   harness minimum; the supervisor lane's scanner files; the
+   credentials lane's edit of `connectionManager.js`'s auth payload,
+   which merges first). Is the lane
    too large for one implementer at one review — if so, name the seam
    to cut (loader+manager | router+UI+reconnect | owed tests+flow) and
    each part's close gate.

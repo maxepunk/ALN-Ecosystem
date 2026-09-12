@@ -50,6 +50,14 @@ Schedule decisions are the owner's at the §8 checkpoints.
 | R15 | Lane policy: parallel lanes may edit different functions of a shared file; the orchestrator merges in a fixed order and runs the full suite after each merge; same-section edits are serialized (the command executor's switch and the contract's action enum: the supervisor before the preflight's run command; the scanner router's sync:full case: the self-heal before the panel) — cost if wrong: a merge conflict resolved by hand, visible in the suite run that follows | owner, 2026-09-12 |
 | R16 | Documentation: one-screen state page edited in place as the entry point; the plan's decisions replaced in place with history in its record; briefs and reviews as pointed-to working material; the delegation skill's scratch progress file is not the ledger (that word is reserved for temporary-construct rows); the post-walk handoff retired into the state page; process rule 6 reads the state page first, then its pointers | owner, 2026-09-12 |
 | R17 | Green becomes the home development environment (real substitute hardware, rung 2) once it is ready and the work reaches the pre-rehearsal checkpoint; at that point every lane is merged or pushed and the state page is current, because worktrees and the container rig do not travel | owner, 2026-09-12 |
+| R18 | Host-file modes are `self` (the orchestrator starts and supervises the program) and `adopt` (another supervisor on the host runs it; the orchestrator attaches, re-resolves on exit, never restarts); the third value `off` is removed — whether a program runs tonight is the profile's truth through the dormancy map, never the host file's; `maxFailures` ranges 0–20 and 0 means manual restarts only (the rehearsal fallback R13 names) — cost if wrong: a venue that wants a program silenced edits its profile, not the host file | owner, 2026-09-12 (grill rounds 1–3) |
+| R19 | P15's "observe tokens evict per deviceId" is dropped (every pass carries one literal id today; as written it would blank the other display at its next reconnect; built right it changes nothing anyone sees); the self-declared handshake station type (`deviceType`) is retired NOW on both sides — the verified credential class decides every gate, label and exemption; the scoreboard's collision exemption keys on the display class, not the `SCOREBOARD_` name prefix; the scan-record device type (gm/player/esp32) is a different field and stays — cost if wrong: one coordinated wire change across backend, scanner, scoreboard page, contracts and test helpers, in the credentials lane | owner, 2026-09-12 |
+| R20 | One supervision path: the TV browser (Chromium) becomes a `ProcessMonitor` consumer through four display hooks (pre-start orphan sweep, post-start alive check, may-restart-now by intended visibility, exit classification per ruling 27); the display driver keeps window management only — cost if wrong: a careful port guarded by the 58 display tests | owner, 2026-09-12 |
+| R21 | The remote display (`display.remote`, a count; a display on another device showing only the scoreboard page) joins the profile's equipment families, modeled like `stations`; the preflight's devices row counts connected display-class connections against it; built in the preflight-arms lane after the profile check merges; the guide gives the Pi 4 a stable id — cost if wrong: about half a day inside the arms lane | owner, 2026-09-12 |
+| R22 | The three audit reports are accepted as evidence; an independent recount (a second reader per report re-deriving every count and spot-checking every cited line) is the first stage of the sweep fixes; the sweep also carries a documents row (verification dates refreshed only on real verification; the Spotify-era investigation-context files archived or deleted; the guide's stale prose fixed in the repair), the transaction-card border check (visible-change item 5) and the reference screenshots of the pinned July release; automated screen comparisons stay out until sized | owner, 2026-09-12 |
+| R23 | Certificates and DNS leave every green-machine step (the hardware-proven state, Block 1, Stage B, the guide-repair scope) and land in one deferral-registry row (8.19) at the player-phones block; the guide documents today's connection posture (fixed address, blue's self-signed certificate copied to green, the warning accepted once per tablet and on the Pi 4); "reserved address and DNS name" reads as the address alone until then | owner, 2026-09-12 |
+| R24 | The guide repair = ROADMAP Appendix C verified item by item against today's guide first, plus the fresh-install differences, plus the Thursday runbook's differences; the copy list is "mount blue's network share from green, copy these paths"; the Pi 4 section says what it is (a browser in fullscreen at the scoreboard link, warning accepted once) | owner, 2026-09-12 |
+| R25 | The state page carries the owner's green acceptance checklist (ROADMAP §6 Stage B) and the sixteen-item visible-change review (Appendix B); timing is the owner's | owner, 2026-09-12 |
 
 ## 2. Census delta that changes the design (from the re-open census)
 
@@ -197,6 +205,8 @@ Schedule decisions are the owner's at the §8 checkpoints.
   starts it. Chromium is display-aware: restart only while the
   scoreboard is the intended visible mode, with `_doLaunch`'s orphan
   sweep as the pre-start hook; dead-while-hidden relaunches on show.
+  (R20: Chromium is a `ProcessMonitor` consumer through four display
+  hooks; the display driver keeps window management only.)
   The HA WebSocket reconnect stays unbounded with a capped backoff and
   escalates on elapsed downtime; `down` is reported on `auth_invalid`.
 - **P11. Host config is the single source (SM-13 ★).**
@@ -205,12 +215,13 @@ Schedule decisions are the owner's at the §8 checkpoints.
   `host.schema.json`; `HOST_CONFIG_PATH` is the venue seam with the
   loud-override warn. Per process (`vlc`, `mpd`, `chromium`,
   `pactlSubscribe`, `dbusMonitorVlc`, `dbusMonitorBluez`, `haWebSocket`,
-  `haContainer`): `mode: 'self' | 'adopt' | 'off'` plus `maxFailures`
-  1–20, `restartDelayMs` 250–60000, `backoffMultiplier` 1–10,
+  `haContainer`): `mode: 'self' | 'adopt'` (R18: no `off`) plus `maxFailures`
+  0–20 (0 = manual restarts only, R18), `restartDelayMs` 250–60000, `backoffMultiplier` 1–10,
   `flapWindowMs` 5000–600000 (observers: `backoffCapMs`; HA:
   `escalateAfterMs`). Read once at boot, AJV-validated, clamped per
   field with a loud warn. `VLC_SELF_SPAWN` and `ENABLE_MUSIC_PLAYBACK`
-  become deprecated aliases read once with a warn. Shipped `mode:
+  become deprecated aliases read once with a warn (`false` maps to
+  `adopt`, R18). Shipped `mode:
   self` (R6). The venue's off switch is a hand-edited JSON file on the
   show machine. Headroom recorded: `processes.<id>.bin/user`, the
   runtime dir.
@@ -255,13 +266,14 @@ Schedule decisions are the owner's at the §8 checkpoints.
   persistent non-blocking banner and heals at the next boundary. The
   server keeps its warn. The two §8.5 tests land in this task.
 - **P15. Every connection presents a credential (R5; SEC-08 ★).** The
-  handshake requires a verified operator or observe token AND
-  `deviceType: 'gm'`; any other deviceType is refused (no production
-  client sends one; the contract's `admin` value is removed after a
-  grep proves no sender). The whole identity block leaves the branch;
+  handshake requires a verified operator or observe token (amended by
+  R19: the handshake carries no `deviceType`; the verified credential
+  class decides every gate, label and exemption; the contract's `admin`
+  value and the field itself are removed on both sides). The whole
+  identity block leaves the branch;
   only the collision check stays GM-scoped. `sync:request` stays open
-  to any credentialed socket and uses the non-mutating getter. Observe
-  tokens evict per deviceId. `/health` carries only the profile identity
+  to any credentialed socket and uses the non-mutating getter. (The
+  eviction-per-deviceId clause is dropped, R19.) `/health` carries only the profile identity
   `{profileId, forPack, valid}` (P20) — no reason text, no bindings. What the gate achieves: the tokenless path is gone and
   every socket carries verified claims; the read plane is not private
   (the observe credential is mintable by any LAN client that serves
@@ -426,7 +438,8 @@ Backend: `utils/processMonitor.js` (P10), `config/host.example.json`,
 `config/host.schema.json`, `services/hostConfigService.js` (P11),
 `.gitignore` (`config/host.json`), `vlcMprisService.js`, `musicService.js`,
 `lightingService.js`, `utils/displayDriver.js` (strategies, modes,
-escalation, `restart()` entry points, display-aware Chromium, HA
+escalation, `restart()` entry points, display-aware Chromium as a
+`ProcessMonitor` consumer with four hooks (R20), HA
 elapsed-time escalation), `commandExecutor.js` (three `service:*` cases,
 ungated; `display:*` dependencies), `cueEngineService.js` +
 `videoQueueService.js` + `sessionService.js` + `systemReset.js`
@@ -450,10 +463,16 @@ rebuilt.
 
 ### credentials on every connection — every connection presents a credential (CS.3)
 
-Files: `websocket/socketServer.js` (P15), `server.js` and
+Files (R19): `websocket/socketServer.js` (P15; the collision exemption
+by display class), every server consumer of the handshake type
+(`server.js`, `websocket/adminEvents.js`, `websocket/broadcasts.js`,
+`websocket/gmAuth.js`, `models/deviceConnection.js`), `server.js` and
 `tests/helpers/integration-test-server.js` (`sync:request` getter),
-`middleware/auth.js` (observe eviction per deviceId), contracts
-(`deviceType` enum narrowed after the grep), tests:
+the scanner's auth payload (`ALNScanner/src/network/connectionManager.js`,
+`orchestratorClient.js`), `public/scoreboard.html`, contracts (the
+handshake object loses `deviceType`; `admin` gone), the test helpers
+(`websocket-helpers.js`, `websocket-core.js`, `e2e/setup/websocket-client.js`),
+tests:
 `tests/unit/websocket/socketMiddleware.test.js`,
 `tests/integration/admin-interventions.test.js`,
 `tests/integration/room-broadcasts.test.js`. Red-first: tokenless →
@@ -468,7 +487,10 @@ Files: `gameRules/packNeeds.js` (+ `video-file`), `gameRules/resolution.js`
 (its case), `services/preflightService.js` (arms: pack refs via
 `validateCommand`; bindings with live scene existence when lighting is
 healthy else `unknown`; services incl. dormant and severity; media;
-`sinks.<id>` rows; `stations.pack` row; network from
+`sinks.<id>` rows; `stations.pack` row; `display.remote` row (R21:
+connected display-class connections counted against the profile's
+remote-display count; the schema, the profile, the family map and the
+simulation generator gain the family); network from
 `profile.network.kitNetwork` (paper: the block is present and complete;
 live: the host holds `orchestratorIp` on an interface and
 `orchestratorName` resolves to it — rung 3 only, `unknown` elsewhere;
@@ -523,7 +545,13 @@ The 22 close-gate ids from the census §13 (S2-2, S2-3, S2-4, WE-4,
 F-P8a-1, F-P8a-3, F-P8b-1, F-P8b-3, F-P8b-4, F-P8b-5, F-P9a-1, F-P9a-2,
 F-P9a-3, P9b-2, P9b-6, P4-5, P4-6, P4-7, LA-6, WE-2, LA-7, LA-8) plus
 the profile file check at boot-observation, each executed or dispositioned with a reason; the
-workflow hardening (LC-6/P9b-9); rig hygiene (P9b-4/P9b-8).
+workflow hardening (LC-6/P9b-9); rig hygiene (P9b-4/P9b-8). Added by
+R22: the independent recount of the three audit reports FIRST; a
+documents row (verification dates, the investigation-context files,
+the guide's stale prose); the transaction-card border check
+(visible-change item 5); the reference screenshots of the pinned July
+release (`blue-2026-07`) taken in the rig; automated screen
+comparisons stay out until sized.
 
 ### the close review — close (CS.5)
 

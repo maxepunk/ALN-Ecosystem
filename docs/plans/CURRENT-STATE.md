@@ -21,9 +21,14 @@ GM tablets reach the orchestrator at the fixed address 192.168.0.191 on
 the kit WiFi; the certificate warning is accepted once per tablet. Two
 GM tablets. Three ESP32 player scanners, to be flashed this week; they
 skip certificate checks. No player phones, no QR codes. NFC tags carry
-the token id (plus an unused address). Audio: HDMI (monitor speakers)
-and a W-KING X10 Bluetooth speaker. DNS is not set up; the profile says
-so. DNS, the certificate warning and player phones are later work.
+the token id (plus an unused address). Two scoreboard displays: the TV
+on HDMI (the Pi's own browser, sharing the TV with the idle loop and
+the game-event videos) and a remote display (a Pi 4 with a browser in
+fullscreen at the scoreboard link; warning accepted once; nothing to
+change at the cutover). Audio: HDMI (monitor speakers) and a W-KING X10
+Bluetooth speaker. DNS is not set up; the profile says so. DNS, the
+certificate and player phones are deferred (ROADMAP row 8.19). Green
+can reach blue's filesystem over a network share.
 
 ## 3. Blue containment (non-negotiable; carried from the retired handoff)
 
@@ -65,27 +70,22 @@ Thursday preflight.
 
 ## 5. Open items, and who owns them
 
-- Owner decisions pending (asked 2026-09-12 ~20:26Z, with the
-  consequence analysis in the conversation): (a) host-config modes
-  become `self | adopt` only — pin P11 loses `off` (the profile is the
-  one truth for whether a process runs tonight); (b) P15's "observe
-  tokens evict per deviceId" dropped; the `deviceType: gm` vestige gets
-  a ledger row; (c) Chromium moves onto the one supervision path
-  (process monitor with display hooks), replacing the brief's shared-
-  policy-two-spawn-paths ruling; (d) the explicit go for workflows.
-  The three lane briefs are rewritten after these answers, before any
-  review runs again.
-- Deployment guide ready for a fresh OS on green: orchestrator; the
-  research has died three times (container restart, then two stops);
-  it relaunches as a workflow (topic readers, cached per topic). The
-  owner gets a note with the copy / pull / install lists. Do not start
-  on green before it.
-- Thursday's sync runbook for the owner's review:
-  `docs/runbooks/2026-09-thursday-token-sync.md`.
-- During the home setup, owner: copy blue's certificate files; capture
-  the seven Home Assistant scenes from blue; pair the speaker and give
-  its sink name for the profile; flash the three scanners; practice the
-  token sync once on green and check how many image files changed.
+- Owner: green's acceptance checklist (ROADMAP §6 Stage B): a video
+  plays on the TV with real picture and sound; audio routes to the
+  Bluetooth speaker and ducks under a video; a lighting scene fires on
+  a real bulb; a tablet scans a tag over the secure connection; a
+  hardware scanner does a full asset sync from green; green activates
+  the pack and runs the preflight. Inputs on the way: copy blue's
+  certificate files over the share; capture the seven Home Assistant
+  scenes from blue; pair the speaker and give its sink name for the
+  profile; flash the three scanners; practice the token sync once on
+  green and check how many image files changed. Do not start on green
+  before the guide-ready note.
+- Owner: review the sixteen visible changes (ROADMAP Appendix B) as
+  the GM on a running system; timing yours.
+- Orchestrator: the guide repair (R24) after the research lands; the
+  Thursday runbook's differences fold into it (its review then happens
+  on the repaired guide).
 - Standing, owner: delete remote branch `claude/nice-curie-hescfv-t1a-ci`;
   secrets rotation and the WiFi-password scrub are deferred by ruling.
 
