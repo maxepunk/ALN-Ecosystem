@@ -99,11 +99,14 @@ jobs:
         run: |
           echo "=== runner-manifest.json ==="
           cat /tmp/rung1/runner-manifest.json 2>/dev/null || true
-          echo "=== engine.log (tail) ==="
-          sudo tail -100 /tmp/rung1/engine.log 2>/dev/null || true
+          echo "=== chromium/xvfb processes ==="
+          ps aux | grep -i "chrom\|Xvfb" | grep -v grep || true
+          echo "=== engine.log (FULL — a tail here previously hid the"
+          echo "    early-boot displayDriver lines; see T1a CI run 14/15) ==="
+          sudo cat /tmp/rung1/engine.log 2>/dev/null || true
           echo "=== up/arm logs ==="
           for f in /tmp/rung1/*.log; do
-            echo "--- $f"; sudo tail -20 "$f" 2>/dev/null || true
+            echo "--- $f"; sudo tail -40 "$f" 2>/dev/null || true
           done
 
       - name: Teardown
