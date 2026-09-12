@@ -1099,7 +1099,13 @@ only) and pre-push verification: every final tree diffed
 byte-identical against its green PR head BEFORE pushing, and every
 submodule pin verified an ancestor of its submodule's new main.
 Un-drafting and retargeting became unnecessary (API-merge-only
-steps). Tip CI verdict recorded below when complete. Branch
+steps). **Tip CI verdict: GREEN (2026-09-12).** On `df95b7a`: Test
+run 295 success (full suites + both Tier-L dual-pack legs, 13.5
+min), Rung-1 Harness run 11 success, capability probe success;
+ALNScanner main: Test & Build success + "Sync & Deploy GM Scanner"
+success (Pages serves the walked scanner). GitHub marked all 22
+train PRs and every subsumed PR MERGED. **COHERENT ON MAIN is
+reached** (readiness ladder state 1, ROADMAP §3). Branch
 cleanup deliberately deferred (never `production-2026-07`; the
 `blue-2026-07` tags anchor the frozen system). Follow-on work:
 `docs/plans/2026-09-12-postwalk-handoff.md`.
