@@ -1028,28 +1028,163 @@ python3 -m http.server 8001
 # Check WebSocket connection in browser console
 ```
 
+## Token Update Before a Game (Production Device)
+
+The production Pi runs the **`production-2026-07`** branch in all five repositories: the
+parent and each submodule, including the nested `data` checkouts inside the two scanners.
+`main` on every remote is the in-development line. It uses a different token-data format
+(**tokens v2**: no `scoring-config.json`, no `(xN)` group suffix, multipliers in
+`game.json`), and the two formats are incompatible in both directions. Token data
+therefore **never moves between the two lines through git**. Notion is the source for
+both: each line runs its own copy of `scripts/sync_notion_to_tokens.py`, and the
+development line syncs from its own `main` checkout.
+
+### Rules for this device
+
+| Never | Why |
+|-------|-----|
+| `git checkout main`, `git checkout -b main origin/main`, `git merge origin/main` — any repo | Brings the v2 format and untested code onto the game device. `scoring-config.json` disappears and the GM Scanner build fails, so `npm start` fails. |
+| `git push origin main` — any repo | Would put v1-format token data on the development line, where it fails the schema, the contract tests and boot-time pack activation. The pre-push guard refuses it. |
+| `npm run sync*` (backend/package.json) and the scanners' `sync.py` | Written for `main`: `sync:push-all` pushes `main`, `sync-all.sh` diffs against `origin/main` and runs `git add -A`, `sync.py` pulls and pushes `main`. |
+| `git submodule update --remote` | Follows the branch named in `.gitmodules`. On this line that is `production-2026-07`, so it is safe here, but the explicit steps below are preferred because they name the commit being deployed. |
+
+Safety net: `scripts/install-production-push-guard.sh` installs a pre-push hook in all
+seven checkouts that refuses any push to `main` and any rewrite or deletion of
+`production-2026-07`. Re-run it after cloning this device; hooks are not versioned. Every
+local branch here is named `production-2026-07` and tracks `origin/production-2026-07`,
+so a bare `git pull` or `git push` never touches `main`.
+
+### Procedure
+
+Run from the repo root on the production Pi. The orchestrator can stay up until step 6;
+the script only writes files.
+
+**0. Media first.** Anything Notion cannot carry must already be on disk: new videos as
+`backend/public/videos/<tokenId>.mp4` (gitignored, copied by hand), audio in
+`aln-memory-scanner/assets/audio/`, hand-made images in `aln-memory-scanner/assets/images/`.
+The script only detects files; it generates NeurAI BMPs for text-only tokens.
+
+**1. Preview.** Nothing is written.
+```bash
+python3 scripts/sync_notion_to_tokens.py --dry-run
+```
+Read the validation summary (memory types against `scoring-config.json`, ratings,
+duplicate RFIDs, RFID↔file alignment, schema check) and the orphan report. Fix in Notion
+and repeat until clean.
+
+**2. Sync.**
+```bash
+python3 scripts/sync_notion_to_tokens.py       # add --prune only after reviewing the orphan report
+```
+Writes `ALN-TokenData/tokens.json` atomically, generates BMPs, regenerates
+`aln-memory-scanner/assets/manifest.json`. Two submodules are now dirty: `ALN-TokenData`
+and `aln-memory-scanner`.
+
+**3. Validate against the schema this device enforces.**
+```bash
+cd backend && npm run test:contract && cd ..
+```
+
+**4. Commit and publish, leaf first.** Each pointer must exist on its remote before a
+parent records it.
+```bash
+DATE=$(date +%Y-%m-%d)
+
+# Token data
+git -C ALN-TokenData add tokens.json
+git -C ALN-TokenData commit -m "sync: tokens from Notion $DATE"
+git -C ALN-TokenData push origin production-2026-07
+
+# The nested copies the scanners are built from and served from
+for d in ALNScanner/data aln-memory-scanner/data; do
+  git -C "$d" fetch origin && git -C "$d" merge --ff-only origin/production-2026-07
+done
+
+# Scanners
+git -C aln-memory-scanner add data assets
+git -C aln-memory-scanner commit -m "chore: token data $DATE + regenerated assets"
+git -C aln-memory-scanner push origin production-2026-07
+git -C ALNScanner add data
+git -C ALNScanner commit -m "chore: token data $DATE"
+git -C ALNScanner push origin production-2026-07
+
+# Parent
+git add ALN-TokenData ALNScanner aln-memory-scanner
+git commit -m "chore: token data $DATE"
+git push origin production-2026-07
+```
+
+**5. Verify the pins resolve.**
+```bash
+git submodule status --recursive      # no '+' or '-' prefix on any line
+```
+
+**6. Restart so every consumer reloads.**
+```bash
+cd backend && npm run stop && npm start && npm run health
+```
+`npm start` runs the `prestart` hook, which rebuilds the GM Scanner from
+`ALNScanner/data`; the GM Scanner bundles `tokens.json` and `scoring-config.json` at
+build time. The backend reloads `ALN-TokenData/tokens.json` on start. Then power-cycle
+each CYD: they download the token database and any changed assets at boot. Players
+reload the PWA; it fetches `data/tokens.json` network-first.
+
+**7. Spot-check.**
+```bash
+curl -sk https://localhost:3000/api/tokens | jq '.tokens | length'
+curl -sk https://localhost:3000/api/assets/manifest | jq '.images | length'
+```
+Open `/gm-scanner/` and confirm a new or changed token resolves; scan one on a CYD.
+
+### Why the nested `data` checkouts must move too
+
+The backend and the CYDs read `ALN-TokenData/tokens.json` directly. The GM Scanner and
+the web player scanner do not: the GM Scanner bundles `ALNScanner/data/tokens.json` when
+`npm start` builds it, and the PWA is served straight from
+`aln-memory-scanner/data/tokens.json` through the `backend/public/player-scanner`
+symlink. Skip the fast-forward in step 4 and a new token shows as UNKNOWN on the GM's
+screen and is invisible to players while the backend knows it.
+
+### The development line gets the same update by itself
+
+Do not merge or cherry-pick this device's `ALN-TokenData` commit into `main`. Its `(xN)`
+group strings fail the v2 schema and the "every group declared in game.json" contract
+test, its pack activation gate refuses the pack at boot, and the pack-manifest freshness
+test fails. Someone with a `main` checkout runs that line's own
+`scripts/sync_notion_to_tokens.py` after the Notion edits are final; it derives the
+`game.json` groups block and regenerates the pack manifest itself. Videos, audio and
+hand-made images are the only things that must be placed on both devices by hand.
+
 ## Emergency Rollback (Game Day)
 
-**Last-known-stable production build: the `production-2026-07` branch.** This is the
-build that has been running on the Pi since 2026-07-11. If a mid-game failure traces
-to recently merged code, the sequence below returns every component to it.
+**The stable build is whatever `production-2026-07` points to.** This device runs that
+branch in all five repositories, the parent and each submodule, and the branch is advanced
+(submodules first, parent last) every time something is deployed here, token syncs
+included. The parent commit records the four submodule pins, so checking out the parent
+branch and running `submodule update` restores the whole system; you do not need to check
+out each submodule by hand.
 
-The branch exists on **all five repositories** — the parent and each submodule — and in
-each one it points at the exact commit that shipped:
+To see exactly what the branch points to right now:
 
-| Repository | `production-2026-07` commit |
-|------------|------------------------------|
-| ALN-Ecosystem (parent) | `a4ebacdf` |
-| ALN-TokenData | `3e60fad` |
-| ALNScanner | `e38c1ea` |
-| aln-memory-scanner | `e14f4b7` |
-| arduino-cyd-player-scanner | `af74fbd` |
+```bash
+git ls-remote origin production-2026-07                                   # parent
+git submodule foreach --recursive 'git ls-remote origin production-2026-07'
+```
 
-The parent commit records those four submodule pins, so checking out the parent branch
-and running `submodule update` restores the whole system. You do not need to check out
-each submodule by hand.
+Two refs carry the `2026-07` date and they are not the same thing. The **tag**
+`blue-2026-07` is a snapshot: it marks the July 2026 baseline this branch started from
+(parent `a4ebacdf`) in all five repositories and never moves. The **branch**
+`production-2026-07` is the moving production line: it began at that tag and advances with
+every deployment to this device, so the date in its name records where it started, not
+what it points to today. Roll back to the branch tip, or to a commit on the branch, as
+described below. Check out the tag only when you deliberately want the July build without
+the token data added since.
 
 ### Rollback procedure
+
+Use this when something on this device is the suspect: local drift, a stray checkout, a
+half-applied change. It returns every component to the branch tip. To go further back,
+see the next section.
 
 ```bash
 cd /path/to/ALN-Ecosystem
@@ -1062,14 +1197,16 @@ cd backend && npm run stop && cd ..
 git fetch origin
 git checkout -f -B production-2026-07 origin/production-2026-07
 
-# 3. CRITICAL: submodules do not follow the parent checkout on their own.
-git submodule update --init --recursive --force
+# 3. CRITICAL: submodules do not follow the parent checkout on their own,
+#    and --checkout is required (see below).
+git submodule update --init --recursive --force --checkout
 
 # 4. Restart. Use `npm start` — it runs the prestart hook that rebuilds the GM Scanner.
 cd backend && npm start
 
 # 5. Verify
 npm run health
+git -C .. submodule status --recursive      # no '+' or '-' prefixes
 ```
 
 ### Why steps 3 and 4 matter
@@ -1077,6 +1214,11 @@ npm run health
 - **Step 3 is the classic footgun.** `git checkout` on the parent moves the gitlinks but
   leaves each submodule's working tree exactly where it was. Skip it and you get the old
   backend running against the new scanner code — often worse than the bug you're fleeing.
+- **Step 3 needs `--checkout`.** `.gitmodules` sets `update = merge`, so without it the
+  update *merges* the recorded commit into whatever the submodule currently has. If the
+  submodule has moved past the recorded commit that merge is a no-op, and the submodule
+  silently stays where it was: a half-rollback with no error. `--checkout` forces the
+  recorded commit at every level, nested `data` included (verified 2026-09-12).
 - **Step 4 must be `npm start`, not `pm2 restart`.** `backend/public/gm-scanner` is a
   symlink to `ALNScanner/dist`, and `dist/` is **not committed** — it exists only as a
   build artifact. `npm start` fires `prestart` → `scripts/build-scanner.sh`, which
@@ -1088,21 +1230,36 @@ npm run health
   `cd ALNScanner && npm ci && npm run build`. Do the same for the backend if the
   orchestrator won't start: `cd backend && npm ci`.
 
-### Returning to current development code
+### Going further back than the branch tip
+
+If a change already on the branch (a hotfix, a token sync) is the suspect, pick the parent
+commit that ran the last good game and check it out the same way:
 
 ```bash
-git checkout main
-git submodule update --init --recursive --force
+git log --oneline origin/production-2026-07
+git checkout -f <sha>
+git submodule update --init --recursive --force --checkout
 cd backend && npm start
 ```
 
+After the game, if that older state is what you want to keep, repoint
+`production-2026-07` to it in every repository, submodules first, parent last. That push
+rewrites the branch, so the guard refuses it; use `git push --no-verify` deliberately.
+
+### This device does not run `main`
+
+Development and testing of `main` happen on the other device or in a separate checkout.
+Do not create a local `main` branch here.
+
 ### Keeping this note accurate
 
-`production-2026-07` is a branch, not a tag, so it can be moved or force-pushed. When a
-newer build is proven stable in a real session, repoint the branch in all five
-repositories — **submodules first, parent last**, so the parent's gitlinks always
-reference commits that already exist on their remotes — then update the commit table
-above and the branch name in this section's heading text.
+`production-2026-07` is a branch, not a tag: it moves. Advance it whenever this device
+changes, token syncs and hotfixes alike, submodules first and parent last, so the parent's
+gitlinks always reference commits that already exist on their remotes. When `main` has
+been proven in a real session and is promoted to production, repoint the branch to it in
+all five repositories. If the branch is ever renamed, update `.gitmodules` in the parent
+and both scanners, `PROD_BRANCH` in `scripts/install-production-push-guard.sh`, and the
+branch name throughout this guide.
 
 ## Troubleshooting
 
@@ -1275,7 +1432,9 @@ backend/logs/
 
 ## Quick Reference
 
-**Something broken mid-game?** Jump to [Emergency Rollback (Game Day)](#emergency-rollback-game-day) — the stable build is the `production-2026-07` branch.
+**Updating tokens before a game?** Follow [Token Update Before a Game](#token-update-before-a-game-production-device) — this device is pinned to `production-2026-07`; never pull, merge or push `main` here.
+
+**Something broken mid-game?** Jump to [Emergency Rollback (Game Day)](#emergency-rollback-game-day) — the stable build is whatever `production-2026-07` points to.
 
 | Feature | Development | Production (PM2) |
 |---------|------------|------------------|

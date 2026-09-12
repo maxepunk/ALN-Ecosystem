@@ -179,18 +179,12 @@ mv backend/public/videos/jaw001.mp4 backend/public/videos/jaw011.mp4
 1. Update token data in Notion Elements database
 2. Preview: `python3 scripts/sync_notion_to_tokens.py --dry-run` — review the validation summary, fix any warnings in Notion
 3. Run sync: `python3 scripts/sync_notion_to_tokens.py` (add `--prune` once you've reviewed the orphan report)
-4. Commit changes to git:
-   ```bash
-   cd ALN-TokenData
-   git add tokens.json
-   git commit -m "sync: update tokens from Notion"
-   git push
-   ```
-5. Update submodules in parent repos:
-   ```bash
-   cd .. # Back to ALN-Ecosystem
-   git submodule update --remote --merge ALN-TokenData
-   ```
+4. Publish and roll out. On the **production device** (pinned to `production-2026-07`)
+   follow "Token Update Before a Game" in `DEPLOYMENT_GUIDE.md`: commit and push to the
+   production branch leaf-first, fast-forward the scanners' nested `data` checkouts, then
+   `npm start`. Never `git push` or `git submodule update --remote` against `main` from
+   that device — `main` carries an incompatible token format (tokens v2) and its own copy
+   of this script.
 
 ## Technical Details
 

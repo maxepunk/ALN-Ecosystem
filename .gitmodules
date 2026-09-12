@@ -2,21 +2,21 @@
 	path = aln-memory-scanner
 	url = https://github.com/maxepunk/ALNPlayerScan.git
 	recurse = true
-	branch = main
+	branch = production-2026-07
 	update = merge
 [submodule "ALNScanner"]
 	path = ALNScanner
 	url = https://github.com/maxepunk/ALNScanner.git
 	recurse = true
-	branch = main
+	branch = production-2026-07
 	update = merge
 [submodule "ALN-TokenData"]
 	path = ALN-TokenData
 	url = https://github.com/maxepunk/ALN-TokenData.git
-	branch = main
+	branch = production-2026-07
 	update = merge
 [submodule "arduino-cyd-player-scanner"]
 	path = arduino-cyd-player-scanner
 	url = https://github.com/maxepunk/arduino-cyd-player-scanner.git
-	branch = main
+	branch = production-2026-07
 	update = merge

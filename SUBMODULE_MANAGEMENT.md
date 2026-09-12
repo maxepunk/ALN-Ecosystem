@@ -4,6 +4,25 @@
 
 The ALN Ecosystem uses git submodules to share code between multiple repositories. This document explains how we've configured branch tracking to simplify submodule synchronization.
 
+## This checkout: the production line
+
+The game-day Pi is pinned to the **`production-2026-07`** branch in all five repositories,
+and every `.gitmodules` in this line (parent and both scanners) names that branch. `main`
+on every remote is the in-development line and carries an incompatible token-data format
+(tokens v2). On the production device:
+
+- Never pull, merge, check out or push `main` in any repo. A pre-push hook installed by
+  `scripts/install-production-push-guard.sh` refuses pushes to `main` and rewrites of
+  `production-2026-07`; re-run it after cloning.
+- Do not use the `npm run sync*` commands or the scanners' `sync.py` described below — they
+  are written for `main` (`sync:push-all` pushes `main`, `sync-all.sh` diffs against
+  `origin/main`, `sync.py` pulls and pushes `main`).
+- Token updates follow "Token Update Before a Game" in `DEPLOYMENT_GUIDE.md`, which names
+  each commit explicitly instead of relying on branch tracking.
+
+The rest of this document describes the branch-tracking workflow as used on the
+development line.
+
 ## Repository Structure
 
 ```
@@ -26,7 +45,7 @@ Previously, each submodule pointed to a **specific commit**:
 ## The Solution: Branch Tracking
 
 We've configured all submodules to **track branches** instead of commits:
-- All submodules follow the `main` branch
+- All submodules follow one branch: `main` on the development line, `production-2026-07` on the production device
 - Single command updates everything
 - Consistent versions across all repositories
 
@@ -40,7 +59,7 @@ Each submodule now has branch tracking configured:
 [submodule "ALN-TokenData"]
     path = ALN-TokenData
     url = https://github.com/maxepunk/ALN-TokenData.git
-    branch = main          # ← Tracks main branch
+    branch = main          # ← Tracks main branch (production-2026-07 on the production device)
     update = merge         # ← Uses merge strategy for updates
 ```
 
@@ -107,7 +126,7 @@ npm run sync:push-all
    # Make your changes
    git add tokens.json
    git commit -m "Update token configuration"
-   git push origin main
+   git push origin main      # development line only — see DEPLOYMENT_GUIDE.md on the production device
    ```
 
 2. **Sync everywhere**:
@@ -203,7 +222,7 @@ npm run sync      # Continue sync
 git submodule update --remote --force --recursive
 
 # Reset if needed
-git submodule foreach --recursive 'git reset --hard origin/main'
+git submodule foreach --recursive 'git reset --hard origin/main'   # origin/production-2026-07 on the production device
 ```
 
 ### Issue: Wrong Branch Being Tracked
@@ -232,6 +251,8 @@ git config -f .gitmodules submodule.ALN-TokenData.branch v1.0.0
 ```
 
 ## Making Code Changes to Submodules (PR Workflow)
+
+> Development-line workflow. Hotfixes needed on the production device are committed and pushed on `production-2026-07` there, then cherry-picked to `main` from a `main` checkout.
 
 When making **code changes** (not just token data updates) to a submodule like `aln-memory-scanner` or `ALNScanner`, use a feature branch workflow:
 

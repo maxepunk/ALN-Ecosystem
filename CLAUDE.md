@@ -285,10 +285,12 @@ ALN-Ecosystem/                     # Parent repo
 
 For submodule management procedures, see 'SUBMODULE_MANAGEMENT.md'.
 
+**Production line (this checkout):** every repo here is on `production-2026-07` and `.gitmodules` tracks that branch. `main` is the development line and carries an incompatible token-data format (tokens v2). Token updates and game-day rollback: 'DEPLOYMENT_GUIDE.md' → "Token Update Before a Game" and "Emergency Rollback". A pre-push guard (`scripts/install-production-push-guard.sh`) refuses pushes to `main` from this device.
+
 **Quick Commands:**
 ```bash
 git submodule update --init --recursive    # Initialize all
-git submodule update --remote --merge      # Update to latest
+git submodule update --remote --merge      # Update to the branch tracked in .gitmodules
 git submodule status --recursive           # Check sync status
 ```
 
@@ -451,6 +453,8 @@ set `SYNC_ASSETS=false`, then power-cycle.
 ## Notion Sync Scripts
 
 **Purpose:** Sync Notion Elements database to `ALN-TokenData/tokens.json`
+
+**Git steps after the script, on this device:** 'DEPLOYMENT_GUIDE.md' → "Token Update Before a Game" (production branch; `main` has its own copy of the script).
 
 **Scripts:**
 - `scripts/sync_notion_to_tokens.py` - Main sync (generates NeurAI BMPs; aborts on incomplete fetch; RFID↔file mismatch detection runs as a pre-write validation phase; orphan prune is report-only unless `--prune`)
