@@ -503,8 +503,12 @@ async function clearSessionData() {
 
     // Direct file deletion, not node-persist's async API, which could race a
     // still-completing write from the orchestrator we just stopped.
-    // Subdirectories (e.g. aln-mpd-playlists/ owned by MPD) are left alone —
-    // only files in the data dir are clearable session state.
+    // Only files are cleared (entry.isFile()) — a live session record is
+    // exactly that, a flat file node-persist writes directly under this
+    // directory. MPD's own working files live under its runtime dir (/tmp by
+    // default, see musicService._mpdRuntimeDir), never under DATA_DIR, so
+    // nothing here is ever a subdirectory in practice; the filter is a
+    // defensive backstop, not a real case.
     const entries = await fs.readdir(dataDir, { withFileTypes: true });
     await Promise.all(
       entries

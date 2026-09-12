@@ -12,8 +12,12 @@
  * orchestrator: nothing smaller can reproduce a storm whose engine is the
  * child process's own stdio pipe. It is bounded on every axis — a 10 s window,
  * a 200 MB cap that breaks the loop, its own temp DATA_DIR/LOGS_DIR, and a
- * process GROUP kill in `finally` — and it starts no VLC, no MPD and no
- * Home Assistant, so it can never touch the machine-wide rig.
+ * process GROUP kill in `finally`. The three env flags below hold off the
+ * heavy services — no VLC, no MPD, no Home Assistant. They do not hold off
+ * audio: `audioRoutingService.init()` still runs its machine-wide
+ * `pkill -f "pactl subscribe"` and `pactl` card probing, the same as every
+ * Tier L harness boot. This test is therefore no more rig-hostile than the
+ * E2E suite — and no less.
  */
 
 const { spawn, execSync } = require('child_process');
@@ -71,6 +75,36 @@ async function waitForHealthy(port, timeoutMs) {
 }
 
 const sizeOf = (file) => { try { return fs.statSync(file).size; } catch { return 0; } };
+
+const TAIL_BYTES = 64 * 1024;
+
+/**
+ * The last `maxBytes` of a file, without ever allocating the whole thing.
+ * On a regression the file this reads is the 200 MB storm itself — reading
+ * it whole would cost the Jest process that same 200 MB. The guard line (when
+ * present) sits at the very start of the post-guard growth, and that growth
+ * is a handful of small per-request log lines (~18 KB observed for the full
+ * 10 s window), so 64 KB is generous headroom while staying bounded on a
+ * regression.
+ */
+function readTail(file, maxBytes) {
+  let size;
+  try {
+    size = fs.statSync(file).size;
+  } catch {
+    return '';
+  }
+  const readSize = Math.min(size, maxBytes);
+  if (readSize === 0) return '';
+  const buffer = Buffer.alloc(readSize);
+  const fd = fs.openSync(file, 'r');
+  try {
+    fs.readSync(fd, buffer, 0, readSize, size - readSize);
+  } finally {
+    fs.closeSync(fd);
+  }
+  return buffer.toString('utf8');
+}
 
 /** PIDs of every `node src/server.js` currently on the machine. */
 function serverPids() {
@@ -153,8 +187,10 @@ describe('A closed output pipe never fills the disk (P22)', () => {
       }
       peakSize = Math.max(peakSize, sizeOf(combinedLog));
 
-      const log = fs.existsSync(combinedLog) ? fs.readFileSync(combinedLog, 'utf8') : '';
-      const guardLines = log.split('\n').filter(line => line.includes(GUARD_LINE));
+      // Bounded read: on a regression this file is the 200 MB storm itself,
+      // and the guard-line assertion needs only its tail (see readTail above).
+      const logTail = readTail(combinedLog, TAIL_BYTES);
+      const guardLines = logTail.split('\n').filter(line => line.includes(GUARD_LINE));
 
       // eslint-disable-next-line no-console
       console.log(`[epipe-guard] combined.log ${peakSize} bytes after ` +

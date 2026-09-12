@@ -150,8 +150,10 @@ function silenceConsoleTransport(code) {
     return;
   }
   guardLineWritten = true;
-  // File transports only — the console is closed by definition.
-  logger.warn(`console output closed (${code}); console transport silenced`);
+  // File transports only — the console is closed by definition. Written at
+  // error so an operator running LOG_LEVEL=error still sees why the console
+  // went quiet.
+  logger.error(`console output closed (${code}); console transport silenced`);
 }
 
 /**
@@ -165,13 +167,27 @@ function handleOutputError(error) {
   }
 }
 
-for (const stream of [process.stdout, process.stderr]) {
-  // Jest gives every test FILE its own module registry while the real streams
-  // are shared, so this module can be instantiated many times in one process.
-  // Raising the cap alongside each attachment keeps the guard from ever being
-  // mistaken for a listener leak, without hiding real ones.
-  stream.setMaxListeners(stream.getMaxListeners() + 1);
+/**
+ * Attach the closed-pipe guard to one stream, bumping its listener cap so the
+ * attachment itself never trips Node's "possible EventEmitter memory leak"
+ * warning. Jest gives every test FILE its own module registry while the real
+ * streams are shared, so this module can be instantiated many times in one
+ * process — without the bump, that alone would eventually cross the default
+ * cap of 10. 0 is Node's "unlimited listeners" sentinel: leave it alone, or
+ * +1 would turn "unlimited" into a cap of exactly 1.
+ * Exported on the logger for the unit test only; not part of the public API.
+ * @param {NodeJS.WritableStream} stream
+ */
+function attachClosedPipeGuard(stream) {
+  const currentMax = stream.getMaxListeners();
+  if (currentMax > 0) {
+    stream.setMaxListeners(currentMax + 1);
+  }
   stream.on('error', handleOutputError);
+}
+
+for (const stream of [process.stdout, process.stderr]) {
+  attachClosedPipeGuard(stream);
 }
 
 // Belt and braces: contain an 'error' emitted by the Console transport itself,
@@ -254,3 +270,7 @@ if (!handlersRegistered && process.env.NODE_ENV !== 'test') {
 
 // Export logger instance
 module.exports = logger;
+
+// Test-only hook (F1): lets the unit test drive attachClosedPipeGuard against
+// a fake stream without touching the real process.stdout/stderr.
+module.exports._attachClosedPipeGuardForTest = attachClosedPipeGuard;

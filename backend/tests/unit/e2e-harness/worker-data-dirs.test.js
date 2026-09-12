@@ -45,11 +45,14 @@ function fakeChild() {
   return child;
 }
 
+// What really lives under a worker's data dir: node-persist writes a flat
+// file per key (a live session record among them). MPD's own working files
+// are under its runtime dir (/tmp), never here, so there is no subdirectory
+// to seed.
 const seed = (dir) => {
-  fs.mkdirSync(path.join(dir, 'aln-mpd-playlists'), { recursive: true });
+  fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'session.json'), '{"live":true}');
   fs.writeFileSync(path.join(dir, 'scores.json'), '[]');
-  fs.writeFileSync(path.join(dir, 'aln-mpd-playlists', 'set.m3u'), 'x');
 };
 const filesIn = (dir) => fs.readdirSync(dir, { withFileTypes: true })
   .filter(e => e.isFile()).map(e => e.name).sort();
@@ -113,9 +116,9 @@ describe('Per-worker data and log directories (P21)', () => {
       await clearSessionData();
 
       expect(filesIn(mine)).toEqual([]);
+      // Worker 2's (mine) clean start left worker 1's (theirs) live session
+      // file alone.
       expect(filesIn(theirs)).toEqual(['scores.json', 'session.json']);
-      // Subdirectories are not session state (MPD owns aln-mpd-playlists/).
-      expect(fs.existsSync(path.join(mine, 'aln-mpd-playlists', 'set.m3u'))).toBe(true);
     });
 
     it('clears files even under STORAGE_TYPE=memory (the memory branch is gone)', async () => {

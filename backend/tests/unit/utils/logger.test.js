@@ -128,3 +128,38 @@ describe('Closed-output-pipe guard (P22)', () => {
     expect(totalGuardLines()).toBe(before);
   });
 });
+
+describe('Closed-pipe guard preserves the "unlimited listeners" sentinel (F1)', () => {
+  // stream.setMaxListeners(stream.getMaxListeners() + 1) turns Node's
+  // "unlimited" sentinel (0) into a cap of 1 unless 0 is special-cased. Drive
+  // the exact attach logic against a fake stream so this is checked without
+  // touching the real process.stdout/stderr max-listener state.
+  const { _attachClosedPipeGuardForTest: attachGuard } = require('../../../src/utils/logger');
+
+  function fakeStream(initialMax) {
+    let max = initialMax;
+    return {
+      getMaxListeners: () => max,
+      setMaxListeners: (n) => { max = n; },
+      on: jest.fn(),
+    };
+  }
+
+  test('a stream at the unlimited sentinel (0) stays at 0', () => {
+    const stream = fakeStream(0);
+
+    attachGuard(stream);
+
+    expect(stream.getMaxListeners()).toBe(0);
+    expect(stream.on).toHaveBeenCalledWith('error', expect.any(Function));
+  });
+
+  test('a stream at N > 0 becomes N + 1', () => {
+    const stream = fakeStream(10);
+
+    attachGuard(stream);
+
+    expect(stream.getMaxListeners()).toBe(11);
+    expect(stream.on).toHaveBeenCalledWith('error', expect.any(Function));
+  });
+});
