@@ -312,6 +312,21 @@ class CueEngineService extends EventEmitter {
   // ─────────────────────────────────────────────────────────────────────────
 
   /**
+   * The service a cue command depends on, or undefined. Object.hasOwn, not
+   * a truthy index: cue actions are PACK CONTENT, and an action named
+   * 'constructor' must not resolve a service off the prototype chain
+   * (the C11 class this repo guards everywhere pack data indexes an object).
+   * @param {string} action
+   * @returns {string|undefined}
+   * @private
+   */
+  static _serviceFor(action) {
+    return Object.hasOwn(SERVICE_DEPENDENCIES, action)
+      ? SERVICE_DEPENDENCIES[action]
+      : undefined;
+  }
+
+  /**
    * Recompute which cues are silenced because every service they need is
    * dormant. Called by dormancyService at boot, at session create, and
    * after a system reset — never persisted, always derived.
@@ -340,7 +355,7 @@ class CueEngineService extends EventEmitter {
       const serviceBearing = [];
       const dormantOnes = [];
       for (const entry of entries) {
-        const service = SERVICE_DEPENDENCIES[entry.action];
+        const service = CueEngineService._serviceFor(entry.action);
         if (!service) continue;                 // ungated command: not a dependency
         serviceBearing.push(service);
         if (dormant.has(service)) {
@@ -720,7 +735,7 @@ class CueEngineService extends EventEmitter {
     const cmds = cue.timeline ? cue.timeline : cue.commands;
     const blockedServices = [];
     for (const cmd of cmds) {
-      const dep = SERVICE_DEPENDENCIES[cmd.action];
+      const dep = CueEngineService._serviceFor(cmd.action);
       if (dep && registry.isDormant(dep)) continue;
       if (dep && !registry.isHealthy(dep) && !blockedServices.includes(dep)) {
         blockedServices.push(dep);

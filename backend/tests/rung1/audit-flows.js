@@ -25,7 +25,13 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const HA = 'http://127.0.0.1:8123';
 // Committed dev credential (backend/.env) — rung-1 is a local harness.
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '@LN-c0nn3ct';
-const haToken = require(path.join(RUNG1, 'ha-auth.json')).access_token;
+// Prefer the LONG-LIVED token, exactly as up.sh does for the engine: the
+// login-flow `access_token` expires in ~30 minutes, so reading it made the
+// audit runnable only inside a half-hour window of provisioning HA — after
+// that every witness read got a 401 whose plain-text body surfaced as
+// "Unexpected non-whitespace character after JSON at position 3".
+const haAuth = require(path.join(RUNG1, 'ha-auth.json'));
+const haToken = haAuth.long_lived_token || haAuth.access_token;
 
 const results = [];
 function record(name, ok, detail) {
