@@ -58,8 +58,16 @@ describe('Closed-output-pipe guard (P22)', () => {
   let captureTransport;
   let lines;
 
+  // The guard line is write-once per PROCESS, and every test in this file
+  // shares one process. Counting cumulatively — what earlier tests already
+  // spent, plus what this one wrote — is what makes each test true on its own
+  // as well as in sequence: whichever closed-pipe test runs first writes the
+  // one line, and no later one writes another.
+  let spentGuardLines = 0;
+
   const streamError = (code) => Object.assign(new Error(`write ${code}`), { code });
   const guardLines = () => lines.filter(line => GUARD_LINE.test(line));
+  const totalGuardLines = () => spentGuardLines + guardLines().length;
 
   beforeEach(() => {
     logger = require('../../../src/utils/logger');
@@ -74,6 +82,7 @@ describe('Closed-output-pipe guard (P22)', () => {
 
   afterEach(() => {
     // Detach only what this test added; the module's own stream listeners stay.
+    spentGuardLines += guardLines().length;
     logger.remove(captureTransport);
     consoleTransport.silent = false;
   });
@@ -86,7 +95,7 @@ describe('Closed-output-pipe guard (P22)', () => {
     process.stdout.emit('error', streamError('EPIPE'));
 
     expect(consoleTransport.silent).toBe(true);
-    expect(guardLines()).toHaveLength(1);
+    expect(totalGuardLines()).toBe(1);
     expect(guardLines()[0]).toContain('console output closed (EPIPE); console transport silenced');
   });
 
@@ -96,9 +105,9 @@ describe('Closed-output-pipe guard (P22)', () => {
     process.stdout.emit('error', streamError('ERR_STREAM_DESTROYED'));
 
     expect(consoleTransport.silent).toBe(true);
-    // The guard LINE is write-once per process and was spent by the first
-    // test in this file; silencing itself stays idempotent.
-    expect(guardLines()).toHaveLength(0);
+    // One line for the process, however many streams fail: whichever test got
+    // here first spent it, and this one adds none.
+    expect(totalGuardLines()).toBe(1);
   });
 
   test('stderr is guarded too, and the guard line is never written twice', () => {
@@ -107,13 +116,15 @@ describe('Closed-output-pipe guard (P22)', () => {
     process.stderr.emit('error', streamError('EPIPE'));
 
     expect(consoleTransport.silent).toBe(true);
-    expect(guardLines()).toHaveLength(0);
+    expect(totalGuardLines()).toBe(1);
   });
 
   test('an unrelated stream error is absorbed without silencing the console', () => {
+    const before = totalGuardLines();
+
     process.stdout.emit('error', streamError('ENOSPC'));
 
     expect(consoleTransport.silent).toBeFalsy();
-    expect(guardLines()).toHaveLength(0);
+    expect(totalGuardLines()).toBe(before);
   });
 });

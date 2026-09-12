@@ -159,7 +159,10 @@ describe('A closed output pipe never fills the disk (P22)', () => {
       // eslint-disable-next-line no-console
       console.log(`[epipe-guard] combined.log ${peakSize} bytes after ` +
         `${capTripped ? `${elapsedAtBreak} ms (CAP TRIPPED)` : `${WINDOW_MS} ms`}; ` +
-        `guard lines: ${guardLines.length}`);
+        `guard lines: ${guardLines.length}` +
+        // The line itself, so a run's output is the evidence and not a pointer
+        // to a temp file this test has already deleted.
+        `${guardLines.length ? `\n[epipe-guard] ${guardLines[0]}` : ''}`);
 
       expect(capTripped).toBe(false);
       expect(peakSize).toBeLessThan(GREEN_CEILING);
