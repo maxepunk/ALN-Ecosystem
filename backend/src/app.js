@@ -311,6 +311,12 @@ async function initializeServices() {
       logger.info('No previous session - ready for new game');
     }
     
+    // Block 2 T1a D4 (pin P6): every service has now had its chance to
+    // report, so this is the moment to decide what is DORMANT and push it
+    // into the registry and the cue engine — before revalidation starts, so
+    // no probe fires at equipment nobody installed.
+    require('./services/dormancyService').recompute();
+
     // Start periodic health revalidation (catches stale services like pipewire-pulse)
     serviceHealthRegistry.startRevalidation({
       vlc: vlcService,

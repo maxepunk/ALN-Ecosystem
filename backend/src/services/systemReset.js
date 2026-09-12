@@ -275,6 +275,18 @@ async function performSystemReset(io, services) {
 
   logger.debug('Service health re-initialized');
 
+  // Re-assert dormancy (Block 2 T1a D4, pin P6). registry.reset() preserves
+  // dormant entries, but the cues were just reloaded from the pack with a
+  // fresh (empty) dormancy set, and the re-probes above may have reported
+  // over services the operator latched. Recomputing here restores both
+  // projections from the one decision — and is what makes an operator
+  // latch survive a GM pressing Reset (DoD i).
+  try {
+    require('./dormancyService').recompute();
+  } catch (err) {
+    logger.warn('Dormancy recompute failed after system reset:', err.message);
+  }
+
   // Restart health revalidation (stopped by registry.reset())
   serviceHealthRegistry.startRevalidation({
     vlc: require('./vlcMprisService'),
