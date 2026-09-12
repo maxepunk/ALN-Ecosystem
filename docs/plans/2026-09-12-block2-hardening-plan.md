@@ -844,7 +844,7 @@ ruled method.
   5. For T1a: once the P7 gate lands, the toy-require-dormant leg passes through the E2E helper sending `startAnyway` with a typed reason on that leg, plus one flow asserting the refusal (DoD f). The plan text left this open.
   6. Round 3 re-sequenced to T3b → T3 (‖ T5) → T4: T3/T3b share `asyncapi.yaml`, T3/T4 share `commandExecutor.js` and the contracts, so the plan's "parallel only across disjoint file sets" rule forbids T3 ‖ T3b ‖ T4.
 - Owner-visible carry: `aln-full-kit.json` `stations.count` is set to the manifest's recommended 3 until the owner states tonight's count at Stage B; `orchestratorName` stays absent until the owner names it.
-- T1b brief: `briefs/2026-09-12-t1b-families-fixtures-endpoint-map.md` (Sonnet implementer). Base commit recorded in the ledger at dispatch.
+- T1b brief: `briefs/2026-09-12-t1b-families-fixtures-endpoint-map.md` (Sonnet implementer). Base commit recorded in the scratch progress file at dispatch.
 
 ### 2026-09-12 — T1b CLOSED (equipment families, fixtures, endpoint map)
 

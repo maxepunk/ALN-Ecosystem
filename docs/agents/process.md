@@ -82,31 +82,33 @@ rules:
    a fresh agent, given only this record and the repo, could continue
    the work.
 6. **Reload before resuming (owner-directed 2026-09-06; ordered
-   checklist adopted 2026-09-12).** The compaction summary is a pointer
-   to the paper trail, not a working context. After any compaction or
-   container restart, run these steps in this order. Write the result
-   of each step into the ledger before starting the next.
-   1. Read in full: this file, the root `CONTEXT.md`,
-      `docs/plans/CURRENT-STATE.md`, the active unit's design document
-      with its execution record, and the component `CLAUDE.md` for
-      each area the work will touch.
-   2. Check every claim in the summary against the repository: `git
-      status`, `git log`, the submodule pins, and the records. A claim
-      the record does not back is false. Correct the record or the
-      claim before going on.
-   3. Reconcile live state. List the agents, list the background
-      tasks, and list the processes that the rig and the test runs
-      leave behind. Compare the three lists with the ledger's
-      live-state section. Stop anything that is not on the list, and
-      record what was stopped.
-   4. Read from disk the output files of the round in flight. Re-read
-      the briefs for the next round.
+   checklist adopted 2026-09-12; amended the same day, ruling R16 of
+   the hardening plan: the state page first, then its pointers).**
+   After any compaction or container restart, run these steps in this
+   order. Write the result of each step into the scratch progress file
+   before starting the next.
+   1. Read `docs/plans/CURRENT-STATE.md`, the entry point, one screen.
+      Nothing else is required reading; its pointers say what to open
+      and when.
+   2. Check every claim in the summary against the repository and the
+      page: `git status`, `git log`, the submodule pins. A claim the
+      page or the record does not back is false. Fix the page or drop
+      the claim before going on.
+   3. Reconcile live state against the page's running section. List
+      the agents, the background tasks, and the rig and test processes.
+      Stop anything that is not on the page, and record what was
+      stopped.
+   4. Follow the page's pointers for the piece in flight: its brief,
+      the plan's pins for it, the vocabulary sections it names, the
+      tail of the scratch progress file.
    5. Send the owner a reload report in the checkpoint template.
    Only after step 5 may the agent change a file or dispatch anything.
    This rule exists because resuming from the summary alone has caused
    real errors: stale verdicts restated as current, invented vocabulary
-   in place of the project's own terms, and twelve dead background
-   waits left running for ten hours because no step looked for them.
+   in place of the project's own terms, twelve dead background waits
+   left running for ten hours because no step looked for them, and a
+   decision made in conversation lost because it was never written to
+   the page.
 7. **Compact only at a checkpoint, with the tree pushed (owner-directed
    2026-09-12).** What survives: committed and pushed files survive
    everything; scratchpad files survive compaction but not a container
