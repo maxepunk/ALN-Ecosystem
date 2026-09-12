@@ -15,6 +15,7 @@ const {
   ENDPOINT_FAMILIES,
   servicesForFamily,
   dormantServicesFor,
+  familyInstalled,
 } = require('../../../src/gameRules/endpointServices');
 
 const REPO_ROOT = path.join(__dirname, '..', '..', '..', '..');
@@ -150,5 +151,49 @@ describe('dormantServicesFor (D6)', () => {
   it('an equipment family the manifest names that is not one of the five throws (schema also refuses it)', () => {
     const manifest = { hardware: { endpoints: { 'stage.fog': { onAbsent: 'degrade' } } } };
     expect(() => dormantServicesFor(manifest, {})).toThrow(/unknown equipment family 'stage\.fog'/);
+  });
+});
+
+// Block 2 T1a D3: the predicate dormantServicesFor already used privately,
+// now exported so resolve() can ask the SAME question about a family
+// instead of re-deriving "is this installed?" its own way (P2).
+describe('familyInstalled(profile, familyId)', () => {
+  it('an absent family is not installed', () => {
+    expect(familyInstalled({ endpoints: {} }, 'lighting.instruments')).toBe(false);
+  });
+
+  it('an object family is installed only when installed === true', () => {
+    expect(familyInstalled(
+      { endpoints: { 'display.main': { installed: true } } }, 'display.main')).toBe(true);
+    expect(familyInstalled(
+      { endpoints: { 'display.main': { installed: false } } }, 'display.main')).toBe(false);
+    expect(familyInstalled(
+      { endpoints: { 'display.main': {} } }, 'display.main')).toBe(false);
+  });
+
+  it('audio.sinks is installed when SOME entry is installed', () => {
+    const some = { endpoints: { 'audio.sinks': [
+      { id: 'a', installed: false }, { id: 'b', installed: true },
+    ] } };
+    const none = { endpoints: { 'audio.sinks': [{ id: 'a', installed: false }] } };
+    expect(familyInstalled(some, 'audio.sinks')).toBe(true);
+    expect(familyInstalled(none, 'audio.sinks')).toBe(false);
+    expect(familyInstalled({ endpoints: { 'audio.sinks': [] } }, 'audio.sinks')).toBe(false);
+  });
+
+  it('a profile with no endpoints block (or no profile) installs nothing', () => {
+    expect(familyInstalled({}, 'lighting.instruments')).toBe(false);
+    expect(familyInstalled(null, 'lighting.instruments')).toBe(false);
+    expect(familyInstalled(undefined, 'display.main')).toBe(false);
+  });
+
+  it('agrees with the real toy profiles', () => {
+    const rig = readJson(REPO_ROOT, 'backend', 'tests', 'e2e', 'fixtures',
+      'profiles', 'toy-test-rig.json');
+    const dormant = readJson(REPO_ROOT, 'backend', 'tests', 'e2e', 'fixtures',
+      'profiles', 'toy-dormant-lighting.json');
+    expect(familyInstalled(rig, 'lighting.instruments')).toBe(true);
+    expect(familyInstalled(dormant, 'lighting.instruments')).toBe(false);
+    expect(familyInstalled(dormant, 'audio.sinks')).toBe(true);
   });
 });

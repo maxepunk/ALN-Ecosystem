@@ -53,7 +53,13 @@ describe('resolve (pure, C1 §2 table)', () => {
       kind: 'lighting-role', id: 'gameplay',
       fallback: 'scene.game', sources: [],
     }];
-    const bareProfile = { orchestrator: true, bindings: {} };
+    // The rig IS installed — the role is simply unbound. (Under an
+    // uninstalled lighting.instruments the role would be DORMANT before
+    // the fallback question arises; T1a D2, pin P2.)
+    const bareProfile = {
+      orchestrator: true, bindings: {},
+      endpoints: { 'lighting.instruments': { installed: true } },
+    };
     const { verdicts } = resolve(needs, bareProfile);
     expect(verdicts[0].verdict).toBe('runs');
     expect(verdicts[0].reason).toMatch(/fallback/);
@@ -73,7 +79,12 @@ describe('resolve (pure, C1 §2 table)', () => {
       kind: 'lighting-role', id: 'all-clear',
       fallback: null, sources: [],
     }];
-    const bareProfile = { orchestrator: true, bindings: {} };
+    // Installed rig, unbound role: the hole nobody chose. (T1a D2: with the
+    // family uninstalled this same need would be dormant instead.)
+    const bareProfile = {
+      orchestrator: true, bindings: {},
+      endpoints: { 'lighting.instruments': { installed: true } },
+    };
     const { verdicts } = resolve(needs, bareProfile);
     expect(verdicts[0].verdict).toBe('fault');
     expect(verdicts[0].reason).toMatch(/will refuse/);
@@ -103,13 +114,16 @@ describe('resolve (pure, C1 §2 table)', () => {
     for (const ep of endpoints) {
       expect(ep.verdict).toBe('runs');
     }
-    expect(rollup.dormantServices).toEqual([]);
+    expect(rollup.dormantNeeds).toEqual([]);
   });
 
   it('a declared endpoint resolves runs', () => {
+    // `installed: true` is REQUIRED by the pinned endpoints interior
+    // (T1b D1) and, since T1a D2, is what "declared" MEANS — a synthetic
+    // profile without it is a declared-but-uninstalled family, i.e. dormant.
     const profile = {
       ...ALN_PROFILE,
-      endpoints: { 'display.main': { output: 'HDMI-1' } },
+      endpoints: { 'display.main': { installed: true, output: 'HDMI-1' } },
     };
     const { verdicts } = resolve(alnNeeds, profile);
     const ep = verdicts.find((v) => v.need.kind === 'endpoint');
@@ -159,7 +173,7 @@ describe('resolve (pure, C1 §2 table)', () => {
   it('rollup grades go / go-degraded / no-go', () => {
     const goAll = resolve(
       [{ kind: 'endpoint', id: 'display.main', onAbsent: 'degrade', sources: [] }],
-      { orchestrator: true, bindings: {}, endpoints: { 'display.main': {} } }
+      { orchestrator: true, bindings: {}, endpoints: { 'display.main': { installed: true } } }
     );
     expect(goAll.rollup.status).toBe('go');
     const degraded = resolve(
@@ -183,7 +197,7 @@ describe('resolve (pure, C1 §2 table)', () => {
     const { rollup } = resolve(alnNeeds, noEndpoints, {
       soundFiles: soundIds.filter((id) => id !== 'tension.wav'),
     });
-    expect(rollup.dormantServices).toContain('display.main');
+    expect(rollup.dormantNeeds).toContain('display.main');
     expect(rollup.problems).toEqual(
       expect.arrayContaining([expect.stringMatching(/tension\.wav.*missing/)])
     );
@@ -237,7 +251,7 @@ describe('resolve (pure, C1 §2 table)', () => {
     // HA served them, leaving the flow's live half file-order-dependent).
     expect(allClear.reason).toBe('bound: scene.witness_all_clear');
     expect(rollup).toEqual(
-      { status: 'go', dormantServices: [], problems: [] }
+      { status: 'go', dormantNeeds: [], problems: [], blocking: [] }
     );
   });
 
@@ -280,5 +294,217 @@ describe('resolve (pure, C1 §2 table)', () => {
     for (const r of refs) {
       expect(r.verdict).toBe('runs');
     }
+  });
+});
+
+// ── Block 2 T1a D2 ────────────────────────────────────────────────────
+// Dormancy is a first-class verdict here, not a special case bolted onto
+// "absent": installed:false is the SAME fact as omitted; a service the
+// registry has latched dormant resolves dormant (never fault, so the
+// dashboard never goes red for equipment nobody installed); and the needs
+// that exist only to drive a dormant family follow it (P2).
+describe('resolve — dormancy (T1a D2, pins P2/P5, ruling R16/R18)', () => {
+  const TOY_DIR = path.join(
+    REPO_ROOT, 'backend', 'tests', 'e2e', 'fixtures', 'packs', 'toy-heist'
+  );
+  const readProfile = (name) => JSON.parse(fs.readFileSync(
+    path.join(REPO_ROOT, 'backend', 'tests', 'e2e', 'fixtures', 'profiles', name),
+    'utf8'
+  ));
+  const TOY_RIG = readProfile('toy-test-rig.json');
+  const TOY_DORMANT = readProfile('toy-dormant-lighting.json');
+  const toyNeeds = collectPackNeeds(loadPack(TOY_DIR));
+
+  describe('installed:false is the same fact as omitted', () => {
+    const need = (onAbsent) => [{
+      kind: 'endpoint', id: 'display.main', onAbsent, sources: [],
+    }];
+
+    it('degrade: declared installed:false resolves dormant, exactly like absent', () => {
+      const declaredOff = resolve(need('degrade'),
+        { orchestrator: true, bindings: {}, endpoints: { 'display.main': { installed: false } } });
+      const omitted = resolve(need('degrade'),
+        { orchestrator: true, bindings: {}, endpoints: {} });
+      expect(declaredOff.verdicts[0].verdict).toBe('dormant');
+      expect(declaredOff.verdicts[0].reason).toBe(omitted.verdicts[0].reason);
+      expect(declaredOff.verdicts[0].reason).toBe("'display.main' not installed tonight");
+    });
+
+    it('require: declared installed:false is NO-GO, exactly like absent', () => {
+      const declaredOff = resolve(need('require'),
+        { orchestrator: true, bindings: {}, endpoints: { 'display.main': { installed: false } } });
+      const omitted = resolve(need('require'),
+        { orchestrator: true, bindings: {}, endpoints: {} });
+      expect(declaredOff.verdicts[0].verdict).toBe('no-go');
+      expect(declaredOff.verdicts[0].reason).toBe(omitted.verdicts[0].reason);
+      expect(declaredOff.rollup.blocking).toEqual([
+        "required endpoint 'display.main' not installed at this venue",
+      ]);
+    });
+
+    it('an audio.sinks array with every entry installed:false is dormant', () => {
+      const { verdicts } = resolve(
+        [{ kind: 'endpoint', id: 'audio.sinks', onAbsent: 'degrade', sources: [] }],
+        { orchestrator: true, bindings: {}, endpoints: { 'audio.sinks': [{ id: 'x', installed: false }] } }
+      );
+      expect(verdicts[0].verdict).toBe('dormant');
+    });
+  });
+
+  describe('a dormant SERVICE resolves dormant, not fault (R16 both inventory shapes)', () => {
+    const needs = [{ kind: 'service', id: 'vlc', onAbsent: 'degrade', sources: [] }];
+
+    it('registry-entry shape, profile door', () => {
+      const { verdicts, rollup } = resolve(needs, ALN_PROFILE, {
+        serviceHealth: { vlc: { status: 'dormant', message: 'x', door: 'profile' } },
+      });
+      expect(verdicts[0]).toMatchObject({ verdict: 'dormant', depth: 'live' });
+      expect(verdicts[0].reason).toBe("'vlc' is not installed tonight");
+      expect(rollup.dormantNeeds).toEqual(['vlc']);
+      expect(rollup.problems).toEqual([]);
+    });
+
+    it('registry-entry shape, operator door', () => {
+      const { verdicts } = resolve(needs, ALN_PROFILE, {
+        serviceHealth: { vlc: { status: 'dormant', message: 'x', door: 'operator' } },
+      });
+      expect(verdicts[0].reason).toBe("'vlc' is out of service");
+    });
+
+    it('bare string shape stays supported: dormant with no door wording', () => {
+      const { verdicts } = resolve(needs, ALN_PROFILE, {
+        serviceHealth: { vlc: 'dormant' },
+      });
+      expect(verdicts[0]).toMatchObject({ verdict: 'dormant', depth: 'live' });
+      expect(verdicts[0].reason).toBe("'vlc' is dormant");
+    });
+
+    it('the entry shape still reads healthy and down the old way', () => {
+      const healthy = resolve(needs, ALN_PROFILE, {
+        serviceHealth: { vlc: { status: 'healthy', message: 'up' } },
+      });
+      expect(healthy.verdicts[0]).toMatchObject({ verdict: 'runs', depth: 'live' });
+      const down = resolve(needs, ALN_PROFILE, {
+        serviceHealth: { vlc: { status: 'down', message: 'refused' } },
+      });
+      expect(down.verdicts[0]).toMatchObject({ verdict: 'fault', depth: 'live' });
+      expect(down.verdicts[0].reason).toBe("stack service 'vlc' is down");
+    });
+  });
+
+  describe('dependent needs follow their family (P2)', () => {
+    it('both toy lighting roles resolve DORMANT under toy-dormant-lighting — not fault', () => {
+      const { verdicts, rollup } = resolve(toyNeeds, TOY_DORMANT);
+      const roleish = verdicts.filter(
+        (v) => v.need.kind === 'lighting-role' || v.need.kind === 'lighting-role-ref'
+      );
+      expect(roleish.length).toBeGreaterThan(0);
+      for (const v of roleish) {
+        expect({ id: v.need.id, kind: v.need.kind, verdict: v.verdict, depth: v.depth })
+          .toEqual({ id: v.need.id, kind: v.need.kind, verdict: 'dormant', depth: 'paper' });
+        expect(v.reason).toBe('lighting not installed tonight');
+      }
+      expect(rollup.dormantNeeds).toContain('lighting.instruments');
+      expect(rollup.problems).toEqual([]);
+      expect(rollup.blocking).toEqual([]);
+    });
+
+    it('the SAME needs resolve runs against toy-test-rig (the family is installed)', () => {
+      const { verdicts, rollup } = resolve(toyNeeds, TOY_RIG);
+      const roleish = verdicts.filter(
+        (v) => v.need.kind === 'lighting-role' || v.need.kind === 'lighting-role-ref'
+      );
+      for (const v of roleish) {
+        expect({ id: v.need.id, verdict: v.verdict }).toEqual({ id: v.need.id, verdict: 'runs' });
+      }
+      expect(rollup.status).toBe('go');
+    });
+
+    it('an UNBOUND role under an INSTALLED family is still a FAULT (the hole nobody chose)', () => {
+      const needs = [{ kind: 'lighting-role', id: 'all-clear', fallback: null, sources: [] }];
+      const installedButUnbound = {
+        orchestrator: true,
+        bindings: {},
+        endpoints: { 'lighting.instruments': { installed: true } },
+      };
+      const { verdicts } = resolve(needs, installedButUnbound);
+      expect(verdicts[0].verdict).toBe('fault');
+      expect(verdicts[0].reason).toMatch(/will refuse/);
+    });
+
+    it('a role-ref under a dormant family is dormant too (it mirrors the role)', () => {
+      const needs = [{ kind: 'lighting-role-ref', id: 'vault-alarm', sources: [] }];
+      const { verdicts } = resolve(needs, {
+        orchestrator: true, bindings: { lighting: { 'vault-alarm': { ha: 'scene.x' } } },
+        endpoints: { 'lighting.instruments': { installed: false } },
+      });
+      // the endpoint wins over the binding — the rig is not in the room
+      expect(verdicts[0].verdict).toBe('dormant');
+      expect(verdicts[0].reason).toBe('lighting not installed tonight');
+    });
+
+    it('surface-channel is dormant under a dormant display.main, even when bound', () => {
+      const needs = [{ kind: 'surface-channel', id: 'aln-idle', sources: [] }];
+      const bound = { surfaces: { 'aln-idle': { file: 'idle-loop.mp4' } } };
+      const dormantDisplay = resolve(needs, {
+        orchestrator: true, bindings: bound,
+        endpoints: { 'display.main': { installed: false } },
+      });
+      expect(dormantDisplay.verdicts[0]).toMatchObject({ verdict: 'dormant', depth: 'paper' });
+      expect(dormantDisplay.verdicts[0].reason).toBe('display not installed tonight');
+
+      const installedDisplay = resolve(needs, {
+        orchestrator: true, bindings: bound,
+        endpoints: { 'display.main': { installed: true } },
+      });
+      expect(installedDisplay.verdicts[0].verdict).toBe('runs');
+    });
+
+    it('an unbound channel under an INSTALLED display keeps its old dormant wording', () => {
+      const needs = [{ kind: 'surface-channel', id: 'aln-idle', sources: [] }];
+      const { verdicts } = resolve(needs, {
+        orchestrator: true, bindings: {},
+        endpoints: { 'display.main': { installed: true } },
+      });
+      expect(verdicts[0].verdict).toBe('dormant');
+      expect(verdicts[0].reason).toBe("channel 'aln-idle' not installed tonight");
+    });
+  });
+
+  describe('rollUp shape (R18)', () => {
+    it('blocking holds ONLY no-go reasons, and is [] when only faults are present', () => {
+      const { rollup } = resolve(
+        [{ kind: 'sound', id: 'missing.wav', sources: [] }],
+        ALN_PROFILE,
+        { soundFiles: [] }
+      );
+      expect(rollup.status).toBe('go-degraded');
+      expect(rollup.problems).toEqual(["sound file 'missing.wav' missing"]);
+      expect(rollup.blocking).toEqual([]);
+    });
+
+    it('blocking is the no-go subset of problems when both are present', () => {
+      const { rollup } = resolve(
+        [
+          { kind: 'sound', id: 'missing.wav', sources: [] },
+          { kind: 'endpoint', id: 'display.main', onAbsent: 'require', sources: [] },
+        ],
+        { orchestrator: true, bindings: {}, endpoints: {} },
+        { soundFiles: [] }
+      );
+      expect(rollup.status).toBe('no-go');
+      expect(rollup.blocking).toEqual([
+        "required endpoint 'display.main' not installed at this venue",
+      ]);
+      expect(rollup.problems).toEqual(expect.arrayContaining(rollup.blocking));
+      expect(rollup.problems).toHaveLength(2);
+    });
+
+    it('the rollup key is dormantNeeds — dormantServices is gone', () => {
+      const { rollup } = resolve(toyNeeds, TOY_DORMANT);
+      expect(Object.keys(rollup).sort())
+        .toEqual(['blocking', 'dormantNeeds', 'problems', 'status']);
+      expect(rollup.dormantServices).toBeUndefined();
+    });
   });
 });

@@ -54,6 +54,20 @@ function servicesForFamily(familyId) {
 
 /**
  * Is this family INSTALLED per the profile's C1 §1 endpoints interior?
+ * The public face of `isInstalled` (Block 2 T1a D3, pin P2): resolve()
+ * asks the SAME question about a family that dormancy does, rather than
+ * re-deriving "installed" its own way and drifting.
+ * @param {object|null|undefined} profile - an installation profile
+ * @param {string} familyId - one of ENDPOINT_FAMILIES
+ * @returns {boolean}
+ */
+function familyInstalled(profile, familyId) {
+  const declared = (profile && profile.endpoints) || {};
+  return isInstalled(familyId, declared[familyId]);
+}
+
+/**
+ * Is this family INSTALLED per the profile's C1 §1 endpoints interior?
  * audio.sinks is an array (installed when at least one entry is
  * installed: true); every other family is an object carrying
  * `installed`. An absent declaration is always uninstalled.
@@ -107,4 +121,4 @@ function dormantServicesFor(manifest, profile) {
   return dormant;
 }
 
-module.exports = { ENDPOINT_FAMILIES, servicesForFamily, dormantServicesFor };
+module.exports = { ENDPOINT_FAMILIES, servicesForFamily, dormantServicesFor, familyInstalled };
