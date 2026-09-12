@@ -2,6 +2,7 @@
   "kind": "game",
   "schemaVersion": 2,
   "requires": [
+    "cues.timeline",
     "duplicatePolicy.once",
     "groupRules.all",
     "lighting.roles",
