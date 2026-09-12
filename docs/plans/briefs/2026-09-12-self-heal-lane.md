@@ -87,8 +87,9 @@ read in full before the first edit, corrected and extended by the review:
 - The operator's mode is validated once at startup only
   (`initializationSteps.js:276-287` `validateSettingsMode`, called from
   `app.js:126`); a mode the pack does not declare makes `resolveMode`
-  return null (`modeSemantics.js:235-237, 273-277`) and the backend then
-  accepts scans and pays 0 as `unknown-mode` (`transactionService.js:243-256`).
+  return null (`modeSemantics.js:235-237, 273-277`); every scan then
+  fails loudly at the backend's `packDeclaredMode` gate while the mode
+  wire still shows the old pack's buttons.
   The DOM projections `applyPackStringsToDom()` / `applyThemeColorsToDom()`
   run only at initialization (`initializationSteps.js:160-164, 177`).
 - `sync:full.pack = {packId, version, contentHash}` is on the wire
@@ -153,9 +154,12 @@ server keeps its warn; the two §8.5 tests land here.
   shim and benign-emptiness condition warns as today and never refuses
   (the three green tests stay green) — and `applyPack(pack)` (steps
   3–7), followed by `validateSettingsMode(settings)` with a mode-wire
-  re-render (a mode id the new pack does not declare is reset, never
-  silently scored zero) and the DOM projections `applyPackStringsToDom()`
-  / `applyThemeColorsToDom()` re-applied. `loadDatabase()` becomes
+  re-render (a mode id the new pack does not declare is reset before
+  the operator can scan against it) and the DOM projections
+  `applyPackStringsToDom()` / `applyThemeColorsToDom()` re-applied —
+  these three post-apply steps run in the CALLER, never inside
+  `applyPack`: `initializationSteps` at startup (as today) and App on
+  the heal path (Task B). `loadDatabase()` becomes
   `loadPack()` → `validatePack` → `applyPack` (a refusal keeps today's
   `return false`). `commit()` = flip the pointer, GC, AND set `_active`
   to the staged identity with `source: 'network'`; then `renderPackInfo()`
@@ -194,9 +198,10 @@ server keeps its warn; the two §8.5 tests land here.
   wizard (the restart empties the in-memory admin-token store), and
   assert the heal on the FIRST `sync:full` of that new connection: the
   toast text; the settings pack line showing the new hash prefix; and,
-  from the worker's `combined.log`, that the reconnect logged the new
-  client `packHash` and emitted no fresh `GM client pack MISMATCH`
-  warn. `restartOrchestrator` gains `packPath` (caller's value wins).
+  from the worker's `combined.log` (the harness pins `LOG_LEVEL=warn`,
+  so only warns are observable), that no fresh `GM client pack
+  MISMATCH` warn was emitted after the reconnect; the new hash itself is
+  proven by the settings pack line. `restartOrchestrator` gains `packPath` (caller's value wins).
 
 ## Task A — deliverables 1, 2, 5 (the loader, the manager, the owed tests)
 
@@ -211,10 +216,12 @@ server keeps its warn; the two §8.5 tests land here.
 2. `tokenManager.validatePack` / `applyPack`; `loadDatabase()`
    refactored onto them (the 26 existing tests stay green, including
    the three that pin warn-not-refuse). Red-first: each of the two
-   refusal reasons; a pack with no scoring block validates ok (warns);
+   refusal reasons; `validatePack(pack)` returns ok for a pack with no
+   scoring block (red today: the method does not exist; the warn stays
+   pinned by the existing `loadDatabase` tests);
    `applyPack` on a validated pack equals today's `loadDatabase()` end
-   state; after `applyPack` an undeclared operator mode is reset and the
-   mode wire re-rendered; the DOM projections are re-applied.
+   state (the post-apply mode and DOM steps are Task B's seams, in the
+   caller).
 5. The two §8.5 tests in `tests/unit/core/packLoader.test.js`: (a) a
    fetch that never resolves → `loadPack()` aborts at its timeout and
    falls through to the cache tier (behaviour, not signal wiring; add a
@@ -233,10 +240,13 @@ coverage:check`; `npm run lint` (192 baseline plus the new tests).
    the dispatched session event; App: the heal, the toast, the banner,
    the backstop (R-H4; `index.html` gains the two elements). Red-first:
    heal at a boundary → one toast; mid-session → banner, no heal;
-   second mismatch for the same hash on the same connection → no second
-   refresh attempt AND the backstop still shown; a validation refusal
-   leaves pointer and caches untouched and shows the backstop; a stage
-   failure keeps the banner and shows no backstop.
+   a validation refusal leaves pointer and caches untouched and shows
+   the backstop; a second mismatch for the same hash on the same
+   connection after a validation refusal → no second refresh attempt AND
+   the backstop still shown; a stage failure keeps the banner and shows
+   no backstop; after a successful heal an undeclared operator mode is
+   reset and the mode wire re-rendered, and the DOM projections are
+   re-applied (App, the caller).
 4. The reconnect with the bounded collision retry (`connectionManager`,
    R-H3). Red-first: one collision then success; two collisions fall to
    the normal path.

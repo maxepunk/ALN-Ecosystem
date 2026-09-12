@@ -89,12 +89,12 @@ flows), corrected and extended by the review:
   the claim for tier `device`, the handshake otherwise. The A2
   staleness warn (`socketServer.js:136-148`) compares the HANDSHAKE
   `packHash` against the active pack; both token kinds also carry a
-  server-minted `packHash` claim (`auth.js:62,140`) — the handshake
+  server-minted `packHash` claim (`auth.js:63,137`) — the handshake
   value is the one that must keep being read.
 - Every reader of the self-declared handshake type (`grep -rn
   "socket\.deviceType" backend/src` → ten sites): `socketServer.js:53`
   (the gate), `:85` (`isScoreboard = deviceId.startsWith('SCOREBOARD_')`),
-  `:117`; `server.js:123` (`socket.isAuthenticated && socket.deviceType
+  `:125` (the stamp); `server.js:123` (`socket.isAuthenticated && socket.deviceType
   === 'gm'`, the only production trigger of `handleGmIdentify`);
   `adminEvents.js:32` (`AUTH_REQUIRED` unless `'gm'`), `:113` and
   `:192` (both feed the SCAN-RECORD field); `broadcasts.js:653-654`
@@ -112,7 +112,7 @@ flows), corrected and extended by the review:
 - Clients that send the word: `ALNScanner/src/network/connectionManager.js:28,147`,
   `orchestratorClient.js:71,95`, `backend/public/scoreboard.html:1564`.
 - Test helpers that carry it: `tests/helpers/websocket-helpers.js:79-161`
-  (`connectAndIdentify(url, deviceType, deviceId)`; a token is minted
+  (`connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5000)`; a token is minted
   only for `'gm'` at :89; the `'gm'` branch at :107-155 decides whether
   to await `sync:full`), `tests/helpers/websocket-core.js:30,56`
   (`connectWithAuth(baseUrl, password, deviceId, deviceType, options)`),
@@ -120,15 +120,16 @@ flows), corrected and extended by the review:
   fake-auth branch) and `:153` (the harness's twin of `server.js:123`),
   `tests/e2e/setup/websocket-client.js:99`.
 - Contract and doc residue: `asyncapi.yaml:30` (auth object) and `:57`
-  ("Invalid deviceId or deviceType" bullet); `openapi.yaml:83` (a stale
+  ("Invalid deviceId or deviceType" bullet); `openapi.yaml:81` (a stale
   "AUTH_REQUIRED, INVALID_TOKEN, or TOKEN_EXPIRED" code list) and `:88`;
   `backend/backend_docs/WEBSOCKET_QUICK_REFERENCE.md:54`;
   `tests/e2e/setup/WEBSOCKET_CLIENT_README.md:13,24`,
-  `SSL_CERT_HELPER_README.md:132-149,256`, `USAGE_EXAMPLE.js`;
+  `SSL_CERT_HELPER_README.md:132-149,256,341`, `USAGE_EXAMPLE.js`;
   `ALNScanner/CLAUDE.md` (the handshake paragraph).
-- Rooms: every identified socket joins `gm` (`gmAuth.js:104`); the
+- Rooms: every identified socket joins `gm` (`gmAuth.js:106`); the
   `isDisplay` carve-out at :61 covers registration and capacity only;
-  displays get no device row (`gmAuth.js:113`, `broadcasts.js:647-649`).
+  displays get no device row (the `if (!isDisplay)` guard at
+  `gmAuth.js:119` around `updateDevice` at :120; `broadcasts.js:647-649`).
 - Identity of a display today: `routes/resourceRoutes.js:205` mints
   every observe token with the literal `'SCOREBOARD'`; the page's own id
   (`SCOREBOARD_DISPLAY_<ts>` or `?deviceId=`, `scoreboard.html:744-767`)
@@ -145,7 +146,9 @@ flows), corrected and extended by the review:
 Every connection presents a verified operator or observe token at the
 handshake; the handshake carries no station type; the verified TIER
 decides every gate and exemption (`operator` or `device`; anything else
-fails closed); the scoreboard's collision exemption keys on tier
+fails closed — the plan's R19 and P15 now say "tier" too: there is no
+class named `operator`; a display's class `display` and tier `device`
+coincide); the scoreboard's collision exemption keys on tier
 `device`, not on a name prefix; `sync:request` and the identify-time
 fetch use the non-mutating getter; the contract's `admin` value and the
 handshake `deviceType` field are removed on both sides; a handshake that
@@ -163,11 +166,14 @@ id the display asked for. `/health` is untouched.
    `AUTH_REQUIRED: deviceId required`, `AUTH_INVALID: <the existing
    invalid-token text>`, the existing collision message; the "Invalid
    deviceId or deviceType" bullet at :57 corrected. Same fix in
-   `openapi.yaml:83` and `:88`, `WEBSOCKET_QUICK_REFERENCE.md:54`, the
+   `openapi.yaml:81` and `:88`, `WEBSOCKET_QUICK_REFERENCE.md:54`, the
    `ALNScanner/CLAUDE.md` handshake paragraph, and the helper docs
-   named above. Red-first: a contract test asserting the handshake
-   section of `asyncapi.yaml` contains no `deviceType` and no `admin`
-   (the phrase-pin idiom of `tests/contract/websocket/phase1-events.test.js:71`).
+   named above. Red-first: a contract test that loads the spec the way
+   `tests/contract/websocket/phase1-events.test.js:59-61` does and
+   asserts `expect(asyncapi.info.description).not.toContain('deviceType')`
+   and `.not.toContain('admin')` (the handshake object lives in
+   `info.description`, :24-37; the device-record enum at :203/:711 is
+   outside it).
    Commit this first, alone.
 2. **The handshake** (`socketServer.js`; the credential block runs for
    every connection). Order: (a) missing token → `AUTH_REQUIRED: Token
@@ -186,7 +192,12 @@ id the display asked for. `/health` is untouched.
    → `connect_error`; operator token with a handshake `deviceType:
    'player'` → connected with `tier === 'operator'` (the word carries no
    meaning); observe token → connected with `tier === 'device'` and
-   functions `['observe']`; a token minted without a tier → refused.
+   functions `['observe']`. The fail-closed rule for a token with no
+   tier has no red-first seam of its own (`verifyToken` already refuses
+   any token outside the `adminTokens` store, so a claim-less token is
+   `AUTH_INVALID` today); exercise the new branch with
+   `jest.mock('../../../src/middleware/auth')` — `socketServer.js:9`
+   destructures the verifiers at require time.
    Regression guards (green today, kept): two tier-`device` sockets with
    the same `deviceId` both connect; two operator sockets with the same
    `deviceId` trip the collision rule. The existing case "should allow
@@ -199,9 +210,9 @@ id the display asked for. `/health` is untouched.
    unless `socket.tier === 'operator'`, with the existing `error` event
    `code: 'AUTH_REQUIRED'`. `adminEvents.js:113` and `:192` stop reading
    the socket and pass the literal `'gm'` into the scan-record field.
-   `broadcasts.js:653-654`: only operator sockets arrive there, so the
-   label is unconditionally `'GM Station'` and the `'Admin'` fallback is
-   deleted. `gmAuth.js:80` and `:199` stop reading the socket (`:80` is
+   `broadcasts.js:653-654`: only operator sockets arrive there, so
+   `type` is the literal `'gm'` and the label is unconditionally
+   `'GM Station'`; the `'Admin'` fallback is deleted. `gmAuth.js:80` and `:199` stop reading the socket (`:80` is
    deleted; `:199` passes the device record's own type). `gmAuth.js:68`
    and `deviceConnection.js:229` change nothing (device-record type).
    `deviceTracking.js:31` drops the log field. Red-first: an observe
@@ -212,8 +223,10 @@ id the display asked for. `/health` is untouched.
 4. **`sync:request` and the identify-time fetch never write.** The
    three call sites use `getDeviceScannedTokensArray()` (wrapped in
    `new Set(...)` where a Set is consumed). Red-first: a `sync:request`
-   from a socket whose deviceId has no entry leaves
-   `session.metadata.scannedTokensByDevice` without that key.
+   from a tier-`device` socket whose deviceId has no entry leaves
+   `session.metadata.scannedTokensByDevice` without that key (pinning
+   both halves: the getter never writes, and the endpoint stays open
+   to a display).
 5. **The clients stop sending the word, and displays get their id.**
    `connectionManager.js:28,147` and `orchestratorClient.js:71,95`
    (scanner unit tests updated; any scanner contract test pinning the
@@ -228,8 +241,9 @@ id the display asked for. `/health` is untouched.
 6. **The helpers and the three named tests.** `connectAndIdentify` and
    `connectWithAuth` keep their arity in this lane: the `deviceType`
    position is documented as ignored ("legacy position; removed by the
-   wiring step's sweep") and both gain an `{observe: true}` option that
-   mints an observe token through `generateObserveToken(deviceId)` and
+   wiring step's sweep") and both gain an `{observe: true}` option in a NEW fifth position
+   (`connectAndIdentify`) or inside the existing `options` object
+   (`connectWithAuth`) that mints an observe token through `generateObserveToken(deviceId)` and
    awaits `sync:full` (a display gets one once deliverable 3 lands);
    the `'gm'`-only token minting at `websocket-helpers.js:89` becomes
    unconditional for non-observe calls. The dead `admin` branch in
@@ -260,9 +274,10 @@ Check `df -h /` before and after any run that spawns an orchestrator.
 
 Every deliverable has a commit; every red-first seam went red on the
 old code and green on the new (say how you saw red; regression guards
-are marked as such); `grep -rn "socket\.deviceType\|auth\.deviceType\|deviceType:" backend/src/websocket/socketServer.js backend/src/server.js backend/src/websocket/gmAuth.js backend/src/websocket/broadcasts.js backend/src/websocket/deviceTracking.js ALNScanner/src/network backend/public/scoreboard.html`
-returns nothing, and the handshake section of `asyncapi.yaml` contains
-no `deviceType`; the scan-record and device-record fields are
+are marked as such); `grep -rn "socket\.deviceType\|auth\.deviceType\|deviceType:" backend/src/websocket/socketServer.js backend/src/server.js backend/src/websocket/broadcasts.js backend/src/websocket/deviceTracking.js ALNScanner/src/network backend/public/scoreboard.html`
+returns nothing, `grep -n "socket\.deviceType" backend/src/websocket/gmAuth.js`
+returns nothing (its line 68 device-record literal stays), and the
+handshake section of `asyncapi.yaml` contains no `deviceType`; the scan-record and device-record fields are
 untouched; no SOURCE file outside the lists above changes (test files
 touched only as deliverable 6 names).
 

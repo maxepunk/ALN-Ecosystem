@@ -51,7 +51,7 @@ Schedule decisions are the owner's at the §8 checkpoints.
 | R16 | Documentation: one-screen state page edited in place as the entry point; the plan's decisions replaced in place with history in its record; briefs and reviews as pointed-to working material; the delegation skill's scratch progress file is not the ledger (that word is reserved for temporary-construct rows); the post-walk handoff retired into the state page; process rule 6 reads the state page first, then its pointers | owner, 2026-09-12 |
 | R17 | Green becomes the home development environment (real substitute hardware, rung 2) once it is ready and the work reaches the pre-rehearsal checkpoint; at that point every lane is merged or pushed and the state page is current, because worktrees and the container rig do not travel | owner, 2026-09-12 |
 | R18 | Host-file modes are `self` (the orchestrator starts and supervises the program) and `adopt` (another supervisor on the host runs it; the orchestrator attaches, re-resolves on exit, never restarts); the third value `off` is removed — whether a program runs tonight is the profile's truth through the dormancy map, never the host file's; `maxFailures` ranges 0–20 and 0 means manual restarts only (the rehearsal fallback R13 names) — cost if wrong: a venue that wants a program silenced edits its profile, not the host file | owner, 2026-09-12 (grill rounds 1–3) |
-| R19 | P15's "observe tokens evict per deviceId" is dropped (every pass carries one literal id today; as written it would blank the other display at its next reconnect; built right it changes nothing anyone sees); the self-declared handshake station type (`deviceType`) is retired NOW on both sides — the verified credential class decides every gate, label and exemption; the scoreboard's collision exemption keys on the display class, not the `SCOREBOARD_` name prefix; the scan-record device type (gm/player/esp32) is a different field and stays — cost if wrong: one coordinated wire change across backend, scanner, scoreboard page, contracts and test helpers, in the credentials lane | owner, 2026-09-12 |
+| R19 | P15's "observe tokens evict per deviceId" is dropped (every pass carries one literal id today; as written it would blank the other display at its next reconnect; built right it changes nothing anyone sees); the self-declared handshake station type (`deviceType`) is retired NOW on both sides — the verified credential TIER decides every gate, label and exemption (`operator` or `device`; there is no class named `operator`; a display's class `display` and tier `device` coincide — wording corrected 2026-09-12 from "class"); the scoreboard's collision exemption keys on tier `device`, not the `SCOREBOARD_` name prefix; the scan-record device type (gm/player/esp32) is a different field and stays — cost if wrong: one coordinated wire change across backend, scanner, scoreboard page, contracts and test helpers, in the credentials lane | owner, 2026-09-12 |
 | R20 | One supervision path: the TV browser (Chromium) becomes a `ProcessMonitor` consumer through four display hooks (pre-start orphan sweep, post-start alive check, may-restart-now by intended visibility, exit classification per ruling 27); the display driver keeps window management only — cost if wrong: a careful port guarded by the 58 display tests | owner, 2026-09-12 |
 | R21 | The remote display (`display.remote`, a count; a display on another device showing only the scoreboard page) joins the profile's equipment families, modeled like `stations`; the preflight's devices row counts connected display-class connections against it; built in the preflight-arms lane after the profile check merges; the guide gives the Pi 4 a stable id — cost if wrong: about half a day inside the arms lane | owner, 2026-09-12 |
 | R22 | The three audit reports are accepted as evidence; an independent recount (a second reader per report re-deriving every count and spot-checking every cited line) is the first stage of the sweep fixes; the sweep also carries a documents row (verification dates refreshed only on real verification; the Spotify-era investigation-context files archived or deleted; the guide's stale prose fixed in the repair), the transaction-card border check (visible-change item 5) and the reference screenshots of the pinned July release; automated screen comparisons stay out until sized | owner, 2026-09-12 |
@@ -270,8 +270,9 @@ Schedule decisions are the owner's at the §8 checkpoints.
 - **P15. Every connection presents a credential (R5; SEC-08 ★).** The
   handshake requires a verified operator or observe token (amended by
   R19: the handshake carries no `deviceType`; the verified credential
-  class decides every gate, label and exemption; the contract's `admin`
-  value and the field itself are removed on both sides). The whole
+  TIER (`operator` or `device`) decides every gate, label and exemption;
+  the contract's `admin` value and the field itself are removed on both
+  sides). The whole
   identity block leaves the branch;
   only the collision check stays GM-scoped. `sync:request` stays open
   to any credentialed socket and uses the non-mutating getter. (The
@@ -466,7 +467,7 @@ rebuilt.
 ### credentials on every connection — every connection presents a credential (CS.3)
 
 Files (R19): `websocket/socketServer.js` (P15; the collision exemption
-by display class), every server consumer of the handshake type
+by tier `device`), every server consumer of the handshake type
 (`server.js`, `websocket/adminEvents.js`, `websocket/broadcasts.js`,
 `websocket/gmAuth.js`, `models/deviceConnection.js`), `server.js` and
 `tests/helpers/integration-test-server.js` (`sync:request` getter),
@@ -528,8 +529,8 @@ with validation), `src/network/connectionManager.js` (reconnect with
 the bounded collision retry), a backstop screen, tests: heal at a
 boundary → one toast; mid-session → banner, no heal; second mismatch
 for the same hash → backstop; divergent serving origin heals from the
-connected orchestrator; re-apply failure leaves pointer and cache
-untouched; the behavioral timeout test; the staging-cache race test.
+connected orchestrator; a validation refusal leaves pointer and cache
+untouched (an apply-time throw lands on the new pointer); the behavioral timeout test; the staging-cache race test.
 Plus one backend E2E flow on the toy leg restarting the orchestrator
 with a different `packPath` and asserting the reconnect with the new
 hash (DoD h).
