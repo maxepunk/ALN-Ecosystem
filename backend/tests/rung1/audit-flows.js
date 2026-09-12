@@ -89,8 +89,11 @@ async function main() {
   const health = syncFull.serviceHealth || {};
   const healthy = Object.entries(health)
     .filter(([, v]) => v.status === 'healthy').map(([k]) => k).sort();
-  record('service health (7 real services)',
-    ['audio', 'cueengine', 'gameclock', 'lighting', 'music', 'sound', 'vlc']
+  // T1a D9/P16: `display` is the ninth service and the rung-1 rig runs a
+  // real kiosk under Xvfb, so it must be healthy here. `bluetooth` stays
+  // honestly absent — the rig has no adapter and never claimed one.
+  record('service health (8 real services)',
+    ['audio', 'cueengine', 'display', 'gameclock', 'lighting', 'music', 'sound', 'vlc']
       .every((s) => healthy.includes(s)),
     `healthy: ${healthy.join(',')}`);
 
