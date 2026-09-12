@@ -796,7 +796,11 @@ class SessionService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async restampAfterRestore() {
-    if (!this.currentSession) return;
+    // The guard lives here, not at the call site: the service knows which
+    // of its own sessions is worth re-stamping. An ENDED session's
+    // preflight describes the night it ran and must not be overwritten
+    // with tonight's facts.
+    if (!this.currentSession || this.currentSession.status === 'ended') return;
     const ev = require('./preflightService').evaluate({ live: true });
     this.currentSession.metadata.preflight = {
       ...stampFromEvaluation(ev),

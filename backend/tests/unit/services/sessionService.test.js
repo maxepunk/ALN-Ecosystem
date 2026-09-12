@@ -1553,5 +1553,18 @@ describe('SessionService - preflight gate and stamps (T1a D8)', () => {
     it('is a no-op with no current session', async () => {
       await expect(sessionService.restampAfterRestore()).resolves.toBeUndefined();
     });
+
+    it('leaves an ENDED session\'s stamp alone — it describes the night it ran', async () => {
+      jest.spyOn(preflightService, 'evaluate').mockReturnValue(clean());
+      await sessionService.createSession({ name: 'Finished', teams: [] });
+      const created = sessionService.currentSession;
+      created.status = 'ended';
+      const before = { ...created.metadata.preflight };
+      preflightService.evaluate.mockReturnValue(blocked());
+
+      await sessionService.restampAfterRestore();
+
+      expect(created.metadata.preflight).toEqual(before);
+    });
   });
 });
