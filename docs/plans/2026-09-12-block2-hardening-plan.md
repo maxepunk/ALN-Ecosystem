@@ -59,6 +59,7 @@ Schedule decisions are the owner's at the §8 checkpoints.
 | R24 | The guide repair = ROADMAP Appendix C verified item by item against today's guide first, plus the fresh-install differences, plus the Thursday runbook's differences; the copy list is "mount blue's network share from green, copy these paths"; the Pi 4 section says what it is (a browser in fullscreen at the scoreboard link, warning accepted once) | owner, 2026-09-12 |
 | R25 | The state page carries the owner's green acceptance checklist (ROADMAP §6 Stage B) and the sixteen-item visible-change review (Appendix B); timing is the owner's | owner, 2026-09-12 |
 | R26 | Adversarial review is built into the orchestration at three points (owner: "agreed", 2026-09-12): (1) a focused adversarial pass on the merged dormancy core — three attacking lenses (show-night failure modes; state machine and parity; security and integrity), every finding refuted independently (Fable for majors, Opus for minors), survivors fixed as one task BEFORE any lane merges; (2) a design red team on each lane brief after its review passes — two attackers (a show-night lens, a state-and-security lens) on the brief's rulings and seams, survivors folded into the brief before its implementer starts; (3) one hostile tester per build task after the task review — an agent that tries to make the change fail at its stated seams on the rig, its findings joining the fix loop; the plan's close review and pre-rehearsal review stay as written — cost if wrong: review seats spent on a change that holds | owner, 2026-09-12 |
+| R27 | Ledger row (temporary construct): the test helpers `connectAndIdentify(url, deviceType, deviceId)` and `connectWithAuth(baseUrl, password, deviceId, deviceType, options)` keep their arity through the lanes with the `deviceType` position documented as ignored; the wiring step removes the parameter across the 43 test files (about 120 call sites) as a decision-free mechanical sweep once the lanes have merged — cost if wrong: one extra sweep task this week; the alternative (removing it inside the credentials lane) collides with every lane's E2E files | orchestrator, 2026-09-12 (from the credentials brief review S5) |
 
 ## 2. Census delta that changes the design (from the re-open census)
 
@@ -477,8 +478,10 @@ tests:
 `tests/unit/websocket/socketMiddleware.test.js`,
 `tests/integration/admin-interventions.test.js`,
 `tests/integration/room-broadcasts.test.js`. Red-first: tokenless →
-`connect_error`; operator token + `deviceType: 'player'` →
-`connect_error`; observe token connects read-only; a display's
+`connect_error`; operator token with a stale handshake `deviceType`
+→ connects as an operator, the field never read (amended 2026-09-12 per
+R19: a service-worker-cached scanner build must not be locked out);
+observe token connects read-only; a display's
 `sync:request` leaves `scannedTokensByDevice` unchanged; the scoreboard
 E2E flow passes.
 
