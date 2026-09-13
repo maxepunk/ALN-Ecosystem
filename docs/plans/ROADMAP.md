@@ -775,3 +775,5 @@ certificate copied to green, the warning accepted once per tablet and
 on the Pi 4 remote display; the certificate spike itself is deferred
 to row 8.19, 2026-09-12). Full list with citations: the dependency audit,
 claim 5.
+
+**Closed by R24 (2026-09-13).** The guide repair landed every item above (`docs/plans/briefs/2026-09-13-guide-repair.md`; `DEPLOYMENT_GUIDE.md` and `docs/preflight-checklist.md` at 7fab0b4; task review and re-review in the hardening block's scratch record). Four items were already true before the task: the Bluetooth removal, two of the three password sections, the installation-profile section, the Pi 5 video settings (moved from the agent document into the guide). The only open reference is the certificate spike, row 8.19, which the guide carries as an explicit deferral. Three code-side facts the guide cannot fix follow as a small task (the boot check accepting the WirePlumber `.conf` path; the two bus variables in the environment template; the requirements file's install line).

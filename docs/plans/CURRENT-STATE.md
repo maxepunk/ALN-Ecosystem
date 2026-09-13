@@ -57,8 +57,8 @@ Next, in this order (owner: "go"): (1) documents [x] rulings rows
 [x] task section [x] page cut [x] rule 6 [x] handoff retired [x] progress
 file no longer "the ledger"; (2) readers for the supervisor, credentials,
 the self-heal; the sweep audit as reading; Thursday's runbook committed
-for the owner; the guide repair when the fresh-install research lands,
-BEFORE the owner starts on green; (3) the two held plans revised, one
+for the owner; [x] the guide repair (7fab0b4; the guide-ready note is the
+start-here section at the top of `DEPLOYMENT_GUIDE.md`); (3) the two held plans revised, one
 scoped re-review each; (4) [x] the harness minimum built, reviewed, gated, merged; three
 worktrees cut and provisioned;
 (5) the profile check built, reviewed, gated, merged; the arms worktree
@@ -81,32 +81,36 @@ Thursday preflight.
   certificate files over the share; capture the seven Home Assistant
   scenes from blue; pair the speaker and give its sink name for the
   profile; flash the three scanners; practice the token sync once on
-  green and check how many image files changed. Do not start on green
-  before the guide-ready note.
+  green and check how many image files changed. The guide-ready note
+  is out: `DEPLOYMENT_GUIDE.md`, the start-here section at the top;
+  green may start. Read it as a plan to be proven on the bench, not a
+  proven plan (nothing was run on a real Trixie machine); blue is the
+  contingency.
 - Owner: review the sixteen visible changes (ROADMAP Appendix B) as
   the GM on a running system; timing yours.
-- Orchestrator: the guide repair (R24) after the research lands; the
-  Thursday runbook's differences fold into it (its review then happens
-  on the repaired guide).
+- Orchestrator: three code-side follow-ups the guide cannot fix
+  (brief `briefs/2026-09-13-green-followups.md`): the boot check
+  accepts the WirePlumber `.conf` path (until then a correct green
+  logs a false "rule missing" every boot — ignore it, never write the
+  `.lua`); the two bus variables in the environment template; the
+  requirements file's install line.
 - Standing, owner: delete remote branch `claude/nice-curie-hescfv-t1a-ci`;
   secrets rotation and the WiFi-password scrub are deferred by ruling.
 
 ## 6. Running, and on disk
 
-- Live state at the last edit (about 00:05Z 2026-09-13): the container
-  restarted about 23:21Z; the rig's shared arms were brought back with
-  the recipe (`2026-09-12-container-baseline.md` §7; log
-  `<scratchpad>/rig-up-2321.log`; engine stopped; probe equal to the
-  recorded baseline). Running: the dormancy-core adversarial pass
-  (`wf_6858337e-efa`, script `dormancy-adversarial.js`, report
-  `dormancy-core-adversarial.md` in scratch); research revision 3
-  (`wf_ff6f5b79-f04`, `research-revision-3.js`); three per-brief red
-  teams (R26 point 2; script `redteam-brief.js`, args per lane; two
-  opus lenses, one refuter per finding, a writer): credentials
-  `wf_aa1e1c73-4cc`, self-heal `wf_4b643628-042`, profile-check
-  `wf_6a3b59bb-9af`; reports `<lane>-redteam.md` in scratch. CI run 303
-  on the merge `209916b` was in progress; the record commit pushes
-  after it finishes.
+- Live state at the last edit (about 01:40Z 2026-09-13): the rig's
+  shared arms up (brought back after the 23:21Z restart; engine
+  stopped). Running: the dormancy-survivors build (`wf_bb6acf61-b89`,
+  script `lane-build.js`, worktree `.worktrees/dormancy-fix`, brief
+  `briefs/2026-09-13-dormancy-survivors.md`: seven fixes from the
+  adversarial pass, then a hostile tester); three per-brief red teams
+  (R26 point 2; `redteam-brief.js`): credentials `wf_aa1e1c73-4cc`,
+  self-heal `wf_4b643628-042`, profile-check `wf_6a3b59bb-9af`;
+  reports `<lane>-redteam.md` in scratch. Done since the last edit:
+  research revision 4 (closed), the guide repair (7fab0b4, reviewed),
+  the dormancy pass (12 standing: seven → the survivors task, one →
+  the profile check, one → the arms brief, minors ruled).
 - Checkouts: main checkout on `claude/nice-curie-hescfv-profile-check`
   at `209916b` (the profile-check build runs there); `.worktrees/docs`
   on the designated branch (all docs commits go through it);
