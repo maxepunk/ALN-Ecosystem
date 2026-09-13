@@ -1,6 +1,6 @@
 # Green from a fresh Raspberry Pi OS install: what differs from the guide and the code
 
-Research, 2026-09-12 (revised the same day to close eleven review gaps, then three more from the completeness critic: §2.11–2.13, then five from the third review: the PM2 block name, the chromium check, the bus-address shape, the Appendix C reconciliation, desktop autologin). Brief: `docs/plans/briefs/2026-09-12-green-fresh-install-research.md`.
+Research, 2026-09-12 (revised the same day to close eleven review gaps, then three more from the completeness critic: §2.11–2.13, then five from the third review: the PM2 block name, the chromium check, the bus-address shape, the Appendix C reconciliation, desktop autologin, then five from the fourth review: the .env copy's place in the order, dotenv never overriding an inherited bus address, the display check's precondition, the pack pin's source, the WirePlumber drop-in directory). Brief: `docs/plans/briefs/2026-09-12-green-fresh-install-research.md`.
 Vocabulary: `CONTEXT.md` §5 (kit, venue, installation profile, blue/green).
 Line numbers: `docs/plans/ROADMAP.md` and `CONTEXT.md` are cited against this docs
 worktree; every other file against the main checkout (`DEPLOYMENT_GUIDE.md` and
@@ -13,7 +13,7 @@ Bookworm the guide assumes (`DEPLOYMENT_GUIDE.md:1030`). Ten things differ in a 
 
 1. **The desktop is Wayland (labwc); the code drives X11** (`DISPLAY=:0`, xdotool, wmctrl). Fix first: `sudo raspi-config` → Advanced Options → Wayland → **W1 X11**, reboot.
    The X11 stack (xserver-xorg, Openbox, lxpanel-pi) is on the Desktop image (§2.1, sourced to the image build and the metapackage); if it still comes up broken, blue runs the show (§2.1).
-2. **WirePlumber 0.5.8 never reads `/etc/wireplumber/main.lua.d/`.** Fix: write `/etc/wireplumber/wireplumber.conf.d/51-aln-vlc-no-restore.conf`
+2. **WirePlumber 0.5.8 never reads `/etc/wireplumber/main.lua.d/`.** Fix: `sudo mkdir -p /etc/wireplumber/wireplumber.conf.d/` (no package ships that directory), then write `/etc/wireplumber/wireplumber.conf.d/51-aln-vlc-no-restore.conf`
    (§2.2; the rule keys are now sourced to WirePlumber's own script, with a `pw-dump` check). Do NOT copy blue's `.lua`: it passes the boot check and does nothing.
 3. **The browser package and binary are `chromium`; the code spawns `chromium-browser`.** Fix: `sudo apt install chromium`, then `CHROMIUM_BIN=/usr/bin/chromium` in `backend/.env`.
 4. **The guide installs Node 20 (end of life 2026-04-30); `backend/package.json` needs >= 22.** Fix: `setup_22.x`. Guide change.
@@ -24,28 +24,28 @@ Bookworm the guide assumes (`DEPLOYMENT_GUIDE.md:1030`). Ten things differ in a 
 8. **The certificate a clone delivers is for 10.0.0.177, not the venue address** (`backend/ssl/` is tracked, not ignored; expires 2026-10-24). Fix:
    establish what blue actually serves (fingerprint), copy THAT pair after the clone and before the first `npm start`, else regenerate with an IP SAN (§2.8).
 9. **PM2 resurrects the orchestrator with the environment of the first `npm start`; the code sets no `DBUS_SESSION_BUS_ADDRESS` or `XDG_RUNTIME_DIR` of its own.** Every `pactl` call and every VLC D-Bus call inherits them or fails (§2.11).
-   Fix: first read `echo $DBUS_SESSION_BUS_ADDRESS` in green's desktop terminal. Prefer two lines in `backend/.env` (`unix:path=/run/user/<uid>/bus`, `/run/user/<uid>`); a desktop-terminal `npm start` is safe ONLY if that echo printed the `/run/user/<uid>/bus` form — an `abstract=` address freezes just as well and dies at the first power-cycle. The checklist's `env_production` remedy names a block that does not exist (§2.11). Then the cold-boot check, read after the logind window (§2.11).
+   Fix: first read `echo $DBUS_SESSION_BUS_ADDRESS` in green's desktop terminal. Prefer two lines in `backend/.env` (`unix:path=/run/user/<uid>/bus`, `/run/user/<uid>`) — but those lines take effect only in a shell where the variable is UNSET, which means SSH: `dotenv.config()` at `backend/src/config/index.js:10` passes no `override`, so an inherited value wins and the desktop terminal always exports one. A desktop-terminal `npm start` is therefore safe ONLY if that echo printed the `/run/user/<uid>/bus` form; with an `abstract=` address — which freezes just as well and dies at the first power-cycle — start, and re-run `pm2 restart … --update-env`, from SSH, never from the desktop terminal. The checklist's `env_production` remedy names a block that does not exist (§2.11). Then the cold-boot check, read after the logind window (§2.11).
 10. **The acceptance gate (`docs/preflight-checklist.md`, `ROADMAP.md:452-453`) passes a broken green.** Its nine-binary check names no chromium/xdotool/wmctrl, its display test is `xset q` (XWayland answers it under labwc), its header pins blue's path, its §8.4 remedy names a PM2 block that does not exist, and its §13 summary still reports `spotifyd` and never MPD (§2.12: five edits).
-    The chromium check must read `CHROMIUM_BIN` from `backend/.env`, never from the shell (`CHROMIUM_BIN=$(grep -E '^CHROMIUM_BIN=' backend/.env | cut -d= -f2-); command -v "${CHROMIUM_BIN:-chromium-browser}"`); the display check is `DISPLAY=:0 xdotool search --name ALN-SCOREBOARD`, not `xset q`. The panel's `display` light is no proof (`displayDriver.js:359-378`: healthy while hidden); the only real proof is the kiosk on the TV.
+    The chromium check must read `CHROMIUM_BIN` from `backend/.env`, never from the shell (`CHROMIUM_BIN=$(grep -E '^CHROMIUM_BIN=' backend/.env | cut -d= -f2-); command -v "${CHROMIUM_BIN:-chromium-browser}"`); the display check is `DISPLAY=:0 xdotool search --name ALN-SCOREBOARD`, not `xset q` — run with the orchestrator running and the scoreboard shown once from the panel, as §2.12 words it, else there is no window for it to find. The panel's `display` light is no proof (`displayDriver.js:359-378`: healthy while hidden); the only real proof is the kiosk on the TV.
 
 Unchanged, no action: VLC 3.0.23 with `--vout=gles2` and D-Bus MPRIS; Docker via `get.docker.com`; NetworkManager; `/boot/firmware/config.txt`; **BlueZ 5.82's `bluetoothctl`
 prints exactly the lines the parser reads, unchanged since 5.66** (§2.9); **MPD 0.23.12 → 0.24.4 accepts every key the orchestrator writes** (§2.13; bench: `music` healthy, a track, ducking under a video);
 xdotool, wmctrl present (X11 only); DejaVu fonts on the Desktop image; HEVC only; Playwright installs on arm64 Debian 13 (§6). Bench (§1b): the X11 session owns a real window, `pactl`/`pw-play`/`dbus-monitor` on PATH, `output:hdmi-stereo`.
 
 **Copy from blue over the share** (paths on blue's disk; `~` = blue's login user): `~/ALN-Ecosystem/backend/ssl/cert.pem` + `key.pem`, only the pair whose fingerprint blue serves, after checking SAN and `notAfter` (§2.8);
-`~/ALN-Ecosystem/backend/.env`, then audit it for blue-only values (§3); `~/ha-config/` whole (the Home Assistant volume: `scenes.yaml`, owner account, token; copy BEFORE the first `docker run`, and run blue's exact HA image,
+`~/ALN-Ecosystem/backend/.env`, copied after the clone and audited for blue-only values (§3) BEFORE the HA container step and before the first `npm start`; `~/ha-config/` whole (the Home Assistant volume: `scenes.yaml`, owner account, token; copy BEFORE the first `docker run`, and run blue's exact HA image,
 not `:stable`, §3); `~/ALN-Ecosystem/backend/public/videos/*.mp4` (idle-loop.mp4 included); `.../backend/public/music/`; `.../backend/public/audio/` (files git lacks only); then the guide's verify block (`DEPLOYMENT_GUIDE.md:836-858`).
-Read, do not copy: `ALN-TokenData/pack-manifest.json` (contentHash → pack commit), `/boot/firmware/config.txt` (compare), the profile file (diff), `timedatectl` (the zone), HA's version and image digest.
+Read, do not copy: blue's pack pin — the `ALN-TokenData` submodule revision, `git -C ~/ALN-Ecosystem/ALN-TokenData rev-parse HEAD` or the parent's recorded gitlink (§4) — and `ALN-TokenData/pack-manifest.json`, whose `contentHash` verifies that pin afterwards rather than sourcing it; `/boot/firmware/config.txt` (compare), the profile file (diff), `timedatectl` (the zone), HA's version and image digest.
 Never: `backend/data/`, `~/.pm2/`, `/var/lib/bluetooth/` (re-pair), the `.lua` drop-in.
 
-**Pull from git:** `git clone --recurse-submodules https://github.com/maxepunk/ALN-Ecosystem.git ~/ALN-Ecosystem` on `main`, with submodules ALN-TokenData (at blue's pack commit), ALNScanner + `data`,
+**Pull from git:** `git clone --recurse-submodules https://github.com/maxepunk/ALN-Ecosystem.git ~/ALN-Ecosystem` on `main`, with submodules ALN-TokenData (checked out at the revision blue's submodule reports, §4), ALNScanner + `data`,
 aln-memory-scanner + `data` (this one carries the ESP32 asset corpus and `assets/manifest.json`, §4), arduino-cyd-player-scanner; the installation profile `backend/config/profiles/aln-full-kit.json` (verify it bound, §4).
 Built on green: `backend/` `npm install`; ALNScanner `npm ci && npm run build` (the `npm start` prestart does it); `npm run music:seed`; `python3 scripts/generate_asset_manifest.py` only if the served manifest's pack hash differs from `/health`.
 
 **Install, in the guide's order:** Imager 64-bit Desktop (user/hostname/WiFi/SSH; Localisation = blue's zone) → `raspi-config`: desktop autologin (Trixie splits it: S5 Boot → B2 Desktop, then S6 Auto Login → yes to the desktop; verified, §2.1), Advanced Options → A7 Wayland → W1 X11 → `usermod -aG video,audio,bluetooth` → `apt update && apt upgrade` →
 NodeSource `setup_22.x`, `nodejs` → `apt install vlc mpd git xdotool wmctrl chromium pulseaudio-utils pipewire-bin dbus-bin` (renamed: chromium; added: `pactl`, and `pw-play`/`dbus-monitor`, normally present already — the line is idempotent) →
-disable `mpd`, `mpd.socket` → `npm install -g pm2` → clone, `npm install` → certificate check + copy → Docker via `get.docker.com`, `usermod -aG docker`, HA container at blue's image digest on the copied `~/ha-config` → WirePlumber `.conf` → timezone →
-address (router) → read `echo $DBUS_SESSION_BUS_ADDRESS` in the desktop terminal, then the two bus variables in `.env` (a desktop-session first start only if that address is the `/run/user/<uid>/bus` form) → `npm start`, `pm2 save`, `pm2 startup` → cold-boot check, read after the logind window (§2.11) → media and manifest verify → the repaired checklist (§2.12). Skip `ufw` (absent). Optional: the four `python3-*`.
+disable `mpd`, `mpd.socket` → `npm install -g pm2` → clone, `npm install` → certificate check + copy → copy `backend/.env` and audit it (§3), before the HA container step (whose `docker run --name` must equal its `HA_DOCKER_CONTAINER`, `DEPLOYMENT_GUIDE.md:740-741`) and before the first `npm start` → Docker via `get.docker.com`, `usermod -aG docker`, HA container at blue's image digest on the copied `~/ha-config` → WirePlumber: `mkdir -p /etc/wireplumber/wireplumber.conf.d/`, then the `.conf` → timezone →
+address (router) → read `echo $DBUS_SESSION_BUS_ADDRESS` in the desktop terminal, then the two bus variables in `.env` (which lose to a shell that already exports them — no `override` — so a desktop-session first start only if that address is the `/run/user/<uid>/bus` form, else start from SSH) → `npm start`, `pm2 save`, `pm2 startup` → cold-boot check, read after the logind window (§2.11) → media and manifest verify → the repaired checklist (§2.12). Skip `ufw` (absent). Optional: the four `python3-*`.
 
 ## 1. The facts: today versus what the guide and the code assume
 
@@ -164,10 +164,17 @@ value the script compares against is the STRING `"false"` — write it quoted. T
 page) stays on — only VLC opts out, as the Lua rule did (`docs/wireplumber/…lua:21`, `application.process.binary`
 "vlc"; `cvlc` execs `vlc`).
 
-Smallest fix: a config change on the machine, plus a guide change. Write this file:
+Smallest fix: a config change on the machine, plus a guide change. Create the directory first: no package ships
+`/etc/wireplumber/` (`dpkg -L wireplumber` lists nothing under `/etc` — WirePlumber's own configuration is in
+`/usr/share/wireplumber/`, and `/etc/wireplumber` is admin-created; it is absent on a fresh install), so a bare
+`tee` into `wireplumber.conf.d/` fails with "No such file or directory". The guide step this replaces opens the
+same way (`DEPLOYMENT_GUIDE.md:1168-1169`: `sudo mkdir -p /etc/wireplumber/main.lua.d/` before its `sudo tee`),
+and an operator who adapts that block by changing only the `tee` path writes the drop-in into the old
+`main.lua.d/`, where 0.5.8 never looks. Run both lines:
 
-```
-# /etc/wireplumber/wireplumber.conf.d/51-aln-vlc-no-restore.conf
+```bash
+sudo mkdir -p /etc/wireplumber/wireplumber.conf.d/
+sudo tee /etc/wireplumber/wireplumber.conf.d/51-aln-vlc-no-restore.conf > /dev/null <<'EOF'
 # ALN orchestrator: do not save or restore stream props/target for VLC.
 # The orchestrator owns VLC's stream volume (audioRoutingService).
 stream.rules = [
@@ -183,6 +190,7 @@ stream.rules = [
     }
   }
 ]
+EOF
 ```
 
 Then `systemctl --user restart wireplumber && systemctl --user status wireplumber` (must be active; a
@@ -192,7 +200,7 @@ syntax error is in `journalctl --user -u wireplumber`). Unit check: play a video
 set the video volume from the GM panel, restart the orchestrator, play again; the volume must be what the
 orchestrator set. Code change (small, optional this week): make `audioRoutingService.js:618` accept either path
 (`main.lua.d/…lua` or `wireplumber.conf.d/…conf`) so green does not warn on every boot. Add the `.conf`
-beside the `.lua` under `docs/wireplumber/` and rewrite guide §5 and the CLAUDE.md section.
+beside the `.lua` under `docs/wireplumber/` and rewrite guide §5 — its `mkdir` line moves with the path, not just its `tee` — and the CLAUDE.md section.
 
 ### 2.3 Chromium package and binary name
 
@@ -382,13 +390,20 @@ every boot once the user is logged in. `unix:abstract=/tmp/dbus-XXXXX` is minted
 the machine is power-cycled. `pm2 save` freezes either one identically (`lib/API/Startup.js:423-482` dumps the process
 environment as it is), so the abstract form passes the bench on the day it is performed and fails the first cold boot
 at the venue — the same silent failure one reboot later, with this section's own verification already signed off.
-The rule: prefer the `.env` remedy. In `backend/.env` add `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus` and
+The rule: prefer the `.env` remedy, and start it from a shell that does not already export the variable. In
+`backend/.env` add `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus` and
 `XDG_RUNTIME_DIR=/run/user/1000` (1000 = `id -u` of the login user — check it; `dotenv.config()` runs at
 `backend/src/config/index.js:10`, before any spawn, so children inherit them; `.env` is untracked and machine-local,
-which is where a uid belongs). Running the first `npm start` from the desktop terminal instead is acceptable ONLY
-when that echo printed the `/run/user/<uid>/bus` form. The `env` block at `ecosystem.config.js:17-24` would also work
-(it is the block PM2 actually reads); the checklist's `env_production` would not (§2.12, edit 4). If PM2 already
-holds a bad environment: `pm2 restart aln-orchestrator --update-env && pm2 save`.
+which is where a uid belongs). That call passes no `override`, and dotenv (`backend/package.json:93`, `^16.3.1`;
+16.6.1 installed) leaves a variable already present in `process.env` alone — so the two lines take effect only in a
+shell where the variable is UNSET, which is SSH. Green's desktop terminal, the shell the echo above is read in,
+always exports `DBUS_SESSION_BUS_ADDRESS`: there `.env` cannot rescue a bad address, because it is the shell's value
+that gets frozen. Running the first `npm start` from the desktop terminal is therefore acceptable ONLY when that echo
+printed the `/run/user/<uid>/bus` form; with an `abstract=` address, start from SSH. The `env` block at
+`ecosystem.config.js:17-24` would also work (it is the block PM2 actually reads); the checklist's `env_production`
+would not (§2.12, edit 4). If PM2 already holds a bad environment:
+`pm2 restart aln-orchestrator --update-env && pm2 save` — from SSH as well, since `--update-env` re-injects the
+invoking shell's environment and, run from the desktop terminal, re-freezes the same abstract address.
 Cold-boot verification (add to the guide's Stage-B item at `:1152-1158`): power-cycle with nothing attached but
 power, network and the TV; once the idle loop is up, (1) `PID=$(pgrep -f 'node .*src/server.js' | head -1);
 tr '\0' '\n' < /proc/$PID/environ | grep -E '^(DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR|DISPLAY)='` prints all
@@ -451,7 +466,8 @@ Openbox; and, with the orchestrator running and the scoreboard shown once from t
 the marker defaults to `ALN-SCOREBOARD`, `backend/src/config/index.js:114`). (3) Header: the working directory is the
 machine's own checkout. (4) §8.4 `:933`: drop the `env_production` branch — no such block, and `npm start` passes no
 `--env` — and keep `backend/.env` as the remedy, with §2.11's shape rule (`unix:path=/run/user/<uid>/bus`, never an
-`abstract=` address) and the cold-boot check. (5) The spotifyd residue: rewrite `:863`, `:867`, `:880` and `:939` so
+`abstract=` address), its shell rule (the `.env` lines lose to a shell that already exports the variable, so start
+from SSH) and the cold-boot check. (5) The spotifyd residue: rewrite `:863`, `:867`, `:880` and `:939` so
 the session-bus user is VLC MPRIS alone (MPD is not on D-Bus — the engine speaks the MPD protocol over
 `/tmp/aln-mpd.sock`, `musicService.js:47-48`), and in the §13 summary replace the `spotifyd:` line (`:1664`) with an
 MPD posture line that mirrors §12.3 — `echo "  MPD (system):   $(systemctl is-enabled mpd 2>/dev/null || echo 'not installed')"`,
@@ -508,7 +524,7 @@ fix ownership on green (`chown -R <green-user>` on the copied trees).
 | What | Path on blue | Why copied, and the check | Source |
 |---|---|---|---|
 | Certificate and key | `~/ALN-Ecosystem/backend/ssl/cert.pem`, `~/ALN-Ecosystem/backend/ssl/key.pem` | The tablets and the Pi 4 display accepted the certificate blue SERVES once; a new one means every device warns again. First establish that this file is that certificate (sha256 fingerprint of the file = fingerprint from `openssl s_client -connect 192.168.0.191:3000`), read its SAN and `notAfter` (§2.8). Copy after the clone, before the first `npm start`, over the tracked 10.0.0.177 pair the clone delivers; key mode 600. If the fingerprints differ or the date fails, regenerate with the IP-SAN recipe instead. | `DEPLOYMENT_GUIDE.md:445`, `:447-517`; `backend/ecosystem.config.js:22-23`; `.env.example:111-112`; `ROADMAP.md:501-507`, `:772-775`; §2.8 |
-| Environment file | `~/ALN-Ecosystem/backend/.env` | ADMIN_PASSWORD, JWT_SECRET, HOME_ASSISTANT_TOKEN and ~30 other keys. Mode 600. Then AUDIT for blue-only values: `grep -n -E '^(PACK_PATH\|PROFILE_PATH\|SSL_KEY_PATH\|SSL_CERT_PATH\|VIDEO_DIR\|HOME_ASSISTANT_URL\|HOME_ASSISTANT_TOKEN\|HA_DOCKER_CONTAINER\|SCOREBOARD_WINDOW_MARKER\|IDLE_LOOP_FILE\|CHROMIUM_BIN\|DBUS_SESSION_BUS_ADDRESS\|XDG_RUNTIME_DIR)=' backend/.env`. Rules: `PACK_PATH`/`PROFILE_PATH` are "LOUD warn when active" seams a production machine leaves unset (`.env.example:68-74`) — an absolute path from blue's disk does not refuse boot, it degrades lighting and the idle loop (`DEPLOYMENT_GUIDE.md:717-721`), so delete or repoint; `SSL_*_PATH` stay relative `./ssl/…` (`:111-112`); `HOME_ASSISTANT_URL` stays `http://localhost:8123` (`:139`); `HOME_ASSISTANT_TOKEN` (`:140`) was issued by the HA instance in the copied volume and is valid only with that volume — if HA is recreated from scratch, mint a new token; `HA_DOCKER_CONTAINER` (`:147`) must equal the `docker run --name` (`DEPLOYMENT_GUIDE.md:740-741`); set `CHROMIUM_BIN=/usr/bin/chromium` (§2.3); `SCOREBOARD_WINDOW_MARKER` (`:162`) and `IDLE_LOOP_FILE` (`:168`) are normally unset; `DBUS_SESSION_BUS_ADDRESS`/`XDG_RUNTIME_DIR` (absent from `.env.example`) embed a uid — keep blue's values only if green's login user has the same `id -u`, else write `/run/user/<uid>/bus` and `/run/user/<uid>` (§2.11). Then key-set diff against `.env.example`: a key in one and not the other is a doc defect (`ROADMAP.md:765-768`, Appendix C's five undocumented keys are exactly this list). | `DEPLOYMENT_GUIDE.md:119-165`; `.gitignore:55`; `backend/.env.example:60`, `:66-74`, `:108-112`, `:136-147`, `:162`, `:168`, `:170-172` |
+| Environment file | `~/ALN-Ecosystem/backend/.env` | ADMIN_PASSWORD, JWT_SECRET, HOME_ASSISTANT_TOKEN and ~30 other keys. Mode 600. Copy after the clone, before the HA container step (`HA_DOCKER_CONTAINER` must equal the `docker run --name`) and before the first `npm start`: with no `.env`, `backend/src/config/index.js:67-68` silently defaults `adminPassword` to `'admin'` and `jwtSecret` to `'change-this-secret-in-production'` and `validateConfig()` (`:163-185`) checks neither, `CHROMIUM_BIN` falls back to `chromium-browser` (`displayDriver.js:165`, undoing §2.3), and an empty `HOME_ASSISTANT_TOKEN` makes lighting skip itself (`lightingService.js:47-48`) — a green that boots, serves the copied certificate and names no cause. Then AUDIT for blue-only values: `grep -n -E '^(PACK_PATH\|PROFILE_PATH\|SSL_KEY_PATH\|SSL_CERT_PATH\|VIDEO_DIR\|HOME_ASSISTANT_URL\|HOME_ASSISTANT_TOKEN\|HA_DOCKER_CONTAINER\|SCOREBOARD_WINDOW_MARKER\|IDLE_LOOP_FILE\|CHROMIUM_BIN\|DBUS_SESSION_BUS_ADDRESS\|XDG_RUNTIME_DIR)=' backend/.env`. Rules: `PACK_PATH`/`PROFILE_PATH` are "LOUD warn when active" seams a production machine leaves unset (`.env.example:68-74`) — an absolute path from blue's disk does not refuse boot, it degrades lighting and the idle loop (`DEPLOYMENT_GUIDE.md:717-721`), so delete or repoint; `SSL_*_PATH` stay relative `./ssl/…` (`:111-112`); `HOME_ASSISTANT_URL` stays `http://localhost:8123` (`:139`); `HOME_ASSISTANT_TOKEN` (`:140`) was issued by the HA instance in the copied volume and is valid only with that volume — if HA is recreated from scratch, mint a new token; `HA_DOCKER_CONTAINER` (`:147`) must equal the `docker run --name` (`DEPLOYMENT_GUIDE.md:740-741`); set `CHROMIUM_BIN=/usr/bin/chromium` (§2.3); `SCOREBOARD_WINDOW_MARKER` (`:162`) and `IDLE_LOOP_FILE` (`:168`) are normally unset; `DBUS_SESSION_BUS_ADDRESS`/`XDG_RUNTIME_DIR` (absent from `.env.example`) embed a uid — keep blue's values only if green's login user has the same `id -u`, else write `/run/user/<uid>/bus` and `/run/user/<uid>` (§2.11). Then key-set diff against `.env.example`: a key in one and not the other is a doc defect (`ROADMAP.md:765-768`, Appendix C's five undocumented keys are exactly this list). | `DEPLOYMENT_GUIDE.md:119-165`; `.gitignore:55`; `backend/.env.example:60`, `:66-74`, `:108-112`, `:136-147`, `:162`, `:168`, `:170-172` |
 | Home Assistant volume | `~/ha-config/` (the directory mounted at `/config`) | The seven `scene.*` definitions (`scenes.yaml` — the scene editor reads and writes that file), the owner account, and the long-lived token exist only here. Copy before the first `docker run` and mount the copy. VERSION: on 2026-09-12 `:stable` is 2026.9.2 (released 2026-09-11); blue's version is unknown to this document — read it on blue with `curl -s -H "Authorization: Bearer $HOME_ASSISTANT_TOKEN" http://localhost:8123/api/config` (field `version`) and blue's image with `docker inspect homeassistant --format '{{.Config.Image}}'` + `docker images --digests ghcr.io/home-assistant/home-assistant`. Smallest fix: run green on blue's EXACT image — `docker run … ghcr.io/home-assistant/home-assistant@sha256:<blue's digest>` in place of `:stable` — so no migration happens this week; upgrade both later. If `:stable` is used anyway, HA migrates `.storage` on first start (watch `docker logs homeassistant`); `scenes.yaml` is not part of that migration. Either way, verify: `curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8123/api/states \| grep -o '"entity_id":"scene\.[a-z0-9_]*"' \| sort` lists the seven ids of `aln-full-kit.json:48-66`, then one scene from the GM panel on a bulb. Fallback (days, so do the version check first): author the seven scenes by hand from the profile's bindings (`DEPLOYMENT_GUIDE.md:785-790`). The bulb integrations copy too; at the venue blue and green never run at once. | `DEPLOYMENT_GUIDE.md:742-747`, `:771-790` (owner task `:777`); `ROADMAP.md:501-507`, `:754-756`; §7 Home Assistant, Docker |
 | Game videos | `~/ALN-Ecosystem/backend/public/videos/*.mp4` incl. `idle-loop.mp4` | Git-excluded (`.gitignore:10`); every non-null `video` in tokens.json plus the profile's `bindings.surfaces` file. Must be HEVC. `loopimages/` is in git. Verify with the guide's block 1 (`:841-847`): the node one-liner prints `videos OK` and `ls public/videos/idle-loop.mp4` succeeds. | `DEPLOYMENT_GUIDE.md:814-832`, `:836-847`; `backend/config/profiles/aln-full-kit.json:71` |
 | Music library | `~/ALN-Ecosystem/backend/public/music/` | Git-excluded (`.gitignore:17-19`); `music-playlists.json` references it. Run `npm run music:seed` after (guide block 3, `:856-857`). | `DEPLOYMENT_GUIDE.md:819`, `:828`, `:857` |
@@ -516,8 +532,11 @@ fix ownership on green (`chown -R <green-user>` on the copied trees).
 
 Read on blue, but not copied:
 
-- `~/ALN-Ecosystem/ALN-TokenData/pack-manifest.json` — its `contentHash` identifies the pack blue runs;
-  check out the same commit on green (§4) so `/health` reports the same hash (`DEPLOYMENT_GUIDE.md:1659-1661`).
+- The pack pin itself — `git -C ~/ALN-Ecosystem/ALN-TokenData rev-parse HEAD`, or the revision the parent
+  records for that submodule (`git -C ~/ALN-Ecosystem ls-tree HEAD ALN-TokenData`, same sha). That sha is what
+  green checks out (§4). `~/ALN-Ecosystem/ALN-TokenData/pack-manifest.json`'s `contentHash` is a digest of the
+  pack's contents, not a revision, and nothing maps it back to one: read it as the AFTER check, so that with the
+  same commit checked out `/health` reports the same hash (`DEPLOYMENT_GUIDE.md:1659-1661`).
 - `/boot/firmware/config.txt` and `cmdline.txt` — compare the HDMI lines against `DEPLOYMENT_GUIDE.md:1074-1081`; do not copy a Bookworm boot config onto Trixie.
 - `~/ALN-Ecosystem/backend/config/profiles/aln-full-kit.json` — diff against git; carry any hand edit as a commit, not a copy (§4 has the verification).
 - `~/ALN-Ecosystem/backend/.env` versus `backend/.env.example` — a key present in one and not the other is a doc defect to report (`ROADMAP.md:765-766`).
@@ -540,15 +559,17 @@ Not carried over, by design:
   `git clone --recurse-submodules … ~/ALN-Ecosystem` then `git submodule update --init --recursive`.
 - Submodules (`CLAUDE.md` "Submodule Architecture"): `ALN-TokenData` (the pack the backend reads,
   `DEPLOYMENT_GUIDE.md:671-674`), `ALNScanner` with nested `data`, `aln-memory-scanner` with nested `data`,
-  `arduino-cyd-player-scanner`. All on `main`. Pin `ALN-TokenData` to blue's pack commit
-  (`git -C ALN-TokenData checkout <sha>`), verify with `node backend/scripts/build-pack-manifest.js ALN-TokenData && git -C ALN-TokenData diff --quiet pack-manifest.json` (`DEPLOYMENT_GUIDE.md:1669`).
+  `arduino-cyd-player-scanner`. All on `main`. Pin `ALN-TokenData` to the revision blue has checked out — read
+  that sha on blue with `git -C ~/ALN-Ecosystem/ALN-TokenData rev-parse HEAD`, or from the parent's recorded
+  gitlink (`git -C ~/ALN-Ecosystem ls-tree HEAD ALN-TokenData`); the manifest's `contentHash` is not a revision
+  and cannot supply it — then `git -C ALN-TokenData checkout <sha>` on green, and verify with `node backend/scripts/build-pack-manifest.js ALN-TokenData && git -C ALN-TokenData diff --quiet pack-manifest.json` (`DEPLOYMENT_GUIDE.md:1669`).
 - ESP32 asset corpus (added on review): `aln-memory-scanner/assets/` — 127 BMPs in `images/`, 3 audio files
   (`asm031.wav`, `rat031.mp3`, `tac001.wav`) and `manifest.json` (13 KB). The backend serves asset sync from
   there (`backend/src/routes/resourceRoutes.js:17-22` resolves `ASSET_ROOT`, `IMAGES_DIR`, `AUDIO_DIR`,
   `MANIFEST_PATH` into the submodule); `aln-memory-scanner/.gitignore` has two lines (`node_modules/`,
   `coverage/`), so the manifest and corpus arrive with the clone. The guide's `ALN-TokenData/assets/`
   (`DEPLOYMENT_GUIDE.md:810`) does not exist. The manifest embeds the pack identity read from
-  `pack-manifest.json` (`scripts/generate_asset_manifest.py:87-101`), so after pinning the pack commit check
+  `pack-manifest.json` (`scripts/generate_asset_manifest.py:87-101`), so after pinning the submodule check
   `curl -sk https://localhost:3000/api/assets/manifest | grep -o '"contentHash":"[^"]*"'` against `/health`'s
   `pack.contentHash`; on a mismatch, or on 404 ("Asset manifest not generated yet", `resourceRoutes.js:74-76`),
   run `python3 scripts/generate_asset_manifest.py` (standard library only, `:23-30`; optional assets-root
@@ -581,14 +602,15 @@ Not carried over, by design:
 | 1 | `apt install nodejs vlc mpd git xdotool wmctrl chromium-browser` (`:1056`) | `apt install nodejs vlc mpd git xdotool wmctrl chromium pulseaudio-utils pipewire-bin dbus-bin` | **renamed** chromium; **added** pulseaudio-utils (`pactl`), pipewire-bin (`pw-play`, `pw-dump`), dbus-bin (`dbus-monitor`) — the last two are dependencies of `pipewire`/`dbus` and normally present; naming them is idempotent |
 | 1 | disable `mpd`, `mpd.socket` (`:1059-1060`) | Same; the package is 0.24.4 (blue: 0.23.12) and every key the orchestrator writes is accepted (§2.13) | none |
 | 1 | `npm install -g pm2` (`:1063`) | Same | none |
-| 1 | clone, `npm install` (`:1067-1069`) | Same; pin the pack commit (§4) | none |
+| 1 | clone, `npm install` (`:1067-1069`) | Same; pin `ALN-TokenData` to the revision blue's submodule reports (§4) | none |
 | 1b | — | Certificate: fingerprint check on blue, copy the served pair over the tracked one, before the first `npm start` (§2.8) | **added** |
+| 1c | — | `backend/.env`: copy from blue and audit it (§3), after the clone and before BOTH the HA container step (`HA_DOCKER_CONTAINER` = the `docker run --name`, `:740-741`) and the first `npm start` — without it the server boots on the default admin password and JWT secret and spawns `chromium-browser` (§3) | **added** |
 | 2 | HDMI lines in `/boot/firmware/config.txt` (`:1074-1081`) | Same path; keys may be ignored on Pi 5 (§1b) | verify |
 | 2b | HEVC only, `--vout=gles2` (`:1083-1099`) | Same | none |
 | 3 | static IP by nmcli (`:1101-1120`) | Router reservation at cutover, or nmcli with the persistence check (§2.6) | **changed** |
-| 4 | `npm start`, `pm2 save`, `pm2 startup` (`:1130-1132`) | Same commands, environment made explicit first: read `echo $DBUS_SESSION_BUS_ADDRESS` in the desktop terminal; put `DBUS_SESSION_BUS_ADDRESS` + `XDG_RUNTIME_DIR` in `backend/.env` (a desktop-terminal first start only if that echo was the `/run/user/<uid>/bus` form; the checklist's `env_production` block does not exist, §2.11); then the cold-boot check (`/proc/<pid>/environ`, `audio` and `vlc` healthy once the logind window has passed, pause/resume from the panel); the boot-race test (`:1152-1158`) runs on X11 as before | **changed** (environment) |
+| 4 | `npm start`, `pm2 save`, `pm2 startup` (`:1130-1132`) | Same commands, environment made explicit first: read `echo $DBUS_SESSION_BUS_ADDRESS` in the desktop terminal; put `DBUS_SESSION_BUS_ADDRESS` + `XDG_RUNTIME_DIR` in `backend/.env` — which only takes effect where the shell has not already exported them, since `dotenv.config()` passes no `override`, so a desktop-terminal first start only if that echo was the `/run/user/<uid>/bus` form and otherwise SSH; the checklist's `env_production` block does not exist (§2.11) — then the cold-boot check (`/proc/<pid>/environ`, `audio` and `vlc` healthy once the logind window has passed, pause/resume from the panel); the boot-race test (`:1152-1158`) runs on X11 as before | **changed** (environment) |
 | 4b | Media verify (`:836-858`) | Same: blocks 1 (videos + idle loop), 2 (cue sounds), 3 (`music:seed`); plus the asset-manifest hash check (§4) | **carried in** (was missing from the first draft) |
-| 5 | WirePlumber Lua drop-in (`:1168-1184`) | The `.conf` drop-in of §2.2, with the `pw-dump` check | **changed** |
+| 5 | WirePlumber Lua drop-in (`:1168-1184`) | The `.conf` drop-in of §2.2, with the `pw-dump` check; the guide's own `mkdir -p` (`:1168`) moves to `/etc/wireplumber/wireplumber.conf.d/`, which no package creates | **changed** |
 | HA | `get.docker.com`, `usermod -aG docker`, `docker run … -v ~/ha-config:/config … :stable` (`:735-747`) | Same, with the copied `~/ha-config` and blue's image digest in place of `:stable`; the seven-scene check (§3) | **changed** (version pin) |
 | — | `ufw` rules (`:1206-1208`) | `ufw` is absent; skip | skip |
 | — | `pip install -r scripts/requirements.txt` (`scripts/requirements.txt:2`) | apt `python3-requests python3-pil python3-dotenv python3-jsonschema`, or a venv | **changed** (optional on green) |
@@ -640,8 +662,10 @@ Short form: on green, testing and the show never run at the same time. Sequence:
 one video, hide it again: that, not the panel's `display` light, is the check that production is whole again (§2.12 —
 the light stays green while the kiosk is hidden, `displayDriver.js:359-378`); then the repaired checklist. Note that
 `pm2 start` after the rig reuses PM2's saved environment (§2.11), but a `pm2 delete` followed by a fresh `npm start`
-from the rig's root shell would not — with the two variables in `backend/.env` (§2.11) any shell is safe; without
-them, only a desktop-session shell whose bus address is the `/run/user/<uid>/bus` form.
+from the rig's root shell would not — with the two variables in `backend/.env` (§2.11) any shell that does not
+itself export `DBUS_SESSION_BUS_ADDRESS` is safe, which the rig's root shell is and the desktop terminal is not
+(dotenv does not override an inherited value); without them, only a desktop-session shell whose bus address is the
+`/run/user/<uid>/bus` form.
 
 ## 7. Sources (all read 2026-09-12)
 
@@ -806,9 +830,9 @@ Third review (2026-09-12, five gaps: the PM2 block name, the chromium check, the
 1. **Wayland session.** No scoreboard on the TV, display service down, VLC fullscreen unverified. Whole show-control surface. The X11 stack is on the image; the switch is one menu entry; the contingency is blue. (§2.1)
 2. **Router reservation on blue's MAC.** Green is unreachable at 192.168.0.191; every tablet and scanner fails. Not an OS change, a cutover step. (§2.6)
 3. **The certificate.** A clone serves the 10.0.0.177 file; if the copy is skipped, mis-ordered, or copies a file blue does not actually serve, the tablets warn or NFC stops in a "secure context" that is not. Checked copy, or the IP-SAN recipe. (§2.8)
-4. **PM2's frozen environment.** If the first `npm start` ran in a shell without the session bus and the runtime dir, every boot after it has `audio` down, every VLC D-Bus call throwing and no idle loop, with nothing in the log naming the cause. Two lines in `.env` (the desktop-shell route only when its bus address is the `/run/user/<uid>/bus` form — an `abstract=` address freezes just as well and dies at the first power-cycle; the checklist's `env_production` remedy is a no-op), then a cold-boot check read after the logind window. (§2.11)
+4. **PM2's frozen environment.** If the first `npm start` ran in a shell without the session bus and the runtime dir, every boot after it has `audio` down, every VLC D-Bus call throwing and no idle loop, with nothing in the log naming the cause. Two lines in `.env`, which only bite in a shell that has not already exported them (`dotenv.config()` passes no `override`) — so the desktop-shell route only when its bus address is the `/run/user/<uid>/bus` form, otherwise start, and `--update-env`, from SSH; an `abstract=` address freezes just as well and dies at the first power-cycle, and the checklist's `env_production` remedy is a no-op — then a cold-boot check read after the logind window. (§2.11)
 5. **Chromium binary name.** Kiosk spawn fails, display service down, even after the X11 fix. (§2.3)
-6. **WirePlumber Lua drop-in ignored.** Silent: video audio can come back muted after a restart, and copying blue's file hides the warning; a wrong `.conf` key passes the status check — the `pw-dump` line is the real test. (§2.2)
+6. **WirePlumber Lua drop-in ignored.** Silent: video audio can come back muted after a restart, and copying blue's file hides the warning; a wrong `.conf` key, a `tee` that failed because nothing created `/etc/wireplumber/wireplumber.conf.d/`, or a drop-in written into the old `main.lua.d/` all pass the status check — the `pw-dump` line is the real test. (§2.2)
 7. **The acceptance gate is blind to 1 and 5.** The checklist passes a Wayland session with no `chromium` binary, and the panel's `display` light stays green while the kiosk is hidden. Not a failure by itself; it lets the two through. Five repairs to the checklist — the chromium check reading `CHROMIUM_BIN` from `backend/.env`, not the shell; the §8.4 phantom block; the `spotifyd` line and the missing MPD line in its §13 summary — then trust the TV. (§2.12)
 8. **Host timezone.** Silent: every hardware-scanner timestamp and the validator report shift by hours; nothing warns until a report is read. (§2.7)
 9. **Home Assistant version skew.** `:stable` is 2026.9.2; blue's is unknown until read; a migration surprise on show week has a days-long fallback. Run blue's digest. (§3)
