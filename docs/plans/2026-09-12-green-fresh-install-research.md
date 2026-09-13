@@ -1,6 +1,6 @@
 # Green from a fresh Raspberry Pi OS install: what differs from the guide and the code
 
-Research, 2026-09-12 (revised the same day to close eleven review gaps, then three more from the completeness critic: §2.11–2.13). Brief: `docs/plans/briefs/2026-09-12-green-fresh-install-research.md`.
+Research, 2026-09-12 (revised the same day to close eleven review gaps, then three more from the completeness critic: §2.11–2.13, then five from the third review: the PM2 block name, the chromium check, the bus-address shape, the Appendix C reconciliation, desktop autologin). Brief: `docs/plans/briefs/2026-09-12-green-fresh-install-research.md`.
 Vocabulary: `CONTEXT.md` §5 (kit, venue, installation profile, blue/green).
 Line numbers: `docs/plans/ROADMAP.md` and `CONTEXT.md` are cited against this docs
 worktree; every other file against the main checkout (`DEPLOYMENT_GUIDE.md` and
@@ -24,9 +24,9 @@ Bookworm the guide assumes (`DEPLOYMENT_GUIDE.md:1030`). Ten things differ in a 
 8. **The certificate a clone delivers is for 10.0.0.177, not the venue address** (`backend/ssl/` is tracked, not ignored; expires 2026-10-24). Fix:
    establish what blue actually serves (fingerprint), copy THAT pair after the clone and before the first `npm start`, else regenerate with an IP SAN (§2.8).
 9. **PM2 resurrects the orchestrator with the environment of the first `npm start`; the code sets no `DBUS_SESSION_BUS_ADDRESS` or `XDG_RUNTIME_DIR` of its own.** Every `pactl` call and every VLC D-Bus call inherits them or fails (§2.11).
-   Fix: run the first `npm start` from a terminal inside green's desktop session, or put the two variables in `backend/.env` (or `ecosystem.config.js`); then the cold-boot check of §2.11 (`/proc/<pid>/environ` has them; `audio` and `vlc` healthy; pause/resume the idle loop from the panel).
-10. **The acceptance gate (`docs/preflight-checklist.md`, `ROADMAP.md:452-453`) passes a broken green.** Its nine-binary check names no chromium/xdotool/wmctrl, its display test is `xset q` (XWayland answers it under labwc), its header pins blue's path (§2.12).
-    The guide repair must add `command -v "$CHROMIUM_BIN"` and a window-control check under the real session (`DISPLAY=:0 xdotool search --name ALN-SCOREBOARD`), not `xset q`. The panel's `display` light is no proof (`displayDriver.js:359-378`: healthy while hidden); the only real proof is the kiosk on the TV.
+   Fix: first read `echo $DBUS_SESSION_BUS_ADDRESS` in green's desktop terminal. Prefer two lines in `backend/.env` (`unix:path=/run/user/<uid>/bus`, `/run/user/<uid>`); a desktop-terminal `npm start` is safe ONLY if that echo printed the `/run/user/<uid>/bus` form — an `abstract=` address freezes just as well and dies at the first power-cycle. The checklist's `env_production` remedy names a block that does not exist (§2.11). Then the cold-boot check, read after the logind window (§2.11).
+10. **The acceptance gate (`docs/preflight-checklist.md`, `ROADMAP.md:452-453`) passes a broken green.** Its nine-binary check names no chromium/xdotool/wmctrl, its display test is `xset q` (XWayland answers it under labwc), its header pins blue's path, its §8.4 remedy names a PM2 block that does not exist, and its §13 summary still reports `spotifyd` and never MPD (§2.12: five edits).
+    The chromium check must read `CHROMIUM_BIN` from `backend/.env`, never from the shell (`CHROMIUM_BIN=$(grep -E '^CHROMIUM_BIN=' backend/.env | cut -d= -f2-); command -v "${CHROMIUM_BIN:-chromium-browser}"`); the display check is `DISPLAY=:0 xdotool search --name ALN-SCOREBOARD`, not `xset q`. The panel's `display` light is no proof (`displayDriver.js:359-378`: healthy while hidden); the only real proof is the kiosk on the TV.
 
 Unchanged, no action: VLC 3.0.23 with `--vout=gles2` and D-Bus MPRIS; Docker via `get.docker.com`; NetworkManager; `/boot/firmware/config.txt`; **BlueZ 5.82's `bluetoothctl`
 prints exactly the lines the parser reads, unchanged since 5.66** (§2.9); **MPD 0.23.12 → 0.24.4 accepts every key the orchestrator writes** (§2.13; bench: `music` healthy, a track, ducking under a video);
@@ -42,17 +42,17 @@ Never: `backend/data/`, `~/.pm2/`, `/var/lib/bluetooth/` (re-pair), the `.lua` d
 aln-memory-scanner + `data` (this one carries the ESP32 asset corpus and `assets/manifest.json`, §4), arduino-cyd-player-scanner; the installation profile `backend/config/profiles/aln-full-kit.json` (verify it bound, §4).
 Built on green: `backend/` `npm install`; ALNScanner `npm ci && npm run build` (the `npm start` prestart does it); `npm run music:seed`; `python3 scripts/generate_asset_manifest.py` only if the served manifest's pack hash differs from `/health`.
 
-**Install, in the guide's order:** Imager 64-bit Desktop (user/hostname/WiFi/SSH; Localisation = blue's zone) → `raspi-config`: Desktop Autologin, Wayland → W1 X11 → `usermod -aG video,audio,bluetooth` → `apt update && apt upgrade` →
+**Install, in the guide's order:** Imager 64-bit Desktop (user/hostname/WiFi/SSH; Localisation = blue's zone) → `raspi-config`: desktop autologin (Trixie splits it: S5 Boot → B2 Desktop, then S6 Auto Login → yes to the desktop; verified, §2.1), Advanced Options → A7 Wayland → W1 X11 → `usermod -aG video,audio,bluetooth` → `apt update && apt upgrade` →
 NodeSource `setup_22.x`, `nodejs` → `apt install vlc mpd git xdotool wmctrl chromium pulseaudio-utils pipewire-bin dbus-bin` (renamed: chromium; added: `pactl`, and `pw-play`/`dbus-monitor`, normally present already — the line is idempotent) →
 disable `mpd`, `mpd.socket` → `npm install -g pm2` → clone, `npm install` → certificate check + copy → Docker via `get.docker.com`, `usermod -aG docker`, HA container at blue's image digest on the copied `~/ha-config` → WirePlumber `.conf` → timezone →
-address (router) → the two bus variables in `.env` (or a desktop-session terminal) → `npm start`, `pm2 save`, `pm2 startup` → cold-boot check (§2.11) → media and manifest verify → the repaired checklist (§2.12). Skip `ufw` (absent). Optional: the four `python3-*`.
+address (router) → read `echo $DBUS_SESSION_BUS_ADDRESS` in the desktop terminal, then the two bus variables in `.env` (a desktop-session first start only if that address is the `/run/user/<uid>/bus` form) → `npm start`, `pm2 save`, `pm2 startup` → cold-boot check, read after the logind window (§2.11) → media and manifest verify → the repaired checklist (§2.12). Skip `ufw` (absent). Optional: the four `python3-*`.
 
 ## 1. The facts: today versus what the guide and the code assume
 
 | # | Fact | On a fresh install today (2026-09-12) | What the guide or code assumes | Differs? | Sources (all read 2026-09-12) |
 |---|---|---|---|---|---|
 | 1 | OS release, Debian base | Raspberry Pi OS Trixie, Debian 13; 64-bit Desktop image dated 18 Jun 2026, kernel 6.18 | Bookworm 64-bit Desktop (`DEPLOYMENT_GUIDE.md:1030`); `/boot/firmware/config.txt` (`:1074`) | Release differs; the boot config path is the same | raspberrypi.com/software/operating-systems; raspberrypi.com/documentation/computers/os.html; raspberrypi.com/news/trixie-the-new-version-of-raspberry-pi-os |
-| 2 | Pi 5 desktop session | Wayland with the labwc compositor, on all models, since Oct 2024 and still in Trixie; Wayfire is gone (raspi-config 20250814 "Remove wayfire option", 20260710 "Remove wayfire support"). The Desktop image is built with BOTH `rpd-wayland-core` and `rpd-x-core` (pi-gen stage3); `rpd-x-core` depends on `xserver-xorg, xinit, xcompmgr, x11-xserver-utils, openbox, lxpanel-pi, lpplug-*`. raspi-config → Advanced Options → Wayland → "W1 X11" ("Openbox window manager with X11 backend") sets lightdm's `user-session`/`autologin-session`/`greeter-session` to `rpd-x` | Xorg/LXDE session (`DEPLOYMENT_GUIDE.md:1030-1033`); `DISPLAY=:0` (`backend/src/utils/displayDriver.js:56`); xdotool/wmctrl window control (`:104`, `:289-290`, `:319`); `--vout=gles2` "within Xorg" (`backend/src/services/vlcMprisService.js:64`); lxpanel/pcmanfm/lxsession (`backend/scripts/desktop-control.sh:14-37`) | **Yes** (default session); the X11 stack is present, one switch away | raspberrypi.com/news/a-new-release-of-raspberry-pi-os; RPi-Distro/raspi-config `trixie` branch source + debian/changelog; RPi-Distro/pi-gen stage3 package list; raspberrypi-ui/rpd-metas debian/control |
+| 2 | Pi 5 desktop session | Wayland with the labwc compositor, on all models, since Oct 2024 and still in Trixie; Wayfire is gone (raspi-config 20250814 "Remove wayfire option", 20260710 "Remove wayfire support"). The Desktop image is built with BOTH `rpd-wayland-core` and `rpd-x-core` (pi-gen stage3); `rpd-x-core` depends on `xserver-xorg, xinit, xcompmgr, x11-xserver-utils, openbox, lxpanel-pi, lpplug-*`. raspi-config → Advanced Options → `A7 Wayland` → "W1 X11" ("Openbox window manager with X11 backend") sets lightdm's `user-session`/`autologin-session`/`greeter-session` to `rpd-x` | Xorg/LXDE session (`DEPLOYMENT_GUIDE.md:1030-1033`); `DISPLAY=:0` (`backend/src/utils/displayDriver.js:56`); xdotool/wmctrl window control (`:104`, `:289-290`, `:319`); `--vout=gles2` "within Xorg" (`backend/src/services/vlcMprisService.js:64`); lxpanel/pcmanfm/lxsession (`backend/scripts/desktop-control.sh:14-37`) | **Yes** (default session); the X11 stack is present, one switch away | raspberrypi.com/news/a-new-release-of-raspberry-pi-os; RPi-Distro/raspi-config `trixie` branch source + debian/changelog; RPi-Distro/pi-gen stage3 package list; raspberrypi-ui/rpd-metas debian/control |
 | 3 | PipeWire | 1.4.2 (Debian trixie package 1.4.2-1, Depends `pipewire-bin`); PipeWire is the audio server, `pipewire-pulse` gives the PulseAudio socket. `pw-play` and `pw-dump` are in `pipewire-bin`; `pactl` in `pulseaudio-utils`; `dbus-monitor` and `dbus-send` in `dbus-bin` (a dependency of `dbus` 1.16.2-2) | VLC started with `-A pulse` (`vlcMprisService.js:53`); `pactl` everywhere (`backend/src/services/audioRoutingService.js:158`, `:215`, `:948`); `pw-play` probed with `which` and spawned (`backend/src/services/soundService.js:44`, `:75`); `dbus-monitor --session` for MPRIS (`backend/src/services/mprisPlayerBase.js:205-207`) and `--system` for BlueZ (`bluetoothService.js:497-499`), parsed by `backend/src/utils/dbusSignalParser.js:39` | No (same mechanism, newer version). Bench check: `pactl info`, the `output:hdmi-stereo` profile | packages.debian.org/trixie/source/pipewire; /trixie/pipewire (Depends); /trixie/arm64/pipewire-bin/filelist; /trixie/arm64/pulseaudio-utils/filelist; /trixie/dbus (Depends); /trixie/arm64/dbus-bin/filelist |
 | 4 | WirePlumber config format | 0.5.8 (trixie package 0.5.8-2). Since 0.5, Lua config files are not read at all; drop-ins are SPA-JSON `.conf` files in `wireplumber.conf.d/`, searched in `/etc/wireplumber/` for host overrides. Stream rules live under the `stream.rules` key; the stream script honours node props `state.restore-props` / `state.restore-target` equal to the string `"false"` | Lua drop-in at `/etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua` (`DEPLOYMENT_GUIDE.md:1168-1184`; `backend/CLAUDE.md:608`, `:619-651`; `docs/wireplumber/51-aln-vlc-no-restore.lua:18-28`); boot check of that exact path (`audioRoutingService.js:618`) | **Yes** | packages.debian.org/trixie/source/wireplumber; sources.debian.org wireplumber 0.5.8-2 debian/NEWS; WirePlumber docs: migration, conf_file, locations, settings; wireplumber 0.5.8 `src/scripts/node/state-stream.lua` |
 | 5 | VLC | 3.0.23 (Debian 3.0.23-0+deb13u1; Pi build +rpt1, 2026-03-23). `libgles2_plugin.so` ships in `vlc-plugin-video-output`; `libdbus_plugin.so` (MPRIS `org.mpris.MediaPlayer2.vlc`) ships in `vlc-plugin-base`; Mesa V3D supports Pi 5 GLES | Unpinned `vlc` (`DEPLOYMENT_GUIDE.md:51`, `:1056`); `cvlc` (`vlcMprisService.js:114`); `--vout=gles2` on Pi 5 (`:75-77`); D-Bus MPRIS, no HTTP interface (`DEPLOYMENT_GUIDE.md:189`) | No | packages.debian.org/trixie/vlc; RPi-Distro/vlc tags; vlc-plugin-video-output and vlc-plugin-base file lists; videolan vlc-3.0 MODULES_LIST; vlc dbus.c; docs.mesa3d.org v3d |
@@ -67,9 +67,10 @@ address (router) → the two bus variables in `.env` (or a desktop-session termi
 | 14 | The certificate a clone delivers (repository fact, checked with `openssl x509` on 2026-09-12) | `backend/ssl/cert.pem`: `CN=10.0.0.177`, SAN `IP:10.0.0.177, DNS:raspberrypi.local, DNS:localhost`, valid 2025-10-24 → 2026-10-24; both files are in the checkout and no `.gitignore` excludes `backend/ssl/` (root `.gitignore`, 67 lines, has no ssl/pem/cert entry; `backend/` has no `.gitignore`). Chrome matches the SAN only (CN ignored since Chrome 58); an IP host needs an `iPAddress` SAN that matches exactly (RFC 2818 §3.1) | Served by default (`backend/.env.example:111-112`; `backend/ecosystem.config.js:22-23`); the guide's recipes emit no SAN (`DEPLOYMENT_GUIDE.md:454-458` `/CN=localhost`, `:463-467`); the plan says "blue's self-signed certificate copied to green, the warning accepted once per tablet" (`ROADMAP.md:772-775`) | **Yes** — at 192.168.0.191 this file is a name mismatch; what blue serves must be established, not assumed (§2.8) | developer.chrome.com chrome-58-deprecations; rfc-editor.org RFC 2818 §3.1; docs.openssl.org openssl-req (`-addext`) |
 | 15 | Playwright on arm64 Debian 13 (rung 2 only) | Playwright's system requirements list "Debian 12 / 13, Ubuntu 22.04 / 24.04 / 26.04 (x86-64 or arm64)" and Node "latest 22.x, 24.x or 26.x" | `backend/playwright.config.js:81-92` declares the project as plain `chromium` (`devices['Desktop Chrome']`, no `executablePath`, no `channel`); CI runs `npx playwright install chromium --with-deps` (`.github/workflows/test.yml:269-271`); `playwright ^1.56.1`, `@playwright/test ^1.57.0` (`backend/package.json:122`, `:110`) | No (supported); fallback named in §6 | playwright.dev/docs/intro (system requirements) |
 | 16 | Home Assistant `:stable` | Resolves to 2026.9.2 (released 2026-09-11) on 2026-09-12; UI scenes are stored in `scenes.yaml` in the config directory; `/api/config` reports `version` | `ghcr.io/home-assistant/home-assistant:stable` (`DEPLOYMENT_GUIDE.md:747`); the seven `scene.*` ids bound by `backend/config/profiles/aln-full-kit.json:48-66` exist only in the volume (`DEPLOYMENT_GUIDE.md:773-775`; `ROADMAP.md:754-756`) | Version skew against blue is unknown until read on blue; fix is to run blue's exact image (§3) | github.com/home-assistant/core/releases/latest; home-assistant.io scene editor docs; developers.home-assistant.io REST API; home-assistant.io container install; docs.docker.com pull by digest |
-| 17 | The environment PM2 resurrects the orchestrator with | PM2 injects "the current environment of your shell" when it first starts a process; `pm2 save` dumps the process list with that environment (`lib/API/Startup.js:423-482`); `pm2 startup`'s systemd unit carries only `PATH` and `PM2_HOME` and runs `pm2 resurrect` (`systemd.tpl`); a restart re-reads the shell only with `--update-env`. The orchestrator adds nothing: `ecosystem.config.js:17-24` sets NODE_ENV, PORT, HOST, HTTPS and the SSL paths; a grep of `backend/src` for `DBUS_SESSION_BUS_ADDRESS` or `XDG_RUNTIME_DIR` finds nothing; only `DISPLAY` is defaulted (`displayDriver.js:56-57`, `vlcMprisService.js:119`); `.env.example` names neither | `pactl` is run bare (`audioRoutingService.js:158`, `:215`, `:948`), `dbus-monitor --session` (`mprisPlayerBase.js:205-207`) and `dbus-send --session` (`:66-86`) likewise — all inherit the process environment. The rig sets both explicitly (`tests/rung1/up.sh:60-61`, `:106-107`; `engine.sh:49-50`); `docs/preflight-checklist.md:914-935` (§8.4) names the hazard and the remedy; `DEPLOYMENT_GUIDE.md:1130-1158` (boot-to-running) never mentions the session bus or the runtime dir | **Yes** — whatever the first `npm start`'s shell had is what every boot gets (§2.11) | pm2.keymetrics.io environment, process-management and startup pages; Unitech/pm2 `systemd.tpl`, `lib/API/Startup.js`, `lib/binaries/CLI.js` |
-| 18 | The acceptance gate for green, `docs/preflight-checklist.md` (repository fact) | `ROADMAP.md:452-453`: "The preflight checklist is its acceptance gate." The checklist's header pins blue's checkout path (`preflight-checklist.md:5`); §7 (`:608-859`) checks nine executables by its own count (`:610`; eight in its summary loop, `:848-853`: cvlc, dbus-send, dbus-monitor, pactl, pw-play, bluetoothctl, docker, pgrep) and no chromium, xdotool or wmctrl; §8.3 (`:897-912`) proves the display with `DISPLAY=:0 xset q`, which any X server answers — under labwc that is XWayland; §8.4 (`:914-935`) is the one place the session-bus hazard is written down | Green built from the guide, on the default Wayland session and with no `chromium` binary, passes the gate. The panel's `display` light does not catch it: `displayDriver.js:359-378` `probe()` reports `healthy` when the kiosk process is alive AND when there is no process and the kiosk is hidden (`:348-353`, R13) | **Yes** — the gate is blind to differences 1 and 3 (§2.12) | repository only |
+| 17 | The environment PM2 resurrects the orchestrator with | PM2 injects "the current environment of your shell" when it first starts a process; `pm2 save` dumps the process list with that environment (`lib/API/Startup.js:423-482`); `pm2 startup`'s systemd unit carries only `PATH` and `PM2_HOME` and runs `pm2 resurrect` (`systemd.tpl`); a restart re-reads the shell only with `--update-env`. The orchestrator adds nothing: `ecosystem.config.js:17-24` sets NODE_ENV, PORT, HOST, HTTPS and the SSL paths; a grep of `backend/src` for `DBUS_SESSION_BUS_ADDRESS` or `XDG_RUNTIME_DIR` finds nothing; only `DISPLAY` is defaulted (`displayDriver.js:56-57`, `vlcMprisService.js:119`); `.env.example` names neither | `pactl` is run bare (`audioRoutingService.js:158`, `:215`, `:948`), `dbus-monitor --session` (`mprisPlayerBase.js:205-207`) and `dbus-send --session` (`:66-86`) likewise — all inherit the process environment. The rig sets both explicitly (`tests/rung1/up.sh:60-61`, `:106-107`; `engine.sh:49-50`); `docs/preflight-checklist.md:914-935` (§8.4) names the hazard, but its PM2 remedy (`:933`) points at an `env_production` block that `ecosystem.config.js` does not have (`env`, `env_development`, `env_staging` only, `:17`, `:27`, `:38`; `npm start` passes no `--env`, `package.json:9`), and its Expected line (`:923`) accepts two address shapes of which only `unix:path=/run/user/<uid>/bus` survives a reboot; `DEPLOYMENT_GUIDE.md:1130-1158` (boot-to-running) never mentions the session bus or the runtime dir | **Yes** — whatever the first `npm start`'s shell had is what every boot gets (§2.11); `/run/user/<uid>` itself exists only once logind has opened the login session (pam_systemd) | pm2.keymetrics.io environment, process-management and startup pages; Unitech/pm2 `systemd.tpl`, `lib/API/Startup.js`, `lib/binaries/CLI.js`; man7.org pam_systemd(8) |
+| 18 | The acceptance gate for green, `docs/preflight-checklist.md` (repository fact) | `ROADMAP.md:452-453`: "The preflight checklist is its acceptance gate." The checklist's header pins blue's checkout path (`preflight-checklist.md:5`); §7 (`:608-859`) checks nine executables by its own count (`:610`; eight in its summary loop, `:848-853`: cvlc, dbus-send, dbus-monitor, pactl, pw-play, bluetoothctl, docker, pgrep) and no chromium, xdotool or wmctrl; §8.3 (`:897-912`) proves the display with `DISPLAY=:0 xset q`, which any X server answers — under labwc that is XWayland; §8.4 (`:914-935`) is the one place the session-bus hazard is written down, and its PM2 remedy (`:933`) names an `env_production` block that does not exist; `spotifyd` survived the 2026-09-05 §12.3 rewrite at `:863`, `:867`, `:880`, `:939` and in the §13 summary (`:1664`, which also has no MPD line; the binary loop at `:1657` lacks `mpd`) | Green built from the guide, on the default Wayland session and with no `chromium` binary, passes the gate. The panel's `display` light does not catch it: `displayDriver.js:359-378` `probe()` reports `healthy` when the kiosk process is alive AND when there is no process and the kiosk is hidden (`:348-353`, R13) | **Yes** — the gate is blind to differences 1 and 3, mis-remedies 9, and reports a daemon the system dropped in May (§2.12: five edits) | repository only |
 | 19 | MPD | 0.24.4 (trixie `mpd` 0.24.4-1, Depends `libpulse0`) against Bookworm's 0.23.12 (`mpd` 0.23.12-1): a major step. `NEWS` at v0.24.4, sections 0.24 through 0.24.4, removes, renames or deprecates no configuration key; every key the orchestrator writes is in 0.24.4's accepted-key table (`src/config/Templates.cxx:12-70`); a bare `audio_buffer_size "4096"` still means KiB (`src/config/PlayerConfig.cxx:21-23`, `ParseSize(s, KILOBYTE)`); one behaviour change since 0.23.12: 0.23.13 made `--no-daemon` MPD "shut down if parent process dies" | The guide installs `mpd` unpinned and disables the system unit (`DEPLOYMENT_GUIDE.md:1056`, `:1059-1060`); the orchestrator writes its own config and spawns `mpd --no-daemon <conf>` (`musicService.js:565-620`, config at `:601`, spawn at `:604-605`; keys at `mpdConfigBuilder.js:33-54`: unix-socket `bind_to_address`, `audio_output` type `pulse`, `audio_buffer_size`, `restore_paused`, `auto_update`) | No (verified, §2.13); the bench step is in §1b | packages.debian.org/bookworm/mpd and /trixie/mpd; MusicPlayerDaemon/MPD at v0.24.4: `NEWS`, `src/config/Templates.cxx` + `.hxx`, `src/config/PlayerConfig.cxx`, `src/config/Parser.cxx`, `doc/user.rst` |
+| 20 | Desktop autologin in `raspi-config` (Trixie) | Two entries under System Options: `S5 Boot` ("Select boot into desktop or to command line" → `do_boot_target()`: `B2 Desktop` runs `systemctl set-default graphical.target` when lightdm is installed) and `S6 Auto Login` ("Enable auto login to desktop or to command line" → `do_autologin()`: a console yes/no, then "Would you like to automatically log in to the desktop?" → `autologin-user=<user>` in `/etc/lightdm/lightdm.conf`). The four-way `do_boot_behaviour()` (`B4 Desktop Autologin`, "Desktop GUI, automatically logged in as '$USER' user") is still in the file, reached only non-interactively (`sudo raspi-config nonint do_boot_behaviour B4`) | One entry: System Options → Boot / Auto Login → Desktop Autologin (`DEPLOYMENT_GUIDE.md:1038-1041`); the X11 session (§2.1), PM2's boot posture (`:1142-1147`) and §2.11's desktop-terminal route all assume it runs unattended | Menu: yes (split in two); outcome: no — verified from source (§2.1), not re-verified on the bench | RPi-Distro/raspi-config `trixie` branch, `do_boot_target()`, `do_autologin()`, `do_boot_behaviour()` (§7) |
 
 ### 1b. Not covered by the readers: check on the bench, one command each
 
@@ -77,13 +78,13 @@ address (router) → the two bus variables in `.env` (or a desktop-session termi
 - `command -v pactl pw-play dbus-monitor pw-dump` — `pactl` comes from `pulseaudio-utils`; the guide never installs it (CI does: `.github/workflows/test.yml:38`). `pw-play`/`pw-dump` come from `pipewire-bin`, `dbus-monitor` from `dbus-bin`; both are dependencies of packages the image carries, so they should already be present — the apt line in §5 names them anyway. (`mpc` is rig-only, `rung1.yml:70`; the engine speaks MPD directly, `backend/src/services/musicService.js:47-48`.)
 - `pactl list cards short` then `pactl list sinks short` — the `output:hdmi-stereo` profile (`audioRoutingService.js:948`) and an HDMI sink must exist under PipeWire 1.4. The profile and `backend/config/environment/routing.json` use logical ids (`hdmi`, `bluetooth`), so no file carries a hardware sink name; any `bluez_output.*` sink is classed `bluetooth` at runtime (`audioRoutingService.js:247-248`).
 - `command -v chromium-browser` — if a compatibility wrapper exists on Trixie nothing breaks; set `CHROMIUM_BIN` anyway.
-- `raspi-config` → System Options → Boot / Auto Login — the "Desktop Autologin" entry (`DEPLOYMENT_GUIDE.md:1038-1041`) was not re-verified on Trixie.
+- Desktop autologin is now verified from the source, not the bench (§2.1, row 20): the guide's single "Boot / Auto Login → Desktop Autologin" entry (`DEPLOYMENT_GUIDE.md:1038-1041`) is two entries on the `trixie` branch — System Options → `S5 Boot` → `B2 Desktop`, then `S6 Auto Login` → yes to the desktop question. Bench check after both plus W1: `systemctl get-default` prints `graphical.target`; `grep -E '^(autologin-user|autologin-session)=' /etc/lightdm/lightdm.conf` prints the login user and `rpd-x`; a cold boot lands on the desktop with no keyboard attached.
 - The `hdmi_*` lines in `/boot/firmware/config.txt` (`DEPLOYMENT_GUIDE.md:1072-1081`) are legacy firmware keys; whether the Pi 5 KMS driver honours them was not checked. Compare blue's file, and test a cold boot with the TV attached.
 - Speaker pairing from the GM panel — an acceptance step (`CURRENT-STATE.md:73-74`), no longer a parser question (§2.9); if it fails, §2.9 names the by-hand route.
 - `systemctl --user status wireplumber` after installing the `.conf` drop-in (§2.2): a parse error shows there. Then, with a video playing, `pw-dump | grep -c '"state.restore-props": "false"'` prints at least 1 — the only check that proves the rule matched VLC.
 - `timedatectl` on both machines: `Time zone:` must match (§2.7).
 - MPD (§2.13; Trixie's 0.24.4 against blue's 0.23.12, every key accepted): after `npm start`, the panel's System Status shows `music` healthy — the orchestrator spawned it on the config it wrote to `/tmp/aln-mpd.conf` (`musicService.js:47-48`, `:601`, `:604-605`); play a track from the panel; start a video and hear the music duck under it and come back (`ROADMAP.md:473-474`). If `music` is down, `/tmp/aln-mpd.log` names the refused key or the missing output; none is expected.
-- After the first cold boot with no terminal: the three-line `/proc/<pid>/environ` check, `audio` and `vlc` healthy on the panel, pause and resume the idle loop from the panel (§2.11).
+- After the first cold boot with no terminal: the three-line `/proc/<pid>/environ` check, `audio` and `vlc` healthy on the panel, pause and resume the idle loop from the panel (§2.11). Read the lights after the logind window, not inside it: `/run/user/<uid>` and the bus socket exist only once autologin has opened the session (pam_systemd creates the directory at login), and PM2's unit is `After=network.target`, not the graphical target — so for the first seconds after a cold boot `audio` can be down with the path correct. The registry re-probes every 15 s (`backend/src/app.js:333-340`); a light still down a minute after the idle loop appears is the fault, one that clears on the first re-probe is the window.
 
 ## 2. Each difference: what breaks, where, and the smallest fix
 
@@ -102,8 +103,8 @@ The guide states the Xorg/LXDE assumption at `DEPLOYMENT_GUIDE.md:1030-1033` and
 Smallest fix: a guide change. Add to step 0, right after imaging: `sudo raspi-config` → Advanced Options →
 Wayland → **W1 X11** → reboot. Then check `echo $XDG_SESSION_TYPE` prints `x11` and
 `DISPLAY=:0 xdotool getdisplaygeometry` prints the TV size. The readers confirmed the option labels from the
-`trixie` branch of raspi-config; the numeric code of the Advanced Options entry (A6 in Oct 2024) was not
-confirmed, so the guide should name the entry by its label.
+`trixie` branch of raspi-config; the Advanced Options entry is `A7 Wayland` on that branch (`A6` is now Beta
+Access; the Oct 2024 announcement said A6), so the guide should name the entry by its label, not its code.
 
 Why the switch is more than a menu string (added on review). `do_wayland()` in the `trixie` branch offers
 "W1 X11 — Openbox window manager with X11 backend" and, for W1, sets `/etc/lightdm/lightdm.conf`'s
@@ -125,6 +126,22 @@ up but a window cannot be controlled (`DISPLAY=:0 wmctrl -l` empty, or `xdotool 
 kiosk is visible), do not debug it on show week: blue runs the show — rollback is physical and immediate
 (`ROADMAP.md:448-450`) — and the Wayland display driver (`wlrctl`, forums t=371406) becomes a lane, not a bench
 note. Raspberry Pi no longer develops the X11 path, so that lane is the real fix later; not this week.
+
+Desktop autologin, verified from the same source (added on the third review; closes the §1b and §5 "not re-verified"
+item). The guide's step (`DEPLOYMENT_GUIDE.md:1038-1041`: System Options → Boot / Auto Login → Desktop Autologin) is
+one menu entry. On the `trixie` branch of raspi-config it is two. System Options → `S5 Boot` ("Select boot into desktop
+or to command line") runs `do_boot_target()`: `B1 Console` / `B2 Desktop`, and `B2` does `systemctl set-default
+graphical.target` when lightdm is installed. System Options → `S6 Auto Login` ("Enable auto login to desktop or to
+command line") runs `do_autologin()`: a yes/no for the console, then "Would you like to automatically log in to the
+desktop?" — yes writes `autologin-user=<user>` into `/etc/lightdm/lightdm.conf`. The old four-way menu,
+`do_boot_behaviour()` with `B4 Desktop Autologin` ("Desktop GUI, automatically logged in as '$USER' user"), is still in
+the file and does both things at once, but no interactive menu reaches it any more; it is the scripted route,
+`sudo raspi-config nonint do_boot_behaviour B4` (`nonint()` runs the named function with its arguments). So the guide's
+step becomes two entries or one command; the outcome is the one the guide wants. The coupling worth stating: W1 X11
+writes `autologin-session=rpd-x` into the same `lightdm.conf` that autologin writes `autologin-user=` into — both must
+be set for the X11 session to come up unattended, which the guide's Display dependency (`DEPLOYMENT_GUIDE.md:1142-1147`)
+and §2.11's desktop-terminal route both assume. Source: raspi-config `trixie` branch (changelog top 20260730), read in
+full on 2026-09-12 (§7); the bench check is in §1b.
 
 ### 2.2 WirePlumber drop-in format
 
@@ -193,6 +210,9 @@ Smallest fix: a config change. `sudo apt install chromium`, then in `backend/.en
 and `--ignore-certificate-errors` (`displayDriver.js:166-171`) are still valid. Guide change: the two apt
 lines and the CHROMIUM_BIN note. Code change (optional): default to `chromium` when `chromium-browser` is
 absent; the unit tests pin today's default (`backend/tests/unit/utils/displayDriver.test.js:64`, `:723`, `:746`).
+For the gate: `CHROMIUM_BIN` lives in `backend/.env` only — `dotenv.config()` reads it inside the orchestrator
+(`backend/src/config/index.js:10`), nothing exports it to a shell — so a shell check must read it from that file
+(§2.12, edit 1).
 
 ### 2.4 Node version
 
@@ -318,7 +338,8 @@ not discovered on the bench.
   (`DEPLOYMENT_GUIDE.md:1036-1037`). No action.
 - `ecosystem.config.js:4`, `:47`, `:70` say "8GB Pi" and cap memory at 2 GB; harmless on a Pi 5.
 - The Pi 5 video settings now do live in the guide (`DEPLOYMENT_GUIDE.md:1083-1099`), pointing at
-  `backend/CLAUDE.md:686-728`; Appendix C's "agent document only" line is out of date.
+  `backend/CLAUDE.md:686-728`; Appendix C's "agent document only" line is out of date — one of three such lines;
+  the reconciliation is at the end of §2.12.
 - `ufw` is not on a fresh image; the firewall section (`DEPLOYMENT_GUIDE.md:1202-1216`) can be skipped.
 - Doc defect found on review: `DEPLOYMENT_GUIDE.md:810` says the scanner-side images/audio are in
   `ALN-TokenData/assets/`; that directory does not exist. They are in `aln-memory-scanner/assets/` (§4).
@@ -346,14 +367,28 @@ both explicitly (`tests/rung1/up.sh:60-61`, written into `env.sh` at `:106-107`,
 the one document that says so (`docs/preflight-checklist.md:914-935`, §8.4: "When starting the server via SSH or
 PM2, the DBUS_SESSION_BUS_ADDRESS env var may not be inherited … Add DBUS_SESSION_BUS_ADDRESS to the
 env_production block in backend/ecosystem.config.js, or set it in backend/.env"); the guide's boot section names
-neither variable. Blue solved it once, by whichever shell ran its first start; green rolls the dice again.
+neither variable. And the checklist's remedy is half a phantom: `ecosystem.config.js` has `env` (`:17`),
+`env_development` (`:27`) and `env_staging` (`:38`) — there is no `env_production` — and `npm start` is a bare
+`pm2 start ecosystem.config.js` (`package.json:9`) with no `--env`, so PM2 applies only the default `env` block
+(`--env production` appears only in the unused deploy block and a comment, `:100`, `:122`). An operator who follows
+`:933` verbatim creates a block PM2 never reads, sees the variable "set" in a tracked file, fails the cold-boot check
+below, and finds nothing in the log naming the cause — the silent shape this section exists to prevent. Blue solved it
+once, by whichever shell ran its first start; green rolls the dice again.
 
-Smallest fix: a guide change (step 4) plus one of two settings. Either run the first `npm start` from a terminal
-inside green's desktop session (it carries both variables and `DISPLAY`), or make the shell irrelevant: in
-`backend/.env` add `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus` and `XDG_RUNTIME_DIR=/run/user/1000`
-(1000 = `id -u` of the login user — check it; `dotenv.config()` runs at `backend/src/config/index.js:10`, before
-any spawn, so children inherit them), or the same two keys in the `env` block at `ecosystem.config.js:17-24`, the
-checklist's remedy. If PM2 already holds a bad environment: `pm2 restart aln-orchestrator --update-env && pm2 save`.
+Smallest fix: a guide change (step 4) plus one setting, chosen after one read. First, in a terminal inside green's
+desktop session, BEFORE the first `npm start`: `echo $DBUS_SESSION_BUS_ADDRESS`. The checklist's own Expected line
+(`:923`) allows two shapes, and they are not equal. `unix:path=/run/user/<uid>/bus` is a fixed path that exists on
+every boot once the user is logged in. `unix:abstract=/tmp/dbus-XXXXX` is minted per session and is dead the moment
+the machine is power-cycled. `pm2 save` freezes either one identically (`lib/API/Startup.js:423-482` dumps the process
+environment as it is), so the abstract form passes the bench on the day it is performed and fails the first cold boot
+at the venue — the same silent failure one reboot later, with this section's own verification already signed off.
+The rule: prefer the `.env` remedy. In `backend/.env` add `DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus` and
+`XDG_RUNTIME_DIR=/run/user/1000` (1000 = `id -u` of the login user — check it; `dotenv.config()` runs at
+`backend/src/config/index.js:10`, before any spawn, so children inherit them; `.env` is untracked and machine-local,
+which is where a uid belongs). Running the first `npm start` from the desktop terminal instead is acceptable ONLY
+when that echo printed the `/run/user/<uid>/bus` form. The `env` block at `ecosystem.config.js:17-24` would also work
+(it is the block PM2 actually reads); the checklist's `env_production` would not (§2.12, edit 4). If PM2 already
+holds a bad environment: `pm2 restart aln-orchestrator --update-env && pm2 save`.
 Cold-boot verification (add to the guide's Stage-B item at `:1152-1158`): power-cycle with nothing attached but
 power, network and the TV; once the idle loop is up, (1) `PID=$(pgrep -f 'node .*src/server.js' | head -1);
 tr '\0' '\n' < /proc/$PID/environ | grep -E '^(DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR|DISPLAY)='` prints all
@@ -363,6 +398,15 @@ orchestrator's own environment, as the service user (`audioRoutingService.js:156
 and the TV must react; (4) from a terminal in the desktop session, the guide's own ping `dbus-send --session
 --dest=org.mpris.MediaPlayer2.vlc --print-reply /org/mpris/MediaPlayer2 org.freedesktop.DBus.Peer.Ping`
 (`DEPLOYMENT_GUIDE.md:1398-1399`) answers — VLC is on the bus the desktop sees, the one the orchestrator must share.
+Read the check after the logind window, not inside it. `/run/user/<uid>` is created by pam_systemd when the user's
+first login session opens and removed at the last logout (man7.org pam_systemd(8), §7); PM2's unit starts
+`After=network.target` (`systemd.tpl`), not the graphical target. So on a cold boot the orchestrator can be up seconds
+before autologin has created the directory and the bus socket: `pactl info` fails with the path correct, `audio`
+reports down, and the registry re-probes every service every 15 s (`backend/src/app.js:333-340`,
+`serviceHealthRegistry.js:233`), so `audio` recovers on the next pass. A light that is still down a minute after the
+idle loop appears is the fault; one that clears on the first re-probe is the window. If the window is long enough to
+cost VLC the boot race, the guide's own Stage-B fix applies: `After=graphical.target` on the PM2 unit
+(`DEPLOYMENT_GUIDE.md:1155-1158`).
 Code change (optional, not this week): default both from `/run/user/<uid>` when unset, the way `displayDriver.js:56-57`
 defaults `DISPLAY`; and add both keys to `.env.example` (today a key-set diff, §3, would flag them as undocumented).
 
@@ -377,21 +421,58 @@ and pgrep — eight in its own summary loop (`:848-853`) — and neither chromiu
 display driver spawns (`displayDriver.js:104`, `:165`, `:289-290`). Its §8.3 (`:897-912`, "X11 Display Accessible")
 proves the display with `DISPLAY=${DISPLAY:-:0} xset q`: that needs only an X server to answer, and under labwc
 XWayland is one, so it proves neither an X11 session nor a window manager that xdotool/wmctrl can drive. A green
-built from the guide, on the default Wayland session and with no `chromium` binary, therefore passes the gate. The
+built from the guide, on the default Wayland session and with no `chromium` binary, therefore passes the gate.
+Two more defects are live in the same file (found on the third review). Its one remedy for §2.11 (`:933`) names an
+`env_production` block that `ecosystem.config.js` does not have, so the fix for this document's #4 failure silently
+no-ops (§2.11). And the 2026-09-05 rewrite of §12.3 left `spotifyd` standing everywhere else: §8's preamble
+(`:863`, "Three services use the D-Bus session bus (VLC MPRIS, Spotify MPRIS)"; `:867`; `:880`), §9's (`:939`), and
+the §13 summary block — the one screen the operator runs on green — which prints `spotifyd: not running` (`:1664`)
+and has no MPD line at all, while its binary loop (`:1657`) lacks `mpd`. §12.3 itself is right (`:1384-1398`:
+`which mpd`, system unit disabled). The
 panel does not catch it either: `displayDriver.js:359-378` `probe()` reports `display` healthy when the kiosk
 process is alive AND when there is no process and the kiosk is hidden (`:348-353`, ruling R13: hidden is the idle
 posture, not a fault); a kiosk that has never launched reads as healthy until someone asks for the scoreboard.
 The first draft leaned on that light twice (§1b's session bullet, §6's closing line); both sentences are replaced.
 
-Smallest fix: three edits to the checklist in the guide repair (Appendix C scope, `ROADMAP.md:752`), and one rule
-for the bench. (1) §7: add `command -v "${CHROMIUM_BIN:-chromium-browser}"` (must print `/usr/bin/chromium` on
-green after §2.3) and `command -v xdotool wmctrl`. (2) §8.3: replace `xset q` with a window-control check under
-the real session: `[ "$XDG_SESSION_TYPE" = x11 ]`; `DISPLAY=:0 wmctrl -m` names Openbox; and, with the orchestrator
-running and the scoreboard shown once from the panel, `DISPLAY=:0 xdotool search --name ALN-SCOREBOARD` prints a
-window id — the driver's own lookup (`displayDriver.js:104`; the marker defaults to `ALN-SCOREBOARD`,
-`backend/src/config/index.js:114`). (3) Header: the working directory is the machine's own checkout. The rule: the
-only real proof is the kiosk on the TV — scoreboard shown from the panel, visible on the venue TV, hidden again —
-and one video through VLC on top of it. A green `display` light proves nothing on its own.
+Smallest fix: five edits to the checklist in the guide repair (Appendix C scope, `ROADMAP.md:752`), and one rule
+for the bench. (1) §7 and the §13 binary loop: add chromium, xdotool, wmctrl and mpd — and resolve `CHROMIUM_BIN`
+from the file it lives in. The variable is set in `backend/.env` (`.env.example:172`, §2.3's fix) and read by
+`dotenv.config()` inside the orchestrator (`backend/src/config/index.js:10`); it is never exported to the operator's
+shell. So `command -v "$CHROMIUM_BIN"` expands to `command -v ""` on green, and
+`command -v "${CHROMIUM_BIN:-chromium-browser}"` falls back to a binary §2.3 says does not exist — both forms fail a
+correctly built machine, and a gate that fails the right machine trains the operator to wave the line through. Write
+it the way the summary already reads `HOME_ASSISTANT_URL` (`:1666`):
+`CHROMIUM_BIN=$(grep -E '^CHROMIUM_BIN=' backend/.env 2>/dev/null | cut -d= -f2-); command -v "${CHROMIUM_BIN:-chromium-browser}"`
+(must print `/usr/bin/chromium` on green), then `command -v xdotool wmctrl mpd`. The same rule holds for any other
+env-driven binary added to §7 later: resolve it from `backend/.env`, never from the shell. (2) §8.3: replace `xset q`
+with a window-control check under the real session: `[ "$XDG_SESSION_TYPE" = x11 ]`; `DISPLAY=:0 wmctrl -m` names
+Openbox; and, with the orchestrator running and the scoreboard shown once from the panel,
+`DISPLAY=:0 xdotool search --name ALN-SCOREBOARD` prints a window id — the driver's own lookup (`displayDriver.js:104`;
+the marker defaults to `ALN-SCOREBOARD`, `backend/src/config/index.js:114`). (3) Header: the working directory is the
+machine's own checkout. (4) §8.4 `:933`: drop the `env_production` branch — no such block, and `npm start` passes no
+`--env` — and keep `backend/.env` as the remedy, with §2.11's shape rule (`unix:path=/run/user/<uid>/bus`, never an
+`abstract=` address) and the cold-boot check. (5) The spotifyd residue: rewrite `:863`, `:867`, `:880` and `:939` so
+the session-bus user is VLC MPRIS alone (MPD is not on D-Bus — the engine speaks the MPD protocol over
+`/tmp/aln-mpd.sock`, `musicService.js:47-48`), and in the §13 summary replace the `spotifyd:` line (`:1664`) with an
+MPD posture line that mirrors §12.3 — `echo "  MPD (system):   $(systemctl is-enabled mpd 2>/dev/null || echo 'not installed')"`,
+expecting `disabled` — plus `mpd` in the binary loop. The rule: the only real proof is the kiosk on the TV —
+scoreboard shown from the panel, visible on the venue TV, hidden again — and one video through VLC on top of it.
+A green `display` light proves nothing on its own.
+
+Appendix C, reconciled (added on the third review). `ROADMAP.md:752-777` is the scope the guide repair defers to,
+and the §5 gate row hands the rest of the checklist forward to it. Three of its lines are already done and one is
+still live, so a reader who follows it verbatim redoes finished work and misses the open item. Done: "Remove: the
+disable-Bluetooth instruction" (`:771-772`) — gone and inverted, `DEPLOYMENT_GUIDE.md:1538-1542` now reads "Do NOT
+disable the bluetooth service … An older revision of this guide said to disable it — that was wrong". Done: "three
+stale scoreboard-password sections" (`:768-769`) — two are gone; the one password line left (`:1554`) is correct (the
+scoreboard reads `ADMIN_PASSWORD` at serve time). Done in outline (completeness not audited here): the Home Assistant
+procedure (`:726-804`), the media transfer (`:806-862`), the installation profile (`:694-724`), machine preparation
+with the Pi-5 video settings (`:1028-1046`, `:1083-1099` — the §2.10 line), boot-to-running (`:1122-1158`), and the
+five "documented nowhere" keys, now in the guide's environment section (`:224`, `:233`, `:241`, `:250`, `:257`) and in
+`.env.example`. Still live: "one wrong required-service check in the preflight checklist (a music daemon the system
+does not use)" (`:769-771`) — that is exactly the spotifyd residue of edit (5): §12.3 was fixed on 2026-09-05, the
+preamble lines and the §13 summary were not. Not checked here: the "~28 env keys missing from the guide" reconcile
+(`:765`); the §3 key-set diff is its test. Outside Appendix C's text and also live: edits (1)–(4) above.
 
 ### 2.13 MPD 0.23.12 → 0.24.4: verified, no config change (added for the completeness critic)
 
@@ -492,8 +573,8 @@ Not carried over, by design:
 | Step | Guide | Fresh Trixie install | Change |
 |---|---|---|---|
 | 0 | Imager: 64-bit Desktop, user, hostname, WiFi, SSH (`:1036-1037`) | Same, plus the Localisation subtab set to blue's time zone (or `timedatectl set-timezone` after boot, §2.7); the image is Trixie | **added** (timezone) |
-| 0 | `raspi-config` → Desktop Autologin (`:1038-1041`) | Same entry expected (not re-verified) | verify |
-| 0 | — | `raspi-config` → Advanced Options → Wayland → **W1 X11**, reboot; §1b's session check | **added** |
+| 0 | `raspi-config` → Boot / Auto Login → Desktop Autologin (`:1038-1041`) | Two entries on Trixie: System Options → `S5 Boot` → `B2 Desktop`, then `S6 Auto Login` → yes to the desktop (or `sudo raspi-config nonint do_boot_behaviour B4`); verified from `do_boot_target()`, `do_autologin()`, `do_boot_behaviour()` on the `trixie` branch (§2.1, row 20); bench check in §1b | **changed** (menu split; same outcome) |
+| 0 | — | `raspi-config` → Advanced Options → `A7 Wayland` → **W1 X11**, reboot; §1b's session check | **added** |
 | 0 | `usermod -aG video,audio,bluetooth $USER` (`:1044`) | Same | none |
 | 1 | `apt update && apt upgrade -y` (`:1052`) | Same | none |
 | 1 | NodeSource `setup_20.x` (`:1055`) | `setup_22.x` | **changed** |
@@ -505,13 +586,13 @@ Not carried over, by design:
 | 2 | HDMI lines in `/boot/firmware/config.txt` (`:1074-1081`) | Same path; keys may be ignored on Pi 5 (§1b) | verify |
 | 2b | HEVC only, `--vout=gles2` (`:1083-1099`) | Same | none |
 | 3 | static IP by nmcli (`:1101-1120`) | Router reservation at cutover, or nmcli with the persistence check (§2.6) | **changed** |
-| 4 | `npm start`, `pm2 save`, `pm2 startup` (`:1130-1132`) | Same commands, environment made explicit first: the first `npm start` from a terminal in green's desktop session, or `DBUS_SESSION_BUS_ADDRESS` + `XDG_RUNTIME_DIR` in `backend/.env` (§2.11); then the cold-boot check (`/proc/<pid>/environ`, `audio` and `vlc` healthy, pause/resume from the panel); the boot-race test (`:1152-1158`) runs on X11 as before | **changed** (environment) |
+| 4 | `npm start`, `pm2 save`, `pm2 startup` (`:1130-1132`) | Same commands, environment made explicit first: read `echo $DBUS_SESSION_BUS_ADDRESS` in the desktop terminal; put `DBUS_SESSION_BUS_ADDRESS` + `XDG_RUNTIME_DIR` in `backend/.env` (a desktop-terminal first start only if that echo was the `/run/user/<uid>/bus` form; the checklist's `env_production` block does not exist, §2.11); then the cold-boot check (`/proc/<pid>/environ`, `audio` and `vlc` healthy once the logind window has passed, pause/resume from the panel); the boot-race test (`:1152-1158`) runs on X11 as before | **changed** (environment) |
 | 4b | Media verify (`:836-858`) | Same: blocks 1 (videos + idle loop), 2 (cue sounds), 3 (`music:seed`); plus the asset-manifest hash check (§4) | **carried in** (was missing from the first draft) |
 | 5 | WirePlumber Lua drop-in (`:1168-1184`) | The `.conf` drop-in of §2.2, with the `pw-dump` check | **changed** |
 | HA | `get.docker.com`, `usermod -aG docker`, `docker run … -v ~/ha-config:/config … :stable` (`:735-747`) | Same, with the copied `~/ha-config` and blue's image digest in place of `:stable`; the seven-scene check (§3) | **changed** (version pin) |
 | — | `ufw` rules (`:1206-1208`) | `ufw` is absent; skip | skip |
 | — | `pip install -r scripts/requirements.txt` (`scripts/requirements.txt:2`) | apt `python3-requests python3-pil python3-dotenv python3-jsonschema`, or a venv | **changed** (optional on green) |
-| gate | `docs/preflight-checklist.md` as the acceptance gate (`ROADMAP.md:452-453`) | Run it, after three repairs: chromium/xdotool/wmctrl in §7, a window-control check in place of `xset q` in §8.3, the header path (§2.12); the proof is the kiosk on the TV | **changed** (checklist repair) |
+| gate | `docs/preflight-checklist.md` as the acceptance gate (`ROADMAP.md:452-453`) | Run it, after five repairs: chromium (resolved from `backend/.env`, never the shell)/xdotool/wmctrl/mpd in §7 and the §13 loop, a window-control check in place of `xset q` in §8.3, the header path, the `env_production` phantom in §8.4, the `spotifyd` line and the missing MPD line in the §13 summary (§2.12); the proof is the kiosk on the TV | **changed** (checklist repair) |
 
 ## 6. Green as the home development environment afterwards (rung 2)
 
@@ -559,7 +640,8 @@ Short form: on green, testing and the show never run at the same time. Sequence:
 one video, hide it again: that, not the panel's `display` light, is the check that production is whole again (§2.12 —
 the light stays green while the kiosk is hidden, `displayDriver.js:359-378`); then the repaired checklist. Note that
 `pm2 start` after the rig reuses PM2's saved environment (§2.11), but a `pm2 delete` followed by a fresh `npm start`
-from the rig's root shell would not — run any fresh first start from the desktop session.
+from the rig's root shell would not — with the two variables in `backend/.env` (§2.11) any shell is safe; without
+them, only a desktop-session shell whose bus address is the `/run/user/<uid>/bus` form.
 
 ## 7. Sources (all read 2026-09-12)
 
@@ -570,6 +652,7 @@ OS and session
 - https://www.debian.org/releases/trixie/ — Debian 13 is trixie.
 - https://www.raspberrypi.com/news/a-new-release-of-raspberry-pi-os/ — "Raspberry Pi Desktop now runs Wayland by default across all models"; the A6 Wayland / W1 X11 menu path (Oct 2024).
 - https://raw.githubusercontent.com/RPi-Distro/raspi-config/trixie/raspi-config — `do_wayland()`: "W1 X11" "Openbox window manager with X11 backend", "W2 Labwc"; W1 sets lightdm `user-session`/`autologin-session`/`greeter-session` to `rpd-x` (or `LXDE-pi-x`), `ASK_TO_REBOOT=1`.
+- https://raw.githubusercontent.com/RPi-Distro/raspi-config/trixie/raspi-config (read in full, 4,277 lines, 2026-09-12, third review) — `do_boot_target()` (`S5 Boot`: "B1 Console" "Text console", "B2 Desktop" "Desktop GUI" → `systemctl --quiet set-default graphical.target` if `/etc/init.d/lightdm` exists); `do_autologin()` (`S6 Auto Login`: "Would you like to automatically log in to the console?", then "Would you like to automatically log in to the desktop?" → `sed /etc/lightdm/lightdm.conf … autologin-user=$USER`); `do_boot_behaviour()` ("B4 Desktop Autologin" "Desktop GUI, automatically logged in as '$USER' user": both edits at once; no interactive caller, `nonint()` runs `"$@"`); Advanced Options "A7 Wayland" "Switch between X and Wayland backends" → `do_wayland` ("A6 Beta Access" is the neighbour).
 - https://raw.githubusercontent.com/RPi-Distro/raspi-config/trixie/debian/changelog — topmost 20260730; "Remove wayfire option" (20250814), "Remove wayfire support" (20260710); no entry removes X11.
 - https://raw.githubusercontent.com/RPi-Distro/pi-gen/master/stage3/00-install-packages/00-packages-nr — the desktop stage's package list: `rpd-wayland-core`, `rpd-x-core` (the `trixie` branch path 404'd; `master` builds the current release). stage4 adds `rpd-x-extras`, `rpd-wayland-extras`.
 - https://raw.githubusercontent.com/raspberrypi-ui/rpd-metas/master/debian/control — `rpd-x-core` Depends: `rpd-common, xserver-xorg, xinit, gldriver-test, xcompmgr, x11-xserver-utils, openbox, lxpanel-pi, lpplug-*`; `rpd-wayland-core` Depends: `labwc, wf-panel-pi, …`.
@@ -671,6 +754,8 @@ PM2 (§2.11)
 - https://raw.githubusercontent.com/Unitech/pm2/master/lib/templates/init-scripts/systemd.tpl — the generated unit: `User=%USER%`, `Environment=PATH=…`, `Environment=PM2_HOME=…`, `ExecStart=%PM2_PATH% resurrect`, `After=network.target`; nothing else.
 - https://raw.githubusercontent.com/Unitech/pm2/master/lib/API/Startup.js — `dump()` (`:423-482`) writes the running process list (`getMonitorData`) to the dump file.
 - https://raw.githubusercontent.com/Unitech/pm2/master/lib/binaries/CLI.js — `-a --update-env`, "force an update of the environment with restart/reload".
+- https://pm2.keymetrics.io/docs/usage/startup/ (re-read 2026-09-12, third review) — "save the app list so it will respawn after reboot: pm2 save"; the page says nothing about the environment, so the freeze claim rests on the environment page and `lib/API/Startup.js` above.
+- https://man7.org/linux/man-pages/man8/pam_systemd.8.html (read 2026-09-12) — "On login … If it does not exist yet, the user runtime directory /run/user/$UID is either created or mounted as new "tmpfs" file system"; "On logout … If the last concurrent session of a user ends, the user runtime directory /run/user/$UID and all its contents are removed, too"; `$XDG_RUNTIME_DIR` "is automatically created the first time a user logs in and removed on the user's final logout".
 
 MPD (§2.13)
 - https://packages.debian.org/bookworm/mpd — mpd 0.23.12-1 (binaries 0.23.12-1+b1); Depends `libpulse0`.
@@ -685,7 +770,7 @@ MPD (§2.13)
 
 Readers (first pass): none. All nine readers reported `webToolFailed: false`. Partial results worth knowing:
 
-- OS reader: a direct `curl` of raspberrypi.com/documentation/computers/configuration.html got HTTP 403 (bot protection); WebFetch on other raspberrypi.com pages worked. The raspi-config script fetch was truncated at ~500 lines, so the numeric code of the Advanced Options entry that opens the Wayland menu is not confirmed; the W1/W2 labels are (and the reviser's fetch reached `do_wayland()` itself, §7).
+- OS reader: a direct `curl` of raspberrypi.com/documentation/computers/configuration.html got HTTP 403 (bot protection); WebFetch on other raspberrypi.com pages worked. The raspi-config script fetch was truncated at ~500 lines, so the numeric code of the Advanced Options entry that opens the Wayland menu is not confirmed; the W1/W2 labels are (and the reviser's fetch reached `do_wayland()` itself, §7). The third review fetched the whole file: the code is `A7 Wayland` on `trixie`.
 - Chromium reader: chromium.googlesource.com source pages and source.chromium.org returned 404/empty for the raw switch definitions; peter.sh's switch list was truncated. Both flags were confirmed from Raspberry Pi's tutorial and Chromium's own docs instead.
 - Python reader: one trixie release-notes URL 404'd (wrong chapter name); the bookworm chapter and trixie's issues page were used. The literal `EXTERNALLY-MANAGED` marker file was not located in the package file lists.
 - Node reader: NodeSource's support matrix (DEV_README) still lists Debian 10–12 only; the script source and NodeSource's Trixie post were treated as authoritative.
@@ -709,15 +794,22 @@ Completeness pass (2026-09-12, §2.11–2.13):
 - mpd.readthedocs.io's "stable" manual shows no version marker; the version-pinned `doc/user.rst` at tag v0.24.4 was used instead. `src/config/PartitionConfig.cxx` (guessed) does not read `audio_buffer_size`; a code search found `src/config/PlayerConfig.cxx`, confirmed at the tag.
 - No web tool failed on this pass.
 
+Third review (2026-09-12, five gaps: the PM2 block name, the chromium check, the bus-address shape, Appendix C, desktop autologin):
+
+- raspi-config `trixie` was fetched raw with `curl` (4,277 lines, complete this time) and read at `do_boot_target()`, `do_autologin()`, `do_boot_behaviour()`, `do_wayland()`, `nonint()` and the menus. The `debian/changelog` fetch was cut off after its first entry (curl exit 23 on the pipe); that entry, 20260730, matches §7.
+- man7.org `pam_systemd(8)` fetched cleanly. PM2's startup page re-read through the summariser: it does not mention the environment, so row 17 keeps its existing sources.
+- The four repository facts (no `env_production` block; `CHROMIUM_BIN` read by `dotenv` only; the `spotifyd` lines; the Bluetooth and password sections) were read from the main checkout; `docs/preflight-checklist.md` and `DEPLOYMENT_GUIDE.md` are byte-identical in the docs worktree.
+- No web tool failed on this pass.
+
 ## 9. Ranked: what breaks on a fresh install if nothing is done
 
 1. **Wayland session.** No scoreboard on the TV, display service down, VLC fullscreen unverified. Whole show-control surface. The X11 stack is on the image; the switch is one menu entry; the contingency is blue. (§2.1)
 2. **Router reservation on blue's MAC.** Green is unreachable at 192.168.0.191; every tablet and scanner fails. Not an OS change, a cutover step. (§2.6)
 3. **The certificate.** A clone serves the 10.0.0.177 file; if the copy is skipped, mis-ordered, or copies a file blue does not actually serve, the tablets warn or NFC stops in a "secure context" that is not. Checked copy, or the IP-SAN recipe. (§2.8)
-4. **PM2's frozen environment.** If the first `npm start` ran in a shell without the session bus and the runtime dir, every boot after it has `audio` down, every VLC D-Bus call throwing and no idle loop, with nothing in the log naming the cause. One shell choice, or two lines in `.env`, then a cold-boot check. (§2.11)
+4. **PM2's frozen environment.** If the first `npm start` ran in a shell without the session bus and the runtime dir, every boot after it has `audio` down, every VLC D-Bus call throwing and no idle loop, with nothing in the log naming the cause. Two lines in `.env` (the desktop-shell route only when its bus address is the `/run/user/<uid>/bus` form — an `abstract=` address freezes just as well and dies at the first power-cycle; the checklist's `env_production` remedy is a no-op), then a cold-boot check read after the logind window. (§2.11)
 5. **Chromium binary name.** Kiosk spawn fails, display service down, even after the X11 fix. (§2.3)
 6. **WirePlumber Lua drop-in ignored.** Silent: video audio can come back muted after a restart, and copying blue's file hides the warning; a wrong `.conf` key passes the status check — the `pw-dump` line is the real test. (§2.2)
-7. **The acceptance gate is blind to 1 and 5.** The checklist passes a Wayland session with no `chromium` binary, and the panel's `display` light stays green while the kiosk is hidden. Not a failure by itself; it lets the two through. Repair the checklist; trust the TV. (§2.12)
+7. **The acceptance gate is blind to 1 and 5.** The checklist passes a Wayland session with no `chromium` binary, and the panel's `display` light stays green while the kiosk is hidden. Not a failure by itself; it lets the two through. Five repairs to the checklist — the chromium check reading `CHROMIUM_BIN` from `backend/.env`, not the shell; the §8.4 phantom block; the `spotifyd` line and the missing MPD line in its §13 summary — then trust the TV. (§2.12)
 8. **Host timezone.** Silent: every hardware-scanner timestamp and the validator report shift by hours; nothing warns until a report is read. (§2.7)
 9. **Home Assistant version skew.** `:stable` is 2026.9.2; blue's is unknown until read; a migration surprise on show week has a days-long fallback. Run blue's digest. (§3)
 10. **Node 20.** Engine warning, unsupported runtime, no security fixes. Runs, probably. (§2.4)
