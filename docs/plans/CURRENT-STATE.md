@@ -49,7 +49,9 @@ at run 300): the dormancy core — three health words, dormant grey with
 its door, the display as the ninth service, cues silenced by absent
 equipment, the require gate with the typed override, the profile
 identity on the wire; the venue profile corrected (two tablets, both
-audio outputs, DNS off). Rulings R1–R17 in the plan's §1.
+audio outputs, DNS off); the harness minimum (one data and log
+directory per test worker; the log guard) merged at `209916b`. Rulings
+R1–R27 in the plan's §1; the record's rulings 1–31 in its §9.
 
 Next, in this order (owner: "go"): (1) documents [x] rulings rows
 [x] task section [x] page cut [x] rule 6 [x] handoff retired [x] progress
@@ -57,8 +59,8 @@ file no longer "the ledger"; (2) readers for the supervisor, credentials,
 the self-heal; the sweep audit as reading; Thursday's runbook committed
 for the owner; the guide repair when the fresh-install research lands,
 BEFORE the owner starts on green; (3) the two held plans revised, one
-scoped re-review each; (4) the harness minimum built in the main
-checkout, reviewed, gated, merged; three worktrees cut and provisioned;
+scoped re-review each; (4) [x] the harness minimum built, reviewed, gated, merged; three
+worktrees cut and provisioned;
 (5) the profile check built, reviewed, gated, merged; the arms worktree
 cut; (6) lane briefs reviewed against the plan, lanes dispatched;
 (7) merges in order with the full suite after each: credentials, the
@@ -91,56 +93,61 @@ Thursday preflight.
 
 ## 6. Running, and on disk
 
-- Harness minimum: build workflow clean at f778f15 (review pass /
-  approved; five minors); the hostile tester's seven findings all
-  refuted on evidence, seventeen attacks held; MY gate on f778f15 green
-  (unit+contract 3121, ratchet 85/85, lint, integration 349/349). A
-  fixer (sonnet) is applying the five one-line minors now; then a scoped
-  re-review, my rerun of the touched suites, the merge (remove
-  `.worktrees/docs` first, then check the designated branch out in the
-  main checkout), the three lane worktrees.
-- Lane briefs: credentials and self-heal at revision 3 (e3d8474) after
-  two review passes; a third-pass scoped re-review runs
-  (`wf_c6d1f39c-7ba`, script `rereview-pass3.js`). The supervisor
-  brief (revision 2, three tasks) waits for the dormancy-core
-  adversarial pass to fold its survivors in, then its re-review.
-- Dormancy-core adversarial pass resumed (`wf_6858337e-efa`): 29
-  findings (11 major), refuters and the writer running; the standing
-  majors so far are the null-profile whole-kit dormancy (a duplicate of
-  the ruled profile check, not new), an unknown endpoint family
-  throwing at boot, and the display health word (probe reports healthy
-  while hidden; nothing returns it from down without a launch). Per
-  R26 survivors are fixed as one task before any lane merges.
-- Research: revision 2 committed (7b4493e, 730 lines); revision 3
-  running (`wf_ff6f5b79-f04`, script `research-revision-3.js`) to close
-  five narrower gaps its critic found (a checklist remedy naming a PM2
-  block that does not exist; the browser check must read `CHROMIUM_BIN`
-  from `backend/.env`; the session-bus address shape; Appendix C partly
-  stale; desktop autologin on the new release); then the guide repair
-  (R24) and your guide-ready note.
-- Lane worktrees: one command each after the merge,
-  `<scratchpad>/cut-lane-worktree.sh <lane> [scanner]`.
+- Live state at the last edit (about 00:05Z 2026-09-13): the container
+  restarted about 23:21Z; the rig's shared arms were brought back with
+  the recipe (`2026-09-12-container-baseline.md` §7; log
+  `<scratchpad>/rig-up-2321.log`; engine stopped; probe equal to the
+  recorded baseline). Running: the dormancy-core adversarial pass
+  (`wf_6858337e-efa`, script `dormancy-adversarial.js`, report
+  `dormancy-core-adversarial.md` in scratch); research revision 3
+  (`wf_ff6f5b79-f04`, `research-revision-3.js`); three per-brief red
+  teams (R26 point 2; script `redteam-brief.js`, args per lane; two
+  opus lenses, one refuter per finding, a writer): credentials
+  `wf_aa1e1c73-4cc`, self-heal `wf_4b643628-042`, profile-check
+  `wf_6a3b59bb-9af`; reports `<lane>-redteam.md` in scratch. CI run 303
+  on the merge `209916b` was in progress; the record commit pushes
+  after it finishes.
+- Checkouts: main checkout on `claude/nice-curie-hescfv-profile-check`
+  at `209916b` (the profile-check build runs there); `.worktrees/docs`
+  on the designated branch (all docs commits go through it);
+  `.worktrees/credentials`, `.worktrees/supervisor` (+ ALNScanner
+  branch), `.worktrees/self-heal` (+ ALNScanner branch), each at
+  `209916b`, submodules at the pins, `node_modules` symlinked.
+- Order by file sets (record ruling 30): the profile check first (owner
+  ruling) beside the self-heal lane (disjoint files); credentials after
+  the profile check merges (both edit `asyncapi.yaml`); the supervisor
+  after the dormancy-core survivors task (R26 point 1) and its brief's
+  re-review; the arms after the profile check.
+- For each brief, when its red team returns: standing findings edited
+  into the brief (self-heal's flow becomes `33-pack-self-heal`), then
+  the build workflow (`lane-build.js`: per task an implementer, a task
+  review, at most three fix rounds; then a hostile tester with
+  refuters), then my fresh gate, then the merge in the order above.
+- Briefs: credentials and self-heal at revision 3 (DISPATCH after two
+  review passes), red teams running; the profile check (`p1-profile-check.md`,
+  DISPATCH) red team running; the supervisor (revision 2, three tasks)
+  waits for the dormancy pass to fold its survivors in.
+- Dormancy pass: 29 findings (11 major); the standing majors so far:
+  the null-profile whole-kit dormancy (a duplicate of the profile
+  check), an unknown endpoint family throwing at boot, the display
+  health word (probe healthy while hidden; nothing returns it from down
+  without a launch). Survivors are fixed as one task before any lane
+  merges.
+- Research: revision 2 committed (`7b4493e`); revision 3 closes five
+  narrower gaps; then the guide repair (R24) and the owner's
+  guide-ready note.
 - Every workflow resumes with `Workflow({scriptPath, resumeFromRunId})`;
-  scripts under `<scratchpad>/` (`harness-minimum-build.js`,
-  `research.js`, `research-revision-2.js`, `arms-factsheet.js`,
-  `brief-reviews.js`, `rereviews-cred-selfheal.js`, `rereview-pass3.js`,
-  `dormancy-adversarial.js`, `hostile-harness.js`). A message never
-  stops them; the stop button does, and then they resume. The session's
-  usage limit stopped twenty-five agents at 23:0xZ (reset 23:20Z); all
-  were resumed.
-- Main checkout is on the harness task branch (the fixer edits there);
-  docs commits go through `.worktrees/docs` (designated branch,
-  e3d8474). Never commit in a checkout where an implementer edits.
-- Rig: shared arms up under `/tmp/rung1` (engine stopped); E2E and
-  Tier L runs take `/tmp/rung1/e2e.lock` with `flock` (a convention,
-  not yet harness machinery); a restart loses the arms (recipe
-  `2026-09-12-container-baseline.md` §7).
+  scripts under `<scratchpad>/`. A message never stops them; the stop
+  button does, and then they resume; a container restart ends them
+  (twice today; files survived both times, the rig's daemons did not).
+- Rig: E2E and Tier L runs take `/tmp/rung1/e2e.lock` with `flock` (a
+  convention, not harness machinery).
 - Scratch `.superpowers/sdd/2026-09-12-block2-hardening-plan/`: the
-  progress file (append-only; live-state lines at its end); seven fact
-  sheets (`supervisor-`, `credentials-`, `self-heal-`,
-  `preflight-arms-factsheet.md`, `sweep-audit-producers/-renderers/-restore.md`),
-  each opening with a Conclusions section — read only that; reviews
-  and re-reviews per lane; `harness-minimum-report.md`.
+  progress file (append-only; live-state lines at its end); fact sheets
+  (`supervisor-`, `credentials-`, `self-heal-`, `p1-`,
+  `preflight-arms-factsheet.md`, `sweep-audit-*.md`), each opening with
+  a Conclusions section — read only that; reviews, re-reviews and red
+  teams per lane; `harness-minimum-report.md`.
 
 ## 7. Pointers (open when)
 
