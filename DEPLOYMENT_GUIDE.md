@@ -1,5 +1,155 @@
 # ALN Ecosystem Deployment Guide
 
+## Green, fresh install, September 2026 — start here
+
+This section is the whole build in one place: the install order, the
+three copy/read/never lists, what comes from git, and the four inputs
+only you hold. Every line names the step below that carries it. Read
+it once, then work down the steps in order.
+
+It runs longer than one screen. That is deliberate — four tables that
+name every file by its path on both machines are worth more here than
+a paragraph that sends the reader hunting. Skim the "Install order"
+table; read the three lists when you reach the step that uses them.
+
+Green is the second Pi, built as a complete production machine while
+blue keeps running the show. The cutover is physical: unplug blue,
+plug in green, move the router's address reservation. Rolling back is
+the reverse.
+
+**The machine today is Raspberry Pi OS Trixie (Debian 13), not
+Bookworm.** Five things to know about this release, each with its own
+step below: the desktop is Wayland and must be switched to X11; the
+WirePlumber drop-in is a `.conf` file in a different directory; the
+browser package is `chromium`, not `chromium-browser`; and
+`pip install` is refused. The fifth, Node 22, is not a Trixie change —
+it is what `backend/package.json` requires, and Node 20 reached end of
+life on 2026-04-30.
+
+### Install order
+
+Work down this list. **The step numbers under "Raspberry Pi
+Deployment" run in this order**, so following the numbers and
+following this table are the same thing. Two of the steps (Home
+Assistant, media transfer) have their procedure in their own top-level
+section; the numbered step there is a one-paragraph pointer that keeps
+the sequence intact.
+
+| # | Do this | Step |
+|---|---|---|
+| 1 | Image the card: 64-bit **Desktop**, hostname, user, WiFi, SSH — and set Localisation to blue's time zone | "0. Image the machine", entry 1 |
+| 2 | Set the time zone (if the Imager did not) | "0. Image the machine", entry 2 |
+| 3 | `raspi-config`: desktop autologin (two menu entries on Trixie) | "0. Image the machine", entry 3 |
+| 4 | `raspi-config`: Advanced Options → Wayland → **W1 X11**, reboot | "0. Image the machine", entry 4 |
+| 5 | `usermod -aG video,audio,bluetooth` | "0. Image the machine", entry 5 |
+| 6 | `apt update && apt upgrade` | "1. Prepare Raspberry Pi" |
+| 7 | Node 22 from NodeSource, then the apt package line | "1. Prepare Raspberry Pi" |
+| 8 | Disable the system MPD | "1. Prepare Raspberry Pi" |
+| 9 | `npm install -g pm2` | "1. Prepare Raspberry Pi" |
+| 10 | Clone with submodules, pin `ALN-TokenData` to blue's revision, `npm install` | "1. Prepare Raspberry Pi" |
+| 11 | Mount blue's share | "2. Mount blue's share" |
+| 12 | Certificate: check what blue serves, copy that pair | "3. Certificate — check, then copy" |
+| 13 | Copy `backend/.env` from blue and audit it | "4. The environment file — copy, then audit" |
+| 14 | Copy `~/ha-config/`, install Docker, run HA on blue's image digest | "5. Home Assistant" → the procedure in "Home Assistant (Lighting)" |
+| 15 | WirePlumber `.conf` drop-in — **before the first `npm start`** | "6. Install the WirePlumber rule" |
+| 16 | Copy the media (videos, music, cue sounds), then verify | "7. Media transfer" → the procedure in "Media Transfer (building a new machine)" |
+| 17 | Read the session bus address, put the two bus lines in `.env` | "8. Boot-to-running (auto-start posture)" |
+| 18 | First `npm start`, `pm2 save`, `pm2 startup` | "8. Boot-to-running (auto-start posture)" |
+| 19 | Cold-boot check, read after the logind window | "8. Boot-to-running (auto-start posture)" |
+| 20 | HDMI settings in `/boot/firmware/config.txt` — compare blue's, cold-boot with the TV attached | "9. Configure for HDMI Output" |
+| 21 | Run the acceptance gate: `docs/preflight-checklist.md` | "Acceptance gate" |
+| 22 | **At cutover only:** move the router's address reservation to green's MAC | "10. The venue address (cutover step)" |
+
+**Why step 6 comes before step 8.** The WirePlumber rule stops
+WirePlumber restoring VLC's saved volume over the orchestrator's.
+Install it after the first `npm start` and the machine can come up
+with video audio silently muted — the 2026-05-22 incident.
+
+Optional, and only if Thursday's Notion token sync will be run on
+green: the four apt Python packages ("Token sync on the machine").
+
+Skip on a fresh image: the `ufw` firewall section — `ufw` is not
+installed and the kit network does not need it.
+
+### Copy from blue (over the share)
+
+Blue's filesystem is reachable from green over a network share. The
+share's name and credentials are the owner's; the mount step writes
+them as `//<blue>/<share>`. Copy with a tool that keeps permissions
+(`rsync -a` over the mount), then fix ownership on green.
+
+| What, on blue's disk | Where it goes on green | Step |
+|---|---|---|
+| `~/ALN-Ecosystem/backend/ssl/cert.pem` + `key.pem` — only the pair whose fingerprint blue actually serves | `backend/ssl/` — after the clone, **before** the first `npm start` | "3. Certificate — check, then copy" |
+| `~/ALN-Ecosystem/backend/.env` | `backend/.env` — after the clone, **before** the Home Assistant container step and before the first `npm start`; then audited for blue-only values | "4. The environment file — copy, then audit" |
+| `~/ha-config/` (the whole Home Assistant volume: `scenes.yaml`, the owner account, the long-lived token) | `~/ha-config/` — **before** the first `docker run` | "Home Assistant (Lighting)" |
+| `~/ALN-Ecosystem/backend/public/videos/*.mp4` (idle loop included) | `backend/public/videos/` | "Media Transfer (building a new machine)" |
+| `~/ALN-Ecosystem/backend/public/music/` | `backend/public/music/` | "Media Transfer (building a new machine)" |
+| `~/ALN-Ecosystem/backend/public/audio/` — only the files git does not carry | `backend/public/audio/` | "Media Transfer (building a new machine)" |
+
+### Read on blue, do not copy
+
+| What | Command on blue | Used by |
+|---|---|---|
+| The pack pin (the `ALN-TokenData` revision) | `git -C ~/ALN-Ecosystem/ALN-TokenData rev-parse HEAD` | "1. Prepare Raspberry Pi" (green checks that sha out) |
+| The time zone | `timedatectl` — the `Time zone:` line | "0. Image the machine", step 2 |
+| The served certificate's sha256 fingerprint, SAN and `notAfter` | `openssl s_client -connect 192.168.0.191:3000 </dev/null 2>/dev/null \| openssl x509 -noout -fingerprint -sha256 -ext subjectAltName -enddate` | "3. Certificate — check, then copy" |
+| Home Assistant's version and image digest | `curl -s -H "Authorization: Bearer $HOME_ASSISTANT_TOKEN" http://localhost:8123/api/config` and `docker inspect homeassistant --format '{{.Config.Image}}'` + `docker images --digests ghcr.io/home-assistant/home-assistant` | "Home Assistant (Lighting)" |
+| `/boot/firmware/config.txt` and `cmdline.txt` — compare, never copy | `cat /boot/firmware/config.txt` | "9. Configure for HDMI Output" |
+| `backend/config/profiles/aln-full-kit.json` — diff against git; carry any hand edit as a commit, never a copy | `diff` against green's clone | "Installation Profile (the venue document)" |
+
+`ALN-TokenData/pack-manifest.json`'s `contentHash` is a digest of the
+pack's contents, not a revision. It is the check AFTER the pin, never
+the source of it: with blue's sha checked out, green's `/health` must
+report the same hash.
+
+### Never copy
+
+| What | Why |
+|---|---|
+| `~/ALN-Ecosystem/backend/data/` | A new machine starts clean. Session history stays on blue and on the backup medium. |
+| `~/.pm2/` | Regenerated by `pm2 save` and `pm2 startup` on green. |
+| `/var/lib/bluetooth/` | Pairing is per computer. Re-pair the speaker from the GM panel. |
+| `/etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua` | WirePlumber 0.5 never reads Lua config. Copying it silences the boot warning and changes nothing. Green gets the `.conf` drop-in instead. |
+| Audio routing volumes (they live in `backend/data/`) | Reset to the defaults in `backend/config/environment/routing.json`. |
+
+### Pull from git
+
+```bash
+git clone --recurse-submodules https://github.com/maxepunk/ALN-Ecosystem.git ~/ALN-Ecosystem
+```
+
+Branch `main`. Submodules: `ALN-TokenData` (the game pack — pin it to
+blue's revision), `ALNScanner` with its nested `data`,
+`aln-memory-scanner` with its nested `data` (this one carries the
+hardware scanners' 127-image asset corpus and `assets/manifest.json`),
+`arduino-cyd-player-scanner`. The installation profile
+`backend/config/profiles/aln-full-kit.json` arrives with the clone.
+
+Built on green, not copied: `backend/` `npm install`; the GM scanner
+build (`npm start`'s prestart hook runs it); `npm run music:seed` after
+the music copy; `python3 scripts/generate_asset_manifest.py` only if
+the served asset manifest's pack hash differs from `/health`.
+
+### The inputs only the owner holds
+
+These four cannot be read off a machine or out of git. Have them ready
+before starting.
+
+1. **The share's name and credentials** — blue's network share, written
+   `//<blue>/<share>` in the mount step.
+2. **The Bluetooth speaker's sink name** — pair the W-KING X10 from the
+   GM panel, then read `pactl list sinks short` for its
+   `bluez_output.<MAC>.1` name. Nothing in the repository carries it;
+   the installation profile carries only the label.
+3. **The seven Home Assistant scene definitions** — they ride the
+   `~/ha-config` copy. If HA is ever rebuilt from scratch instead of
+   from that volume, the scenes must be captured from blue by hand
+   first (see the Home Assistant section's OWNER TASK note).
+4. **The router's admin access** — to move the 192.168.0.191
+   reservation from blue's MAC to green's at cutover.
+
+
 ## System Overview
 
 The About Last Night (ALN) Ecosystem is a memory token scanning and video playback system designed for a 2-hour immersive game. It supports two deployment modes:
@@ -12,11 +162,16 @@ The About Last Night (ALN) Ecosystem is a memory token scanning and video playba
 ## Prerequisites
 
 ### Required Software
-- **Node.js 20+** or **22+** (LTS recommended)
+- **Node.js 22 (LTS)** — `backend/package.json` declares
+  `engines.node >= 22.0.0`. Node 20 reached end of life on
+  2026-04-30; an earlier revision of this guide installed it.
 - **VLC Media Player** (for video output)
 - **PM2** (for production deployment)
 - **Git** with submodule support
-- **Python 3** (for local scanner testing)
+- **Python 3** (for local scanner testing and the Notion token sync).
+  On Debian 13 / Raspberry Pi OS Trixie, `pip install` into the system
+  interpreter is refused (PEP 668). Install the sync script's
+  dependencies from apt instead — see "Token sync on the machine".
 
 ### Hardware Requirements
 - **Minimum RAM**: 256MB (Raspberry Pi), 512MB (Desktop)
@@ -42,13 +197,20 @@ git submodule update --init --recursive
 #### Ubuntu/Debian (Including Raspberry Pi OS)
 
 ```bash
-# Install Node.js 20
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Install Node.js 22 (LTS)
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # Install VLC, MPD, and display management tools
 sudo apt-get update
-sudo apt-get install -y vlc mpd xdotool wmctrl
+sudo apt-get install -y vlc mpd xdotool wmctrl chromium \
+  pulseaudio-utils pipewire-bin dbus-bin
+# The browser package is `chromium` on Debian 13 / Raspberry Pi OS
+# Trixie. `chromium-browser` was the pre-Bookworm Pi build and does
+# not exist here — see CHROMIUM_BIN in the environment reference.
+# pulseaudio-utils supplies `pactl`, pipewire-bin `pw-play` and
+# `pw-dump`, dbus-bin `dbus-monitor`. The last two are normally
+# present already; naming them is idempotent.
 
 # Disable the system MPD — the orchestrator spawns and supervises its own
 # MPD instance via ProcessMonitor.
@@ -80,8 +242,8 @@ identifier `audioRoutingService` matches on (`pactl list sink-inputs | grep -i a
 # Install Node.js via nvm
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 source ~/.bashrc
-nvm install 20
-nvm use 20
+nvm install 22
+nvm use 22
 
 # Install VLC (requires X server like VcXsrv)
 sudo apt update
@@ -103,7 +265,7 @@ npm install
 
 ```bash
 # Install Node.js via Homebrew
-brew install node@20
+brew install node@22
 
 # Install VLC
 brew install --cask vlc
@@ -160,7 +322,13 @@ LOG_LEVEL=info
 The full key reference below is authoritative against
 `backend/src/config/index.js` (the engine's single env intake) plus
 the four service-direct reads (`VLC_HW_ACCEL`, `FEATURE_IDLE_LOOP`,
-`DISCOVERY_UDP_PORT`, `ENABLE_MUSIC_PLAYBACK`). Verified 2026-09-05.
+`DISCOVERY_UDP_PORT`, `ENABLE_MUSIC_PLAYBACK`). Verified 2026-09-05;
+re-checked against `backend/.env.example` 2026-09-13 — all 40 keys in
+the template have an entry below.
+
+Two keys the machine needs are NOT in the template and must be
+written by hand: `DBUS_SESSION_BUS_ADDRESS` and `XDG_RUNTIME_DIR`.
+They have their own subsection under "Display / Kiosk".
 
 #### Environment Variables Explained
 
@@ -183,6 +351,33 @@ the four service-direct reads (`VLC_HW_ACCEL`, `FEATURE_IDLE_LOOP`,
   - `0.0.0.0`: Listen on all network interfaces (recommended for network access)
   - `127.0.0.1` or `localhost`: Local access only (more secure but no network access)
   - Default: `0.0.0.0`
+
+##### HTTPS
+
+Full procedure and the certificate itself: "HTTPS Deployment" below.
+
+- **ENABLE_HTTPS** (`true` | `false`)
+  - Serve HTTPS on `PORT` and redirect HTTP. **Required** — the GM
+    Scanner's Web NFC API only works in a secure context, and the
+    discovery service advertises the protocol it finds here.
+  - **Default: `false` — unset means plain HTTP.** The read is
+    `process.env.ENABLE_HTTPS === 'true'`
+    (`backend/src/config/index.js:30`), so anything but the exact
+    string `true` is off. `backend/.env.example:108` and
+    `ecosystem.config.js`'s default `env` block (`:17-24`) both set
+    it, so a normal machine has it — but a copied `.env` that lost the
+    line drops the machine to HTTP silently, and Web NFC dies on the
+    GM tablets.
+
+- **SSL_KEY_PATH** / **SSL_CERT_PATH** (paths, relative to `backend/`)
+  - The key and certificate the server presents. Leave them relative
+    (`./ssl/key.pem`, `./ssl/cert.pem`) — a copied `.env` from another
+    machine may carry absolute paths that do not exist here.
+  - Defaults: `./ssl/key.pem`, `./ssl/cert.pem`
+
+- **HTTP_REDIRECT_PORT** (number)
+  - The plain-HTTP port that 301-redirects to HTTPS.
+  - Default: `8000`
 
 ##### VLC Configuration
 
@@ -225,6 +420,8 @@ VLC is controlled via **D-Bus MPRIS** (`org.mpris.MediaPlayer2.vlc`) — there i
   - Points the ENTIRE engine (rules, tokens, pack channel) at an
     alternate game-pack directory instead of the in-repo
     `ALN-TokenData/`. Frozen at boot by `packService.activatePack()`.
+  - Read at `backend/src/services/packService.js:167`; the loud
+    warning is at `:172`, the resolve at `:175`.
   - Logs a LOUD warning when active — a production machine should
     normally NOT set it (it is the harness/rollback seam; see "Game
     Pack Rollback" below)
@@ -234,6 +431,9 @@ VLC is controlled via **D-Bus MPRIS** (`org.mpris.MediaPlayer2.vlc`) — there i
   - Points the engine at an alternate installation profile (the
     venue document — see "Installation Profile" below). Loud warning
     when active.
+  - Read at `backend/src/services/profileService.js:48`; the loud
+    warning at `:53`; the default at
+    `backend/src/services/profileService.js:31`.
   - Default: unset (`backend/config/profiles/aln-full-kit.json`)
 
 ##### Display / Kiosk
@@ -245,6 +445,9 @@ VLC is controlled via **D-Bus MPRIS** (`org.mpris.MediaPlayer2.vlc`) — there i
     profile's `bindings.surfaces` entry for the pack's idle-loop
     channel is the primary source; this key is the loud fallback
     (ledger L12).
+  - Read at `backend/src/config/index.js:122`
+    (`config.display.idleLoopFile`); the loud L12 fallback is at
+    `backend/src/services/vlcMprisService.js:393-395`.
   - Default: `idle-loop.mp4`
 
 - **SCOREBOARD_WINDOW_MARKER** (string)
@@ -252,13 +455,67 @@ VLC is controlled via **D-Bus MPRIS** (`org.mpris.MediaPlayer2.vlc`) — there i
     the scoreboard Chromium window (xdotool) and the server injects
     into the served page's `<title>`. Both sides follow this one
     key — never rebrand either side independently.
+  - Read at `backend/src/config/index.js:114`; used by the window
+    lookup at `backend/src/utils/displayDriver.js:104`.
   - Default: `ALN-SCOREBOARD`
 
 - **CHROMIUM_BIN** (path)
-  - Overrides the browser binary `displayDriver` spawns for the
-    scoreboard kiosk (a test-environment seam; the hardware default
-    is right for Raspberry Pi OS)
+  - The browser binary `displayDriver` spawns for the scoreboard
+    kiosk.
+  - Read at `backend/src/utils/displayDriver.js:165`
+    (`process.env.CHROMIUM_BIN || 'chromium-browser'`).
+  - **On Raspberry Pi OS Trixie (Debian 13) SET THIS to
+    `/usr/bin/chromium`.** The package and binary are named
+    `chromium`; `chromium-browser` was the pre-Bookworm Pi build and
+    does not exist. Left unset, the kiosk spawn fails with
+    `spawn chromium-browser ENOENT`, the `display` service reports
+    down (`displayDriver.js:240`) and the scoreboard never reaches
+    the TV.
+  - This key lives in `backend/.env` only. `dotenv.config()` reads it
+    inside the orchestrator (`backend/src/config/index.js:10`);
+    nothing exports it to a shell, so any check of it from a terminal
+    must read it out of that file.
   - Default: `chromium-browser`
+
+- **VLC_SELF_SPAWN** (`true` | `false`)
+  - Who supervises the VLC process. `true` (production): the engine
+    spawns and restarts VLC itself. `false`: an external supervisor
+    owns VLC (the rung-1 test harness) and the engine adopts whatever
+    holds the MPRIS name.
+  - Read at `backend/src/config/index.js:98`; the adoption log line is
+    at `backend/src/services/vlcMprisService.js:143`.
+  - Default: `true`
+
+##### Session bus and runtime directory (not in the template — write them by hand)
+
+Neither key is in `backend/.env.example`, and the engine sets neither
+of its own: a grep of `backend/src` for either name finds nothing.
+Every `pactl`, `dbus-send` and `dbus-monitor` call the orchestrator
+makes inherits them from the process environment, and PM2 freezes that
+environment at the first `npm start`. Getting them wrong is the
+quietest failure on the machine — see "8. Boot-to-running" for the
+procedure and the shape rule.
+
+- **DBUS_SESSION_BUS_ADDRESS** (`unix:path=/run/user/<uid>/bus`)
+  - The session bus the orchestrator talks to VLC's MPRIS interface
+    over (`backend/src/services/mprisPlayerBase.js:66-86`, `:205-207`).
+  - Write the `unix:path=` form with the login user's real uid
+    (`id -u`). An `unix:abstract=…` address is minted per session and
+    is dead after the first power-cycle.
+  - Default: unset — inherited from the shell, or absent.
+
+- **XDG_RUNTIME_DIR** (`/run/user/<uid>`)
+  - How `pactl` reaches PipeWire's PulseAudio socket
+    (`backend/src/services/audioRoutingService.js:158`, `:215`, `:948`).
+  - Default: unset — inherited from the shell, or absent.
+
+**The rule that makes these two lines work.** `dotenv.config()`
+(`backend/src/config/index.js:10`) passes no `override`, so dotenv
+leaves alone any variable already present in `process.env`. The two
+`.env` lines therefore take effect ONLY in a shell that has not
+already exported them — which means SSH. Green's desktop terminal
+always exports `DBUS_SESSION_BUS_ADDRESS`, so there the shell's value
+is what gets frozen and `.env` cannot rescue a bad one.
 
 ##### Network Configuration
 
@@ -285,6 +542,17 @@ VLC is controlled via **D-Bus MPRIS** (`org.mpris.MediaPlayer2.vlc`) — there i
 
 (`LOG_TO_FILE` is not read by the engine — logging always writes to
 `LOGS_DIR` under PM2; the key survives only in old notes.)
+
+- **DEBUG** (`true` | `false`) — **the engine does not read it; one
+  script does.** Its only reader is
+  `backend/scripts/validate-session.js:104`, which prints the stack
+  trace when the post-session validator hits an error (see "Post-Game
+  Session" in the component docs). `ecosystem.config.js`'s
+  `env_development` block sets it. The engine's verbose-logging flag
+  is a different key, `ENABLE_DEBUGGING`
+  (`backend/src/config/index.js:100`).
+  - Default: unset — the validator prints the message without the
+    stack trace
 
 ##### Session Configuration
 
@@ -446,26 +714,63 @@ ENABLE_HTTPS=true
 
 ### SSL Certificate Setup
 
-Generate a self-signed certificate (valid 365 days):
+**Read this before generating anything.** A fresh clone already
+carries a certificate and key: `backend/ssl/cert.pem` and `key.pem`
+are tracked, and no `.gitignore` excludes them. That tracked pair is
+`CN=10.0.0.177`, SAN `IP:10.0.0.177, DNS:raspberrypi.local,
+DNS:localhost`, valid 2025-10-24 to 2026-10-24. `npm start` serves it
+with no warning (`backend/.env.example:111-112`;
+`backend/ecosystem.config.js:22-23`). At the venue address
+192.168.0.191 it is a **name mismatch**: Chrome ignores the CN and
+matches only the SAN, and an IP host needs an `iPAddress` SAN that
+matches exactly.
+
+So on a new machine there are two correct routes, and one wrong one.
+
+**Route 1 (the one green takes): copy the pair blue actually serves.**
+The GM tablets and the Pi 4 remote display accepted blue's certificate
+once each; copying it keeps that trust. The full procedure — the
+fingerprint check first, then the copy, placed after the clone and
+before the first `npm start` — is the step
+"3. Certificate — check, then copy" under "Raspberry Pi Deployment".
+
+**Route 2: generate a new one WITH an IP SAN.** Use this if blue's
+`notAfter` falls before a show, or the SAN does not name the venue
+address and a tablet warns with a name error. Every tablet and the
+remote display then warn and accept once again.
 
 ```bash
 cd backend
 mkdir -p ssl
-openssl req -x509 -newkey rsa:4096 -nodes \
+openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
   -keyout ssl/key.pem \
   -out ssl/cert.pem \
-  -days 365 \
-  -subj "/CN=localhost"
+  -subj "/CN=192.168.0.191" \
+  -addext "subjectAltName=IP:192.168.0.191,DNS:localhost"
+chmod 600 ssl/key.pem
 ```
 
-For production with domain name:
+Substitute the machine's real address for `192.168.0.191`. The
+`-addext` flag is what writes the SAN; without it the certificate is
+useless to a browser reaching the machine by IP.
+
+Check what you produced, or what you copied:
+
 ```bash
-openssl req -x509 -newkey rsa:4096 -nodes \
-  -keyout ssl/key.pem \
-  -out ssl/cert.pem \
-  -days 365 \
-  -subj "/CN=your-pi-hostname.local"
+openssl x509 -in backend/ssl/cert.pem -noout \
+  -fingerprint -sha256 -ext subjectAltName -enddate
 ```
+
+> **Changed from:** an earlier revision of this guide generated
+> `-subj "/CN=localhost"` or `-subj "/CN=your-pi-hostname.local"`
+> with no `-addext`. Those recipes emit no SAN at all, so the
+> certificates they make are rejected by every current browser.
+> Do not use them.
+
+**Note for the record:** the tracked private key is in the repository
+history. Secrets rotation is deferred by ruling; the real fix is a
+certificate on a real domain (ROADMAP row 8.19, spike S2 — see "Real
+Domain Certificate" below).
 
 ### Environment Configuration
 
@@ -654,16 +959,26 @@ The `ALN-TokenData/tokens.json` file is shared between scanners and orchestrator
 #### Scanner Repositories (via submodule)
 ```bash
 aln-memory-scanner/
-└── data/                    # ALN-TokenData submodule
-    ├── tokens.json
-    └── assets/
-        ├── images/          # Local images displayed on scanner device
-        │   ├── token1.jpg
-        │   └── token2.png
-        └── audio/           # Local audio played on scanner device
-            ├── sound1.mp3
-            └── sound2.wav
+├── data/                    # ALN-TokenData nested submodule
+│   └── tokens.json          #   the web player scanner's OWN pin
+└── assets/                  # in the scanner repo, NOT in ALN-TokenData
+    ├── manifest.json        #   the hardware scanners' sync manifest
+    ├── images/              # 127 BMPs, displayed on the scanner device
+    │   ├── kaa001.bmp
+    │   └── jaw001.bmp
+    └── audio/               # played on the scanner device
+        ├── asm031.wav
+        └── rat031.mp3
 ```
+
+> **Changed from:** an earlier revision of this guide drew `assets/`
+> inside `data/`. It is not there. The backend's asset-sync endpoints
+> resolve into `aln-memory-scanner/assets/`
+> (`backend/src/routes/resourceRoutes.js:17-22`), and the web player
+> scanner reads `./data/tokens.json`
+> (`aln-memory-scanner/js/app.js:64`) — a separate submodule pin from
+> the pack the backend activates. See "Two things a sync does not
+> fix".
 
 #### Orchestrator Backend
 ```bash
@@ -686,10 +1001,16 @@ ALN-Ecosystem/
    - Update tokens.json: `"video": "filename.mp4"`
 
 2. **For Images/Audio** (scanner feedback):
-   - Add files to `ALN-TokenData/assets/images/` or `assets/audio/`
-   - Update tokens.json: `"image": "assets/images/filename.jpg"`
-   - Commit and push ALN-TokenData submodule
-   - Update submodule reference in scanner repos
+   - Add files to `aln-memory-scanner/assets/images/` or
+     `aln-memory-scanner/assets/audio/` — NOT to `ALN-TokenData`,
+     which has no `assets/` directory
+   - Update tokens.json: `"image": "assets/images/filename.bmp"`
+   - Commit and push the `aln-memory-scanner` submodule, and
+     `ALN-TokenData` for the tokens.json change
+   - Update the submodule references in the parent repo
+   - The Notion sync places nothing here: it only LOOKS for files
+     already on disk. See "Audio and video files are placed by hand,
+     before the sync".
 
 ## Installation Profile (the venue document)
 
@@ -747,6 +1068,46 @@ docker run -d --name homeassistant \
   ghcr.io/home-assistant/home-assistant:stable
 ```
 
+#### Building green from blue: copy the volume, pin the image
+
+Do this INSTEAD of the plain `docker run` above, and do it before the
+first `docker run` — the copied volume must be in place when the
+container first starts.
+
+The seven `scene.*` definitions, the owner account and the long-lived
+access token exist only inside blue's config volume. They are in no
+git repository.
+
+```bash
+# 1. Copy blue's whole volume over the share (see "2. Mount blue's
+#    share"), before any container exists on green.
+rsync -a /mnt/blue/ha-config/ ~/ha-config/
+sudo chown -R $USER:$USER ~/ha-config
+
+# 2. Read blue's exact image, ON BLUE — not `:stable`.
+docker inspect homeassistant --format '{{.Config.Image}}'
+docker images --digests ghcr.io/home-assistant/home-assistant
+curl -s -H "Authorization: Bearer $HOME_ASSISTANT_TOKEN" \
+  http://localhost:8123/api/config    # the `version` field
+
+# 3. Run green on that digest.
+docker run -d --name homeassistant \
+  --network=host \
+  --restart=unless-stopped \
+  -v ~/ha-config:/config \
+  ghcr.io/home-assistant/home-assistant@sha256:<blue's digest>
+```
+
+Why the digest and not `:stable`: `:stable` moves. If green lands on a
+newer release than blue's, Home Assistant migrates `.storage` on its
+first start, on show week, with a fallback measured in days.
+`scenes.yaml` is not part of that migration, but the rest of the
+volume is. Upgrade both machines later, deliberately.
+
+If `:stable` is used anyway, watch `docker logs homeassistant` through
+the first start, then run the seven-scene check in step 4 below before
+calling lighting done.
+
 Notes:
 - With `HA_DOCKER_MANAGE=true` (the default) the backend starts and
   stops this container around its own lifecycle — but only a
@@ -801,15 +1162,30 @@ curl -s -H "Authorization: Bearer $HA_TOKEN" \
 
 # Scenes visible to the engine: from the GM panel, Environment →
 # Lighting → refresh scene list; all seven scene.* ids should appear.
+
+# Or read them straight out of HA (same seven ids as the profile's
+# bindings.lighting block):
+curl -s -H "Authorization: Bearer $HA_TOKEN" http://localhost:8123/api/states \
+  | grep -o '"entity_id":"scene\.[a-z0-9_]*"' | sort
 ```
+
+Then activate one scene from the GM panel and watch a real bulb. That
+is the end-to-end proof; the scene list only proves HA has the ids.
 
 ## Media Transfer (building a new machine)
 
 Media files are deliberately NOT in git (videos and music are
 git-excluded; ROADMAP §2.3). A new machine gets them by copy. The
-scanner-side images/audio ARE in git (`ALN-TokenData/assets/`) and
-arrive with the clone — hardware scanners then sync them from the
-orchestrator automatically.
+scanner-side images and audio ARE in git — in
+`aln-memory-scanner/assets/` (127 BMPs in `images/`, three audio
+files, and `manifest.json`), which is where the backend's asset-sync
+endpoints resolve them from
+(`backend/src/routes/resourceRoutes.js:17-22`). They arrive with the
+clone, and hardware scanners then sync them from the orchestrator
+automatically.
+
+> **Changed from:** an earlier revision of this guide named
+> `ALN-TokenData/assets/`. That directory does not exist.
 
 ### Inventory (what must be copied)
 
@@ -828,6 +1204,22 @@ rsync -av old-pi:ALN-Ecosystem/backend/public/videos/ backend/public/videos/
 rsync -av old-pi:ALN-Ecosystem/backend/public/music/  backend/public/music/
 rsync -av old-pi:ALN-Ecosystem/backend/public/audio/  backend/public/audio/
 ```
+
+Building green from blue, the source is the mounted share rather than
+ssh — see "2. Mount blue's share":
+
+```bash
+cd ~/ALN-Ecosystem
+rsync -a /mnt/blue/ALN-Ecosystem/backend/public/videos/ backend/public/videos/
+rsync -a /mnt/blue/ALN-Ecosystem/backend/public/music/  backend/public/music/
+# Cue sounds: git already carries the seven the pack references.
+# Copy only what blue has and git does not.
+rsync -a --ignore-existing /mnt/blue/ALN-Ecosystem/backend/public/audio/ backend/public/audio/
+```
+
+Videos must be HEVC — see "9b. Pi 5 Video Settings". `test_tone.wav`
+in `backend/public/audio/` is the gitignored E2E scratch file, not
+content; it does not need copying.
 
 Session data (`backend/data/`) is deliberately NOT part of a fresh
 build — a new machine starts clean; the old machine and the backup
@@ -857,9 +1249,192 @@ console.log(missing.length?'MISSING: '+missing.join(', '):'sounds OK');"
 npm run music:seed
 ```
 
+```bash
+# 4. Hardware-scanner asset manifest: its pack identity must match the
+#    pack the orchestrator activated. Run with the orchestrator up.
+curl -sk https://localhost:3000/api/assets/manifest | grep -o '"contentHash":"[^"]*"'
+curl -sk https://localhost:3000/health              | grep -o '"contentHash":"[^"]*"'
+```
+
+The two must print the same hash. On a mismatch, or on a 404
+("Asset manifest not generated yet",
+`backend/src/routes/resourceRoutes.js:74-76`), regenerate it and
+re-check:
+
+```bash
+python3 scripts/generate_asset_manifest.py
+```
+
+That script imports the standard library only
+(`scripts/generate_asset_manifest.py:23-30`) — it needs none of the
+apt Python packages.
+
 The in-panel preflight's resource checks (`validateCommand`: sound
 files, video files, lighting scenes, audio sinks) are the same
 verification run continuously once the system is up.
+
+## Token sync on the machine (operations)
+
+The Notion token sync rewrites `tokens.json`, regenerates the
+hardware scanners' BMP images, and rebuilds the pack manifest. Nine of
+its facts are properties of the MACHINE rather than of the sync, so
+they belong here. The step-by-step run itself lives in
+`docs/runbooks/2026-09-thursday-token-sync.md`; that runbook points at
+this section rather than repeating it.
+
+**Do not run a sync within two hours of a show.**
+
+### The Python dependencies come from apt, not pip
+
+On Debian 13 / Raspberry Pi OS Trixie, `pip install` into the system
+interpreter exits with `externally-managed-environment` (PEP 668).
+`scripts/requirements.txt` still says `pip install -r`; on this
+machine that command fails.
+
+```bash
+sudo apt install -y python3-requests python3-pil python3-dotenv python3-jsonschema
+```
+
+Or, if a virtual environment is preferred:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements.txt
+```
+
+`requests` and Pillow are required; `dotenv` is optional and
+`jsonschema` is a soft dependency that turns the schema check on.
+`scripts/generate_asset_manifest.py` needs none of them — it imports
+the standard library only.
+
+### Install `fonts-dejavu-core` before the first sync on this machine
+
+The sync draws every token's BMP with DejaVu Sans Mono, falling back
+to Liberation and then to PIL's bitmap default
+(`scripts/sync_notion_to_tokens.py:203-215`). The Desktop image ships
+`fonts-dejavu-core`, but verify rather than assume: if this machine's
+fonts differ from the machine that produced the committed BMPs, every
+one of the 127 images re-renders to different bytes. That is a ~29 MB
+git diff, a new sha1 for every asset, and **a full ~38 MB re-sync on
+every hardware scanner** — five to fifteen minutes per device.
+
+```bash
+sudo apt install -y fonts-dejavu-core
+fc-list | grep -ci dejavu          # want a non-zero count
+```
+
+**The check that catches it.** Run the sync once on this machine
+before it matters, then count what changed:
+
+```bash
+git -C aln-memory-scanner status --short | wc -l
+```
+
+Expect roughly the number of tokens you edited. **A count near 127
+means the fonts differ** — install `fonts-dejavu-core`, re-run the
+sync, and only then commit.
+
+### Audio and video files are placed by hand, before the sync
+
+The sync creates BMP images. It creates no audio and no video, ever.
+
+- **Audio:** it only LOOKS for `{tokenId}.{mp3,wav,ogg}` already
+  sitting in `aln-memory-scanner/assets/audio/`
+  (`scripts/sync_notion_to_tokens.py:698`). A new audio memory needs
+  its file placed there BEFORE the sync runs, or the token's `audio`
+  field is written `null` and the token plays nothing.
+- **Video:** same pattern against `backend/public/videos/`
+  (`:699`). A new video token needs its `.mp4` dropped into
+  `backend/public/videos/` (git-excluded — see "Media Transfer")
+  before the sync, or `video` is written `null` and no TV playback is
+  possible.
+
+A BMP is generated only when the Notion page carries display text
+before its `SF_` block. With no text there is no BMP and the token
+silently falls back to `placeholder.bmp`.
+
+### Restart the orchestrator after a sync — then reboot devices
+
+The active pack is frozen at boot by `packService.activatePack()`.
+There is no hot reload, no admin command, and `system:reset` does not
+re-activate it. **Restarting the orchestrator is mandatory** after
+any change to pack files on disk. The only feedback otherwise is one
+log warning per drift.
+
+Two channels are live, which is worse than uniformly frozen:
+`/api/tokens` re-reads `tokens.json` on every request
+(`backend/src/services/tokenService.js:75-119`) and the asset
+endpoints re-read the asset directory on mtime
+(`backend/src/routes/resourceRoutes.js:32-46`). So a hardware scanner
+rebooted after the sync but BEFORE the orchestrator restart gets the
+NEW tokens and NEW images from a server still scoring on the OLD
+pack.
+
+**Order: sync → restart the orchestrator → then reboot devices.**
+
+```bash
+cd backend && npm run prod:restart
+```
+
+### Rebuild the pack manifest after any hand edit
+
+A full sync rebuilds the manifest for you. A hand edit to any pack
+file does not.
+
+```bash
+node backend/scripts/build-pack-manifest.js ALN-TokenData
+```
+
+Skip it and the orchestrator still boots — the activation gate does
+not check manifest freshness — but every GM tablet's staged pack
+refresh fails its per-file sha1 compare and quietly falls back to its
+cached, older rules. The failure looks like "the new values just did
+not take".
+
+### Two things a sync does not fix
+
+- **The web player scanner reads a different pin.** It loads
+  `./data/tokens.json` (`aln-memory-scanner/js/app.js:64`), which is
+  the `aln-memory-scanner/data` nested submodule — a separate
+  revision from the pack the backend activates. A sync does not touch
+  it. Its IMAGES are current (they are served from
+  `backend/public/player-scanner → aln-memory-scanner`), but its
+  token JSON will be stale until that pin is deliberately bumped.
+- **The hardware scanners have a 50,000-byte token-database
+  ceiling** (`arduino-cyd-player-scanner/ALNScanner_v5/config.h:90`,
+  `MAX_TOKEN_DB_SIZE`). Today's `/api/tokens` payload is around
+  34 KB. A large content drop can cross it, and then every device
+  logs `Token DB too large` and keeps its cached database
+  (`.../services/TokenService.h:223-228`) — which looks exactly like
+  "the new tokens just did not show up". Check after every sync:
+
+```bash
+curl -sk https://localhost:3000/api/tokens | wc -c
+```
+
+## Acceptance gate
+
+A machine is not ready because the steps were followed. It is ready
+because it passed `docs/preflight-checklist.md`, which is green's
+acceptance gate (ROADMAP §3). Run it on the machine, from the
+machine's own checkout.
+
+Two things in it are worth knowing before it is run:
+
+- The **only** proof that the TV display works is the TV. Start the
+  orchestrator, show the scoreboard from the GM panel, look at the
+  venue TV, hide it again, and play one video on top. The panel's
+  `display` light reads healthy while the kiosk is hidden, so it
+  proves nothing on its own.
+- Its §8.3 window-control check needs the orchestrator running AND
+  the scoreboard shown once from the panel, or there is no window for
+  it to find.
+
+The show-ready acceptance items beyond the checklist (a real video on
+the TV with picture and sound; audio routed to the Bluetooth speaker
+and ducking under a video; a lighting scene on a real bulb; a tablet
+scanning a tag over the secure connection; a hardware scanner doing a
+full asset sync) are the owner's, and are listed in ROADMAP §6
+Stage B.
 
 ## Deployment
 
@@ -926,6 +1501,16 @@ npm run prod:reload         # Zero-downtime reload
 ```
 
 #### Auto-start on Boot
+
+> **Building a venue machine? Do this from "8. Boot-to-running
+> (auto-start posture)" instead** — not from here. PM2 freezes the
+> environment of the shell that runs the first start and replays it on
+> every boot, and the wrong shell is the quietest failure on this
+> system: the machine comes up, serves, and looks fine while `audio`
+> reports down, every VLC D-Bus call throws, and the idle loop never
+> starts. That section decides the shell before it runs these
+> commands.
+
 ```bash
 # Save current PM2 configuration
 npm run prod:save
@@ -1028,22 +1613,121 @@ Once running (any method):
 ### 0. Image the machine
 
 The production platform is a **Raspberry Pi 5** running **Raspberry
-Pi OS Bookworm 64-bit, Desktop edition** — the desktop matters: the
+Pi OS 64-bit, Desktop edition**. The desktop matters: the
 orchestrator's VLC and the scoreboard's Chromium kiosk render on the
-Pi's own graphical session (Xorg/LXDE; the `desktop-control.sh`
-prestart hook assumes LXDE components).
+Pi's own graphical session, and the code drives that session through
+X11 (`DISPLAY=:0` at `backend/src/utils/displayDriver.js:56`, window
+control with `xdotool` and `wmctrl` at `:104`, `:289-290`, `:319`).
 
-1. Flash the OS with Raspberry Pi Imager (set hostname, user, WiFi,
-   and SSH in the imager's settings gear).
-2. Boot, then enable **auto-login to desktop**:
-   `sudo raspi-config` → System Options → Boot / Auto Login →
-   Desktop Autologin. Without this, nothing can own the display
-   after an unattended power-up (see "Boot-to-running" below).
-3. Add the service user to the device groups the system touches:
+A card imaged today gets **Raspberry Pi OS Trixie (Debian 13)**. Its
+desktop is Wayland with the labwc compositor, on every model. Under
+labwc there is no X window manager for `xdotool` and `wmctrl` to talk
+to: the kiosk is never shown or hidden and the `display` service
+reports down. Step 4 below switches the session to X11, which is the
+single most important step in this guide.
+
+> **Changed from:** an earlier revision of this guide named Bookworm
+> and an Xorg/LXDE session, and had no Wayland step. On Bookworm the
+> X11 session was the default and step 4 did not exist.
+
+1. **Flash the OS with Raspberry Pi Imager.** 64-bit **Desktop**
+   edition. In the imager's settings gear set hostname, user, WiFi
+   and SSH — **and open the Localisation subtab and set the time
+   zone to blue's**. See step 2 for why.
+
+2. **Set the time zone** (skip if the Imager already did it, but
+   verify either way).
+
+   The host time zone is machine state that is not in git, and
+   nothing warns when it is wrong. The orchestrator derives it from
+   the host (`backend/src/utils/timezone.js:51-54`), publishes it in
+   `/health` (`backend/src/routes/healthRoutes.js:38`), and every
+   hardware scanner reads `/health` and applies it with
+   `setenv("TZ", tz, 1); tzset()`
+   (`arduino-cyd-player-scanner/ALNScanner_v5/services/OrchestratorService.h:377-385`).
+   A wrong zone shifts every scan timestamp and every line of the
+   post-session report by hours, silently, until someone reads a
+   report after the show.
+
+   ```bash
+   # On blue — read the `Time zone:` line:
+   timedatectl
+
+   # On green:
+   sudo timedatectl set-timezone <blue's zone>
+   ```
+
+   Verify later, once both machines are up: the same string must come
+   back from each.
+
+   ```bash
+   curl -sk https://localhost:3000/health | grep -o '"timezone":"[^"]*"'
+   ```
+
+   Home Assistant keeps its own clock in its config volume; the
+   `docker run` passes no `-e TZ`, so a copied volume needs nothing.
+
+3. **Enable auto-login to desktop.** Without it nothing can own the
+   display after an unattended power-up (see "8. Boot-to-running"
+   below).
+
+   On Trixie this is **two** menu entries, not one:
+
+   - `sudo raspi-config` → System Options → **S5 Boot** → **B2
+     Desktop**
+   - `sudo raspi-config` → System Options → **S6 Auto Login** → answer
+     **yes** to "Would you like to automatically log in to the
+     desktop?"
+
+   Or, in one command:
+
+   ```bash
+   sudo raspi-config nonint do_boot_behaviour B4
+   ```
+
+   > **Changed from:** on Bookworm this was one entry, System Options
+   > → Boot / Auto Login → Desktop Autologin. The four-way menu is
+   > still in the file but no interactive path reaches it any more.
+
+4. **Switch the desktop session to X11**, then reboot.
+
+   `sudo raspi-config` → Advanced Options → **Wayland** → **W1 X11**
+   ("Openbox window manager with X11 backend") → reboot when asked.
+
+   The X11 stack is already on the Desktop image (the image installs
+   both `rpd-wayland-core` and `rpd-x-core`), so this is a switch,
+   not an install. W1 writes `rpd-x` into `/etc/lightdm/lightdm.conf`
+   as `user-session`, `autologin-session` and `greeter-session` —
+   the same file step 3 wrote `autologin-user=` into. Both must be
+   set for the X11 desktop to come up unattended.
+
+   Check after the reboot:
+
+   ```bash
+   echo $XDG_SESSION_TYPE                    # must print: x11
+   DISPLAY=:0 wmctrl -m                      # must name Openbox
+   DISPLAY=:0 xdotool getdisplaygeometry     # must print the TV size
+   systemctl get-default                     # graphical.target
+   grep -E '^(autologin-user|autologin-session)=' /etc/lightdm/lightdm.conf
+   ```
+
+   **If the desktop does not come up after W1:**
+   `grep -n session /etc/lightdm/lightdm.conf` must show `rpd-x` on
+   all three keys; then `sudo apt install --reinstall rpd-x-core` and
+   reboot.
+
+   **If the session comes up but no window can be controlled**
+   (`DISPLAY=:0 wmctrl -l` empty, or `xdotool search` finds nothing
+   while the kiosk is visible): do not debug this on show week. Blue
+   runs the show; the rollback is unplugging green and plugging blue
+   back in.
+
+5. **Add the service user to the device groups the system touches:**
    ```bash
    sudo usermod -aG video,audio,bluetooth $USER
    # docker group comes with the Home Assistant install step
    ```
+   Log out and back in for the groups to take effect.
 
 ### 1. Prepare Raspberry Pi
 
@@ -1052,8 +1736,9 @@ prestart hook assumes LXDE components).
 sudo apt update && sudo apt upgrade -y
 
 # Install dependencies
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs vlc mpd git xdotool wmctrl chromium-browser
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs vlc mpd git xdotool wmctrl chromium \
+  pulseaudio-utils pipewire-bin dbus-bin
 
 # Disable the system MPD — the orchestrator spawns and supervises its own
 sudo systemctl stop mpd && sudo systemctl disable mpd
@@ -1064,71 +1749,375 @@ sudo npm install -g pm2
 
 # Clone repository
 cd ~
-git clone --recurse-submodules https://github.com/[user]/ALN-Ecosystem.git
+git clone --recurse-submodules https://github.com/maxepunk/ALN-Ecosystem.git
 cd ALN-Ecosystem/backend
 npm install
 ```
 
-### 2. Configure for HDMI Output
+Three things in that block changed with Trixie:
 
-Edit `/boot/firmware/config.txt` (Raspberry Pi OS Bookworm; older releases used `/boot/config.txt`):
-```ini
-# Force HDMI output
-hdmi_force_hotplug=1
-hdmi_drive=2
-hdmi_group=2
-hdmi_mode=82  # 1080p 60Hz
-```
+- **Node 22, not 20.** `backend/package.json` declares
+  `engines.node >= 22.0.0`; Node 20 reached end of life on
+  2026-04-30. NodeSource re-signed its repositories for the 20, 22
+  and 24 lines in January 2026, so `setup_22.x` runs the same way
+  `setup_20.x` did.
+- **`chromium`, not `chromium-browser`.** The rename is the whole
+  reason the kiosk fails on a fresh install. Set `CHROMIUM_BIN` too —
+  step 4.
+- **`pulseaudio-utils pipewire-bin dbus-bin` added.** `pactl` comes
+  from `pulseaudio-utils` and the guide never installed it;
+  `pw-play`/`pw-dump` come from `pipewire-bin` and `dbus-monitor`
+  from `dbus-bin`, both normally present already. Naming all three is
+  idempotent.
 
-### 2b. Pi 5 Video Settings (CRITICAL — HEVC only)
-
-Full detail: `backend/CLAUDE.md` → "Raspberry Pi 5 Specifics". The
-load-bearing facts:
-
-- **The Pi 5 has NO H.264 hardware decoder.** Only HEVC (H.265) is
-  hardware-decoded. Every game video (idle loop included) MUST be
-  HEVC, or VLC software-decodes at ~47% CPU with artifacts. Encode
-  with `-c:v libx265 -tag:v hvc1 -movflags +faststart` (the
-  faststart flag prevents a frozen first frame; the full ffmpeg
-  recipe is in backend/CLAUDE.md).
-- **VLC video output must be `--vout=gles2`** — auto-detected on
-  Pi 5 by `vlcMprisService._getHwAccelArgs()`; override only via
-  `VLC_HW_ACCEL`. (`--vout=gl` = 280% CPU + black screens.)
-- Verify hardware decode on the bench:
-  `DISPLAY=:0 cvlc --verbose 2 --play-and-exit video.mp4 2>&1 | grep -i hwaccel`
-  — a `Hwaccel V4L2 HEVC` line means the hardware path engaged.
-
-### 3. Set Static IP (Optional)
-
-Raspberry Pi OS Bookworm uses **NetworkManager** (`nmcli` / `nmtui`), not `dhcpcd`. Configure a static IP on the active connection:
+**Pin the game pack to blue's revision.** Green must activate the
+same pack blue is running, or scoring and token content differ
+between the two machines.
 
 ```bash
-# List connections to find the name (e.g. "preconfigured" or "Wired connection 1")
-nmcli con show
+# On blue — read the revision:
+git -C ~/ALN-Ecosystem/ALN-TokenData rev-parse HEAD
+# (the parent's recorded gitlink is the same sha:
+#  git -C ~/ALN-Ecosystem ls-tree HEAD ALN-TokenData)
 
-# Apply a static IPv4 config
-sudo nmcli con mod "<connection-name>" \
-  ipv4.addresses 192.168.1.100/24 \
-  ipv4.gateway 192.168.1.1 \
-  ipv4.dns "8.8.8.8 8.8.4.4" \
-  ipv4.method manual
+# On green — check that sha out:
+cd ~/ALN-Ecosystem
+git -C ALN-TokenData checkout <that sha>
 
-# Re-activate the connection to apply
-sudo nmcli con up "<connection-name>"
+# Verify the manifest is fresh at that commit:
+node backend/scripts/build-pack-manifest.js ALN-TokenData \
+  && git -C ALN-TokenData diff --quiet pack-manifest.json && echo OK
 ```
 
-Or use the interactive TUI: `sudo nmtui`. (On pre-Bookworm releases, edit `/etc/dhcpcd.conf` instead.)
+`pack-manifest.json`'s `contentHash` is a digest of the pack's
+contents, not a revision — nothing maps it back to one. Read it as
+the check AFTER the pin: with blue's sha checked out, green's
+`/health` reports the same hash blue's does.
 
-### 4. Boot-to-running (auto-start posture)
+### 2. Mount blue's share
+
+Blue's filesystem is reachable from green over a network share. Six
+things are copied from it and six more are read off it; everything
+between here and the first `npm start` needs it mounted.
+
+The share's name and credentials are the owner's. Substitute them for
+the placeholders.
+
+```bash
+sudo apt install -y cifs-utils
+sudo mkdir -p /mnt/blue
+sudo mount -t cifs //<blue>/<share> /mnt/blue \
+  -o username=<user>,uid=$(id -u),gid=$(id -g)
+```
+
+Check the mount by listing the one directory the next step needs:
+
+```bash
+ls -l /mnt/blue/ALN-Ecosystem/backend/ssl/
+```
+
+Two files, `cert.pem` and `key.pem`. If that listing fails, stop and
+fix the mount — every copy step below reads through it.
+
+Unmount when the build is done: `sudo umount /mnt/blue`.
+
+### 3. Certificate — check, then copy
+
+Do this **after the clone** and **before the first `npm start`**. A
+fresh clone already serves a certificate (`CN=10.0.0.177` — see "SSL
+Certificate Setup"), so a machine started before this step serves the
+wrong one silently, and a copy made after it without a restart
+changes nothing.
+
+**1. Establish what blue actually serves.** The file on blue's disk
+and the certificate blue serves on the wire are not the same claim.
+Check both.
+
+```bash
+# On blue — the file:
+openssl x509 -in ~/ALN-Ecosystem/backend/ssl/cert.pem -noout \
+  -fingerprint -sha256 -ext subjectAltName -enddate
+
+# From any machine on the kit network — the wire:
+openssl s_client -connect 192.168.0.191:3000 </dev/null 2>/dev/null \
+  | openssl x509 -noout -fingerprint -sha256 -ext subjectAltName -enddate
+```
+
+Same fingerprint means the file on disk is the certificate the
+tablets accepted. Note the SAN and the `notAfter` date — those are
+what decide whether route 1 or route 2 applies.
+
+**2. Copy that pair onto green.**
+
+```bash
+cd ~/ALN-Ecosystem
+cp /mnt/blue/ALN-Ecosystem/backend/ssl/cert.pem backend/ssl/cert.pem
+cp /mnt/blue/ALN-Ecosystem/backend/ssl/key.pem  backend/ssl/key.pem
+chmod 600 backend/ssl/key.pem
+```
+
+`git status` will now show `backend/ssl/*` modified — the pair is
+tracked in the repository. **Leave it uncommitted, and never
+`git checkout` or `git pull` over it.**
+
+**3. Verify on green**, once the server is up: the fingerprint must
+equal blue's.
+
+```bash
+openssl s_client -connect localhost:3000 </dev/null 2>/dev/null \
+  | openssl x509 -noout -fingerprint -sha256
+```
+
+**If the fingerprints differ, or `notAfter` falls before a show, or
+the SAN does not name the venue address and a tablet warns with a
+name error:** regenerate with the IP-SAN recipe in "SSL Certificate
+Setup" instead. Every tablet and the Pi 4 remote display then warn
+and accept once again.
+
+### 4. The environment file — copy, then audit
+
+Do this **after the clone**, and **before both** the Home Assistant
+container step and the first `npm start`.
+
+With no `.env` the server still boots — that is what makes this step
+easy to skip and expensive to skip. It boots on
+`adminPassword: 'admin'` and
+`jwtSecret: 'change-this-secret-in-production'`
+(`backend/src/config/index.js:67-68`), and `validateConfig()`
+(`:163-185`) checks neither. It spawns `chromium-browser`, which does
+not exist. An empty `HOME_ASSISTANT_TOKEN` makes the lighting service
+disable itself. Nothing in the log names any of it.
+
+```bash
+cd ~/ALN-Ecosystem
+cp /mnt/blue/ALN-Ecosystem/backend/.env backend/.env
+chmod 600 backend/.env
+```
+
+**Then audit it for blue-only values.** Print the keys that carry
+machine-specific state:
+
+```bash
+grep -n -E '^(PACK_PATH|PROFILE_PATH|SSL_KEY_PATH|SSL_CERT_PATH|VIDEO_DIR|HOME_ASSISTANT_URL|HOME_ASSISTANT_TOKEN|HA_DOCKER_CONTAINER|SCOREBOARD_WINDOW_MARKER|IDLE_LOOP_FILE|CHROMIUM_BIN|DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR)=' backend/.env
+```
+
+| Key | What it must be on green |
+|---|---|
+| `PACK_PATH`, `PROFILE_PATH` | **Unset.** Both are loud-warning override seams a production machine leaves alone. An absolute path off blue's disk does not refuse boot; it degrades lighting and the idle loop. Delete the line, or repoint it. |
+| `SSL_KEY_PATH`, `SSL_CERT_PATH` | The relative `./ssl/key.pem` / `./ssl/cert.pem`. |
+| `VIDEO_DIR` | Unset, or the relative `./public/videos`. |
+| `HOME_ASSISTANT_URL` | `http://localhost:8123` — HA runs on this machine. |
+| `HOME_ASSISTANT_TOKEN` | Blue's token is valid ONLY with blue's copied config volume. Keep it if the volume was copied; mint a new one if HA was rebuilt from scratch. |
+| `HA_DOCKER_CONTAINER` | Must equal the `docker run --name` used in the Home Assistant step (default `homeassistant`). |
+| `CHROMIUM_BIN` | **Set it: `CHROMIUM_BIN=/usr/bin/chromium`.** |
+| `SCOREBOARD_WINDOW_MARKER`, `IDLE_LOOP_FILE` | Normally unset; the defaults are right. |
+| `DBUS_SESSION_BUS_ADDRESS`, `XDG_RUNTIME_DIR` | They embed a uid. Keep blue's values only if green's login user has the same `id -u`; otherwise rewrite them. Step 8 is where they are decided. |
+
+Last, diff the key set against the template. A key in one and not the
+other is a documentation defect worth reporting:
+
+```bash
+cd ~/ALN-Ecosystem/backend
+diff <(grep -oE '^#?[A-Z_][A-Z0-9_]*=' .env.example | tr -d '#=' | sort -u) \
+     <(grep -oE '^[A-Z_][A-Z0-9_]*='   .env         | tr -d  '=' | sort -u)
+```
+
+### 5. Home Assistant — copy the volume, then run the container
+
+The procedure lives in its own section: **"Home Assistant
+(Lighting)"**, above. Do it here in the sequence, after the `.env`
+copy (`HA_DOCKER_CONTAINER` must equal the `docker run --name`) and
+before the first `npm start`.
+
+In short: `rsync -a /mnt/blue/ha-config/ ~/ha-config/` first, install
+Docker, then run the container on blue's exact image digest rather
+than `:stable`.
+
+### 6. Install the WirePlumber rule (required for video audio)
+
+The orchestrator owns VLC's stream volume. Without this drop-in,
+WirePlumber's stream-restore competes with the orchestrator and can
+silently mute video audio across reboots (the 2026-05-22 incident).
+See `backend/CLAUDE.md` → "WirePlumber Configuration Dependency" for
+the full rationale.
+
+**WirePlumber 0.5 does not read Lua configuration at all.** Debian 13
+ships 0.5.8, and drop-ins are now SPA-JSON `.conf` files in
+`wireplumber.conf.d/`. A Lua file in `main.lua.d/` is silently
+ignored — and the orchestrator's own boot check
+(`backend/src/services/audioRoutingService.js:618`) only tests that
+the old Lua path exists, so **copying blue's `.lua` file onto green
+silences the warning and changes nothing.** Write the `.conf`.
+
+> **Expect the orchestrator to log `WirePlumber rule missing` on
+> every boot anyway, and do NOT act on it.** The boot check
+> (`backend/src/services/audioRoutingService.js:617-630`) still tests
+> only the old Lua path, so on a correctly built Trixie machine that
+> warning is a **false alarm**. Its own text points at "DEPLOYMENT_GUIDE.md
+> Step 5" — this section's old number, now step 6 — and the obedient response, writing
+> the `.lua` file, is exactly what the never-copy list forbids: it
+> silences the warning and protects nothing. The `pw-dump` check below
+> is the truth about whether the rule is live. The orchestrator fix
+> (teach the check the `.conf` path) is queued as a separate task;
+> this paragraph goes away when it merges.
+
+Create the directory first. No package ships `/etc/wireplumber/` —
+WirePlumber's own configuration lives in `/usr/share/wireplumber/`,
+and `/etc/wireplumber` is admin-created. A bare `tee` into it fails
+with "No such file or directory".
+
+```bash
+sudo mkdir -p /etc/wireplumber/wireplumber.conf.d/
+sudo tee /etc/wireplumber/wireplumber.conf.d/51-aln-vlc-no-restore.conf > /dev/null <<'EOF'
+# ALN orchestrator: do not save or restore stream props/target for VLC.
+# The orchestrator owns VLC's stream volume (audioRoutingService).
+stream.rules = [
+  {
+    matches = [
+      { application.process.binary = "vlc" }
+    ]
+    actions = {
+      update-props = {
+        state.restore-props = "false"
+        state.restore-target = "false"
+      }
+    }
+  }
+]
+EOF
+systemctl --user restart wireplumber
+systemctl --user status wireplumber
+```
+
+The values are the STRING `"false"`, quoted. WirePlumber's stream
+script compares against the string; an unquoted `false` does not
+match.
+
+The status line must say `active`. A syntax error shows up in
+`journalctl --user -u wireplumber`.
+
+**Then prove the rule matched VLC.** The status check passes even
+with a wrong key, a `tee` that failed, or a drop-in written into the
+old `main.lua.d/`. This is the only check that does not:
+
+```bash
+# With a video playing:
+pw-dump | grep -c '"state.restore-props": "false"'
+```
+
+At least 1. (`pw-dump` comes from `pipewire-bin`.)
+
+End to end: set the video volume from the GM panel, restart the
+orchestrator, play again. The volume must be what the orchestrator
+set.
+
+> **Changed from:** an earlier revision of this guide wrote a Lua
+> drop-in to `/etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua`.
+> That was right for WirePlumber 0.4 on Bookworm and is inert on
+> 0.5.8. The canonical copies of both files are under
+> `docs/wireplumber/`. Note that the `mkdir -p` line moves with the
+> path — an operator who adapts the old block by changing only the
+> `tee` target writes the drop-in where 0.5.8 never looks.
+
+### 7. Media transfer — videos, music, cue sounds
+
+The procedure lives in its own section: **"Media Transfer (building a
+new machine)"**, above. Do it here in the sequence, after the
+WirePlumber rule and before the first `npm start` — the idle loop is a
+video file, and boot-to-running has nothing to show without it.
+
+In short: three `rsync` lines off the mounted share, then the four
+verify blocks (videos, cue sounds, `npm run music:seed`, the asset
+manifest hash).
+
+### 8. Boot-to-running (auto-start posture)
 
 Goal (ROADMAP, the boot pain): power on the Pi with the venue TV
 connected and arrive at a running show system — orchestrator up, VLC
 idle loop on the TV — with no terminal work. The pieces:
 
+#### First, decide the environment the first start freezes
+
+**Do this before the first `npm start`.** PM2 injects the current
+shell's environment when it first starts a process and keeps it:
+`pm2 save` writes the process list with that environment into the
+dump file, and the unit `pm2 startup` generates carries only `PATH`
+and `PM2_HOME` and runs `pm2 resurrect`. A restart re-reads the shell
+only with `--update-env`.
+
+The orchestrator adds nothing of its own. `backend/ecosystem.config.js`
+sets `NODE_ENV`, `PORT`, `HOST`, `HTTPS` and the SSL paths and no
+more; only `DISPLAY` is defaulted in code
+(`backend/src/utils/displayDriver.js:56-57`). So whatever the first
+`npm start`'s shell had for `DBUS_SESSION_BUS_ADDRESS` and
+`XDG_RUNTIME_DIR` is what **every boot after it** gets — and every
+`pactl` call, every `dbus-send`, every `dbus-monitor` inherits it.
+
+Get this wrong and the machine boots, serves, and looks fine: `audio`
+reports down, every VLC D-Bus call throws, the idle loop never
+starts, and nothing in the log names the cause.
+
+**1. Read the address in a terminal inside green's desktop session.**
+
+```bash
+echo $DBUS_SESSION_BUS_ADDRESS
+id -u
+```
+
+Two shapes come back, and they are not equal:
+
+- `unix:path=/run/user/1000/bus` — a fixed path that exists on every
+  boot once the user is logged in. Good.
+- `unix:abstract=/tmp/dbus-XXXXX` — minted per session and dead the
+  moment the machine is power-cycled. It freezes into PM2 just as
+  well, passes the bench on the day, and fails the first cold boot at
+  the venue.
+
+**2. Write the two lines into `backend/.env`,** using the uid `id -u`
+printed:
+
+```env
+DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+XDG_RUNTIME_DIR=/run/user/1000
+```
+
+`.env` is untracked and machine-local, which is where a uid belongs.
+
+**3. Start from the right shell.** `dotenv.config()`
+(`backend/src/config/index.js:10`) passes no `override`, so dotenv
+leaves alone any variable already in `process.env`. The two lines
+above therefore bite only in a shell that has NOT already exported
+them:
+
+- If the echo in step 1 printed the `unix:path=/run/user/<uid>/bus`
+  form, a first `npm start` from the desktop terminal is fine — the
+  shell's value and the `.env` value agree.
+- If it printed an `abstract=` address, **start from SSH**, where the
+  variable is unset and `.env` supplies it.
+
+If PM2 already holds a bad environment, fix it from SSH as well —
+`--update-env` re-injects the invoking shell's environment, so from
+the desktop terminal it re-freezes the same bad address:
+
+```bash
+pm2 restart aln-orchestrator --update-env && pm2 save
+```
+
+> **Changed from:** the preflight checklist used to say to add
+> `DBUS_SESSION_BUS_ADDRESS` to an `env_production` block in
+> `backend/ecosystem.config.js`. **There is no such block.**
+> `ecosystem.config.js` has `env`, `env_development` and
+> `env_staging`, and `npm start` is a bare
+> `pm2 start ecosystem.config.js` with no `--env`, so PM2 applies only
+> the default `env` block. Following that instruction creates a block
+> PM2 never reads. Use `backend/.env`.
+
+#### Then start it, and make it resurrect
+
 ```bash
 cd ~/ALN-Ecosystem/backend
 npm start            # first manual start (builds GM scanner, starts PM2)
-pm2 save             # snapshot the process list
+pm2 save             # snapshot the process list AND its environment
 pm2 startup          # generate the systemd unit
 # Run the sudo command it outputs — PM2 now resurrects on boot
 ```
@@ -1140,14 +2129,50 @@ What each boot then does, and what it depends on:
    (when the display mode calls for it) the scoreboard Chromium —
    none of these need separate auto-start entries.
 3. **Display dependency:** VLC and Chromium render on `DISPLAY=:0`,
-   so the desktop auto-login (step 0) must be enabled. PM2's systemd
-   unit can start BEFORE the graphical session exists; the
-   orchestrator's ProcessMonitor retries VLC, which papers over the
-   race — but this ordering is exactly the kind of thing CI cannot
-   test.
+   so the desktop auto-login AND the X11 session (step 0, entries 3
+   and 4) must both be set. PM2's systemd unit can start BEFORE the
+   graphical session exists; the orchestrator's ProcessMonitor
+   retries VLC, which papers over the race — but this ordering is
+   exactly the kind of thing CI cannot test.
 4. Home Assistant: with `--restart=unless-stopped` on the container
    (and/or `HA_DOCKER_MANAGE=true`), lighting comes up without
    intervention.
+
+#### The cold-boot check
+
+Power-cycle with nothing attached but power, network and the TV. Once
+the idle loop is up, run all four.
+
+```bash
+# 1. The orchestrator's own environment carries all three variables.
+PID=$(pgrep -f 'node .*src/server.js' | head -1)
+tr '\0' '\n' < /proc/$PID/environ \
+  | grep -E '^(DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR|DISPLAY)='
+```
+
+2. The GM panel's System Status shows `audio` healthy — that is
+   `pactl info` answering inside the orchestrator's own environment —
+   and `vlc` healthy.
+3. Pause, then resume, the idle loop from the panel. That is a
+   transport command over D-Bus, and the TV must react.
+4. From a terminal in the desktop session, VLC answers on the bus the
+   desktop sees:
+
+```bash
+dbus-send --session --dest=org.mpris.MediaPlayer2.vlc --print-reply \
+  /org/mpris/MediaPlayer2 org.freedesktop.DBus.Peer.Ping
+```
+
+**Read these after the logind window, not inside it.**
+`/run/user/<uid>` is created by pam_systemd when the user's first
+login session opens; PM2's unit starts `After=network.target`, not
+the graphical target. So for the first seconds after a cold boot the
+orchestrator can be up before the directory and the bus socket exist:
+`pactl info` fails with the path correct and `audio` reports down. The
+health registry re-probes every service every 15 seconds
+(`backend/src/app.js:333-340`), so `audio` recovers on the next pass.
+**A light still down a minute after the idle loop appears is the
+fault; one that clears on the first re-probe is the window.**
 
 > **Stage-B checklist item (home hardware pass):** perform at least
 > one cold power-cycle with nothing attached but power, network, and
@@ -1157,32 +2182,134 @@ What each boot then does, and what it depends on:
 > (`systemctl edit pm2-<user>` → `After=graphical.target`); record
 > what the bench shows.
 
-### 5. Install WirePlumber Rule (Required for Video Audio)
+### 9. Configure for HDMI Output
 
-The orchestrator owns VLC's stream volume. Without this drop-in, WirePlumber's
-`restore-stream` competes with the orchestrator and can silently mute video
-audio across reboots (2026-05-22 incident). See `backend/CLAUDE.md` →
-"WirePlumber Configuration Dependency" for the full rationale.
+Edit `/boot/firmware/config.txt` (this path is the same on Bookworm
+and Trixie; releases before Bookworm used `/boot/config.txt`):
+```ini
+# Force HDMI output
+hdmi_force_hotplug=1
+hdmi_drive=2
+hdmi_group=2
+hdmi_mode=82  # 1080p 60Hz
+```
+
+These are legacy firmware keys. Whether the Pi 5's KMS driver honours
+them has not been established. Building green from blue: compare
+blue's file rather than copying it — a boot config written for
+Bookworm does not belong on Trixie.
 
 ```bash
-sudo mkdir -p /etc/wireplumber/main.lua.d/
-sudo tee /etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua > /dev/null <<'EOF'
--- ALN orchestrator: bypass WirePlumber's stream-restore for VLC streams.
--- See backend/CLAUDE.md → "WirePlumber Configuration Dependency" for context.
-table.insert(stream_defaults.rules, {
-  matches = {
-    {
-      { "application.process.binary", "matches", "vlc" },
-    },
-  },
-  apply_properties = {
-    ["state.restore-props"]  = false,
-    ["state.restore-target"] = false,
-  },
-})
-EOF
-systemctl --user restart wireplumber
+diff /mnt/blue/boot/firmware/config.txt /boot/firmware/config.txt
 ```
+
+The test that settles it is a cold boot with the TV attached and the
+picture right.
+
+### 9b. Pi 5 Video Settings (CRITICAL — HEVC only)
+
+These settings used to live only in `backend/CLAUDE.md`. They are
+deployment facts, so they live here now; the agent document points
+back at this section.
+
+**The Pi 5 has NO H.264 hardware decoder.** The hardware block is
+physically absent. Only HEVC (H.265) is hardware-decoded, through
+`rpi-hevc-dec` at `/dev/video19`. **Every game video, the idle loop
+included, MUST be HEVC**, or VLC software-decodes at ~47% CPU with
+visible artifacts.
+
+**VLC's video output must be `--vout=gles2`** (EGL/OpenGL ES 2, the
+Pi 5's native GPU path, ~8% CPU). It is auto-detected on the Pi 5 by
+`vlcMprisService._getHwAccelArgs()`; override only through the
+`VLC_HW_ACCEL` environment key. `--vout=gl` goes through Mesa's
+desktop-OpenGL compatibility layer: 280% CPU and black screens. Both
+`gles2` and `gl` avoid DRM plane conflicts with Xorg; only `gles2` is
+cheap.
+
+**Encoding a video for this machine:**
+
+```bash
+ffmpeg -i INPUT.mp4 \
+  -c:v libx265 -crf 20 -preset medium -tag:v hvc1 \
+  -g 60 -keyint_min 30 \
+  -movflags +faststart \
+  -c:a copy \
+  OUTPUT.mp4 -y
+```
+
+- `-tag:v hvc1` is what makes players recognise the stream as HEVC.
+- `-movflags +faststart` is required. Without it the moov atom sits
+  at the end of the file and the first frame freezes.
+- `-g 60 -keyint_min 30` is a keyframe every two seconds at 30fps,
+  which is what makes seeking reliable.
+
+**Verify hardware decode on the bench:**
+
+```bash
+DISPLAY=:0 cvlc --verbose 2 --play-and-exit video.mp4 2>&1 \
+  | grep -i "v4l2\|Hwaccel\|hw fail\|codec.*started\|gles2"
+```
+
+- `Hwaccel V4L2 HEVC stateless V4` — hardware decode is working.
+- `Set hw fail` at init — a false alarm from the pre-vout probe.
+  Look for the `Hwaccel` lines that come after it.
+- `Could not find a valid device` for `h264_v4l2m2m` — expected on a
+  Pi 5. There is no H.264 hardware.
+
+Measure CPU with `top -b -n2 -d1 -p <pid>` (instantaneous), not
+`ps -o %cpu` (a cumulative average that will flatter a bad setup).
+
+### 10. The venue address (cutover step)
+
+The orchestrator answers on one fixed address on the kit network:
+**192.168.0.191**. Every GM tablet and every hardware scanner is
+configured against it. It is not set on the Pi — it is a **DHCP
+reservation on the kit router, keyed to the Pi's MAC address**.
+
+**So the cutover step is a router change, not a green change.** Green
+has a new MAC. When blue is unplugged and green is plugged in, move
+the 192.168.0.191 reservation from blue's MAC to green's. Rolling
+back is moving it back. Two machines cannot hold the address at once,
+so leave green on plain DHCP at home and make this change only at
+cutover.
+
+Read green's MAC before the day: `ip link show` — the `link/ether`
+line of the interface that is on the kit WiFi.
+
+**If the address must be set on the machine instead**, Raspberry Pi
+OS uses **NetworkManager** (`nmcli` / `nmtui`), not `dhcpcd`:
+
+```bash
+# List connections to find the name (e.g. "preconfigured" or "Wired connection 1")
+nmcli con show
+
+# Apply a static IPv4 config
+sudo nmcli con mod "<connection-name>" \
+  ipv4.addresses 192.168.0.191/24 \
+  ipv4.gateway <router> \
+  ipv4.dns <router> \
+  ipv4.method manual
+
+# Re-activate the connection to apply
+sudo nmcli con up "<connection-name>"
+```
+
+Then reboot and check that it survived. On Trixie a profile written
+by `nmcli con mod` can land under `/run/NetworkManager/system-connections/`,
+which is a tmpfs — it is gone after a reboot.
+
+```bash
+ip addr
+ls /etc/NetworkManager/system-connections/
+```
+
+If the profile is only under `/run`, copy it to
+`/etc/NetworkManager/system-connections/` with mode 600 and run
+`nmcli con reload`.
+
+DNS is not set up on the kit network today, and the profile records
+that. DNS and a real-domain certificate are deferred together
+(ROADMAP row 8.19).
 
 ## Network Configuration
 
@@ -1200,6 +2327,11 @@ ifconfig | grep "inet " | grep -v 127.0.0.1
 ```
 
 ### Firewall Configuration
+
+**Skip this on a fresh Raspberry Pi OS image.** `ufw` is not
+installed, the kit network carries its own router and no internet
+connection, and nothing on it needs a host firewall. The rules below
+are for a machine that already runs one.
 
 ```bash
 # Ubuntu/Debian
@@ -1268,6 +2400,50 @@ The scoreboard is a TV-optimized display showing live Black Market rankings and 
    - Red: Offline (displays last known state, attempting reconnect)
    - Yellow: Connecting
 
+### The connection posture and the two scoreboard displays
+
+How the venue is wired today. This is the posture green must
+reproduce, not a menu of options.
+
+**One fixed address, over HTTPS.** Every device reaches the
+orchestrator at `https://192.168.0.191:3000` on the kit WiFi. The
+address is a DHCP reservation on the kit router — see "10. The venue
+address". There is no DNS on the kit network: DNS and a real-domain
+certificate are deferred together (ROADMAP row 8.19, spike S2), so
+every URL is an IP address and every browser sees a self-signed
+certificate.
+
+**One certificate, accepted once per device.** Green serves the same
+self-signed pair blue served, copied over the share ("3.
+Certificate — check, then copy"). Because the fingerprint is
+unchanged, the two GM tablets and the Pi 4 remote display keep the
+trust they already granted and warn no-one at the cutover. If the
+certificate is ever regenerated, every one of those devices warns
+once and has to be clicked through again — on each device, by hand.
+GM tablets need this: Web NFC only works in a secure context.
+Hardware scanners do not: they skip certificate checks.
+
+**Two scoreboard displays, and they are not the same thing.**
+
+| | The TV | The remote display |
+|---|---|---|
+| What it is | The venue TV on the orchestrator Pi's own HDMI output | A separate Pi 4 running a browser in fullscreen |
+| Who runs the browser | **The orchestrator does.** It spawns Chromium in kiosk mode itself (`backend/src/utils/displayDriver.js:165`) | A person, or that machine's own autostart |
+| When the browser starts | Only when the scoreboard is first SHOWN from the GM panel — not at boot | At that machine's boot |
+| Setup on green | None beyond `CHROMIUM_BIN` and the X11 session. Do not add an autostart entry for it | None. It is not rebuilt this week |
+| Shares the screen with | The idle loop and the game-event videos, which is why the orchestrator shows and hides it | Nothing |
+
+The TV kiosk being absent is **not** a fault. The panel's `display`
+light reads healthy both when the kiosk is running and when there is
+no kiosk process and the scoreboard is hidden
+(`backend/src/utils/displayDriver.js:340-378`) — hidden is the idle
+posture. **The only proof that the TV display works is the TV:** show
+the scoreboard from the panel, see it on the venue TV, hide it again.
+A green light proves nothing on its own.
+
+The remote display is a display, not a GM station: it does not occupy
+a GM-station slot or appear as a device row.
+
 ### Setup for Display Devices
 
 #### Option 1: Dedicated Device (Recommended)
@@ -1285,23 +2461,37 @@ Steps:
 5. Display auto-updates as teams scan tokens
 
 #### Option 2: Chromium Kiosk Mode (Linux/Raspberry Pi)
+
+This is for a SEPARATE display device — the Pi 4 remote display. The
+orchestrator Pi's own TV kiosk is spawned by the orchestrator and
+needs none of this; see "The connection posture and the two
+scoreboard displays" below.
+
 ```bash
-# Install Chromium if needed
-sudo apt install chromium-browser
+# Install Chromium if needed. The package is `chromium` on Debian 13
+# and Bookworm; `chromium-browser` was the pre-Bookworm Pi build.
+sudo apt install chromium
 
 # Create kiosk launcher script
 cat > ~/scoreboard.sh << 'EOF'
 #!/bin/bash
-chromium-browser --kiosk --noerrdialogs --disable-infobars \
+chromium --kiosk --noerrdialogs --disable-infobars \
   --disable-session-crashed-bubble \
   --ignore-certificate-errors \
   --app=https://[ORCHESTRATOR-IP]:3000/scoreboard
 EOF
 chmod +x ~/scoreboard.sh
 
-# Auto-start on boot (add to ~/.config/lxsession/LXDE-pi/autostart)
+# Auto-start on boot. On an X11/LXDE session, add this line to
+# ~/.config/lxsession/LXDE-pi/autostart:
 @/home/pi/scoreboard.sh
 ```
+
+The remote display in service today is a Pi 4 still on its original
+image and is **not** rebuilt this week. When it is reimaged, both the
+package name above and the autostart file change: a Wayland/labwc
+session does not read the `lxsession` autostart file. Establish the
+right autostart path on that machine at the time.
 
 #### Option 3: Firefox Kiosk Mode
 ```bash
@@ -1631,7 +2821,9 @@ This deployment provides:
 - **Two Deployment Options**: Networked mode (full features with orchestrator) or Standalone mode (no server infrastructure)
 - **Networked Mode Resilience**: Offline queue and localStorage backup handle temporary network issues
 - **Simplicity**: Single `pm2 start` command for production
-- **Flexibility**: Works on any local network without router config
+- **Flexibility**: Works on any local network. On the kit network the
+  orchestrator's address is a router DHCP reservation, and moving that
+  reservation is the cutover step — see "10. The venue address".
 - **Scalability**: From Raspberry Pi to cloud deployment
 ## Backups & pack rollback (2026-07-17, adversarial review R2/R20)
 

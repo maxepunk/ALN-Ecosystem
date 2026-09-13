@@ -121,6 +121,27 @@ two hours of a show.**
 
 ## Where the code and the assumption differ
 
+> **Where these live now (2026-09-13, guide repair R24).** The ones
+> that are properties of the MACHINE rather than of the sync are
+> written into `DEPLOYMENT_GUIDE.md` → **"Token sync on the machine
+> (operations)"**, and that section is now their single source of
+> truth. They are gaps **1, 2, 3, 7, 8, 9, 10, 12 and 13**: audio and
+> video placed by hand before a sync (and the no-text-no-BMP rule);
+> the mandatory orchestrator restart, with devices rebooted only after
+> it; `fonts-dejavu-core` and the 127-file check; the pack-manifest
+> rebuild after a hand edit; the web player scanner's nested pin; and
+> the hardware scanners' 50,000-byte token ceiling. Gaps 4, 5, 6 and
+> 11 are properties of the sync run and stay here alone. All thirteen
+> stay listed below as this runbook's record of why Thursday's steps
+> are shaped the way they are; when the two disagree, the guide is
+> right.
+>
+> One command in this runbook is superseded by that section: step 2's
+> `|| pip install jsonschema` fallback fails on Raspberry Pi OS Trixie
+> (PEP 668). Install the sync's dependencies from apt instead —
+> `sudo apt install -y python3-requests python3-pil python3-dotenv
+> python3-jsonschema`.
+
 The owner's assumption — *"the sync script creates the required BMP files
 and everything else"* — is right about the BMPs and wrong about
 "everything else" in nine specific ways.

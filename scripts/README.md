@@ -56,7 +56,16 @@ before the write but do not block the sync.
 
 **Requirements:**
 - Python 3
-- `pip install -r scripts/requirements.txt` (requests, Pillow, python-dotenv)
+- requests, Pillow, python-dotenv (and jsonschema, which turns the
+  schema check on). **On Debian 13 / Raspberry Pi OS Trixie, install
+  them from apt — `pip install` into the system interpreter is refused
+  (PEP 668):**
+  ```bash
+  sudo apt install -y python3-requests python3-pil python3-dotenv python3-jsonschema
+  ```
+  Full procedure, including the venv alternative:
+  `../DEPLOYMENT_GUIDE.md` → "Token sync on the machine (operations)"
+  → "The Python dependencies come from apt, not pip".
 - Notion API token (see Setup below)
 
 **Setup:**
@@ -223,7 +232,8 @@ Other element types (Props, Set Dressing, Documents, etc.) are ignored.
 
 ```bash
 cd scripts
-pip install -r requirements.txt pytest
+# Dependencies: see Requirements above — apt on Trixie, not pip.
+sudo apt install -y python3-pytest
 python3 -m pytest tests/
 ```
 
@@ -240,9 +250,21 @@ prune gating, validation warnings, placeholder exemption, and atomic writes.
 
 ### "ModuleNotFoundError: No module named 'requests'"
 
+Install the dependencies. On Debian 13 / Raspberry Pi OS Trixie a
+`pip install` here exits `externally-managed-environment` (PEP 668):
+
 ```bash
-pip install -r scripts/requirements.txt
+sudo apt install -y python3-requests python3-pil python3-dotenv python3-jsonschema
 ```
+
+Or use a virtual environment:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements.txt
+```
+
+See `../DEPLOYMENT_GUIDE.md` → "Token sync on the machine
+(operations)".
 
 ### "ABORTING: Notion fetch incomplete"
 
