@@ -130,7 +130,11 @@ router.post('/', async (req, res) => {
       // Decision A5: the scanner must NOT requeue this scan — rescan to retry.
       return res.status(409).json({
         status: 'rejected',
-        message: videoRejection.reason === 'vlc_down'
+        // T1a D9 (S7): `vlc_dormant` is a NEW reason code on an UNCHANGED
+        // wire. The player scanner learns nothing new and needs no rebuild
+        // — a TV that is not in the room and a TV that is broken look the
+        // same from where the player is standing.
+        message: (videoRejection.reason === 'vlc_down' || videoRejection.reason === 'vlc_dormant')
           ? 'Video playback unavailable'
           : 'Video already playing, please wait',
         tokenId: scanRequest.tokenId,

@@ -375,10 +375,17 @@ you intend.
   configurations, not special cases.
 - **Endpoints vs stack.** The two-layer capability model. The *stack*
   is the orchestrator's service software. If the orchestrator is
-  present, every stack service is expected to run. *Endpoints* are the
-  physical devices (speakers, lights, displays), configured per event.
-  A missing stack service is a *fault*; an absent endpoint makes its
-  features *dormant* (definitions in §4).
+  present, every stack service is expected to run, with one exception:
+  a stack service that exists only to drive endpoints the profile says
+  are absent tonight is *dormant*, and its process is not started. The
+  pack decides whether that absence is allowed: a need the pack marks
+  `degrade` resolves dormant; a need the pack marks `require` resolves
+  no-go, and the preflight refuses the start, because the profile then
+  fails the pack's minimum. (Edit noted 2026-09-12, owner-ruled for the
+  hardening block's supervisor.) *Endpoints* are the physical devices
+  (speakers, lights, displays), configured per event. A missing stack
+  service that the show needs is a *fault*; an absent endpoint makes
+  its features *dormant* (definitions in §4).
 - **Preflight.** The pre-show check: one button produces a go/no-go
   list, and every line traces to a field in the profile or the pack
   manifest. Ratified direction C1 (2026-08-22), design ratified
@@ -388,12 +395,15 @@ you intend.
   ports); the hand-run checklist shrinks to the physical room
   (speakers placed, TV on the right input, tokens on set). Every row
   is labeled *paper* or *live* (see below) and names the profile it
-  verified against. A required ("block the show") need left unmet
-  refuses `session:start`, with a typed, logged "start anyway"
-  override for genuine emergencies.
-- **Paper vs live checks.** The two verification depths. *Paper* =
-  pack needs vs the profile FILE (the declared inventory) — pure data,
-  runs anywhere. *Live* = the profile vs reality (the sink exists in
+  verified against. A required ("block the show") need left unmet, or an installation
+  profile file that fails its own schema check (Block 2 ruling R12),
+  refuses `session:start`, with a typed, logged "start anyway" override
+  for genuine emergencies.
+- **Paper vs live checks.** The two verification depths. *Paper* = pure
+  data, checkable anywhere: pack needs against the profile FILE (the
+  declared inventory), and the profile file against its own schema.
+  (Edit noted 2026-09-12: widened for Block 2's profile check, plan
+  P19.) *Live* = the profile vs reality (the sink exists in
   pactl right now, HA actually has that scene) — runs only where the
   hardware is. Every verdict says which depth it reached and against
   which profile, so a green at home is never mistaken for venue
@@ -420,6 +430,12 @@ you intend.
   features does that unlock?" for a hypothetical profile, before
   equipment is packed for an event. The UI for it is scheduled after
   Phase 3 (ROADMAP §8.4).
+- **Remote display.** A display on another device that shows only the
+  scoreboard page over the kit network (today a Pi 4 with a browser in
+  fullscreen at the scoreboard link). In the profile it is the family
+  `display.remote`, a count, modeled like `stations`; the preflight
+  counts connected display-class connections against it. It is not a
+  fallback for the TV (`display.main`). (Added 2026-09-12, owner-ruled.)
 - **Kit network.** The kit carries its own router and WiFi. The
   orchestrator has one reserved IP address and one public DNS name.
   The **orchestrator Pi** answers that name on the LAN: it runs

@@ -632,12 +632,29 @@ paths:
                   - uptime
                   - timestamp
                   - pack
+                  - profile
                 properties:
                   status:
                     type: string
                     enum: [online]
                     description: Service status
                     example: "online"
+                  profile:
+                    description: |
+                      The installation profile frozen at boot (Block 2
+                      T1a) — which venue this orchestrator believes it is
+                      standing in. `null` when no profile is loaded.
+                    nullable: true
+                    type: object
+                    required: [profileId]
+                    properties:
+                      profileId:
+                        type: string
+                        example: "aln-full-kit"
+                      forPack:
+                        type: string
+                        nullable: true
+                        example: "about-last-night"
                   pack:
                     description: |
                       The server's ACTIVE game pack identity (A2 staleness
@@ -1993,7 +2010,11 @@ components:
                 example: "10.0.0.81"
         serviceHealth:
           type: object
-          description: Health snapshot for all registered services from serviceHealthRegistry
+          description: |
+            Health snapshot for all registered services from
+            serviceHealthRegistry. The vocabulary is exactly three words
+            (Block 2 T1a, plan pin P5): `healthy`, `down`, `dormant`. A
+            dormant entry carries `door` naming which door latched it.
           additionalProperties:
             type: object
             required:
@@ -2002,9 +2023,14 @@ components:
             properties:
               status:
                 type: string
-                enum: [healthy, down]
+                enum: [healthy, down, dormant]
               message:
                 type: string
+                maxLength: 300
+              door:
+                type: string
+                enum: [profile, operator]
+                description: Present only while status is `dormant`.
               lastChecked:
                 type: string
                 format: date-time

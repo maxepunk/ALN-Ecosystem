@@ -129,7 +129,7 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `cueEngineService` | Standing + manual cue evaluation and firing | `new CueEngineService()` |
 | `soundService` | pw-play wrapper for audio playback | `new SoundService()` |
 | `musicService` | MPD control over Unix socket (mpd2 client); spawns/supervises MPD via ProcessMonitor | `new MusicService()` |
-| `serviceHealthRegistry` | Centralized health for 8 services | `new ServiceHealthRegistry()` |
+| `serviceHealthRegistry` | Centralized health for 9 services; three words `healthy | down | dormant`, sticky dormant with a `door` | `new ServiceHealthRegistry()` |
 | `scoreboardControlService` | Passthrough for GM scoreboard page-navigation commands (no server-side page state; emits `scoreboard:page:requested` → broadcast as `scoreboard:page`) | `new ScoreboardControlService()` |
 | `profileService` | Installation profile (the venue document): one profile frozen at boot via the `PROFILE_PATH` seam; `bindings.lighting` (role → HA scene) and `bindings.surfaces` (display-surface channel → media file, slice 6); a broken profile degrades loudly, never refuses boot | Function exports (no class) |
 | `commandExecutor` | Shared gm:command execution logic | Function export (`executeCommand`) |
@@ -228,7 +228,18 @@ displayControlService (State Machine)
 - `xdotool search --name <marker>` finds the content window by HTML `<title>` (not `--class` which returns all Chromium windows; not `--pid` — Chromium forks). Looked up fresh per show/hide — never cached. The marker is `config.display.scoreboardWindowMarker` (env `SCOREBOARD_WINDOW_MARKER`, default `ALN-SCOREBOARD`, slice 3a pre-fix 1): ONE shared value the served page's `<title>` also carries via `resourceRoutes.renderScoreboardHtml` `%%WINDOW_MARKER%%` injection — never rebrand either side independently (tripwire: `tests/unit/utils/scoreboardWindowMarker.test.js`).
 - `displayDriver.cleanup()` is the only kill path (called from server.js shutdown handler). Sends SIGTERM, waits 1s, escalates to SIGKILL via `process.kill(pid, 0)` alive-check.
 - `_doLaunch()` two-stage orphan recovery before spawning: (1) SIGKILL via PID file (`/tmp/aln-pm-scoreboard-chromium.pid`, verified against `/proc/pid/cmdline`), (2) `pkill -9 -f chromium.*--kiosk` fallback to catch children reparented to init. 2s wait after either kill for lock release. 1s alive-check after spawn detects early crashes (e.g., single-instance lock conflict).
-- System dependencies: `sudo apt-get install -y xdotool wmctrl`
+- System dependencies: `sudo apt-get install -y xdotool wmctrl chromium`
+  — the browser package is `chromium` on Debian 12/13;
+  `chromium-browser` (the `CHROMIUM_BIN` default at
+  `displayDriver.js:165`) was the pre-Bookworm Pi build, so a Trixie
+  machine must set `CHROMIUM_BIN=/usr/bin/chromium` in `backend/.env`.
+  Install procedure: `../DEPLOYMENT_GUIDE.md` → "1. Prepare Raspberry
+  Pi" and "4. The environment file — copy, then audit".
+- `xdotool` and `wmctrl` are X11-only. Under a Wayland/labwc session
+  — the Raspberry Pi OS default since October 2024 — they have no
+  window manager to drive and the kiosk is never shown or hidden. The
+  session switch is `../DEPLOYMENT_GUIDE.md` → "0. Image the machine",
+  step 4.
 - Chromium requires `--password-store=basic` flag to prevent keyring dialog
 - Scoreboard URL uses auto-detected local IP (not localhost) for CDN resources
 
@@ -511,7 +522,7 @@ All service domain state (cue status, held items, health, music, video) is deliv
 - `cueEngine`: `{cues, activeCues, standingCues}` via `buildCueEngineState()`
 
 **`sync:full` Phase 4 Additions:**
-- `serviceHealth`: `{vlc: {status, message}, music: {...}, ...}` via `serviceHealthRegistry.getSnapshot()` (8 services)
+- `serviceHealth`: `{vlc: {status, message}, music: {...}, ...}` via `serviceHealthRegistry.getSnapshot()` (9 services; dormant entries carry `door`)
 - `heldItems`: `[{id, type, cueId?, reason, ...}]` via `buildHeldItemsState()`
 - `sound`: `{playing: [{file, target, volume, pid}]}` via `soundService.getState()`
 
@@ -604,17 +615,32 @@ HTTP_REDIRECT_PORT=8000
 
 ### WirePlumber Configuration Dependency
 
+> **The install procedure lives in
+> `../DEPLOYMENT_GUIDE.md` → "6. Install the WirePlumber rule".**
+> Use it, not the block below. **WirePlumber 0.5 (Debian 13 /
+> Raspberry Pi OS Trixie ships 0.5.8) does not read Lua configuration
+> at all** — the drop-in is now a SPA-JSON `.conf` file in
+> `/etc/wireplumber/wireplumber.conf.d/`, and the boot check at
+> `audioRoutingService.js:618` still tests only the old Lua path, so a
+> Lua file copied onto a 0.5 machine silences the warning and does
+> nothing. The rationale below is unchanged and still correct; the
+> Lua block is kept for machines on WirePlumber 0.4 (Bookworm).
+
 The orchestrator's video stream state ownership requires a WirePlumber config
-drop-in at `/etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua`. This file
-disables WirePlumber's `restore-stream` for VLC processes — the orchestrator
-manages video stream volume itself (see `audioRoutingService._identifySinkInput`).
+drop-in. On WirePlumber 0.4 that is
+`/etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua`; on 0.5+ it is
+`/etc/wireplumber/wireplumber.conf.d/51-aln-vlc-no-restore.conf`. Either
+file disables WirePlumber's `restore-stream` for VLC processes — the
+orchestrator manages video stream volume itself (see
+`audioRoutingService._identifySinkInput`).
 
 Without this file, WirePlumber will compete with the orchestrator to restore
 stale stream state and silently break video audio when a previously-saved mute
 or low-volume state is restored.
 
-To install (one-time, CWD-independent — safe to run from anywhere, including
-a host without a repo checkout):
+To install on WirePlumber **0.4** (one-time, CWD-independent — safe to
+run from anywhere, including a host without a repo checkout). On 0.5+
+use the guide's `.conf` procedure instead:
 
 ```bash
 sudo mkdir -p /etc/wireplumber/main.lua.d/
@@ -651,8 +677,9 @@ EOF
 systemctl --user restart wireplumber
 ```
 
-The canonical version of this config file lives at
-`docs/wireplumber/51-aln-vlc-no-restore.lua` in this repo.
+The canonical versions of both drop-ins live in this repo:
+`docs/wireplumber/51-aln-vlc-no-restore.lua` (WirePlumber 0.4) and
+`docs/wireplumber/51-aln-vlc-no-restore.conf` (0.5+).
 
 ## Deployment
 
@@ -684,6 +711,14 @@ ffmpeg -i INPUT.mp4 \
 ```
 
 ### Raspberry Pi 5 Specifics
+
+> **These are deployment settings, and they now live in
+> `../DEPLOYMENT_GUIDE.md` → "9b. Pi 5 Video Settings (CRITICAL —
+> HEVC only)"** — the codec rule, the `--vout` rule, the ffmpeg
+> recipe and the hardware-decode check, all of it. ROADMAP Appendix C
+> called out that they lived only in this agent document; that is
+> fixed. Edit the guide first; what follows is the engineering copy
+> kept here for agents working in `backend/`.
 
 **CRITICAL — Video Codec:** Pi 5 has NO H.264 hardware decode (hardware block physically absent).
 Only HEVC (H.265) is hardware-decoded via `rpi-hevc-dec` at `/dev/video19`.

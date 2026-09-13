@@ -222,15 +222,23 @@ function findMatchingClockCues(cues, disabledCues, firedClockCues, elapsedSecond
  * Build persistence snapshot for standing cue state.
  * Stored beside gameClock in session.cueEngine.
  *
+ * Two of the three disable provenances are persisted (Block 2 T1a, pin P4):
+ * `disabledCues` (a GM's explicit choice) and `spentOnceCues` (a once-cue
+ * that already fired). The third, dormancy, is NOT — it is recomputed from
+ * the pack and the installation profile at every boot, so that editing the
+ * profile changes what is silenced.
+ *
  * @param {Set<string>} firedClockCues
  * @param {Set<string>} disabledCues
+ * @param {Set<string>} spentOnceCues
  * @param {boolean} active
  * @returns {Object}
  */
-function toPersistence(firedClockCues, disabledCues, active) {
+function toPersistence(firedClockCues, disabledCues, spentOnceCues, active) {
   return {
     firedClockCues: Array.from(firedClockCues),
     disabledCues: Array.from(disabledCues),
+    spentOnceCues: Array.from(spentOnceCues),
     active,
   };
 }
@@ -239,16 +247,26 @@ function toPersistence(firedClockCues, disabledCues, active) {
  * Restore standing cue state from a persistence snapshot.
  * Returns the sets/flag; does NOT fire any cues (E1: mark-without-firing policy).
  *
+ * A snapshot written before T1a has no `spentOnceCues` key; it reads as
+ * EMPTY (ruling R17, recorded and accepted): a once-cue that fired before
+ * the upgrade re-arms exactly once. The alternative — treating the missing
+ * key as "all spent" — would silence a whole show on one restart.
+ *
  * @param {Object} snapshot - Previously persisted state
- * @returns {{ firedClockCues: Set<string>, disabledCues: Set<string>, active: boolean }}
+ * @returns {{ firedClockCues: Set<string>, disabledCues: Set<string>,
+ *   spentOnceCues: Set<string>, active: boolean }}
  */
 function fromPersistence(snapshot) {
   if (!snapshot) {
-    return { firedClockCues: new Set(), disabledCues: new Set(), active: false };
+    return {
+      firedClockCues: new Set(), disabledCues: new Set(),
+      spentOnceCues: new Set(), active: false,
+    };
   }
   return {
     firedClockCues: new Set(snapshot.firedClockCues || []),
     disabledCues: new Set(snapshot.disabledCues || []),
+    spentOnceCues: new Set(snapshot.spentOnceCues || []),
     active: snapshot.active || false,
   };
 }

@@ -18,16 +18,28 @@
  *   risks driving a real player that owns the name there (a dev
  *   laptop's own VLC, a Pi's production one). The socket is keyed by
  *   the worker slot; Xvfb stays shared — X is multi-client.
- * - THE GATE: fake physics are manufactured only for a run whose
+ * - THE GATE: fake physics — daemons (pipewire, the Bluetooth mock) and
+ *   the witness HA CONTAINER — are manufactured only for a run whose
  *   profile assigns stand-ins to the harness. A run pinned to a real
- *   profile provisions nothing, so a venue machine cannot be polluted
- *   by construction. When no profile is pinned, the run gets the
- *   generated per-pack SIMULATION profile — the suite's identity is
- *   rung-1 tooling (machine verification is the preflight's job, not
- *   Playwright's), and the engine must boot with the SAME profile the
- *   harness provisions against (the old aln-full-kit default bound
- *   lighting roles to real venue scenes the witness HA does not
- *   serve, silently blocking the compound cue's active path).
+ *   venue profile provisions nothing there, so a venue machine cannot
+ *   be polluted by construction. When no profile is pinned, the run
+ *   gets the generated per-pack SIMULATION profile — the suite's
+ *   identity is rung-1 tooling (machine verification is the
+ *   preflight's job, not Playwright's), and the engine must boot with
+ *   the SAME profile the harness provisions against (the old
+ *   aln-full-kit default bound lighting roles to real venue scenes the
+ *   witness HA does not serve, silently blocking the compound cue's
+ *   active path).
+ * - Fixture GENERATION is not behind the gate (Block 2 T1b ruling 10):
+ *   the witness HA register (`/tmp/rung1/ha-config/configuration.yaml`)
+ *   and the per-pack simulation profiles are PACK CONTENT — plain file
+ *   writes, no daemon or Docker side effect — so `generateFixtures()`
+ *   runs on EVERY provisioning pass regardless of an explicit profile
+ *   pin. An explicit pin only replaces the GENERATED PROFILE PATH the
+ *   engine boots with; the register still has to exist for whichever
+ *   witness HA that pinned run's flows talk to (a pinned-but-still-
+ *   simulated profile, like the dormant-lighting fixtures, gates true
+ *   below and needs its bound witness scenes to actually exist).
  */
 
 const fs = require('fs');
@@ -143,19 +155,26 @@ async function provisionForRun({ packPath = null, profilePath = null } = {}) {
   let resolvedProfilePath = explicit;
   let haConfigChanged = false;
   try {
-    if (!explicit) {
-      // Generate fixtures for the run's pack plus every known pack —
-      // one witness register serving all legs, per-pack profiles.
-      const packDirs = [...new Set([packDirAbs, ...KNOWN_PACK_DIRS])];
-      const gen = provision.generateFixtures({ rung1Dir: RUNG1_DIR, packDirs });
-      haConfigChanged = gen.haConfigChanged;
-      if (gen.ok) {
+    // Block 2 T1b ruling 10: the witness register is PACK CONTENT —
+    // generated from the pack's lighting roles (generateFixtures is its
+    // SOLE writer under tests/e2e) — so it must exist for every run,
+    // pinned profile or not. Generate fixtures for the run's pack plus
+    // every known pack unconditionally (one witness register serving
+    // all legs, per-pack profiles); an explicit profile pin only
+    // replaces the GENERATED PROFILE PATH this run boots with.
+    const packDirs = [...new Set([packDirAbs, ...KNOWN_PACK_DIRS])];
+    const gen = provision.generateFixtures({ rung1Dir: RUNG1_DIR, packDirs });
+    haConfigChanged = gen.haConfigChanged;
+    if (gen.ok) {
+      if (!explicit) {
         const { packId } = JSON.parse(fs.readFileSync(path.join(packDirAbs, 'pack-manifest.json'), 'utf8'));
         resolvedProfilePath = path.join(RUNG1_DIR, `simulation-profile-${packId}.json`);
-      } else {
-        logger.warn('[e2e-env] fixture generation failed — run proceeds '
-          + 'on the engine default profile, unprovisioned');
       }
+    } else {
+      logger.warn('[e2e-env] fixture generation failed — run proceeds '
+        + (explicit
+          ? 'on the pinned profile; the witness HA register may be stale or absent'
+          : 'on the engine default profile, unprovisioned'));
     }
   } catch (err) {
     logger.warn('[e2e-env] profile resolution failed', { error: err.message });

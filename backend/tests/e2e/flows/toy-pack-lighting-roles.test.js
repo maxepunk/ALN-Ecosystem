@@ -76,9 +76,13 @@ test.describe('Toy pack — role-addressed lighting (second consumer)', () => {
     if (tmpProfileDir) fs.rmSync(tmpProfileDir, { recursive: true, force: true });
   });
 
-  test('the toy pack ACTIVATES with cues and exposes both quick-fire summaries', async () => {
+  test('the toy pack ACTIVATES with cues and exposes all four quick-fire summaries', async () => {
     // Reaching here at all proves the gate accepted a second cues-bearing
     // pack. The summaries prove the engine loaded them from the pack.
+    // Block 2 T1b (D4) added two more cues (all-clear-chime, a mixed
+    // sound+lighting cue; vault-sequence, a compound timeline cue) to
+    // exercise the newly-declared audio.sinks/lighting.instruments
+    // equipment families — this list grew from 2 to 4 accordingly.
     const socket = await connectWithAuth(
       orchestratorInfo.url, ADMIN_PASSWORD, `TOY_SYNC_${Date.now()}`, 'gm'
     );
@@ -88,7 +92,7 @@ test.describe('Toy pack — role-addressed lighting (second consumer)', () => {
       const sync = socket.initialSync;
       const cues = (sync.data || sync).cueEngine?.cues || [];
       const ids = cues.map(c => c.id).sort();
-      expect(ids).toEqual(['heist-sting', 'vault-alarm-hit']);
+      expect(ids).toEqual(['all-clear-chime', 'heist-sting', 'vault-alarm-hit', 'vault-sequence']);
       expect(cues.every(c => c.quickFire)).toBe(true);
     } finally {
       disconnectSocket(socket);
@@ -114,12 +118,24 @@ test.describe('Toy pack — role-addressed lighting (second consumer)', () => {
     // 2. Bind the toy role to it in a runtime profile; restart with the
     //    profile pinned per-call (the S5 seam under test).
     const runtimeProfile = path.join(tmpProfileDir, 'runtime-rig.json');
+    // The endpoints block is not decoration (Block 2 T1a, pin P2): a
+    // binding for a family the profile does not INSTALL is ignored — the
+    // endpoint wins, the family reads dormant, and the cue that needs it is
+    // silenced before it can fire. This runtime rig mirrors the static
+    // toy-test-rig it replaces; only the lighting binding differs.
     fs.writeFileSync(runtimeProfile, JSON.stringify({
       kind: 'installation-profile',
       schemaVersion: 1,
       profileId: 'toy-runtime-rig',
       forPack: 'midnight-heist',
       orchestrator: true,
+      endpoints: {
+        'lighting.instruments': { installed: true, provider: 'home-assistant' },
+        'audio.sinks': [
+          { id: 'rung1_hdmi', installed: true },
+          { id: 'rung1_bt', installed: true },
+        ],
+      },
       bindings: { lighting: { 'vault-alarm': { ha: realSceneId } } },
     }));
     // TRAP NOTE for the next author (S5 review): this restart replaces

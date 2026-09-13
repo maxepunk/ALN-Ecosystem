@@ -595,7 +595,11 @@ describe('CueEngineService', () => {
         quickFire: true,
         once: false,
         triggerType: 'event',
-        enabled: true
+        enabled: true,
+        // T1a D5 (pin P4): WHY it is off, and which of its commands would
+        // be skipped for dormant equipment.
+        disabledBy: null,
+        dormantCommands: []
       });
       expect(summaries[0].commands).toBeUndefined();
     });
@@ -2023,7 +2027,7 @@ describe('CueEngineService', () => {
       },
     ];
 
-    it('toPersistence() returns active flag, fired clock cues, and disabled cues', () => {
+    it('toPersistence() returns active flag, fired clock cues, disabled cues and spent once-cues', () => {
       cueEngineService.loadCues(CUES);
       cueEngineService.activate();
       cueEngineService.firedClockCues.add('clock-past');
@@ -2033,6 +2037,8 @@ describe('CueEngineService', () => {
         active: true,
         firedClockCues: ['clock-past'],
         disabledCues: ['standing-event'],
+        // T1a D5 (pin P4): the second persisted provenance
+        spentOnceCues: [],
       });
     });
 
@@ -2117,6 +2123,433 @@ describe('CueEngineService', () => {
       await flushAsync();
 
       expect(firedEvents).toContain('standing-event');
+    });
+  });
+  // ═══════════════════════════════════════════════════════════════════
+  // Block 2 T1a D5 — three disable provenances, dormancy silencing, and
+  // the three-valued fire (pins P3/P4).
+  //
+  // A cue that depends only on equipment nobody installed must not fire,
+  // must not HOLD (a hold is a promise to run it later, and nothing is
+  // coming), and must not shout: it is silenced, greyed, and refused
+  // quietly. A MIXED cue — one command on absent equipment, one on real
+  // equipment — still runs the real half.
+  // ═══════════════════════════════════════════════════════════════════
+  describe('dormancy (T1a D5)', () => {
+    let registry;
+
+    // The toy pack's four cues, verbatim in shape:
+    //   vault-alarm-hit  lighting only            -> wholly dormant
+    //   heist-sting      sound only               -> untouched
+    //   all-clear-chime  sound + lighting (MIXED) -> enabled, one skipped
+    //   vault-sequence   compound, lighting entry -> wholly dormant
+    const TOY_CUES = [
+      {
+        id: 'vault-alarm-hit', label: 'Vault Alarm', quickFire: true,
+        commands: [{ action: 'lighting:scene:activate', payload: { role: 'vault-alarm' } }],
+      },
+      {
+        id: 'heist-sting', label: 'Heist Sting', quickFire: true,
+        commands: [{ action: 'sound:play', payload: { file: 'attention.wav' } }],
+      },
+      {
+        id: 'all-clear-chime', label: 'All Clear Chime', quickFire: true,
+        commands: [
+          { action: 'sound:play', payload: { file: 'attention.wav' } },
+          { action: 'lighting:scene:activate', payload: { role: 'all-clear' } },
+        ],
+      },
+      {
+        id: 'vault-sequence', label: 'Vault Sequence', quickFire: true,
+        timeline: [
+          { at: 0, action: 'sound:play', payload: { file: 'attention.wav' } },
+          { at: 1, action: 'lighting:scene:activate', payload: { role: 'vault-alarm' } },
+        ],
+        duration: 3,
+      },
+    ];
+
+    const LIGHTING_DORMANT = {
+      dormantServiceIds: ['lighting'],
+      doorOf: { lighting: 'profile' },
+    };
+
+    beforeEach(() => {
+      registry = require('../../../src/services/serviceHealthRegistry');
+      cueEngineService.loadCues(TOY_CUES);
+    });
+
+    afterEach(() => {
+      registry.clearDormant('lighting');
+    });
+
+    describe('three provenances and their precedence (P4)', () => {
+      it('isCueDisabled is the union of gm, once and dormancy', () => {
+        expect(cueEngineService.isCueDisabled('heist-sting')).toBe(false);
+
+        cueEngineService.disableCue('heist-sting');
+        expect(cueEngineService.isCueDisabled('heist-sting')).toBe(true);
+        cueEngineService.enableCue('heist-sting');
+
+        cueEngineService.spentOnceCues.add('heist-sting');
+        expect(cueEngineService.isCueDisabled('heist-sting')).toBe(true);
+        cueEngineService.spentOnceCues.delete('heist-sting');
+
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        expect(cueEngineService.isCueDisabled('vault-alarm-hit')).toBe(true);
+      });
+
+      it('summaries carry disabledBy: null when nothing disables the cue', () => {
+        const s = cueEngineService.getCueSummaries().find(c => c.id === 'heist-sting');
+        expect(s.disabledBy).toBeNull();
+        expect(s.enabled).toBe(true);
+        expect(s.dormantCommands).toEqual([]);
+      });
+
+      it("disabledBy is 'gm' for a GM-disabled cue", () => {
+        cueEngineService.disableCue('heist-sting');
+        const s = cueEngineService.getCueSummaries().find(c => c.id === 'heist-sting');
+        expect(s).toMatchObject({ disabledBy: 'gm', enabled: false });
+      });
+
+      it("disabledBy is 'once' for a spent once-cue", async () => {
+        cueEngineService.loadCues([{
+          id: 'one-shot', label: 'One Shot', once: true,
+          commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
+        }]);
+        await cueEngineService.fireCue('one-shot');
+        const s = cueEngineService.getCueSummaries().find(c => c.id === 'one-shot');
+        expect(s).toMatchObject({ disabledBy: 'once', enabled: false });
+        // the once-cue lands in spentOnceCues, NOT in the GM set
+        expect(cueEngineService.disabledCues.has('one-shot')).toBe(false);
+        expect(cueEngineService.spentOnceCues.has('one-shot')).toBe(true);
+      });
+
+      it("disabledBy is 'dormant' for a dormancy-disabled cue", () => {
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        const s = cueEngineService.getCueSummaries().find(c => c.id === 'vault-alarm-hit');
+        expect(s).toMatchObject({ disabledBy: 'dormant', enabled: false });
+      });
+
+      it('precedence when several apply: dormant, then gm, then once', () => {
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        cueEngineService.disableCue('vault-alarm-hit');
+        cueEngineService.spentOnceCues.add('vault-alarm-hit');
+        let s = cueEngineService.getCueSummaries().find(c => c.id === 'vault-alarm-hit');
+        expect(s.disabledBy).toBe('dormant');
+
+        cueEngineService.disableCue('heist-sting');
+        cueEngineService.spentOnceCues.add('heist-sting');
+        s = cueEngineService.getCueSummaries().find(c => c.id === 'heist-sting');
+        expect(s.disabledBy).toBe('gm');
+      });
+
+      it('dormancy is NOT persisted; the GM and once sets are', () => {
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        cueEngineService.disableCue('heist-sting');
+        cueEngineService.spentOnceCues.add('all-clear-chime');
+
+        const snap = cueEngineService.toPersistence();
+        expect(snap.disabledCues).toEqual(['heist-sting']);
+        expect(snap.spentOnceCues).toEqual(['all-clear-chime']);
+        expect(JSON.stringify(snap)).not.toContain('vault-alarm-hit');
+      });
+    });
+
+    describe('applyDormancy sweep over the toy cues (P3)', () => {
+      it('silences the lighting-only cue and the compound cue, leaves the rest', () => {
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        const by = Object.fromEntries(
+          cueEngineService.getCueSummaries().map(c => [c.id, c])
+        );
+        expect(by['vault-alarm-hit'].disabledBy).toBe('dormant');
+        expect(by['vault-sequence'].disabledBy).toBe('dormant');
+        expect(by['heist-sting'].disabledBy).toBeNull();
+        expect(by['all-clear-chime'].disabledBy).toBeNull();
+      });
+
+      it('a MIXED simple cue stays enabled and records its dormant commands', () => {
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        const s = cueEngineService.getCueSummaries().find(c => c.id === 'all-clear-chime');
+        expect(s.enabled).toBe(true);
+        expect(s.dormantCommands).toEqual([
+          { action: 'lighting:scene:activate', service: 'lighting', door: 'profile' },
+        ]);
+      });
+
+      it('a compound cue is never "mixed" — ANY dormant timeline entry silences it whole', () => {
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        const s = cueEngineService.getCueSummaries().find(c => c.id === 'vault-sequence');
+        expect(s.enabled).toBe(false);
+        expect(s.disabledBy).toBe('dormant');
+      });
+
+      it('a cue with NO service-bearing command is never dormancy-disabled', () => {
+        cueEngineService.loadCues([{
+          id: 'queue-only', label: 'Queue Only',
+          commands: [{ action: 'video:queue:clear', payload: {} }],
+        }]);
+        cueEngineService.applyDormancy({ dormantServiceIds: ['vlc'], doorOf: { vlc: 'operator' } });
+        const s = cueEngineService.getCueSummaries().find(c => c.id === 'queue-only');
+        expect(s.enabled).toBe(true);
+        expect(s.disabledBy).toBeNull();
+      });
+
+      it('emits cue:status ONCE after the sweep, not per cue', () => {
+        const handler = jest.fn();
+        cueEngineService.on('cue:status', handler);
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        expect(handler).toHaveBeenCalledTimes(1);
+      });
+
+      it('an empty dormancy set clears a previous sweep', () => {
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        expect(cueEngineService.isCueDisabled('vault-alarm-hit')).toBe(true);
+        cueEngineService.applyDormancy({ dormantServiceIds: [], doorOf: {} });
+        expect(cueEngineService.isCueDisabled('vault-alarm-hit')).toBe(false);
+        const s = cueEngineService.getCueSummaries().find(c => c.id === 'all-clear-chime');
+        expect(s.dormantCommands).toEqual([]);
+      });
+
+      it('a cue LEAVING the dormancy set mid-session has its past-due clock threshold marked fired', () => {
+        cueEngineService.loadCues([{
+          id: 'late-lights', label: 'Late Lights',
+          trigger: { clock: '00:10:00' },
+          commands: [{ action: 'lighting:scene:activate', payload: { role: 'vault-alarm' } }],
+        }]);
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        cueEngineService.activate();
+        gameClockService.getElapsed.mockReturnValue(3600);
+
+        cueEngineService.applyDormancy({ dormantServiceIds: [], doorOf: {} });
+
+        // Mark-don't-fire: the threshold passed while the cue was silenced,
+        // so un-silencing must NOT replay it (catch-up storm) — but it must
+        // not leave it armed to fire ten minutes late either.
+        expect(cueEngineService.firedClockCues.has('late-lights')).toBe(true);
+      });
+
+      it('does NOT mark past-due clock cues when the engine is not active', () => {
+        cueEngineService.loadCues([{
+          id: 'late-lights', label: 'Late Lights',
+          trigger: { clock: '00:10:00' },
+          commands: [{ action: 'lighting:scene:activate', payload: { role: 'vault-alarm' } }],
+        }]);
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        gameClockService.getElapsed.mockReturnValue(3600);
+        cueEngineService.applyDormancy({ dormantServiceIds: [], doorOf: {} });
+        expect(cueEngineService.firedClockCues.has('late-lights')).toBe(false);
+      });
+    });
+
+    describe('fireCue returns {fired, held, reason} (P3)', () => {
+      it('fired: a healthy cue returns fired true, held false', async () => {
+        const r = await cueEngineService.fireCue('heist-sting');
+        expect(r).toEqual({ fired: true, held: false });
+      });
+
+      it('refused: a wholly dormant cue is refused outright — never held, no cue:error', async () => {
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        const errors = jest.fn();
+        cueEngineService.on('cue:error', errors);
+        executeCommand.mockClear();
+
+        const r = await cueEngineService.fireCue('vault-alarm-hit');
+
+        expect(r).toEqual({
+          fired: false, held: false,
+          reason: 'vault-alarm-hit is not installed tonight (lighting)',
+        });
+        expect(cueEngineService.getHeldCues()).toHaveLength(0);
+        expect(errors).not.toHaveBeenCalled();
+        expect(executeCommand).not.toHaveBeenCalled();
+      });
+
+      it('the operator door gives the operator wording', async () => {
+        cueEngineService.applyDormancy({
+          dormantServiceIds: ['lighting'], doorOf: { lighting: 'operator' },
+        });
+        const r = await cueEngineService.fireCue('vault-alarm-hit');
+        expect(r.reason).toBe('vault-alarm-hit is out of service (lighting)');
+      });
+
+      it('refused: a GM-disabled cue returns fired false, held false', async () => {
+        cueEngineService.disableCue('heist-sting');
+        const r = await cueEngineService.fireCue('heist-sting');
+        expect(r).toEqual({ fired: false, held: false, reason: 'heist-sting is disabled' });
+      });
+
+      it('held: a cue blocked by a DOWN service returns held true with its reason', async () => {
+        registry.report('sound', 'down', 'pw-play missing');
+        const r = await cueEngineService.fireCue('heist-sting');
+        expect(r).toEqual({
+          fired: false, held: true, reason: 'heist-sting held: sound',
+        });
+        expect(cueEngineService.getHeldCues()).toHaveLength(1);
+      });
+
+      it('a MIXED cue fires, skipping the dormant command quietly and running the rest', async () => {
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        const errors = jest.fn();
+        cueEngineService.on('cue:error', errors);
+        executeCommand.mockClear();
+
+        const r = await cueEngineService.fireCue('all-clear-chime');
+
+        expect(r).toEqual({ fired: true, held: false });
+        const actions = executeCommand.mock.calls.map(c => c[0].action);
+        expect(actions).toEqual(['sound:play']);
+        expect(errors).not.toHaveBeenCalled();
+        expect(cueEngineService.getHeldCues()).toHaveLength(0);
+      });
+
+      it('the dormancy check precedes lighting-role normalization (no executeCommand at all)', async () => {
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        executeCommand.mockClear();
+        await cueEngineService.fireCue('vault-alarm-hit');
+        expect(executeCommand).not.toHaveBeenCalled();
+      });
+
+      it('a dormant service never mints a held item — dormant is not a hold', async () => {
+        // Both the dormancy latch and the health gate would notice
+        // `lighting`; dormancy must win, because a hold promises a later run.
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        await cueEngineService.fireCue('vault-sequence');
+        expect(cueEngineService.getHeldCues()).toHaveLength(0);
+      });
+    });
+
+    describe('enableCue refuses a dormancy-disabled cue (P4 / R17)', () => {
+      it('refuses with the door wording and changes no state', () => {
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        const handler = jest.fn();
+        cueEngineService.on('cue:status', handler);
+
+        const r = cueEngineService.enableCue('vault-alarm-hit');
+
+        expect(r.ok).toBe(false);
+        expect(r.reason).toMatch(/not installed tonight/);
+        expect(cueEngineService.isCueDisabled('vault-alarm-hit')).toBe(true);
+        expect(handler).not.toHaveBeenCalled();
+      });
+
+      it('clears the GM set on an ordinary enable and reports ok', () => {
+        cueEngineService.disableCue('heist-sting');
+        const r = cueEngineService.enableCue('heist-sting');
+        expect(r).toEqual({ ok: true });
+        expect(cueEngineService.isCueDisabled('heist-sting')).toBe(false);
+      });
+
+      it('RE-ARMS a spent once-cue (R17: today’s behaviour, kept)', async () => {
+        cueEngineService.loadCues([{
+          id: 'one-shot', label: 'One Shot', once: true,
+          commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
+        }]);
+        await cueEngineService.fireCue('one-shot');
+        expect(cueEngineService.spentOnceCues.has('one-shot')).toBe(true);
+
+        const r = cueEngineService.enableCue('one-shot');
+
+        expect(r).toEqual({ ok: true });
+        expect(cueEngineService.spentOnceCues.has('one-shot')).toBe(false);
+        executeCommand.mockClear();
+        const fired = await cueEngineService.fireCue('one-shot');
+        expect(fired.fired).toBe(true);
+      });
+    });
+
+    describe('releaseCue propagates the re-fire outcome', () => {
+      it('returns released true when the re-fire succeeds', async () => {
+        registry.report('sound', 'down', 'gone');
+        await cueEngineService.fireCue('heist-sting');
+        const heldId = cueEngineService.getHeldCues()[0].id;
+        registry.report('sound', 'healthy', 'back');
+
+        const r = await cueEngineService.releaseCue(heldId);
+
+        expect(r).toEqual({ released: true });
+        expect(cueEngineService.getHeldCues()).toHaveLength(0);
+      });
+
+      it('RE-HOLDS with the new reason when the re-fire is refused', async () => {
+        registry.report('sound', 'down', 'gone');
+        await cueEngineService.fireCue('heist-sting');
+        const heldId = cueEngineService.getHeldCues()[0].id;
+        registry.report('sound', 'healthy', 'back');
+        // GM disabled it while it sat in the held queue
+        cueEngineService.disableCue('heist-sting');
+
+        const r = await cueEngineService.releaseCue(heldId);
+
+        expect(r.released).toBe(false);
+        expect(r.reason).toBe('heist-sting is disabled');
+        const stillHeld = cueEngineService.getHeldCues();
+        expect(stillHeld).toHaveLength(1);
+        expect(stillHeld[0].reason).toBe('heist-sting is disabled');
+      });
+
+      it('RE-HOLDS when the re-fire itself holds', async () => {
+        registry.report('sound', 'down', 'gone');
+        await cueEngineService.fireCue('all-clear-chime');
+        const heldId = cueEngineService.getHeldCues()[0].id;
+        registry.report('sound', 'healthy', 'back');
+        // lighting falls over between the hold and the release
+        registry.report('lighting', 'down', 'HA unreachable');
+
+        const r = await cueEngineService.releaseCue(heldId);
+
+        expect(r.released).toBe(false);
+        expect(r.reason).toMatch(/held: lighting/);
+        expect(cueEngineService.getHeldCues()).toHaveLength(1);
+      });
+    });
+
+    describe('standing evaluation sees the union', () => {
+      it('a dormancy-disabled event cue does not fire on its event', async () => {
+        cueEngineService.loadCues([{
+          id: 'lights-on-group', label: 'Lights On Group',
+          trigger: { event: 'group:completed' },
+          commands: [{ action: 'lighting:scene:activate', payload: { role: 'vault-alarm' } }],
+        }]);
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        cueEngineService.activate();
+        const fired = jest.fn();
+        cueEngineService.on('cue:fired', fired);
+
+        cueEngineService.handleGameEvent('group:completed', {
+          teamId: 't1', groupId: 'g1', multiplier: 2, bonus: 100,
+        });
+        await flushAsync();
+
+        expect(fired).not.toHaveBeenCalled();
+      });
+
+      it('a spent once-cue with a clock trigger does not fire again', () => {
+        cueEngineService.loadCues([{
+          id: 'clock-once', label: 'Clock Once', once: true,
+          trigger: { clock: '00:01' },
+          commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
+        }]);
+        cueEngineService.spentOnceCues.add('clock-once');
+        cueEngineService.activate();
+        const fired = jest.fn();
+        cueEngineService.on('cue:fired', fired);
+
+        cueEngineService.handleClockTick(120);
+
+        expect(fired).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('getDisabledCues reports the union', () => {
+      it('lists gm, once and dormancy ids together', () => {
+        cueEngineService.applyDormancy(LIGHTING_DORMANT);
+        cueEngineService.disableCue('heist-sting');
+        cueEngineService.spentOnceCues.add('all-clear-chime');
+        expect(cueEngineService.getDisabledCues().sort()).toEqual(
+          ['all-clear-chime', 'heist-sting', 'vault-alarm-hit', 'vault-sequence']
+        );
+      });
     });
   });
 });

@@ -89,6 +89,39 @@ describe('adminEvents.js', () => {
       });
     });
 
+    // T1a D6 (pins P7/R11): the actor the executor's require gate stamps
+    // onto a preflight override is built HERE, from the verified socket —
+    // never from anything the client asserts.
+    test('carries the verified actor (tier + functions) to executeCommand', async () => {
+      await handleGmCommand(mockSocket, {
+        data: { action: 'session:start', payload: { startAnyway: true, reason: 'x' } }
+      }, mockIo);
+
+      expect(executeCommand).toHaveBeenCalledWith(expect.objectContaining({
+        action: 'session:start',
+        payload: { startAnyway: true, reason: 'x' },
+        deviceId: 'gm-001',
+        actor: expect.objectContaining({ tier: 'operator' }),
+      }));
+    });
+
+    test('forwards a NO-GO ack verbatim so the scanner can key on its prefix', async () => {
+      executeCommand.mockResolvedValue({
+        success: false,
+        message: "NO-GO: required endpoint 'lighting.instruments' not installed at this venue",
+      });
+
+      await handleGmCommand(mockSocket, {
+        data: { action: 'session:start', payload: {} }
+      }, mockIo);
+
+      expect(emitWrapped).toHaveBeenCalledWith(mockSocket, 'gm:command:ack', {
+        action: 'session:start',
+        success: false,
+        message: "NO-GO: required endpoint 'lighting.instruments' not installed at this venue",
+      });
+    });
+
     test('sends failure ack on executeCommand error', async () => {
       executeCommand.mockRejectedValue(new Error('Invalid state'));
 

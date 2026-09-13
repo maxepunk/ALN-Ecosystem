@@ -189,7 +189,7 @@ and upgrades the show-ready gate, not this one. The docs are the
 proven blocker (dependency audit, claim 5: only 2 of the 7 required
 machine-state areas are fully documented; Home Assistant is entirely
 absent); the repair is bounded (Appendix C) and is the first unit
-(Q9). The certificate spike (S2) runs during this same setup.
+(Q9). (The certificate spike moved to deferral row 8.19 on 2026-09-12.)
 
 **Show-ready.** The state in which deploying for ALN is a live
 choice. Gate (ratified, Q5): (1) hardware-proven; (2) the hardening
@@ -284,7 +284,7 @@ claims 1–2), not taken from documents.
   plus the guide writing it down — inside the docs repair, not new
   engine code.
 - The home hardware pass itself (owner hardware time,
-  agent-supported), including the certificate spike.
+  agent-supported). (The certificate spike moved to 8.19, 2026-09-12.)
 - Screen baselines (Q8): capture baseline screen images from the
   pinned production release before further change.
 
@@ -444,7 +444,7 @@ baselines exist to guard and the venue rehearsal exists to absorb.
 production machine and tested while the current production Pi
 ("blue") keeps running shows, untouched. At the cutover: unplug
 blue, plug in green. Green takes the kit router's reserved
-orchestrator IP and DNS name, so scanners, tablets, and hardware
+orchestrator IP (and, once row 8.19 lands, the DNS name), so scanners, tablets, and hardware
 scanners never notice the machine changed. Rollback is physical and
 immediate: swap back to blue, which still holds the entire
 pre-cutover system.
@@ -466,8 +466,9 @@ done." The testing ladder maps to the readiness ladder:
   Pi and run a partial-kit test. The setup follows the deployment
   docs exactly; every gap found in the docs is treated as a doc
   defect. (This doubles as a rehearsal of the release block's "can a
-  stranger stand this up" requirement.) Spike S2 — the Cloudflare
-  DNS-01 certificate — runs during this setup. Stage B validates
+  stranger stand this up" requirement.) (Spike S2, the DNS-01
+  certificate, moved to deferral row 8.19 on 2026-09-12: Friday runs on
+  the fixed address with the warning accepted once.) Stage B validates
   what CI cannot: HEVC hardware decoding and video output (VLC can
   report "playing" over a black screen), real audio routing and
   ducking on a real Bluetooth speaker, Home Assistant scenes on a
@@ -605,6 +606,7 @@ record §6 lists them).
 | 8.16 | GM-scan video cueing (ratified 2026-09-03): the scan→video trigger is engine-keyed to player scanners — a baked ALN opinion; a GM-scanner-only game cannot declare scan→video directly | **The interaction primitives** (§7.1), where scan→consequence mappings become pack-composable. Interim: standing cues (one per token→video pairing) work today as pure pack content — program §14.5. |
 | 8.17 | **The GM-scanner redesign** (new row, 2026-09-05) — the scanner-UX pain; also carries the GM-experience obligations that are not capture: the manual phase-advance control and phase-relative cue timing (the slice-5 Q-5-1 rulings, "required by full-project completion") | Design opens in **Block 5** under the UX foundation's method and vocabulary (wireframes against the owner's real show flows); build is priced and slotted by its own grill. |
 | 8.18 | **Preset-load differential gate** (new row, owner-ratified 2026-09-06; from the fix vehicle's adversarial review, `2026-09-05-train-fix-vehicle.md` §7 item 5) — the config-tool preset load/import gate refuses the WHOLE load when the live pack is gate-invalid for reasons the preset neither causes nor can fix, blocking the env/routing restore the preset does own (and a temp-dir name leaks into the refusal for manifest-less packs). Fix shape: compare the staged verdict against a pre-write verdict of the untouched pack and refuse only NEWLY-introduced problems; seed the staged manifest to preserve packId. | **Block 5** (the config-tool re-cut), beside the fix vehicle's §2.3 deferral group — the block's entry grill prices it with the rest. |
+| 8.19 | **Kit DNS and the certificate** (new row, owner-ruled 2026-09-12; Block 2 grill): DNS on the Pi (dnsmasq plus one router setting) → a public DNS name → the DNS-01 certificate → tablets without the warning → player phones by tap-to-web. Removed from the hardware-proven state, Block 1, Stage B and Appendix C; Friday runs on the fixed address with the self-signed certificate accepted once per device. | **The player-phones block (§7.1)**, the first work that needs a real domain and certificate; §7.1 already names S2 as its gate. |
 
 ## 9. The documentation system (per block, binding forward)
 
@@ -690,7 +692,7 @@ place.
 | CS.1–CS.5 | the resolution-and-hardening stages (rig + core; dormancy; supervisor; preflight; close) |
 | PS.1–PS.6 | the authoring-pages stages (pack manager; mechanics + hot-apply; strings/theme; show designer; content view; close) |
 | BS.1–BS.4 | the tooling-foundation stages |
-| S1 / S2 | the NFC spike (passed); the certificate spike (open) |
+| S1 / S2 | the NFC spike (passed); the certificate spike (deferred to row 8.19, 2026-09-12) |
 | Stage A / B / C | the testing ladder: CI + containers / the home hardware pass / the venue rehearsal |
 | BILL | the owner's second game (design track open now, owner-paced) |
 | Phase 4 / Phase 5 | the players'-phones + GM-experience era / content tooling — dissolved into the blocks and §7 charters |
@@ -768,6 +770,10 @@ scoreboard-password sections in the deployment guide, plus one wrong
 required-service check in the preflight checklist (a music daemon
 the system does not use). Remove: the disable-Bluetooth instruction
 that contradicts the system's own speaker support. Add: the
-certificate spike's procedure home (the spike itself runs during the
-home hardware pass). Full list with citations: the dependency audit,
+current connection posture (fixed address, blue's self-signed
+certificate copied to green, the warning accepted once per tablet and
+on the Pi 4 remote display; the certificate spike itself is deferred
+to row 8.19, 2026-09-12). Full list with citations: the dependency audit,
 claim 5.
+
+**Closed by R24 (2026-09-13).** The guide repair landed every item above (`docs/plans/briefs/2026-09-13-guide-repair.md`; `DEPLOYMENT_GUIDE.md` and `docs/preflight-checklist.md` at 7fab0b4; task review and re-review in the hardening block's scratch record). Four items were already true before the task: the Bluetooth removal, two of the three password sections, the installation-profile section, the Pi 5 video settings (moved from the agent document into the guide). The only open reference is the certificate spike, row 8.19, which the guide carries as an explicit deferral. Three code-side facts the guide cannot fix follow as a small task (the boot check accepting the WirePlumber `.conf` path; the two bus variables in the environment template; the requirements file's install line).

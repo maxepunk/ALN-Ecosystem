@@ -902,3 +902,462 @@ describe('displayDriver — PID-file write guard', () => {
     expect(pidWrites).toHaveLength(0);
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════
+// Block 2 T1a D9 — the display is the NINTH service (plan §3 pin P16,
+// ruling R13). The kiosk is a piece of the venue like VLC or the lighting
+// rig, and until now nothing on the health dashboard said whether it was
+// alive. The driver owns the report because the driver is the only thing
+// that knows.
+// ══════════════════════════════════════════════════════════════════════
+describe('displayDriver — health reporting (T1a D9, pin P16)', () => {
+  let registry;
+
+  const armExecFile = () => {
+    const { execFile } = require('child_process');
+    execFile.mockImplementation((cmd, args, opts, cb) => {
+      if (typeof opts === 'function') { cb = opts; }
+      if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
+      else cb(null, '', '');
+    });
+  };
+
+  beforeEach(() => {
+    registry = require('../../../src/services/serviceHealthRegistry');
+    registry.clearDormant('display');
+    registry.report('display', 'down', 'Not yet checked');
+    jest.spyOn(registry, 'report');
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  test('a successful launch reports display healthy', async () => {
+    const { spawn } = require('child_process');
+    spawn.mockReturnValue({ pid: 1234, on: jest.fn(), killed: false });
+    armExecFile();
+
+    await displayDriver.ensureBrowserRunning();
+
+    expect(registry.report).toHaveBeenCalledWith('display', 'healthy', 'kiosk launched');
+  });
+
+  test('a failed launch reports display down', async () => {
+    const { spawn } = require('child_process');
+    // The 'error' handler nulls browserProcess; the driver's alive check
+    // then sees nothing and returns false.
+    spawn.mockImplementation(() => {
+      const proc = {
+        pid: undefined, killed: false,
+        on: (event, handler) => { if (event === 'error') setImmediate(() => handler(new Error('ENOENT'))); },
+      };
+      return proc;
+    });
+    armExecFile();
+
+    const ok = await displayDriver.ensureBrowserRunning();
+
+    expect(ok).toBe(false);
+    expect(registry.report).toHaveBeenCalledWith('display', 'down', 'kiosk launch failed');
+  });
+
+  test('an exit while VISIBLE is down — the scoreboard vanished mid-show', async () => {
+    const { spawn } = require('child_process');
+    const handlers = {};
+    spawn.mockReturnValue({
+      pid: 1234, killed: false,
+      on: (event, handler) => { handlers[event] = handler; },
+    });
+    armExecFile();
+
+    await displayDriver.showScoreboard();
+    expect(displayDriver.isScoreboardVisible()).toBe(true);
+    registry.report.mockClear();
+
+    handlers.exit(1, null);
+
+    // Block 2 T1a follow-up 2 (ruling 27): the visible-exit message now
+    // carries code/signal, same as the hidden-crash message below.
+    expect(registry.report).toHaveBeenCalledWith(
+      'display', 'down', 'kiosk exited while visible (code 1, signal null)'
+    );
+  });
+
+  test('an exit while HIDDEN stays healthy — it relaunches on the next show', async () => {
+    // Chromium being closed while minimized is not a fault: nothing is
+    // being displayed, and showScoreboard() relaunches. Reporting red here
+    // would put a permanent alarm on a healthy idle system.
+    const { spawn } = require('child_process');
+    const handlers = {};
+    spawn.mockReturnValue({
+      pid: 1234, killed: false,
+      on: (event, handler) => { handlers[event] = handler; },
+    });
+    armExecFile();
+
+    await displayDriver.ensureBrowserRunning();
+    expect(displayDriver.isScoreboardVisible()).toBe(false);
+    registry.report.mockClear();
+
+    handlers.exit(0, null);
+
+    expect(registry.report).toHaveBeenCalledWith(
+      'display', 'healthy', 'kiosk closed while hidden; relaunches on show'
+    );
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// Block 2 T1a fix round 1, ruling 22: probe().
+//
+// `service:check` could ask eight of the nine services how they are and
+// answered "Unknown service: display" for the ninth — the one service a GM
+// is most likely to poke at, because the kiosk is the piece of equipment
+// they can SEE. probe() is the read-only answer: it re-reports what the
+// driver already knows and LAUNCHES NOTHING. A probe that launched would
+// turn a pre-show health sweep into an unrequested takeover of the HDMI
+// output while VLC was on it.
+// ══════════════════════════════════════════════════════════════════════
+describe('displayDriver — probe() (T1a fix round 1, ruling 22)', () => {
+  let registry;
+
+  const armExecFile = () => {
+    const { execFile } = require('child_process');
+    execFile.mockImplementation((cmd, args, opts, cb) => {
+      if (typeof opts === 'function') { cb = opts; }
+      if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
+      else cb(null, '', '');
+    });
+  };
+
+  // jest.config.base.js pins ENABLE_VIDEO_PLAYBACK=false for the whole
+  // unit run so nothing spawns a real VLC. That is the HOST-CONFIG arm of
+  // probe(), which would shadow every other branch here — so each test
+  // states the posture it is actually about instead of inheriting the
+  // harness default, and the host-config test sets it back to 'false'.
+  beforeEach(() => {
+    process.env.ENABLE_VIDEO_PLAYBACK = 'true';
+    jest.resetModules();
+    displayDriver = require('../../../src/utils/displayDriver');
+    registry = require('../../../src/services/serviceHealthRegistry');
+    registry.clearDormant('display');
+    registry.report('display', 'down', 'Not yet checked');
+    jest.spyOn(registry, 'report');
+  });
+
+  afterEach(() => {
+    process.env.ENABLE_VIDEO_PLAYBACK = 'false';
+    jest.restoreAllMocks();
+  });
+
+  test('a live kiosk probes healthy and says so', async () => {
+    const { spawn } = require('child_process');
+    spawn.mockReturnValue({ pid: 1234, on: jest.fn(), killed: false });
+    armExecFile();
+    await displayDriver.ensureBrowserRunning();
+    registry.report.mockClear();
+
+    expect(displayDriver.probe()).toBe(true);
+    expect(registry.report).toHaveBeenCalledWith('display', 'healthy', 'kiosk running');
+  });
+
+  test('probe() LAUNCHES NOTHING — it is read-only', async () => {
+    const { spawn } = require('child_process');
+    spawn.mockReturnValue({ pid: 1234, on: jest.fn(), killed: false });
+    armExecFile();
+
+    displayDriver.probe();
+
+    expect(spawn).not.toHaveBeenCalled();
+  });
+
+  test('no kiosk while hidden stays healthy — it relaunches on the next show (R13)', () => {
+    // Never launched, nothing visible: the idle posture. Red here would put
+    // a permanent alarm on a system that is working exactly as intended.
+    expect(displayDriver.isScoreboardVisible()).toBe(false);
+
+    expect(displayDriver.probe()).toBe(true);
+    expect(registry.report).toHaveBeenCalledWith(
+      'display', 'healthy', 'kiosk closed while hidden; relaunches on show'
+    );
+  });
+
+  test('no kiosk while it should be VISIBLE is down', async () => {
+    const { spawn } = require('child_process');
+    const proc = { pid: 1234, killed: false, on: jest.fn() };
+    spawn.mockReturnValue(proc);
+    armExecFile();
+    await displayDriver.showScoreboard();
+    expect(displayDriver.isScoreboardVisible()).toBe(true);
+
+    // The process died but the driver still believes it is on screen — the
+    // exit event has not been delivered yet, so `visible` is still true.
+    // This is the same aliveness predicate ensureBrowserRunning() uses.
+    proc.killed = true;
+    registry.report.mockClear();
+
+    expect(displayDriver.probe()).toBe(false);
+    expect(registry.report).toHaveBeenCalledWith('display', 'down', 'kiosk not running');
+  });
+
+  test('host config wins over everything: video playback off is down', async () => {
+    // A host with video playback disabled is not using this output at all,
+    // whatever happens to be open on it — the same final word
+    // displayControlService.init() gives the setting.
+    process.env.ENABLE_VIDEO_PLAYBACK = 'false';
+    jest.resetModules();
+    const driver = require('../../../src/utils/displayDriver');
+    const reg = require('../../../src/services/serviceHealthRegistry');
+    reg.clearDormant('display');
+    jest.spyOn(reg, 'report');
+
+    const { spawn } = require('child_process');
+    spawn.mockReturnValue({ pid: 1234, on: jest.fn(), killed: false });
+    armExecFile();
+    await driver.ensureBrowserRunning();   // a live kiosk...
+    reg.report.mockClear();
+
+    // ...still probes DOWN.
+    expect(driver.probe()).toBe(false);
+    expect(reg.report).toHaveBeenCalledWith(
+      'display', 'down', 'video playback disabled (host config)'
+    );
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════
+// Block 2 T1a follow-up 2 — ruling 27 (refines ruling 13 / R13, T1a D9
+// pin P16). CI Test run 297 saw a chromium-browser stub abort with
+// SIGABRT a second after launch, WHILE HIDDEN. The old exit handler
+// judged only by visibility and reported that crash "healthy" — a
+// down → healthy transition that leaked an extra `health:changed` push
+// into another test's 50ms debounce window
+// (tests/integration/service-state-push.test.js). The fix judges by HOW
+// the kiosk exited and WHETHER it had launched successfully:
+//   - code 0, or the driver's own kill (`terminating`), after a
+//     successful launch → healthy, "closed while hidden"
+//   - anything else while hidden (non-zero code, a foreign signal, or an
+//     exit before the launch's alive-check passed) → down, crash message
+//   - visible → down (as before), message now carries code/signal too
+// ══════════════════════════════════════════════════════════════════════
+describe('displayDriver — exit-handler crash detection (T1a follow-up 2, ruling 27)', () => {
+  let registry;
+
+  const armExecFile = () => {
+    const { execFile, execFileSync } = require('child_process');
+    // Skip the 2s orphan-recovery wait — not what these tests are about.
+    execFileSync.mockImplementation(() => { throw new Error('no matching process'); });
+    execFile.mockImplementation((cmd, args, opts, cb) => {
+      if (typeof opts === 'function') { cb = opts; }
+      if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
+      else cb(null, '', '');
+    });
+  };
+
+  beforeEach(() => {
+    registry = require('../../../src/services/serviceHealthRegistry');
+    registry.clearDormant('display');
+    registry.report('display', 'down', 'Not yet checked');
+    jest.spyOn(registry, 'report');
+  });
+
+  afterEach(() => jest.restoreAllMocks());
+
+  test('exit while hidden with SIGABRT after a successful launch is down, not healthy', async () => {
+    const { spawn } = require('child_process');
+    const handlers = {};
+    spawn.mockReturnValue({
+      pid: 1234, killed: false,
+      on: (event, handler) => { handlers[event] = handler; },
+    });
+    armExecFile();
+
+    await displayDriver.ensureBrowserRunning();
+    expect(displayDriver.isScoreboardVisible()).toBe(false);
+    registry.report.mockClear();
+
+    // The exit fires later, unrelated to any driver action — a real crash.
+    handlers.exit(null, 'SIGABRT');
+
+    expect(registry.report).toHaveBeenCalledWith(
+      'display', 'down', 'kiosk crashed while hidden (code null, signal SIGABRT)'
+    );
+  });
+
+  test('exit while hidden with a non-zero code after a successful launch is down', async () => {
+    const { spawn } = require('child_process');
+    const handlers = {};
+    spawn.mockReturnValue({
+      pid: 1234, killed: false,
+      on: (event, handler) => { handlers[event] = handler; },
+    });
+    armExecFile();
+
+    await displayDriver.ensureBrowserRunning();
+    registry.report.mockClear();
+
+    handlers.exit(1, null);
+
+    expect(registry.report).toHaveBeenCalledWith(
+      'display', 'down', 'kiosk crashed while hidden (code 1, signal null)'
+    );
+  });
+
+  test('exit while hidden with code 0 after a successful launch stays healthy', async () => {
+    const { spawn } = require('child_process');
+    const handlers = {};
+    spawn.mockReturnValue({
+      pid: 1234, killed: false,
+      on: (event, handler) => { handlers[event] = handler; },
+    });
+    armExecFile();
+
+    await displayDriver.ensureBrowserRunning();
+    registry.report.mockClear();
+
+    handlers.exit(0, null);
+
+    expect(registry.report).toHaveBeenCalledWith(
+      'display', 'healthy', 'kiosk closed while hidden; relaunches on show'
+    );
+  });
+
+  test("exit while hidden via the driver's own SIGTERM (cleanup) stays healthy — deliberate stop", async () => {
+    const { spawn } = require('child_process');
+    const handlers = {};
+    const mockProc = {
+      pid: 1234, killed: false,
+      on: (event, handler) => { handlers[event] = handler; },
+      kill: jest.fn(),
+    };
+    spawn.mockReturnValue(mockProc);
+    armExecFile();
+
+    await displayDriver.ensureBrowserRunning();
+    expect(displayDriver.isScoreboardVisible()).toBe(false);
+    registry.report.mockClear();
+
+    // cleanup() sets the driver's own `terminating` flag and calls
+    // kill('SIGTERM') synchronously before its internal 1s await — fire
+    // the (mocked) process's exit now, as the real Chromium would.
+    const cleanupPromise = displayDriver.cleanup();
+    handlers.exit(null, 'SIGTERM');
+
+    expect(registry.report).toHaveBeenCalledWith(
+      'display', 'healthy', 'kiosk closed while hidden; relaunches on show'
+    );
+
+    await cleanupPromise;
+  });
+
+  test('exit while hidden BEFORE the alive-check passes (launch failed) is down and never flips healthy', async () => {
+    const { spawn } = require('child_process');
+    let exitHandler;
+    spawn.mockReturnValue({
+      pid: 4321, killed: false,
+      on: (event, handler) => { if (event === 'exit') exitHandler = handler; },
+    });
+    armExecFile();
+
+    const changes = [];
+    const onChange = (e) => { if (e.serviceId === 'display') changes.push(e.status); };
+    registry.on('health:changed', onChange);
+
+    const launchResult = displayDriver.ensureBrowserRunning();
+    // The chromium-browser stub aborts a second after launch — well
+    // before the driver's own 1s alive-check completes.
+    exitHandler(null, 'SIGABRT');
+
+    const ok = await launchResult;
+    registry.off('health:changed', onChange);
+
+    expect(ok).toBe(false);
+    expect(displayDriver.getStatus().browserPid).toBeNull();
+    expect(registry.report).toHaveBeenCalledWith(
+      'display', 'down', 'kiosk crashed while hidden (code null, signal SIGABRT)'
+    );
+    expect(registry.report).toHaveBeenCalledWith('display', 'down', 'kiosk launch failed');
+    expect(registry.report).not.toHaveBeenCalledWith('display', 'healthy', expect.anything());
+    // No down → healthy → down flap: the alive-check's own report never
+    // needed to flip anything, so health:changed never reported 'healthy'.
+    expect(changes).not.toContain('healthy');
+  });
+
+  // ────────────────────────────────────────────────────────────────────
+  // Fix round 1 (review finding): `terminating` was being cleared inside
+  // cleanup() itself, synchronously, right after sending SIGKILL. But
+  // process.kill(pid, 'SIGKILL') never fires the child's 'exit' event
+  // synchronously — that always lands on a LATER event-loop tick. So by
+  // the time the real exit arrived, `terminating` had already been reset
+  // to false, and the exit handler misreported the driver's own
+  // deliberate shutdown as a crash. The fix: cleanup() sets `terminating`
+  // and never clears it itself; the exit handler is the sole reader AND
+  // clearer, once it has actually observed the exit.
+  // ────────────────────────────────────────────────────────────────────
+  test('SIGKILL escalation after an unresponsive SIGTERM is still a deliberate stop when hidden', async () => {
+    const { spawn } = require('child_process');
+    const handlers = {};
+    const mockProc = {
+      pid: 1234, killed: false,
+      on: (event, handler) => { handlers[event] = handler; },
+      kill: jest.fn(), // SIGTERM is ignored — the mock never fires 'exit' itself
+    };
+    spawn.mockReturnValue(mockProc);
+    armExecFile();
+
+    await displayDriver.ensureBrowserRunning();
+    expect(displayDriver.isScoreboardVisible()).toBe(false);
+    registry.report.mockClear();
+
+    // process.kill(pid, 0) must NOT throw (process still alive after the
+    // 1s SIGTERM grace period), so cleanup() escalates to SIGKILL.
+    const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+    try {
+      // cleanup() fully resolves — SIGTERM sent, grace period elapsed,
+      // SIGKILL escalation sent and logged — WITHOUT the mocked process
+      // ever having fired 'exit'. If `terminating` were cleared inside
+      // cleanup(), it would already be false here.
+      await displayDriver.cleanup();
+      expect(killSpy).toHaveBeenCalledWith(1234, 'SIGKILL');
+
+      // The real OS kill is asynchronous: the 'exit' event arrives on a
+      // LATER tick, well after cleanup() has already returned.
+      handlers.exit(null, 'SIGKILL');
+
+      expect(registry.report).toHaveBeenCalledWith(
+        'display', 'healthy', 'kiosk closed while hidden; relaunches on show'
+      );
+      expect(registry.report).not.toHaveBeenCalledWith(
+        'display', 'down', expect.stringContaining('crashed')
+      );
+    } finally {
+      killSpy.mockRestore();
+    }
+  });
+
+  test('a foreign SIGKILL while visible is still down — visible always wins over terminating', async () => {
+    // Companion to the case above: confirms the SIGKILL-escalation fix
+    // didn't loosen the visible branch, which must stay unconditional
+    // regardless of `terminating`. (A cleanup()-initiated kill can never
+    // itself produce this shape — cleanup() clears `visible` synchronously
+    // in the same tick it sends the kill, before any real exit can ever
+    // arrive — so this drives the general "visible always wins" rule
+    // directly, the same way a foreign SIGKILL unrelated to cleanup() would.)
+    const { spawn } = require('child_process');
+    const handlers = {};
+    spawn.mockReturnValue({
+      pid: 1234, killed: false,
+      on: (event, handler) => { handlers[event] = handler; },
+    });
+    armExecFile();
+
+    await displayDriver.showScoreboard();
+    expect(displayDriver.isScoreboardVisible()).toBe(true);
+    registry.report.mockClear();
+
+    handlers.exit(null, 'SIGKILL');
+
+    expect(registry.report).toHaveBeenCalledWith(
+      'display', 'down', 'kiosk exited while visible (code null, signal SIGKILL)'
+    );
+  });
+});

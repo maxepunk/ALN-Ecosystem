@@ -220,16 +220,31 @@ jobs:
           echo "All checks passed"
 
   backend-e2e-tier-l:
-    name: Backend E2E Tier L (${{ matrix.pack }})
+    name: Backend E2E Tier L (${{ matrix.leg }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       # Dual-pack gate (A3 slice 0, program §5): the SAME Tier L suite must
-      # pass as ALN and as the toy game. One leg failing must not cancel
-      # the other — both verdicts are the signal.
+      # pass as ALN and as the toy game. Block 2 T1b adds two more legs:
+      # the toy pack with lighting.instruments dormant (degrade), and the
+      # require-pack fixture pinned to the same dormant profile (the
+      # require-vs-degrade contrast). One leg failing must not cancel the
+      # others — every verdict is signal.
       fail-fast: false
       matrix:
-        pack: [production, toy-heist]
+        include:
+          - leg: production
+            pack: ''
+            profile: ''
+          - leg: toy-heist
+            pack: tests/e2e/fixtures/packs/toy-heist
+            profile: ''
+          - leg: toy-dormant-lighting
+            pack: tests/e2e/fixtures/packs/toy-heist
+            profile: tests/e2e/fixtures/profiles/toy-dormant-lighting.json
+          - leg: toy-require-dormant
+            pack: tests/e2e/fixtures/packs/toy-heist-require
+            profile: tests/e2e/fixtures/profiles/toy-dormant-lighting.json
 
     steps:
       - name: Checkout code
@@ -280,18 +295,20 @@ jobs:
       # no UDP discovery in test env, and the system-global resources that
       # force workers=1 (Chromium kiosk, pkill, real AV PID files) are all
       # Tier H concerns.
-      # Empty E2E_PACK_PATH behaves as unset (production ALN-TokenData);
-      # the toy-heist leg re-runs every non-pinning flow as midnight-heist.
+      # Empty E2E_PACK_PATH/E2E_PROFILE_PATH behave as unset (production
+      # ALN-TokenData + the generated simulation profile) — the setup
+      # helpers read both with `|| null` (session-env.js, test-server.js).
       - name: Run Tier L E2E
         working-directory: backend
         env:
-          E2E_PACK_PATH: ${{ matrix.pack == 'toy-heist' && 'tests/e2e/fixtures/packs/toy-heist' || '' }}
+          E2E_PACK_PATH: ${{ matrix.pack }}
+          E2E_PROFILE_PATH: ${{ matrix.profile }}
         run: npm run test:e2e:tier-l
 
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: tier-l-playwright-report-${{ matrix.pack }}
+          name: tier-l-playwright-report-${{ matrix.leg }}
           path: backend/playwright-report/
           retention-days: 7

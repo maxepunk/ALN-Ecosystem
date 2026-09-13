@@ -56,6 +56,12 @@ describe('Display Events - Contract Validation', () => {
       videoQueueService
     });
 
+    // T1a D6/P16: `display` is the ninth service and display:scoreboard is
+    // gated on it. There is no real kiosk on this test host — the init
+    // above tries to launch one and the driver honestly reports down — so
+    // say what this test is standing in for. AFTER init, which reports.
+    serviceHealthRegistry.report('display', 'healthy', 'test mock');
+
     // CRITICAL: Re-register broadcast listeners after resetAllServices
     // Must include displayControlService for display:mode:changed → display:mode broadcasts
     setupBroadcastListeners(testContext.io, {

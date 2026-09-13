@@ -227,7 +227,7 @@ The GM Scanner is NOT just for scanning tokens - it's the **game command center*
 | **Scoring** | Manual adjustments, Reset all scores, Delete transactions |
 | **Environment** | Bluetooth speaker pairing, Audio routing (HDMI/BT), Per-stream volume, Lighting scenes (Home Assistant) |
 | **Show Control** | Game clock, Manual/standing cues, Compound cue timelines, Sound playback, Music (MPD) control |
-| **Service Health** | Per-service health dashboard (8 services), "Check Now" probes, Pre-show verification |
+| **Service Health** | Per-service health dashboard (9 services; three health words `healthy | down | dormant`, dormant grey with its door), "Check Now" probes, Pre-show verification |
 | **Held Items** | Cues/videos blocked by service outage or video conflict, Release/Discard/Release All actions |
 | **Game Activity** | Unified view of player discoveries + GM transactions, Device status, Active cues, Now Playing |
 
@@ -255,14 +255,14 @@ Breaking changes require coordinated updates across backend + all 3 scanner subm
 - `score:updated` removed — scores delivered via `transaction:new.teamScore` (per-transaction), `score:adjusted` (admin adjustments), and `sync:full` (reconnection)
 - `state:update` / `state:sync` broadcasts removed (dead code) — no client consumes them. Session state delivered via `session:update` and `sync:full`
 - `player:scan` broadcasts player scanner activity to GM room (persisted to session.playerScans)
-- `sync:full` includes `playerScans` array, `gameClock`, `cueEngine`, `music` (state + playlists), `serviceHealth` (8-service registry snapshot), `heldItems` (blocked cues/videos), and `sound` (active pw-play playback) for session restoration
+- `sync:full` includes `playerScans` array, `gameClock`, `cueEngine`, `music` (state + playlists), `serviceHealth` (9-service registry snapshot; `dormant` entries carry `door`), `heldItems` (blocked cues/videos), and `sound` (active pw-play playback) for session restoration
 - `videoEvents.js` was deleted (confirmed dead code) — ALL video control goes through `gm:command` actions in `adminEvents.js`
 - Discrete game events (still active): `cue:fired`, `cue:completed`, `cue:error`, `display:mode`
 - `service:state` is the SOLE mechanism for all service domain state delivery (`{domain, state}` envelope, 10 domains: `music`, `video`, `health`, `bluetooth`, `audio`, `lighting`, `sound`, `gameclock`, `cueengine`, `held`). Old per-service discrete events (`gameclock:status`, `sound:status`, `video:status`, `bluetooth:device`, `bluetooth:scan`, `audio:routing`, `lighting:scene`, `service:health`, `held:added/released/discarded/recoverable`, `cue:status`, `audio:ducking:status`) have been removed
 - `gm:command:ack` payload simplified to `{action, success, message}` — no `result.data` forwarding; state comes via `service:state`
 - Audio features: ducking engine (auto-duck music for video/sound), routing inheritance (command > cue > global target resolution)
 - Session lifecycle: `setup` → `active` → `paused` ↔ `active` → `ended` (sessions created in setup, `session:start` transitions to active)
-- `serviceHealthRegistry.js` is a centralized singleton tracking health of 8 services (`vlc`, `music`, `sound`, `bluetooth`, `audio`, `lighting`, `gameclock`, `cueengine`). Services push state via `report()`, consumers read via `isHealthy()`/`getSnapshot()`. Individual service connection events (`vlcService: connected/disconnected`, `lightingService: connection:changed`) are consolidated into the registry — no service maintains its own `this.connected` boolean.
+- `serviceHealthRegistry.js` is a centralized singleton tracking health of 9 services (`vlc`, `music`, `sound`, `bluetooth`, `audio`, `lighting`, `gameclock`, `cueengine`, `display`). Health words are exactly `healthy | down | dormant` (Block 2 T1a): dormant is STICKY with a `door` (`profile` = not installed tonight, set by `dormancyService` from the pack manifest's equipment families vs the profile; `operator` = out of service, the GM's latch); `report()` is ignored while latched; `markDormant`/`clearDormant`/`isDormant`; revalidation skips dormant ids; `reset()` preserves dormant entries. Services push state via `report()`, consumers read via `isHealthy()`/`getSnapshot()`. Individual service connection events (`vlcService: connected/disconnected`, `lightingService: connection:changed`) are consolidated into the registry — no service maintains its own `this.connected` boolean.
 - `serviceHealthRegistry.startRevalidation(services, 15000)` proactively calls each service's health check every 15s (catches stale pipewire-pulse, dead MPD). Started in `app.js initializeServices()`, stopped on shutdown, restarted after system reset. `reset()` calls `stopRevalidation()`.
 - `display:mode:changed` is emitted from BOTH the pre-play hook (queue-based: player scan, cue, video:queue:add) AND `_doPlayVideo()` (admin direct play). These paths are mutually exclusive — no double-emit.
 - `commandExecutor.js` extracts shared gm:command dispatch logic from `adminEvents.js` (used by both WebSocket handler and cue engine). Has `SERVICE_DEPENDENCIES` map for gated execution — commands are rejected with clean error messages before touching the service if its dependency is down. `validateCommand()` checks service health AND resource existence (sound files, video files, lighting scenes, audio sinks) for pre-show verification.
@@ -496,6 +496,6 @@ Multi-context: root `CONTEXT.md` (the ubiquitous language — SEEDED 2026-08-29,
 
 ### Process
 
-Skill wiring (mattpocock-skills by trigger), the six session/continuity rules (the stage is the unit; workflows carry bulk reads; write for the cold agent; reload before resuming), and workflow-prompt standards. See `docs/agents/process.md`.
+Skill wiring (mattpocock-skills by trigger, plus the adopted superpowers rows), the seven session/continuity rules (the stage is the unit; workflows carry bulk reads; write for the cold agent; reload before resuming; compact only at a checkpoint with the tree pushed), and workflow-prompt standards. See `docs/agents/process.md`.
 
 **After any compaction or container restart:** before changing any file, reload the required context set in full — `docs/agents/process.md` rule 6 names the set (process.md, root CONTEXT.md, CURRENT-STATE.md, the active unit's design doc with its execution record, the component CLAUDE.md for each area touched). The compaction summary says where to look; the documents are what to rely on.

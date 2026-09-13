@@ -43,6 +43,23 @@ jobs:
         working-directory: backend
         run: npm ci
 
+      # The hosted runner has no browser at all; the dev container's
+      # /opt/pw-browsers/chromium is a symlink into Playwright's own
+      # cache, so recreate that shape here (playwright is a backend
+      # devDependency, already installed by npm ci above). Resolve the
+      # extracted executable via Playwright's own executablePath()
+      # rather than a hardcoded chrome-linux/chrome glob: the locked
+      # playwright@1.57.0 pulls a Chrome-for-Testing build whose
+      # Linux-x64 archive unpacks to chrome-linux64/ (run 14 taught us
+      # this the hard way — see t1a-ci-report.md).
+      - name: Install Playwright Chromium (the rung-1 kiosk)
+        run: |
+          sudo mkdir -p /opt/pw-browsers && sudo chown "$USER" /opt/pw-browsers
+          (cd backend && PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright install chromium --with-deps)
+          CHROME_BIN="$(cd backend && PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node -e "process.stdout.write(require('playwright').chromium.executablePath())")"
+          ln -sfn "$CHROME_BIN" /opt/pw-browsers/chromium
+          test -x /opt/pw-browsers/chromium
+
       # The measured rung-1 recipe (capability-research doc): VLC and
       # MPD are spawned by the ENGINE; pipewire/Xvfb/dbus are harness
       # arms; python3-dbusmock is the hosted-CI Bluetooth ceiling.
@@ -57,6 +74,17 @@ jobs:
           # The runner's system MPD service must not squat the config;
           # the engine spawns its own.
           sudo systemctl stop mpd mpd.socket 2>/dev/null || true
+
+      # Run 16 (9dbbef4) traced `display` down to a real crash, not a
+      # timing race: Chromium's zygote aborts with "No usable sandbox!"
+      # (content/browser/zygote_host/zygote_host_impl_linux.cc:128) —
+      # Ubuntu 24.04's runner image restricts unprivileged user
+      # namespaces via AppArmor, which Chromium's sandbox needs. This
+      # is runner physics, not engine behavior: the venue Pi kiosk
+      # keeps its normal sandbox: displayDriver's launch flags don't
+      # change, only this hosted runner's kernel knob does.
+      - name: Allow Chromium's sandbox (Ubuntu 24.04 restricts unprivileged user namespaces)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       # sudo resets PATH (secure_path) which would hide setup-node's
       # toolcache binary from the scripts' `node` calls — preserve it.
@@ -82,11 +110,14 @@ jobs:
         run: |
           echo "=== runner-manifest.json ==="
           cat /tmp/rung1/runner-manifest.json 2>/dev/null || true
-          echo "=== engine.log (tail) ==="
-          sudo tail -100 /tmp/rung1/engine.log 2>/dev/null || true
+          echo "=== chromium/xvfb processes ==="
+          ps aux | grep -i "chrom\|Xvfb" | grep -v grep || true
+          echo "=== engine.log (FULL — a tail here previously hid the"
+          echo "    early-boot displayDriver lines; see T1a CI run 14/15) ==="
+          sudo cat /tmp/rung1/engine.log 2>/dev/null || true
           echo "=== up/arm logs ==="
           for f in /tmp/rung1/*.log; do
-            echo "--- $f"; sudo tail -20 "$f" 2>/dev/null || true
+            echo "--- $f"; sudo tail -40 "$f" 2>/dev/null || true
           done
 
       - name: Teardown

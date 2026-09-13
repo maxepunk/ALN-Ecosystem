@@ -14,7 +14,9 @@
 
 const EventEmitter = require('events');
 const logger = require('../utils/logger');
+const config = require('../config');
 const displayDriver = require('../utils/displayDriver');
+const registry = require('./serviceHealthRegistry');
 
 // Display mode constants
 const DisplayMode = {
@@ -89,6 +91,15 @@ class DisplayControlService extends EventEmitter {
       await displayDriver.ensureBrowserRunning();
     } catch (err) {
       logger.warn('[DisplayControl] Chromium pre-launch failed (non-fatal)', { error: err.message });
+    }
+
+    // T1a D9 (ruling R13): when the host turns video playback off, `display`
+    // reports DOWN with the reason rather than sitting at "Not yet checked"
+    // forever — the same posture `vlc` has under that flag. LAST, so the
+    // host's own configuration is the final word over whatever the kiosk
+    // pre-launch above happened to report.
+    if (!config.features.videoPlayback) {
+      registry.report('display', 'down', 'video playback disabled (host config)');
     }
 
     this._initialized = true;
