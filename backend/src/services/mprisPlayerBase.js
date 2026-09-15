@@ -220,6 +220,11 @@ class MprisPlayerBase extends EventEmitter {
     });
 
     this._mprisSignalParser.on('signal', (signal) => {
+      // W9 trace: one line per parsed PropertiesChanged (debug level only)
+      logger.debug(`[${this._label}] trace signal`, {
+        sender: signal.sender, iface: signal.changedInterface,
+        props: signal.properties ? Object.keys(signal.properties) : [], t: Date.now(),
+      });
       this._handleMprisSignal(signal);
     });
 
@@ -296,6 +301,8 @@ class MprisPlayerBase extends EventEmitter {
       this._signalDebounceTimer = null;
       const merged = this._pendingSignal;
       this._pendingSignal = null;
+      // W9 trace: the merged signal reaching the state writer (debug level only)
+      logger.debug(`[${this._label}] trace apply`, { props: Object.keys(merged.properties || {}), t: Date.now() });
       this._processStateChange(merged);
     }, this._signalDebounceMs);
   }

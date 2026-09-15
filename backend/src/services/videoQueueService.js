@@ -306,6 +306,8 @@ class VideoQueueService extends EventEmitter {
       }, timeoutMs);
 
       const handler = (data) => {
+        // W9 trace: what the loaded-wait saw (debug level only)
+        logger.debug('trace waitForVlcLoaded', { seen: data?.current, expectedFilename, t: Date.now() });
         // Payload is { previous: {state, filename}, current: {state, filename} }
         if (data.current.state === 'playing' && data.current.filename === expectedFilename) {
           clearTimeout(timeout);

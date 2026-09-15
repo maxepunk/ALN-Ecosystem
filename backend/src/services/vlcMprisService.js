@@ -412,6 +412,7 @@ class VlcMprisService extends MprisPlayerBase {
     if (this._previousDelta &&
         (this._previousDelta.state !== currentDelta.state ||
          this._previousDelta.filename !== currentDelta.filename)) {
+      logger.debug('[VLC] trace state:changed', { previous: this._previousDelta, state: this.state, filename: this.track?.filename || null, length: this.track?.length || 0, t: Date.now() });
       this.emit('state:changed', {
         previous: { ...this._previousDelta },
         current: { ...currentDelta },
