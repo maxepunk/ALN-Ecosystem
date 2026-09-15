@@ -56,7 +56,9 @@ class LightingService extends EventEmitter {
       await this.checkConnection();
 
       if (registry.isHealthy('lighting')) {
-        await this.getScenes();
+        // checkConnection() already loaded the scene list (on the transition, or
+        // because the list was still empty) and retries on the 15s revalidation —
+        // fetching again here would just duplicate the round-trip.
         logger.info('Lighting service initialized — connected to Home Assistant', {
           sceneCount: this._scenes.length,
         });
@@ -125,6 +127,21 @@ class LightingService extends EventEmitter {
       } else {
         logger.warn('Home Assistant connection lost');
         this._startReconnect();
+      }
+    }
+
+    // B-2: reload the scene list on every reconnect, and keep retrying while the
+    // grid is empty. If HA was down at orchestrator start (or died mid-show),
+    // nothing else reloads it — lighting:scenes:refresh is a command with no
+    // button, so the grid stayed blank until a restart. The empty-list retry
+    // covers /api/ being up while /api/states fails: getScenes() swallows that
+    // error, so one attempt on the transition would be the only one ever made.
+    // This runs on the 15s health revalidation, so the retry is automatic.
+    if (isNowHealthy && (!wasHealthy || this._scenes.length === 0)) {
+      try {
+        await this.refreshScenes();
+      } catch (err) {
+        logger.warn('Scene refresh after HA health check failed', { error: err.message });
       }
     }
   }

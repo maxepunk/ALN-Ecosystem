@@ -112,6 +112,28 @@ describe('LightingService', () => {
       expect(scenes[1]).toEqual({ id: 'scene.blackout', name: 'Blackout' });
     });
 
+    it('should fetch the scene list exactly once on a healthy start', async () => {
+      // checkConnection's down → healthy transition already reloads the scenes,
+      // so init must not issue a second /api/states round-trip.
+      axios.get.mockImplementation((url) => {
+        if (url === 'http://localhost:8123/api/') {
+          return Promise.resolve({ status: 200, data: { message: 'API running.' } });
+        }
+        return Promise.resolve({
+          status: 200,
+          data: [{ entity_id: 'scene.game_start', attributes: { friendly_name: 'Game Start' } }],
+        });
+      });
+
+      await lightingService.init();
+
+      const stateCalls = axios.get.mock.calls.filter(
+        ([url]) => url === 'http://localhost:8123/api/states'
+      );
+      expect(stateCalls).toHaveLength(1);
+      expect(lightingService.getCachedScenes()).toHaveLength(1);
+    });
+
     it('should succeed silently when HA unreachable (graceful degradation)', async () => {
       axios.get.mockRejectedValue(new Error('ECONNREFUSED'));
 
@@ -232,6 +254,100 @@ describe('LightingService', () => {
 
       expect(axios.get).not.toHaveBeenCalled();
       expect(lightingService.isConnected()).toBe(false);
+    });
+
+    // B-2: HA down at orchestrator start left the scene list empty until someone
+    // sent lighting:scenes:refresh — a command with no button. The reconnect
+    // itself must reload the scenes.
+    it('should refresh scenes on the down → healthy transition', async () => {
+      const handler = jest.fn();
+      lightingService.on('scenes:refreshed', handler);
+
+      axios.get.mockImplementation((url) => {
+        if (url === 'http://localhost:8123/api/') {
+          return Promise.resolve({ status: 200, data: { message: 'API running.' } });
+        }
+        return Promise.resolve({
+          status: 200,
+          data: [{ entity_id: 'scene.reconnected', attributes: { friendly_name: 'Reconnected' } }],
+        });
+      });
+
+      await lightingService.checkConnection();
+
+      expect(handler).toHaveBeenCalledWith({
+        scenes: [{ id: 'scene.reconnected', name: 'Reconnected' }],
+      });
+      lightingService.removeListener('scenes:refreshed', handler);
+    });
+
+    // Scenes already loaded and no status change → nothing to do. (An EMPTY list
+    // is the one case that does retry — see the retry test below.)
+    it('should NOT refresh scenes when the service was already healthy', async () => {
+      axios.get.mockImplementation((url) => {
+        if (url === 'http://localhost:8123/api/') {
+          return Promise.resolve({ status: 200, data: { message: 'API running.' } });
+        }
+        return Promise.resolve({
+          status: 200,
+          data: [{ entity_id: 'scene.loaded', attributes: { friendly_name: 'Loaded' } }],
+        });
+      });
+      await lightingService.checkConnection(); // down → healthy (refreshes)
+
+      const handler = jest.fn();
+      lightingService.on('scenes:refreshed', handler);
+
+      await lightingService.checkConnection(); // healthy → healthy
+
+      expect(handler).not.toHaveBeenCalled();
+      lightingService.removeListener('scenes:refreshed', handler);
+    });
+
+    // L1: getScenes() swallows its own error, so refreshScenes() never throws and
+    // the registry stays healthy. If /api/ is up while /api/states fails, the one
+    // refresh on the transition is the only attempt — the grid would stay empty
+    // forever. Retry on every check while the list is empty (15s revalidation).
+    it('should retry the scene load while the list is empty, even without a transition', async () => {
+      axios.get.mockImplementation((url) => {
+        if (url === 'http://localhost:8123/api/') {
+          return Promise.resolve({ status: 200, data: { message: 'API running.' } });
+        }
+        return Promise.reject(new Error('HA states unavailable'));
+      });
+      await lightingService.checkConnection(); // healthy, scenes still empty
+      expect(lightingService.getCachedScenes()).toEqual([]);
+
+      // Next revalidation: no status transition, but /api/states recovers.
+      axios.get.mockImplementation((url) => {
+        if (url === 'http://localhost:8123/api/') {
+          return Promise.resolve({ status: 200, data: { message: 'API running.' } });
+        }
+        return Promise.resolve({
+          status: 200,
+          data: [{ entity_id: 'scene.late', attributes: { friendly_name: 'Late' } }],
+        });
+      });
+      const handler = jest.fn();
+      lightingService.on('scenes:refreshed', handler);
+
+      await lightingService.checkConnection();
+
+      expect(handler).toHaveBeenCalledWith({ scenes: [{ id: 'scene.late', name: 'Late' }] });
+      expect(lightingService.getCachedScenes()).toEqual([{ id: 'scene.late', name: 'Late' }]);
+      lightingService.removeListener('scenes:refreshed', handler);
+    });
+
+    it('should not reject when the scene refresh fails after reconnect', async () => {
+      axios.get.mockImplementation((url) => {
+        if (url === 'http://localhost:8123/api/') {
+          return Promise.resolve({ status: 200, data: { message: 'API running.' } });
+        }
+        return Promise.reject(new Error('HA states unavailable'));
+      });
+
+      await expect(lightingService.checkConnection()).resolves.toBeUndefined();
+      expect(lightingService.isConnected()).toBe(true);
     });
   });
 

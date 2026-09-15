@@ -182,6 +182,12 @@ class MusicService extends EventEmitter {
         this._eventsWired = false;  // fresh client; events not yet wired
         this._wireMpdEvents();
         this._setConnected(true, 'MPD reconnected');
+        // B-3: re-read status through the idle handler's own diff-and-emit path.
+        // _wireMpdEvents only registers listeners, so without this the first push
+        // after a reconnect waited on MPD firing an event by itself — the GM panel
+        // stayed disabled with a stale track until someone reloaded the page.
+        // _refreshAfterCommand swallows and logs its own errors.
+        await this._refreshAfterCommand();
         return true;
       } catch (_) {
         return false;

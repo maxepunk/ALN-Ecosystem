@@ -494,14 +494,16 @@ function setupBroadcastListeners(io, services) {
 
   // Music → service:state { domain: 'music' }
   // Use buildMusicState (not raw getState) so playlists array travels with each push.
+  // Declared outside the guard so the health:changed wiring below can reuse it.
+  const pushMusicState = () => {
+    if (!musicService) return;
+    if (_pushTimers.music) clearTimeout(_pushTimers.music);
+    _pushTimers.music = setTimeout(() => {
+      delete _pushTimers.music;
+      emitToRoom(io, 'gm', 'service:state', { domain: 'music', state: buildMusicState(musicService) });
+    }, 50);
+  };
   if (musicService) {
-    const pushMusicState = () => {
-      if (_pushTimers.music) clearTimeout(_pushTimers.music);
-      _pushTimers.music = setTimeout(() => {
-        delete _pushTimers.music;
-        emitToRoom(io, 'gm', 'service:state', { domain: 'music', state: buildMusicState(musicService) });
-      }, 50);
-    };
     for (const event of ['playback:changed', 'volume:changed', 'track:changed', 'position:changed', 'playlist:changed', 'playlists:reloaded']) {
       addTrackedListener(musicService, event, pushMusicState);
     }
@@ -533,8 +535,32 @@ function setupBroadcastListeners(io, services) {
   }
 
   // Health → service:state { domain: 'health' }
-  addTrackedListener(serviceHealthRegistry, 'health:changed', () => {
+  // B-5: health:checked fires on EVERY accepted report, so a "Check Now" probe
+  // against a service that is still down still repaints the panel (fresh
+  // lastChecked). The 50ms debounce coalesces the bursts that revalidation (6
+  // services) and reset (8 services) produce into a single push.
+  addTrackedListener(serviceHealthRegistry, 'health:checked', () => {
     pushServiceState('health', serviceHealthRegistry);
+  });
+
+  // B-2 / B-3: a connection flip must repaint the service's OWN domain too.
+  // Without this, HA or MPD down at connect time left the lighting/music panel
+  // disabled forever, and MPD dying mid-show left a progress bar advancing —
+  // only a page reload (sync:full) recovered them.
+  // gameclock + cueengine are omitted: they are in-process and push their own
+  // domain from their lifecycle events.
+  const HEALTH_DOMAIN_PUSHERS = {
+    lighting: () => lightingService && pushServiceState('lighting', lightingService),
+    music: () => pushMusicState(),
+    bluetooth: () => bluetoothService && pushServiceState('bluetooth', bluetoothService),
+    audio: () => audioRoutingService && pushServiceState('audio', audioRoutingService),
+    sound: () => soundService && pushServiceState('sound', soundService),
+    vlc: () => videoQueueService && pushServiceState('video', videoQueueService),
+  };
+  addTrackedListener(serviceHealthRegistry, 'health:changed', (data) => {
+    pushServiceState('health', serviceHealthRegistry);
+    const pushOwnDomain = HEALTH_DOMAIN_PUSHERS[data?.serviceId];
+    if (pushOwnDomain) pushOwnDomain();
   });
 
   // Bluetooth → service:state { domain: 'bluetooth' }
@@ -546,7 +572,9 @@ function setupBroadcastListeners(io, services) {
 
   // Audio → service:state { domain: 'audio' }
   if (audioRoutingService) {
-    for (const event of ['routing:changed', 'routing:applied', 'routing:fallback', 'sink:added', 'sink:removed', 'ducking:changed']) {
+    // volume:changed (B-7) covers both a GM's own audio:volume:set and a level
+    // that moved outside the orchestrator (pactl sink-input change).
+    for (const event of ['routing:changed', 'routing:applied', 'routing:fallback', 'sink:added', 'sink:removed', 'ducking:changed', 'volume:changed']) {
       addTrackedListener(audioRoutingService, event, () => pushServiceState('audio', audioRoutingService));
     }
   }

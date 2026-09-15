@@ -128,6 +128,28 @@ async function performSystemReset(io, services) {
   logger.debug('All services reset');
 
   // Step 5: Re-initialize infrastructure
+  //
+  // ── Centralized cross-service listener wiring ──
+  // ALL cross-service listeners registered here, AFTER all services have been
+  // reset. sessionService.reset() is tear-down only — it does NOT register these.
+  // This prevents the ordering bug where transactionService.reset() destroys
+  // listeners that were registered on it by sessionService.reset().
+  //
+  // H1 — these MUST come before setupBroadcastListeners, matching startup:
+  // transactionService's constructor calls registerSessionListener(), and
+  // sessionService.init() (inside initializeServices()) registers the score,
+  // persistence and game-clock listeners — all before server.js calls
+  // setupServiceListeners(). EventEmitter dispatches in registration order, and
+  // on `scores:reset` the session listener clears session.transactions
+  // synchronously while the broadcast listener reads them synchronously to build
+  // the follow-up sync:full. Registered the other way round, that sync:full ships
+  // the PRE-reset transactions, and the GM Scanner marks every token in a
+  // sync:full as scanned — re-blocking them on every station.
+  transactionService.registerSessionListener();
+  sessionService.setupScoreListeners();
+  sessionService.setupPersistenceListeners();
+  sessionService.setupGameClockListeners();
+
   // Broadcast listeners must be re-registered after service reset
   setupBroadcastListeners(io, {
     sessionService,
@@ -145,16 +167,6 @@ async function performSystemReset(io, services) {
     displayControlService,
   });
   logger.debug('Broadcast listeners re-initialized');
-
-  // ── Centralized cross-service listener wiring ──
-  // ALL cross-service listeners registered here, AFTER all services have been reset.
-  // sessionService.reset() is tear-down only — it does NOT register these.
-  // This prevents the ordering bug where transactionService.reset() destroys
-  // listeners that were registered on it by sessionService.reset().
-  transactionService.registerSessionListener();
-  sessionService.setupScoreListeners();
-  sessionService.setupPersistenceListeners();
-  sessionService.setupGameClockListeners();
 
   // Phase 1: Re-register cue engine event forwarding
   // These listeners forward game events (transaction:accepted, group:completed, etc.) to cueEngineService

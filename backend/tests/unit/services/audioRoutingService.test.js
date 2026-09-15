@@ -1069,15 +1069,28 @@ Sink Input #42
 
       const status = await audioRoutingService.getRoutingStatus();
 
+      // B-1: routes carry the concrete sink the alias resolves to, so a GM
+      // dropdown built from availableSinks can match the value directly.
       expect(status).toEqual(expect.objectContaining({
         routes: expect.objectContaining({
-          video: 'hdmi',
+          video: 'alsa_output.platform-fef00700.hdmi.hdmi-stereo',
         }),
         defaultSink: 'hdmi',
         availableSinks: expect.arrayContaining([
           expect.objectContaining({ type: 'hdmi' })
         ]),
       }));
+    });
+
+    it('should resolve routes against the freshly fetched sink list', async () => {
+      mockExecFileSuccess(
+        '12\tbluez_output.AA_BB_CC_DD_EE_FF.1\tPipeWire\ts16le 2ch 44100Hz\tRUNNING\n'
+      );
+      await audioRoutingService.setStreamRoute('music', 'bluetooth');
+
+      const status = await audioRoutingService.getRoutingStatus();
+
+      expect(status.routes.music).toBe('bluez_output.AA_BB_CC_DD_EE_FF.1');
     });
 
     it('should reflect updated routes', async () => {
@@ -1517,6 +1530,205 @@ Sink Input #42
       // volumes for streams that never got the pactl call through
       expect(audioRoutingService._routingData.volumes.video).toBeUndefined();
       expect(persistenceService.save).not.toHaveBeenCalled();
+    });
+
+    // B-7: a volume change on one GM station never reached the others — their
+    // sliders stayed at the old value until a reconnect.
+    it('emits volume:changed after persisting', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
+      mockExecFileSuccess('');
+      const handler = jest.fn();
+      audioRoutingService.on('volume:changed', handler);
+
+      await audioRoutingService.setStreamVolume('sound', 30);
+
+      expect(handler).toHaveBeenCalledWith({ stream: 'sound', volume: 30 });
+      audioRoutingService.removeListener('volume:changed', handler);
+    });
+
+    it('emits the clamped volume, not the raw input', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
+      mockExecFileSuccess('');
+      const handler = jest.fn();
+      audioRoutingService.on('volume:changed', handler);
+
+      await audioRoutingService.setStreamVolume('video', 150);
+
+      expect(handler).toHaveBeenCalledWith({ stream: 'video', volume: 100 });
+      audioRoutingService.removeListener('volume:changed', handler);
+    });
+
+    it('does NOT emit volume:changed when the pactl set failed', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue(null);
+      const handler = jest.fn();
+      audioRoutingService.on('volume:changed', handler);
+
+      await expect(audioRoutingService.setStreamVolume('video', 50)).rejects.toThrow();
+
+      expect(handler).not.toHaveBeenCalled();
+      audioRoutingService.removeListener('volume:changed', handler);
+    });
+  });
+
+  // ── Sink-input volume changes made outside the orchestrator ──
+
+  describe('sink-input change events', () => {
+    const SINK_INPUT_DUMP = [
+      'Sink Input #77',
+      '\tDriver: PipeWire',
+      '\tVolume: front-left: 26214 /  40% / -23.88 dB,   front-right: 26214 /  40% / -23.88 dB',
+      '\t\tapplication.name = "aln-music"',
+      '',
+    ].join('\n');
+
+    beforeEach(() => {
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+      audioRoutingService._sinkInputRegistry.set('77', {
+        index: '77', appName: 'aln-music', stream: 'music',
+      });
+      audioRoutingService._routingData.volumes = { music: 70 };
+      audioRoutingService.startSinkMonitor();
+      audioRoutingService._mockProc = mockProc;
+    });
+
+    // B-7: pactl 'change' on a tracked sink-input is the only signal that a volume
+    // moved outside the orchestrator (or on another station's command).
+    it('updates the stored volume and emits volume:changed', async () => {
+      mockExecFileSuccess(SINK_INPUT_DUMP);
+      const handler = jest.fn();
+      audioRoutingService.on('volume:changed', handler);
+
+      audioRoutingService._mockProc.stdout.emit('data', Buffer.from("Event 'change' on sink-input #77\n"));
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      expect(audioRoutingService._routingData.volumes.music).toBe(40);
+      expect(handler).toHaveBeenCalledWith({ stream: 'music', volume: 40 });
+      audioRoutingService.removeListener('volume:changed', handler);
+    });
+
+    it('ignores a change on a sink-input that is not a tracked stream', async () => {
+      mockExecFileSuccess(SINK_INPUT_DUMP);
+      const handler = jest.fn();
+      audioRoutingService.on('volume:changed', handler);
+
+      audioRoutingService._mockProc.stdout.emit('data', Buffer.from("Event 'change' on sink-input #999\n"));
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      expect(handler).not.toHaveBeenCalled();
+      audioRoutingService.removeListener('volume:changed', handler);
+    });
+
+    it('does not re-emit when the volume already matches the stored value', async () => {
+      audioRoutingService._routingData.volumes = { music: 40 };
+      mockExecFileSuccess(SINK_INPUT_DUMP);
+      const handler = jest.fn();
+      audioRoutingService.on('volume:changed', handler);
+
+      audioRoutingService._mockProc.stdout.emit('data', Buffer.from("Event 'change' on sink-input #77\n"));
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      expect(handler).not.toHaveBeenCalled();
+      audioRoutingService.removeListener('volume:changed', handler);
+    });
+
+    // M1: VLC and MPD emit change events constantly (state, properties, volume).
+    // One pactl dump per event would be a subprocess storm.
+    it('coalesces a burst of change events into a single pactl read', async () => {
+      mockExecFileSuccess(SINK_INPUT_DUMP);
+
+      for (let i = 0; i < 4; i += 1) {
+        audioRoutingService._mockProc.stdout.emit('data', Buffer.from("Event 'change' on sink-input #77\n"));
+      }
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      const reads = execFile.mock.calls.filter(([, args]) => args.join(' ') === 'list sink-inputs');
+      expect(reads).toHaveLength(1);
+    });
+
+    it('never runs two pactl reads for the same sink-input at once', async () => {
+      const reads = [];
+      let releaseFirst;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (args.join(' ') !== 'list sink-inputs') return cb(null, '', '');
+        reads.push(args);
+        if (reads.length === 1) {
+          releaseFirst = () => cb(null, SINK_INPUT_DUMP, '');
+          return undefined; // leave the first read outstanding
+        }
+        return cb(null, SINK_INPUT_DUMP, '');
+      });
+
+      audioRoutingService._mockProc.stdout.emit('data', Buffer.from("Event 'change' on sink-input #77\n"));
+      await new Promise(resolve => setTimeout(resolve, 200));
+      expect(reads).toHaveLength(1); // first read started, still in flight
+
+      audioRoutingService._mockProc.stdout.emit('data', Buffer.from("Event 'change' on sink-input #77\n"));
+      await new Promise(resolve => setTimeout(resolve, 200));
+      expect(reads).toHaveLength(1); // second read deferred, not stacked
+
+      releaseFirst();
+      await new Promise(resolve => setTimeout(resolve, 300));
+      expect(reads.length).toBeGreaterThanOrEqual(2); // re-armed read ran after
+    });
+
+    // M2: duckingEngine._handleStop decrements the instance count to zero BEFORE
+    // its restore pactl write resolves, so the stream reads as "not ducked" during
+    // the restore window. A late echo of our own duck write would otherwise be
+    // recorded as user intent and re-applied to the next sink-input.
+    it('ignores the echo of a volume this service wrote itself', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '77' });
+      mockExecFileSuccess(SINK_INPUT_DUMP);
+      // The duck write that the (now cleared) duck applied: 40%, matching the dump.
+      await audioRoutingService._setStreamVolumeLive('music', 40);
+      expect(audioRoutingService._duckingEngine.getActiveSources('music')).toEqual([]);
+
+      const handler = jest.fn();
+      audioRoutingService.on('volume:changed', handler);
+
+      audioRoutingService._mockProc.stdout.emit('data', Buffer.from("Event 'change' on sink-input #77\n"));
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      expect(audioRoutingService._routingData.volumes.music).toBe(70);
+      expect(handler).not.toHaveBeenCalled();
+      audioRoutingService.removeListener('volume:changed', handler);
+    });
+
+    it('still reports a genuine external change after one of our own writes', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '77' });
+      mockExecFileSuccess(SINK_INPUT_DUMP);
+      await audioRoutingService._setStreamVolumeLive('music', 55); // our last write
+      const handler = jest.fn();
+      audioRoutingService.on('volume:changed', handler);
+
+      // The dump still reports 40% — someone else moved it.
+      audioRoutingService._mockProc.stdout.emit('data', Buffer.from("Event 'change' on sink-input #77\n"));
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      expect(handler).toHaveBeenCalledWith({ stream: 'music', volume: 40 });
+      audioRoutingService.removeListener('volume:changed', handler);
+    });
+
+    // A ducked stream's live volume is the transient duck value. Recording it as
+    // user intent would clobber the persisted volume AND make the next sink-input
+    // spawn ducked (_identifySinkInput re-applies _routingData.volumes).
+    it('leaves stored volume and pre-duck capture alone while the stream is ducked', async () => {
+      audioRoutingService.loadDuckingRules([
+        { when: 'video', duck: 'music', to: 40, fadeMs: 0 },
+      ]);
+      audioRoutingService._duckingEngine._instanceCounts = { music: { video: 1 } };
+      audioRoutingService._duckingEngine._preDuckVolumes = { music: 70 };
+      mockExecFileSuccess(SINK_INPUT_DUMP);
+      const handler = jest.fn();
+      audioRoutingService.on('volume:changed', handler);
+
+      audioRoutingService._mockProc.stdout.emit('data', Buffer.from("Event 'change' on sink-input #77\n"));
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      expect(audioRoutingService._routingData.volumes.music).toBe(70);
+      expect(audioRoutingService._duckingEngine._preDuckVolumes.music).toBe(70);
+      expect(handler).not.toHaveBeenCalled();
+      audioRoutingService.removeListener('volume:changed', handler);
     });
   });
 
@@ -2393,6 +2605,86 @@ Sink Input #42
 
       state.volumes.video = 0;
       expect(audioRoutingService._routingData.volumes.video).toBe(75);
+    });
+
+    // B-1: the GM dropdown lists raw pactl sink names, so an alias route could
+    // never match an option and the renderer silently fell back to the first sink.
+    // The alias stays internal; the wire carries the concrete sink.
+    it('should resolve the hdmi alias to the cached HDMI sink name', async () => {
+      audioRoutingService._sinkCache = [
+        { id: '1', name: 'alsa_output.platform-107c701400.hdmi.hdmi-stereo', type: 'hdmi', label: 'HDMI' },
+        { id: '2', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth', label: 'BT Speaker' },
+      ];
+      await audioRoutingService.setStreamRoute('video', 'hdmi');
+
+      expect(audioRoutingService.getState().routes.video)
+        .toBe('alsa_output.platform-107c701400.hdmi.hdmi-stereo');
+    });
+
+    it('should resolve the bluetooth alias to the cached bluetooth sink name', async () => {
+      audioRoutingService._sinkCache = [
+        { id: '1', name: 'alsa_output.platform-107c701400.hdmi.hdmi-stereo', type: 'hdmi', label: 'HDMI' },
+        { id: '2', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth', label: 'BT Speaker' },
+      ];
+      await audioRoutingService.setStreamRoute('music', 'bluetooth');
+
+      expect(audioRoutingService.getState().routes.music).toBe('bluez_output.AA_BB_CC_DD_EE_FF.1');
+    });
+
+    it('should pass the alias through when no matching sink is present', async () => {
+      audioRoutingService._sinkCache = [
+        { id: '1', name: 'alsa_output.usb', type: 'other', label: 'USB' },
+      ];
+      await audioRoutingService.setStreamRoute('video', 'hdmi');
+
+      expect(audioRoutingService.getState().routes.video).toBe('hdmi');
+    });
+
+    it('should leave a concrete sink name untouched', async () => {
+      audioRoutingService._sinkCache = [
+        { id: '1', name: 'alsa_output.platform-107c701400.hdmi.hdmi-stereo', type: 'hdmi', label: 'HDMI' },
+      ];
+      await audioRoutingService.setStreamRoute('sound', 'alsa_output.usb');
+
+      expect(audioRoutingService.getState().routes.sound).toBe('alsa_output.usb');
+    });
+
+    // M4: sink:added/sink:removed null the cache before the refetch lands, and a
+    // health:changed → audio push can land inside that window. Falling back to the
+    // last good list keeps the GM's dropdown populated and the route resolved.
+    it('should keep resolving routes from the last good sink list after a cache invalidation', async () => {
+      mockExecFileSuccess(
+        '47\talsa_output.platform-fef00700.hdmi.hdmi-stereo\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n'
+      );
+      await audioRoutingService.getAvailableSinks();
+      await audioRoutingService.setStreamRoute('video', 'hdmi');
+
+      audioRoutingService._invalidateSinkCache();
+      const state = audioRoutingService.getState();
+
+      expect(state.availableSinks).toHaveLength(1);
+      expect(state.routes.video).toBe('alsa_output.platform-fef00700.hdmi.hdmi-stereo');
+    });
+
+    it('should drop the last good sink list on reset', async () => {
+      mockExecFileSuccess(
+        '47\talsa_output.platform-fef00700.hdmi.hdmi-stereo\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n'
+      );
+      await audioRoutingService.getAvailableSinks();
+
+      audioRoutingService.reset();
+
+      expect(audioRoutingService.getState().availableSinks).toEqual([]);
+    });
+
+    it('should keep the alias in the internal routing table (persistence + fallback)', async () => {
+      audioRoutingService._sinkCache = [
+        { id: '1', name: 'alsa_output.platform-107c701400.hdmi.hdmi-stereo', type: 'hdmi', label: 'HDMI' },
+      ];
+      await audioRoutingService.setStreamRoute('video', 'hdmi');
+
+      expect(audioRoutingService._routingData.routes.video).toEqual({ sink: 'hdmi' });
+      expect(audioRoutingService.getStreamRoute('video')).toBe('hdmi');
     });
 
     test('getState returns empty volumes object when none persisted', () => {

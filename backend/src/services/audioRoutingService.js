@@ -62,6 +62,13 @@ const FIND_SINK_INPUT_BACKOFF = 100;
 /** How long to cache sink list (ms) — invalidated immediately on sink events */
 const SINK_CACHE_TTL = 5000;
 
+/**
+ * Debounce for re-reading a sink-input's volume after a pactl 'change' event (ms).
+ * VLC and MPD emit change events in bursts (state, properties, volume), and each
+ * read is a `pactl list sink-inputs` subprocess — coalesce them.
+ */
+const SINK_INPUT_VOLUME_DEBOUNCE = 100;
+
 class AudioRoutingService extends EventEmitter {
   constructor() {
     super();
@@ -72,9 +79,24 @@ class AudioRoutingService extends EventEmitter {
     this._sinkCache = null;
     this._sinkCacheTime = 0;
 
+    // Last successfully fetched sink list. Survives _invalidateSinkCache() so the
+    // SYNC getState() still has sinks (and can resolve route aliases) during the
+    // window between a sink event nulling the cache and the refetch landing —
+    // a health:changed → audio push can arrive inside that window.
+    this._lastGoodSinks = [];
+
     // Sink-input registry: populated reactively from pactl subscribe events
     // Maps sink-input id (string) → { index, appName }
     this._sinkInputRegistry = new Map();
+
+    // Volume re-read state for pactl 'change' events (per sink-input id):
+    // debounce timers + the ids whose read is currently outstanding.
+    this._volumeReadTimers = {};
+    this._volumeReadsInFlight = new Set();
+
+    // Last volume THIS service wrote per stream (duck, restore, or user set).
+    // Used to recognize the pactl 'change' echo of our own write.
+    this._lastWrittenVolume = {};
 
     // DuckingEngine — wired to this service via port interface.
     // Port provides the three volume operations the engine needs, keeping
@@ -174,6 +196,13 @@ class AudioRoutingService extends EventEmitter {
     }
     this._invalidateSinkCache();
 
+    // Cancel pending volume re-reads so no timer outlives the monitor.
+    for (const timer of Object.values(this._volumeReadTimers)) {
+      clearTimeout(timer);
+    }
+    this._volumeReadTimers = {};
+    this._volumeReadsInFlight.clear();
+
     logger.info('Audio routing service cleaned up');
   }
 
@@ -186,6 +215,8 @@ class AudioRoutingService extends EventEmitter {
     this._routingData = JSON.parse(JSON.stringify(DEFAULT_ROUTING));
     this._sinkCache = null;
     this._sinkCacheTime = 0;
+    this._lastGoodSinks = [];
+    this._lastWrittenVolume = {};
 
     // Reset ducking engine state
     this._duckingEngine.reset();
@@ -215,6 +246,7 @@ class AudioRoutingService extends EventEmitter {
       const stdout = await this._execFile('pactl', ['list', 'sinks', 'short']);
       this._sinkCache = this._parseSinkList(stdout);
       this._sinkCacheTime = now;
+      this._lastGoodSinks = this._sinkCache;
       return this._sinkCache;
     } catch (err) {
       logger.error('Failed to get available sinks', { error: err.message });
@@ -304,19 +336,48 @@ class AudioRoutingService extends EventEmitter {
   }
 
   /**
+   * Resolve a configured route value to the concrete sink it would be routed to.
+   *
+   * B-1: routes are stored as aliases ('hdmi'/'bluetooth') but the GM's dropdown
+   * options are raw pactl sink names, so an alias could never match an option and
+   * the renderer silently fell back to the first sink in the list. The alias stays
+   * internal (persistence + fallback logic in applyRouting are unchanged); only the
+   * outward-facing snapshots carry the resolved name.
+   *
+   * An alias with no matching sink present passes through unresolved — the GM sees
+   * the configured intent rather than a wrong sink.
+   *
+   * @param {string} alias - Route value ('hdmi', 'bluetooth', or a concrete sink name)
+   * @param {Array} [sinks] - Sink list to resolve against (defaults to the cache,
+   *   falling back to the last good list while the cache is invalidated)
+   * @returns {string} Concrete sink name, or the input unchanged
+   * @private
+   */
+  _resolveRouteSink(alias, sinks = this._sinkCache || this._lastGoodSinks) {
+    if (alias !== 'hdmi' && alias !== 'bluetooth') {
+      return alias;
+    }
+    const match = this._buildAvailableSinksSnapshot(sinks).find(s => s.type === alias);
+    return match?.name ?? alias;
+  }
+
+  /**
    * Get current audio routing state snapshot (sync).
    * @returns {{routes: Object, defaultSink: string, ducking: Object, availableSinks: Array, volumes: Object}}
    */
   getState() {
     const routes = {};
     for (const [stream, route] of Object.entries(this._routingData.routes)) {
-      routes[stream] = typeof route === 'object' ? route.sink : route;
+      routes[stream] = this._resolveRouteSink(typeof route === 'object' ? route.sink : route);
     }
     return {
       routes,
       defaultSink: this._routingData.defaultSink,
       ducking: this._duckingEngine.getActiveState(),
-      availableSinks: this._buildAvailableSinksSnapshot(this._sinkCache || []),
+      // Fall back to the last good list: a sink event nulls the cache before the
+      // refetch lands, and this snapshot is sync — reporting an empty sink list
+      // there would blank the GM's dropdown for the width of that window.
+      availableSinks: this._buildAvailableSinksSnapshot(this._sinkCache || this._lastGoodSinks),
       volumes: { ...this._routingData.volumes },
     };
   }
@@ -326,16 +387,25 @@ class AudioRoutingService extends EventEmitter {
    * @returns {Object} Full routing state
    */
   async getRoutingStatus() {
+    // Fetch first so routes resolve against the SAME sink list this snapshot
+    // reports — a stale (or empty) cache would leave aliases unresolved next to
+    // an availableSinks list that does contain the sink.
+    const availableSinks = await this.getAvailableSinks();
+
     // Normalize routes to flat strings (internal format is { sink: 'hdmi' })
-    // so sync:full and routing:changed events use the same shape for the GM Scanner
+    // so sync:full and routing:changed events use the same shape for the GM Scanner,
+    // resolving aliases to concrete sink names (B-1 — see _resolveRouteSink).
     const routes = {};
     for (const [stream, route] of Object.entries(this._routingData.routes)) {
-      routes[stream] = typeof route === 'object' ? route.sink : route;
+      routes[stream] = this._resolveRouteSink(
+        typeof route === 'object' ? route.sink : route,
+        availableSinks
+      );
     }
     return {
       routes,
       defaultSink: this._routingData.defaultSink,
-      availableSinks: await this.getAvailableSinks(),
+      availableSinks,
     };
   }
 
@@ -508,6 +578,11 @@ class AudioRoutingService extends EventEmitter {
     // Set the live volume
     await this._execFile('pactl', ['set-sink-input-volume', sinkInput.index, `${clampedVolume}%`]);
 
+    // Remember what we wrote: pactl echoes every write back as a sink-input
+    // 'change' event, and _handleSinkInputVolumeChange must not mistake our own
+    // duck/restore/user write for someone else moving the volume.
+    this._lastWrittenVolume[stream] = clampedVolume;
+
     logger.info('Stream volume set', { stream, volume: clampedVolume, sinkInputIdx: sinkInput.index });
 
     return clampedVolume;
@@ -549,6 +624,11 @@ class AudioRoutingService extends EventEmitter {
     // E3: if this stream is currently ducked, refresh the restore target so
     // unducking restores to the volume the user just set.
     this._duckingEngine.refreshPreDuckCapture(stream, clampedVolume);
+
+    // B-7: broadcast the new level. Without this the change reached only the
+    // station that made it — every other GM's slider stayed at the old value
+    // until a reconnect rebuilt it from sync:full.
+    this.emit('volume:changed', { stream, volume: clampedVolume });
   }
 
   /**
@@ -821,6 +901,10 @@ class AudioRoutingService extends EventEmitter {
         } else {
           this._sinkInputRegistry.delete(event.id);
         }
+      } else if (event.action === 'change' && event.type === 'sink-input') {
+        // B-7: the only signal that a tracked stream's volume moved outside this
+        // process (another station's command, pavucontrol, a media key).
+        this._scheduleSinkInputVolumeRead(event.id);
       } else if (event.action === 'change' && event.type === 'card') {
         // Card events — re-activate HDMI if card profile changed (e.g., projector hotplug)
         this._activateHdmiCards().catch(err => {
@@ -917,6 +1001,85 @@ class AudioRoutingService extends EventEmitter {
         }
       }
     }
+  }
+
+  /**
+   * Schedule a volume re-read for a sink-input that just emitted a pactl
+   * 'change' event.
+   *
+   * Debounced per sink-input id: VLC and MPD emit change events in bursts (state,
+   * properties, volume) and each read spawns `pactl list sink-inputs`. At most one
+   * read per id is outstanding — concurrent reads of the same dump can resolve out
+   * of order and write a stale volume into _routingData.volumes.
+   *
+   * @param {string} id - Sink-input id from the pactl subscribe event
+   * @private
+   */
+  _scheduleSinkInputVolumeRead(id) {
+    if (this._volumeReadTimers[id]) clearTimeout(this._volumeReadTimers[id]);
+
+    this._volumeReadTimers[id] = setTimeout(() => {
+      delete this._volumeReadTimers[id];
+
+      if (this._volumeReadsInFlight.has(id)) {
+        // A read for this id is still outstanding — re-arm instead of stacking a
+        // second one, so the final value is still read but never concurrently.
+        this._scheduleSinkInputVolumeRead(id);
+        return;
+      }
+
+      this._volumeReadsInFlight.add(id);
+      this._handleSinkInputVolumeChange(id)
+        .catch(err => {
+          logger.debug('Sink-input volume re-read failed', { id, error: err.message });
+        })
+        .finally(() => this._volumeReadsInFlight.delete(id));
+    }, SINK_INPUT_VOLUME_DEBOUNCE);
+  }
+
+  /**
+   * Re-read a tracked sink-input's volume and publish it (B-7).
+   *
+   * Only sink-inputs already resolved to one of our streams are handled — the
+   * registry is populated by _identifySinkInput on the 'new' event, so an
+   * unknown id is either someone else's stream or one that arrived before the
+   * monitor started.
+   *
+   * Two guards keep transient duck levels out of user intent:
+   *  - An actively ducked stream is skipped. Its live volume is the duck value;
+   *    recording it would clobber the stored level AND make the next sink-input
+   *    come up ducked (_identifySinkInput re-applies _routingData.volumes).
+   *  - The last volume this service wrote is ignored as our own echo. The duck
+   *    guard alone is not enough: duckingEngine._handleStop decrements the
+   *    instance count to zero BEFORE its restore write resolves, so a late echo
+   *    of the duck write can land while the stream already reads as un-ducked.
+   *
+   * The in-memory volume IS updated (and reaches disk with the next
+   * setStreamVolume/setStreamRoute save). That is intended: an external change is
+   * the new reality, and the stored value drifting away from it — so that
+   * _identifySinkInput re-applied a level nobody wanted — was the original bug.
+   *
+   * @param {string} id - Sink-input id from the pactl subscribe event
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _handleSinkInputVolumeChange(id) {
+    const stream = this._sinkInputRegistry.get(id)?.stream;
+    if (!stream) return;
+
+    if (this._duckingEngine.getActiveSources(stream).length > 0) return;
+
+    const stdout = await this._execFile('pactl', ['list', 'sink-inputs']);
+    const volume = this._extractVolumeForSinkInput(stdout, id);
+    if (typeof volume !== 'number') return;
+
+    if (this._lastWrittenVolume[stream] === volume) return;
+    // Nothing new to announce (also covers a re-read that races our own write).
+    if (this._routingData.volumes[stream] === volume) return;
+
+    this._routingData.volumes[stream] = volume;
+    logger.info('Stream volume changed outside the orchestrator', { stream, volume, id });
+    this.emit('volume:changed', { stream, volume });
   }
 
   // ── Private helpers ──

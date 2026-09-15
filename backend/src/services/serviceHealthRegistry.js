@@ -3,7 +3,8 @@
  * Centralized health tracking for all services. Services push state in,
  * consumers read it out. Not a god object — it's a bulletin board.
  *
- * Emits: 'health:changed' { serviceId, status, message, previousStatus }
+ * Emits: 'health:checked' { serviceId, status, message, lastChecked } on every report
+ *        'health:changed' { serviceId, status, message, previousStatus } on transitions
  */
 
 'use strict';
@@ -31,7 +32,12 @@ class ServiceHealthRegistry extends EventEmitter {
 
   /**
    * Called by services when their health changes.
-   * Only emits 'health:changed' when status actually changes.
+   * Emits 'health:checked' on EVERY accepted report and 'health:changed' only
+   * when the status actually changes.
+   *
+   * B-5: a "Check Now" probe against a service that is still down produced no
+   * event at all, so the GM saw nothing happen. health:checked carries the fresh
+   * lastChecked so the panel can show the probe landed without a transition.
    */
   report(serviceId, status, message = '') {
     if (!KNOWN_SERVICES.includes(serviceId)) {
@@ -47,11 +53,14 @@ class ServiceHealthRegistry extends EventEmitter {
     const current = this._services.get(serviceId);
     const previousStatus = current.status;
 
+    const lastChecked = new Date();
     this._services.set(serviceId, {
       status,
       message,
-      lastChecked: new Date()
+      lastChecked
     });
+
+    this.emit('health:checked', { serviceId, status, message, lastChecked });
 
     if (previousStatus !== status) {
       logger.info(`Service health changed: ${serviceId} ${previousStatus} → ${status}`, { message });
@@ -151,8 +160,12 @@ class ServiceHealthRegistry extends EventEmitter {
   reset() {
     this.stopRevalidation();
     // Route through report() so each transition is LOGGED (a silent reset hid
-    // the music outage in 0523game) as well as emitted. report() no-ops any
-    // service already 'down', preserving the prior "only emit on change" semantics.
+    // the music outage in 0523game) as well as emitted. report() emits
+    // health:changed only for services that were healthy, preserving the prior
+    // "only emit on change" semantics for that event.
+    // NOTE: neither event reaches clients here — systemReset.js calls
+    // cleanupBroadcastListeners() before reset(), so nothing is listening. GMs
+    // get the post-reset health picture from the sync:full that follows.
     for (const id of KNOWN_SERVICES) {
       this.report(id, 'down', 'Reset');
     }

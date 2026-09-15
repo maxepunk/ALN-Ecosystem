@@ -1026,6 +1026,60 @@ describe('MusicService — checkConnection recovery', () => {
     expect(service._mpd).not.toBeNull();
     expect(service.connected).toBe(true);
   });
+
+  // B-3: after a reconnect, _wireMpdEvents only registers idle listeners — nothing
+  // re-read status, so the next push waited on MPD firing an event of its own. The
+  // GM panel stayed frozen (controls disabled, stale track) until a page reload.
+  it('re-reads status after a reconnect so state and track events fire', async () => {
+    const service = new MusicService({ opTimeoutMs: 50 });
+    await service.init();
+    service._mpd = null;
+    service.connected = false;
+
+    mpd2.connect.mockImplementation(async () => {
+      const { EventEmitter } = require('events');
+      const client = new EventEmitter();
+      client._connected = true;
+      client.disconnect = jest.fn();
+      mockMpdResponses(client, { state: 'play', file: 'b.mp3', title: 'Track B' });
+      return client;
+    });
+
+    const playback = [];
+    const tracks = [];
+    service.on('playback:changed', (d) => playback.push(d));
+    service.on('track:changed', (d) => tracks.push(d));
+
+    const ok = await service.checkConnection();
+
+    expect(ok).toBe(true);
+    expect(playback).toEqual([{ state: 'playing' }]);
+    expect(tracks).toEqual([
+      { track: expect.objectContaining({ file: 'b.mp3', title: 'Track B' }) },
+    ]);
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('status');
+  });
+
+  it('still reports the reconnect successful when the status re-read fails', async () => {
+    const service = new MusicService({ opTimeoutMs: 50 });
+    await service.init();
+    service._mpd = null;
+    service.connected = false;
+
+    mpd2.connect.mockImplementation(async () => {
+      const { EventEmitter } = require('events');
+      const client = new EventEmitter();
+      client._connected = true;
+      client.disconnect = jest.fn();
+      client.sendCommand = jest.fn().mockRejectedValue(new Error('MPD busy'));
+      return client;
+    });
+
+    const ok = await service.checkConnection();
+
+    expect(ok).toBe(true);
+    expect(service.connected).toBe(true);
+  });
 });
 
 describe('MusicService — listAllTracks', () => {

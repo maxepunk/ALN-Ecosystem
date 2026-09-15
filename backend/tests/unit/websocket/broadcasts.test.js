@@ -21,6 +21,7 @@ const {
   createMockAudioRoutingService,
   createMockBluetoothService,
   createMockLightingService,
+  createMockMusicService,
 } = require('../../helpers/mocks');
 
 describe('broadcasts.js - Event Wrapper Integration', () => {
@@ -659,6 +660,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     let mockAudioRoutingService;
     let mockLightingService;
     let mockVlcService;
+    let mockMusicService;
 
     // service:state pushes are debounced 50ms — use fake timers so unit tests
     // can advance past the debounce without real-time waiting
@@ -682,6 +684,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       mockVlcService.getState = jest.fn().mockReturnValue({
         connected: true, state: 'playing', volume: 100, track: {},
       });
+      mockMusicService = createMockMusicService();
     });
 
     function setupWithAllServices() {
@@ -695,6 +698,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         audioRoutingService: mockAudioRoutingService,
         lightingService: mockLightingService,
         vlcService: mockVlcService,
+        musicService: mockMusicService,
       });
     }
 
@@ -712,6 +716,19 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     it('should emit service:state with domain audio on routing:changed', () => {
       setupWithAllServices();
       mockAudioRoutingService.emit('routing:changed', { stream: 'video', sink: 'hdmi' });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'audio', state: mockAudioRoutingService.getState() },
+      }));
+    });
+
+    // B-7: per-stream volume changes were never broadcast, so other stations'
+    // sliders stayed stale until a reconnect.
+    it('should emit service:state with domain audio on volume:changed', () => {
+      setupWithAllServices();
+      mockAudioRoutingService.emit('volume:changed', { stream: 'sound', volume: 30 });
       jest.advanceTimersByTime(51); // advance past 50ms debounce
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
@@ -770,6 +787,107 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       }));
 
       serviceHealthRegistry.getState = originalGetState;
+    });
+
+    // B-5: a probe that finds no status change still has to reach the GM, so
+    // every accepted report pushes the health domain (debounce coalesces bursts).
+    it('should emit service:state with domain health on health:checked', () => {
+      const serviceHealthRegistry = require('../../../src/services/serviceHealthRegistry');
+      const originalGetState = serviceHealthRegistry.getState;
+      serviceHealthRegistry.getState = jest.fn().mockReturnValue({
+        vlc: { status: 'down', message: 'VLC unreachable', lastChecked: 'T1' },
+      });
+
+      setupWithAllServices();
+      serviceHealthRegistry.emit('health:checked', {
+        serviceId: 'vlc', status: 'down', message: 'VLC unreachable', lastChecked: 'T1',
+      });
+      jest.advanceTimersByTime(51);
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'health', state: serviceHealthRegistry.getState() },
+      }));
+
+      serviceHealthRegistry.getState = originalGetState;
+    });
+
+    // B-2 / B-3: a connection flip has to repaint the service's OWN panel too,
+    // not just the health tiles — otherwise lighting/music controls stay dead.
+    it('should also push the lighting domain when lighting health changes', () => {
+      const serviceHealthRegistry = require('../../../src/services/serviceHealthRegistry');
+
+      setupWithAllServices();
+      mockIo.emit.mockClear();
+      serviceHealthRegistry.emit('health:changed', { serviceId: 'lighting', status: 'healthy' });
+      jest.advanceTimersByTime(51);
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'lighting', state: mockLightingService.getState() },
+      }));
+    });
+
+    it('should push the music domain with playlists when music health changes', () => {
+      const serviceHealthRegistry = require('../../../src/services/serviceHealthRegistry');
+      mockMusicService.connected = true;
+
+      setupWithAllServices();
+      serviceHealthRegistry.emit('health:changed', { serviceId: 'music', status: 'healthy' });
+      jest.advanceTimersByTime(51);
+
+      const musicPush = mockIo.emit.mock.calls.find(
+        (call) => call[0] === 'service:state' && call[1].data.domain === 'music'
+      );
+      expect(musicPush).toBeDefined();
+      // connected mirrors the service (which mirrors the registry), and playlists
+      // prove the push went through buildMusicState, not raw getState().
+      expect(musicPush[1].data.state.connected).toBe(true);
+      expect(musicPush[1].data.state.playlists).toEqual([]);
+    });
+
+    it('should push the video domain when vlc health changes', () => {
+      const serviceHealthRegistry = require('../../../src/services/serviceHealthRegistry');
+
+      setupWithAllServices();
+      mockIo.emit.mockClear();
+      serviceHealthRegistry.emit('health:changed', { serviceId: 'vlc', status: 'down' });
+      jest.advanceTimersByTime(51);
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'video', state: mockVideoQueueService.getState() },
+      }));
+    });
+
+    it('should ignore health changes for services with no own domain', () => {
+      const serviceHealthRegistry = require('../../../src/services/serviceHealthRegistry');
+
+      setupWithAllServices();
+      mockIo.emit.mockClear();
+      serviceHealthRegistry.emit('health:changed', { serviceId: 'gameclock', status: 'healthy' });
+      jest.advanceTimersByTime(51);
+
+      const domains = mockIo.emit.mock.calls
+        .filter((call) => call[0] === 'service:state')
+        .map((call) => call[1].data.domain);
+      expect(domains).toEqual(['health']);
+    });
+
+    it('should not throw when a health-changed service was never provided', () => {
+      const serviceHealthRegistry = require('../../../src/services/serviceHealthRegistry');
+
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService,
+      });
+
+      expect(() => {
+        serviceHealthRegistry.emit('health:changed', { serviceId: 'bluetooth', status: 'down' });
+        jest.advanceTimersByTime(51);
+      }).not.toThrow();
     });
 
     it('should emit service:state with domain held on cue:held', () => {

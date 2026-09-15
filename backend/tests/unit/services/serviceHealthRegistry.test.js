@@ -118,6 +118,58 @@ describe('ServiceHealthRegistry', () => {
 
       expect(second.getTime()).toBeGreaterThanOrEqual(first.getTime());
     });
+
+    // B-5: "Check Now" on a still-down service produced no event at all, so the
+    // GM got zero feedback. health:checked fires on EVERY report so consumers can
+    // show a fresh lastChecked without a status transition.
+    it('should emit health:checked on every report, health:changed only on transitions', () => {
+      const checked = jest.fn();
+      const changed = jest.fn();
+      registry.on('health:checked', checked);
+      registry.on('health:changed', changed);
+
+      registry.report('lighting', 'down', 'HA unreachable');
+      registry.report('lighting', 'down', 'HA unreachable');
+
+      expect(checked).toHaveBeenCalledTimes(2);
+      expect(changed).toHaveBeenCalledTimes(0);
+    });
+
+    it('should include serviceId, status, message and lastChecked in health:checked', () => {
+      const checked = jest.fn();
+      registry.on('health:checked', checked);
+
+      registry.report('vlc', 'healthy', 'Connected to VLC HTTP');
+
+      expect(checked).toHaveBeenCalledWith({
+        serviceId: 'vlc',
+        status: 'healthy',
+        message: 'Connected to VLC HTTP',
+        lastChecked: registry.getStatus('vlc').lastChecked,
+      });
+    });
+
+    it('should emit health:checked alongside health:changed on a transition', () => {
+      const checked = jest.fn();
+      const changed = jest.fn();
+      registry.on('health:checked', checked);
+      registry.on('health:changed', changed);
+
+      registry.report('music', 'healthy', 'MPD connected');
+
+      expect(checked).toHaveBeenCalledTimes(1);
+      expect(changed).toHaveBeenCalledTimes(1);
+    });
+
+    it('should NOT emit health:checked for an unknown service or invalid status', () => {
+      const checked = jest.fn();
+      registry.on('health:checked', checked);
+
+      registry.report('unknown-service', 'healthy');
+      registry.report('vlc', 'degraded');
+
+      expect(checked).not.toHaveBeenCalled();
+    });
   });
 
   describe('isHealthy()', () => {

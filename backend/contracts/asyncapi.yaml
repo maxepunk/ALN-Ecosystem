@@ -663,7 +663,13 @@ components:
                 description: Bluetooth/audio/lighting environment snapshot (buildEnvironmentState)
                 properties:
                   bluetooth: { type: object }
-                  audio: { type: object }
+                  audio:
+                    type: object
+                    description: |
+                      Audio routing snapshot (audioRoutingService.getState). `routes` values are
+                      CONCRETE PipeWire sink names resolved from the configured alias
+                      (`hdmi`/`bluetooth`), matching the `audio` service:state domain;
+                      an alias with no matching sink present passes through unresolved.
                   lighting: { type: object }
               gameClock:
                 type: object
@@ -2237,6 +2243,11 @@ components:
                   - **health**: `{vlc: {status, message, lastChecked}, music: {...}, ...}` (all 8 services)
                   - **bluetooth**: `{scanning, pairedDevices[], connectedDevices[]}`
                   - **audio**: `{routes, defaultSink, ducking, availableSinks, volumes}`
+                    (each `routes` value is the CONCRETE PipeWire sink name the
+                    stream would be routed to — the configured alias `hdmi` /
+                    `bluetooth` is resolved against `availableSinks`, so a GM
+                    dropdown of sink names can match it directly. An alias with
+                    no matching sink present passes through unresolved.)
                   - **lighting**: `{connected, activeScene, scenes[]}`
                   - **sound**: `{playing[]}`
                   - **gameclock**: `{status, elapsed, startTime, totalPausedMs}`
@@ -2490,7 +2501,14 @@ components:
       type: object
       required: [routes, defaultSink, ducking, availableSinks, volumes]
       properties:
-        routes: { type: object }
+        routes:
+          type: object
+          description: |
+            Per-stream target, keyed by stream name (video/music/sound). Values are
+            CONCRETE PipeWire sink names resolved from the configured alias
+            (`hdmi`/`bluetooth`) against the current sink list; an alias with no
+            matching sink present passes through unresolved.
+          example: { video: "alsa_output.platform-107c701400.hdmi.hdmi-stereo" }
         defaultSink: { type: string }
         ducking: { type: object }
         availableSinks: { type: array }
