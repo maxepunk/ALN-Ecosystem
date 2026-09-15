@@ -6,6 +6,7 @@ Comprehensive guide to E2E (End-to-End) testing for the ALN Orchestrator backend
 
 - [Overview](#overview)
 - [Test Taxonomy](#test-taxonomy)
+- [Environment Classes](#environment-classes)
 - [Quick Start](#quick-start)
 - [Test Structure](#test-structure)
 - [Configuration](#configuration)
@@ -50,6 +51,45 @@ The E2E test suite validates **full-stack integration** between:
 - **Intent**: Validate networked mode, WebSocket communication, transaction processing, scoring
 
 **CRITICAL**: L3 tests require orchestrator running (`npm run dev:full` or `npm run dev:no-video`)
+
+## Environment Classes
+
+Some flows need venue hardware that a dev Pi on the bench does not have. They
+are gated, not deleted: `helpers/capabilities.js` reads `serviceHealth` from
+`/api/state` and `requireCapabilities` / `requireDegraded` skip LOUDLY, so the
+run report says what did not execute. A few checks additionally gate on DOM
+presence when the capability alone is not enough.
+
+**Runs anywhere** (no venue hardware): session lifecycle, scoring and parity,
+transaction delete/rescan, dedup and reset behaviour, admin panel navigation,
+history and report surfaces, player scanner flows, scoreboard rendering. Video
+flows run here too when a headless `cvlc --intf dummy` is reachable.
+
+**Needs venue hardware:**
+
+| Area | Requirement | Why it cannot run on the bench |
+|------|-------------|--------------------------------|
+| Audio route dropdowns, per-stream volume sliders | At least one real PipeWire sink | The internal `auto_null` sink is filtered out of `availableSinks`, so with no real output device the routing UI renders nothing to assert on. |
+| Bluetooth routing to a speaker | A **connected** BT speaker (paired is not enough) | No `bluez_output.*` sink exists until a speaker is connected, so nothing can be routed to it. The Pi's BCM43455 supports one A2DP stream. |
+| Lighting scene activation | WLED controllers online in Home Assistant | HA can be up with valid scenes while every light is `unavailable`; activation then returns an HA error. Scene *listing* still works. |
+| Music playback, ducking, cascade | MP3s in `backend/public/music/` + a live MPD | `backend/public/music/` is gitignored, so a fresh clone has an empty library and MPD queues filenames that do not exist. |
+| Health card timestamps, "Check Now" toast | At least one service DOWN | The health dashboard collapses to a single line when all 8 services are healthy — no per-service cards, and "Check Now" is rendered only for down services. These use `requireDegraded`. |
+| Real video output | HDMI display attached | Headless VLC reports `playing` over D-Bus without any picture. Backend health checks verify D-Bus reachability, never actual output. |
+
+**Audio route dropdowns:** every route `<select>` carries a disabled
+`Unknown sink` placeholder at option index 0 with `value=""`, so a test must
+pick its target from the options with a non-empty value, never by index 0 or by
+"the first option that differs from the current one". `getAudioRouteState()`
+does that filtering once and returns it as `selectable`, alongside `unknown`,
+which is true when the placeholder is the current selection because the
+backend's route matches no live sink.
+
+**Tagging:** whole flows that cannot run without an attached display carry
+`@hardware` in their `test.describe` title (display control, player video
+lifecycle, scoreboard video lifecycle). `npm run test:e2e:tier-l` excludes that
+tag; `npm run test:e2e:tier-h` runs only it. Everything in the table above that
+is *not* display-bound stays untagged and relies on the capability gates
+instead, so it runs automatically once the venue kit is present.
 
 ## Quick Start
 

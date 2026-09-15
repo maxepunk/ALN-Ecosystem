@@ -19,12 +19,50 @@ const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
 const { createBrowserContext, createPage, closeAllContexts } = require('../setup/browser-contexts');
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
-const { getCapabilities, requireCapabilities, requireDegraded } = require('../helpers/capabilities');
+const { getCapabilities, requireCapabilities, requireDegraded, waitForCapability } = require('../helpers/capabilities');
 const { selectTestTokens } = require('../helpers/token-selection');
+const { connectWithAuth, waitForEvent, disconnectSocket } = require('../../helpers/websocket-core');
 
 let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
+
+/**
+ * Send a GM command over a throwaway admin socket.
+ * Same pattern as GMScannerPage.startGame() / 07d-03's helper.
+ */
+async function sendGMCommand(orchestratorUrl, action, payload = {}) {
+    const socket = await connectWithAuth(orchestratorUrl, ADMIN_PASSWORD, `CMD_HELPER_${Date.now()}`, 'gm');
+    try {
+        const ackPromise = waitForEvent(socket, 'gm:command:ack',
+            (ack) => ack?.data?.action === action, 10000);
+        socket.emit('gm:command', {
+            event: 'gm:command',
+            data: { action, payload },
+            timestamp: new Date().toISOString()
+        });
+        return await ackPromise;
+    } finally {
+        disconnectSocket(socket);
+    }
+}
+
+/**
+ * Make sure an active session exists, creating one only if needed.
+ *
+ * This suite deliberately shares ONE orchestrator across its tests and never
+ * restarts it, so a session created by an earlier test is still live. Calling
+ * createSessionWithTeams() blindly would hang waiting for a "Create New
+ * Session" button that a live session hides.
+ */
+async function ensureActiveSession(gm, orchestratorUrl, name, teams) {
+    const state = await gm.getStateFromBackend(orchestratorUrl);
+    if (!state?.session || state.session.status === 'ended') {
+        await gm.createSessionWithTeams(name, teams);
+        return;
+    }
+    await gm.navigateToAdminPanel();
+}
 
 test.describe('GM Scanner - Multi-Client Reactivity', () => {
     // Tests are mobile-first in this project, but Admin Panel is desktop-focused.
@@ -111,6 +149,135 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
             await expect(nowShowingIcon).toHaveText('▶️', { timeout: 30000 });
 
         } finally {
+            await context1.close();
+            await context2.close();
+        }
+    });
+
+    test('Video State: pending queue list renders on GM2 when videos are queued', async () => {
+        // B-4: #video-queue-container carried a hard-coded inline display:none
+        // that nothing ever cleared, so the "Queue: N pending" counter ticked up
+        // while the list of what was queued stayed invisible on every station.
+        test.setTimeout(120000);
+        const context1 = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
+        const page1 = await createPage(context1);
+        const context2 = await browser.newContext({ baseURL: orchestratorInfo.url });
+        const page2 = await context2.newPage();
+
+        try {
+            const gm1 = await initializeGMScannerWithMode(page1, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
+            const gm2 = await initializeGMScannerWithMode(page2, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
+
+            const caps = await getCapabilities(orchestratorInfo.url);
+            requireCapabilities(test, caps, ['vlc']);
+
+            await ensureActiveSession(gm1, orchestratorInfo.url, 'Queue Render Test', ['Team Queue']);
+            await gm2.navigateToAdminPanel();
+            await expect(page2.locator('#video-control-panel')).toBeAttached();
+
+            // This suite shares one orchestrator, so an earlier test can leave a
+            // video playing (and its own entries queued). Start from a known
+            // empty queue or the pending count below is whatever the previous
+            // test happened to leave behind.
+            await sendGMCommand(orchestratorInfo.url, 'video:stop');
+            await gm2.waitForVideoIdle(20000);
+            await expect(gm2.videoQueueContainer).toBeHidden({ timeout: 20000 });
+
+            // The queue reported to clients contains only PENDING items — the
+            // video currently playing has already left it. So queue THREE to
+            // observe a stable two-row list: #1 plays, #2 and #3 wait. All
+            // three fixtures run 25s+, ample for the assertion.
+            await waitForCapability(orchestratorInfo.url, 'vlc', 10000);
+            for (const file of ['test_30sec.mp4', 'kai001.mp4', 'rem001.mp4']) {
+                const ack = await sendGMCommand(orchestratorInfo.url, 'video:queue:add', { videoFile: file });
+                expect(ack.data.success).toBe(true);
+            }
+
+            // GM2 (the station that issued nothing) sees the wrapper AND the rows
+            await expect(gm2.videoQueueContainer).toBeVisible({ timeout: 20000 });
+            await expect(gm2.videoQueueItems).toHaveCount(2, { timeout: 20000 });
+            await expect(gm2.videoQueueCount).toHaveText('2', { timeout: 20000 });
+
+            // Clearing the queue hides the wrapper again (the other half of the toggle)
+            await sendGMCommand(orchestratorInfo.url, 'video:queue:clear');
+            await expect(gm2.videoQueueContainer).toBeHidden({ timeout: 20000 });
+
+        } finally {
+            await sendGMCommand(orchestratorInfo.url, 'video:stop').catch(() => {});
+            await context1.close();
+            await context2.close();
+        }
+    });
+
+    test('Audio State: GM1 per-stream volume change updates GM2 slider', async () => {
+        // B-7: setStreamVolume now emits volume:changed and the audio domain
+        // push carries `volumes`, so a level set on one station reaches every
+        // other one. Before, a second GM's slider stayed at the old value until
+        // a reconnect rebuilt it from sync:full — two GMs disagreeing about how
+        // loud the music is, mid-show.
+        test.setTimeout(120000);
+        const context1 = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
+        const page1 = await createPage(context1);
+        const context2 = await browser.newContext({ baseURL: orchestratorInfo.url });
+        const page2 = await context2.newPage();
+
+        try {
+            const gm1 = await initializeGMScannerWithMode(page1, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
+            const gm2 = await initializeGMScannerWithMode(page2, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
+
+            const caps = await getCapabilities(orchestratorInfo.url);
+            requireCapabilities(test, caps, ['audio', 'music']);
+
+            await ensureActiveSession(gm1, orchestratorInfo.url, 'Volume Reactivity Test', ['Team Volume']);
+            await gm1.navigateToAdminPanel();
+            await gm2.navigateToAdminPanel();
+
+            // The routing UI (dropdown + volume slider per stream) renders only
+            // from live PipeWire sinks, and the internal `auto_null` sink is
+            // filtered out. A machine with no real output device therefore has
+            // no slider to move — skip loudly rather than assert on nothing.
+            const slider1 = page1.locator('input[data-stream="music"]');
+            const slider2 = page2.locator('input[data-stream="music"]');
+            const hasSlider = (await slider1.count()) > 0 && (await slider2.count()) > 0;
+            test.skip(!hasSlider,
+                'no real PipeWire sink on this machine (only auto_null) — per-stream volume UI is not rendered');
+
+            // audio:volume:set needs a live sink-input to act on, so music must
+            // actually be playing (same precondition as the ducking test).
+            await sendGMCommand(orchestratorInfo.url, 'music:loadPlaylist', { playlistId: 'all-tracks' });
+
+            // backend/public/music/ is gitignored, so the seed playlist can be
+            // committed while the library is empty. MPD then queues filenames
+            // that do not exist and never reaches `playing` — skip loudly
+            // rather than time out on a wait that can never succeed.
+            const musicState = await gm1.getStateFromBackend(orchestratorInfo.url);
+            const trackCount = musicState?.music?.playlist?.tracks?.length ?? 0;
+            test.skip(trackCount === 0,
+                'music library empty on this machine (no MP3s in backend/public/music/) — MPD cannot reach playing');
+
+            await expect(async () => {
+                const state = await gm1.getStateFromBackend(orchestratorInfo.url);
+                expect(state?.music?.state).toBe('playing');
+            }).toPass({ timeout: 20000 });
+
+            // Pick a target that differs from the current level so the change is observable
+            const current = parseInt(await slider1.inputValue(), 10);
+            const target = current > 50 ? 35 : 75;
+
+            // Drive the real control: `input` is what domEventBindings listens for
+            // (debounced 150ms → audioController.setVolume → audio:volume:set).
+            await slider1.fill(String(target));
+            await slider1.dispatchEvent('input');
+
+            // GM2's slider follows via the audio-domain service:state push
+            await expect(async () => {
+                expect(parseInt(await slider2.inputValue(), 10)).toBe(target);
+            }).toPass({ timeout: 20000 });
+
+            console.log(`GM2 music slider followed GM1 to ${target}%`);
+
+        } finally {
+            await sendGMCommand(orchestratorInfo.url, 'music:stop').catch(() => {});
             await context1.close();
             await context2.close();
         }

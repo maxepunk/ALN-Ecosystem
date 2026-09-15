@@ -12,6 +12,8 @@
  * - L2 tests focus on standalone mode (scanner-view only, no backend)
  */
 
+const { expect } = require('@playwright/test');
+
 class GMScannerPage {
   constructor(page) {
     this.page = page;
@@ -77,10 +79,24 @@ class GMScannerPage {
     this.teamDetailsSummary = page.locator('#teamDetailsSummary');
     this.teamBaseScore = page.locator('#teamBaseScore');
     this.teamBonusScore = page.locator('#teamBonusScore');
+    // Backend-truth total + admin adjustments (A-1): in networked mode
+    // renderTeamDetails writes backendScore.currentScore / .adminAdjustments here.
+    this.teamTotalScore = page.locator('#teamTotalScore');
+    this.teamAdminAdjustmentsSection = page.locator('#teamAdminAdjustmentsSection');
+    // "✅ Completed Groups" divider — only rendered when the team has at
+    // least one completed group (GameOpsRenderer.renderTeamDetails).
+    this.teamCompletedGroupsSection = page.locator(
+      '#teamDetailsContainer .section-divider:has-text("Completed Groups")'
+    );
     this.closeTeamDetailsBtn = page.locator('button[data-action="app.closeTeamDetails"]');
-    this.tokenDetailCards = page.locator('#teamDetailsContainer .token-card, #teamDetailsContainer .history-entry');
+    // Team Details cards are `.token-detail-card` (GameOpsRenderer.renderTokenCard).
+    // NOT `.token-card` — that is the Game Activity / history card, a different
+    // renderer. The old selector matched nothing here, so every Team Details
+    // card assertion silently reported zero.
+    this.tokenDetailCards = page.locator('#teamDetailsContainer .token-detail-card');
 
     // Settings elements
+    this.deviceIdDisplay = page.locator('#deviceIdDisplay');
     this.deviceIdInput = page.locator('#deviceId');
     this.modeIndicator = page.locator('#modeIndicator');
 
@@ -129,6 +145,9 @@ class GMScannerPage {
     // Video status displays
     this.videoQueueContainer = page.locator('#video-queue-container');
     this.videoQueueList = page.locator('#video-queue-list');
+    // One row per PENDING queue entry (VideoRenderer.renderQueue). The video
+    // currently playing is NOT pending, so it has no row here.
+    this.videoQueueItems = page.locator('#video-queue-list .queue-item');
     this.videoQueueCount = page.locator('#queue-count');
     this.videoProgressContainer = page.locator('#video-progress-container');
     this.videoProgressFill = page.locator('#video-progress-fill');
@@ -355,6 +374,39 @@ class GMScannerPage {
    */
   async getResultTitle() {
     return await this.resultTitle.textContent();
+  }
+
+  /**
+   * Assert the last scan was ACCEPTED — i.e. the result screen settles on
+   * <h2>Transaction Complete!</h2> rather than any rejection heading.
+   *
+   * Several rejection surfaces exist and each has its own wording, so this
+   * asserts the POSITIVE title instead of enumerating negatives:
+   *   - client-side dedup → "Token Already Scanned" (gameOps.showDuplicateError)
+   *   - backend duplicate → the result screen is repainted as a duplicate
+   *   - unrecognised token → "Unknown Token"
+   *
+   * IMPORTANT — this is NOT proof the backend accepted the scan. In networked
+   * mode the result screen is OPTIMISTIC: it paints "Transaction Complete!"
+   * the moment the scan is queued, and a backend rejection repaints it later,
+   * asynchronously, from the transaction:failed handler (app.js). A poll that
+   * matches immediately therefore cannot have seen that repaint yet.
+   *
+   * Callers MUST pair this with a backend check — waitForBackendState on the
+   * team score or on session.transactions — which is what actually proves the
+   * transaction landed. Every current caller does.
+   *
+   * @throws {Error} when the title never becomes "Transaction Complete!",
+   *   or when a rejection heading is showing at the moment of the read.
+   */
+  async expectScanAccepted() {
+    await expect(this.resultTitle).toHaveText(/Transaction Complete/, { timeout: 3000 });
+
+    const title = (await this.getResultTitle()) || '';
+    if (/Duplicate|Already Scanned|Unknown Token|Error/i.test(title)) {
+      throw new Error(`expectScanAccepted: scan was rejected — result title was "${title.trim()}"`);
+    }
+    return title;
   }
 
   /**
@@ -881,9 +933,21 @@ class GMScannerPage {
   }
 
   /**
-   * Get selected audio route value for a stream
+   * Get selected audio route value for a stream.
+   *
+   * THREE distinct outcomes — callers must not conflate them (B-1/L-1):
+   *   null → no dropdown at all. The routing UI only renders when the audio
+   *          service reports live PipeWire sinks; a machine whose only sink is
+   *          the internal `auto_null` gets an empty list and no dropdowns.
+   *   ''   → the disabled "Unknown sink" placeholder is selected. The backend
+   *          reported a route that matches no available sink (sink vanished),
+   *          or reported no route for this stream at all.
+   *   name → a concrete sink name (e.g. 'alsa_output.platform-107c701400.hdmi').
+   *          Routes are concrete sink names now, never the 'hdmi'/'bluetooth'
+   *          aliases.
+   *
    * @param {string} stream - Stream name ('video', 'music', 'sound')
-   * @returns {Promise<string>} Selected sink value (e.g., 'hdmi', 'bluez_output...')
+   * @returns {Promise<string|null>} see above
    */
   async getAudioRouteValue(stream = 'video') {
     const dropdown = this.page.locator(`select[data-stream="${stream}"]`);
@@ -891,6 +955,32 @@ class GMScannerPage {
     // render when the audio service has live sinks (real PipeWire)
     if (await dropdown.count() === 0) return null;
     return await dropdown.inputValue();
+  }
+
+  /**
+   * Read the full routing state of one stream's dropdown in a single call.
+   *
+   * The first <option> is always the disabled `value=""` "Unknown sink"
+   * placeholder, so every caller that wants "a route I can switch to" must
+   * filter it out — `selectable` does that once, here, instead of in each flow.
+   *
+   * @param {string} stream - Stream name ('video', 'music', 'sound')
+   * @returns {Promise<{value: string, options: Array, selectable: Array, unknown: boolean}|null>}
+   *   null when the dropdown is not rendered (no live sinks on this machine).
+   *   `unknown` is true when the placeholder is selected (value === '').
+   */
+  async getAudioRouteState(stream = 'video') {
+    const dropdown = this.page.locator(`select[data-stream="${stream}"]`);
+    if (await dropdown.count() === 0) return null;
+
+    const options = await this.getAudioRouteOptions(stream);
+    const value = await dropdown.inputValue();
+    return {
+      value,
+      options,
+      selectable: options.filter((o) => o.value !== ''),
+      unknown: value === '',
+    };
   }
 
   /**
@@ -1588,6 +1678,27 @@ class GMScannerPage {
   }
 
   /**
+   * Get total score from team details.
+   * In networked mode this is backend truth (backendScore.currentScore), not a
+   * client recomputation (A-1).
+   * @returns {Promise<string>} formatted currency, e.g. "$52,500"
+   */
+  async getTeamDetailsTotalScore() {
+    return await this.teamTotalScore.textContent();
+  }
+
+  /**
+   * Parse one of the team-details score readouts into a number.
+   * @param {'base'|'bonus'|'total'} which
+   * @returns {Promise<number>}
+   */
+  async getTeamDetailsScoreNumeric(which = 'total') {
+    const el = { base: this.teamBaseScore, bonus: this.teamBonusScore, total: this.teamTotalScore }[which];
+    const text = await el.textContent();
+    return parseInt((text || '').replace(/[^0-9-]/g, ''), 10) || 0;
+  }
+
+  /**
    * Get count of token cards in team details
    * @returns {Promise<number>}
    */
@@ -1601,8 +1712,68 @@ class GMScannerPage {
    * @returns {Promise<boolean>} - True if found
    */
   async hasTokenInTeamDetails(tokenId) {
-    const card = this.page.locator(`#teamDetailsContainer .token-card:has-text("${tokenId}"), #teamDetailsContainer .history-entry:has-text("${tokenId}")`);
-    return await card.count() > 0;
+    return await this.teamDetailsCardFor(tokenId).count() > 0;
+  }
+
+  /**
+   * Locator for one Team Details card, found by the RFID it displays.
+   *
+   * CAVEAT — networked mode: the card's RFID cell renders `transaction.rfid`,
+   * a field only the LOCALLY-built transaction carries. Transactions that
+   * arrive from the backend (sync:full / transaction:new) carry `tokenId`
+   * instead, so the RFID cell comes out EMPTY and this locator matches
+   * nothing. It is reliable in standalone mode only. In networked mode
+   * address the card by its transaction id instead
+   * (findTransactionId + teamDetailsCardForTransaction).
+   *
+   * @param {string} tokenId
+   * @returns {import('@playwright/test').Locator}
+   */
+  teamDetailsCardFor(tokenId) {
+    return this.page.locator('#teamDetailsContainer .token-detail-card', { hasText: tokenId });
+  }
+
+  /**
+   * Locator for one Team Details card addressed by TRANSACTION id — the only
+   * identifier the card carries in networked mode (on its delete button).
+   * @param {string} transactionId
+   * @returns {import('@playwright/test').Locator}
+   */
+  teamDetailsCardForTransaction(transactionId) {
+    return this.page.locator('#teamDetailsContainer .token-detail-card')
+      .filter({ has: this.page.locator(`button[data-action="app.deleteTeamTransaction"][data-arg="${transactionId}"]`) });
+  }
+
+  /**
+   * Look up a transaction's backend id by token (and optionally team).
+   * @param {string} baseUrl - Orchestrator URL
+   * @param {string} tokenId
+   * @param {string} [teamId]
+   * @returns {Promise<string|null>}
+   */
+  async findTransactionId(baseUrl, tokenId, teamId = null) {
+    const state = await this.getStateFromBackend(baseUrl);
+    const match = (state?.session?.transactions || []).find(
+      (t) => t.tokenId === tokenId && (!teamId || t.teamId === teamId)
+    );
+    return match?.id || null;
+  }
+
+  /**
+   * Delete a transaction from Team Details, addressed by its backend id.
+   * Use this in networked mode — see teamDetailsCardFor()'s caveat.
+   * @param {string} transactionId
+   */
+  async deleteTransactionFromTeamDetailsById(transactionId) {
+    const card = this.teamDetailsCardForTransaction(transactionId);
+    await card.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Dialog handler BEFORE the click, or the click hangs on the confirm()
+    this.page.once('dialog', (dialog) => dialog.accept());
+    await card.locator('button[data-action="app.deleteTeamTransaction"]').click();
+
+    // Event-driven: transaction:deleted broadcast → DataManager → re-render
+    await card.waitFor({ state: 'detached', timeout: 10000 });
   }
 
   /**
@@ -1611,7 +1782,8 @@ class GMScannerPage {
    */
   async deleteTransactionFromTeamDetails(tokenId) {
     // Find the token card and its delete button
-    const card = this.page.locator(`#teamDetailsContainer .token-card:has-text("${tokenId}"), #teamDetailsContainer .history-entry:has-text("${tokenId}")`);
+    const card = this.teamDetailsCardFor(tokenId);
+    await card.waitFor({ state: 'visible', timeout: 5000 });
     const deleteBtn = card.locator('button[data-action="app.deleteTeamTransaction"]');
 
     // Setup dialog handler BEFORE clicking

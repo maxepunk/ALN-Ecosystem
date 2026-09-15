@@ -384,6 +384,85 @@ test.describe('GM Scanner - Show Control', () => {
     console.log('service:check for vlc returned:', JSON.stringify(ack.data.data || {}));
   });
 
+  test('Health cards show an absolute last-checked time', async () => {
+    // B-5/W4: each service card carries "checked HH:MM:SS" in the viewer's
+    // local time. Before a GM can decide whether a red service is a real
+    // outage or a stale reading, they need to know WHEN it was last probed.
+    //
+    // Gated on degradation because the dashboard only renders per-service
+    // cards in its EXPANDED layout — when all 8 services are healthy it
+    // collapses to a single "All Systems Operational" line with no cards and
+    // therefore no timestamps to assert on.
+    requireDegraded(test, caps, ['vlc', 'sound', 'music', 'bluetooth', 'audio', 'lighting']);
+
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+
+    try {
+      const gmScanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+      await gmScanner.navigateToAdminPanel();
+
+      await expect(page.locator('.health-dashboard--degraded')).toBeVisible({ timeout: 10000 });
+
+      // A service the registry has not probed yet renders an EMPTY stamp
+      // (_formatChecked returns '' for a missing lastChecked), so key on
+      // "at least one card carries a stamp" rather than on card index 0.
+      const stamped = page.locator('.health-service .health-service__checked')
+        .filter({ hasText: /^checked \d{2}:\d{2}:\d{2}$/ });
+      await expect(stamped.first()).toBeVisible({ timeout: 15000 });
+
+      // ...and every stamp that IS present must be well-formed.
+      const allStamps = await page.locator('.health-service .health-service__checked').allTextContents();
+      for (const stamp of allStamps.map(s => s.trim()).filter(Boolean)) {
+        expect(stamp).toMatch(/^checked \d{2}:\d{2}:\d{2}$/);
+      }
+      console.log(`Health card last-checked stamps: ${allStamps.map(s => s.trim()).filter(Boolean).join(', ')}`);
+
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('Check Now on a down service acknowledges with a toast', async () => {
+    // B-5: the registry only emits on a health TRANSITION, so probing a
+    // service that is still down produced no re-render and no feedback at
+    // all — the GM could not tell the button had done anything. The handler
+    // now surfaces the ack message as a toast regardless of the outcome.
+    //
+    // "Check Now" is rendered only for DOWN services, so this is inherently a
+    // degradation test: it skips on a fully healthy Pi and runs at the venue.
+    requireDegraded(test, caps, ['vlc', 'sound', 'music', 'bluetooth', 'audio', 'lighting']);
+
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+
+    try {
+      const gmScanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+      await gmScanner.navigateToAdminPanel();
+
+      const checkNowBtn = page.locator('button[data-action="admin.serviceCheck"]').first();
+      await expect(checkNowBtn).toBeVisible({ timeout: 10000 });
+      const serviceId = await checkNowBtn.getAttribute('data-service-id');
+
+      await checkNowBtn.click();
+
+      // Toasts auto-dismiss after 3s — assert before that window closes.
+      const toast = page.locator('#error-container .toast');
+      await expect(toast.first()).toBeVisible({ timeout: 10000 });
+      await expect(toast.first()).toContainText('Health check:');
+      console.log(`Check Now on "${serviceId}" toasted: ${(await toast.first().textContent()).trim()}`);
+
+    } finally {
+      await context.close();
+    }
+  });
+
   test('Gated execution rejects command when service is down', async () => {
     // FRESH probe — the shared manifest can be stale because
     // serviceHealthRegistry probes asynchronously after orchestrator restart

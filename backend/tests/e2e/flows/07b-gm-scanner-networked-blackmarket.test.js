@@ -40,6 +40,8 @@ const {
   getTeamScore,
 } = require('../helpers/scanner-init');
 
+const { GMScannerPage } = require('../helpers/page-objects/GMScannerPage');
+
 const { selectTestTokens } = require('../helpers/token-selection');
 const {
   calculateExpectedScore,
@@ -704,6 +706,163 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
 
     } finally {
       online = true; // never let the route block teardown
+      await page.close();
+      await context.close();
+    }
+  });
+
+  // ========================================
+  // TEST: Deleting a transaction frees the token for a rescan
+  // ========================================
+
+  test('deleting a transaction makes the token scannable again and restores the score', async () => {
+    // A-3/A-4: transaction:delete clears the backend's first-come guard AND
+    // the scanner's local scanned-token set. Without the local half, the GM
+    // sees "Token Already Scanned" on the rescan and the correction they just
+    // made is impossible to complete — a mid-game dead end.
+    const teamAlpha = `Team Alpha ${Date.now()}`;
+    const token = testTokens.personalToken;
+    const expectedScore = calculateExpectedScore(token);
+
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+
+    try {
+      const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+
+      await scanner.createSessionWithTeams('Delete Rescan Test', [teamAlpha]);
+
+      await scanner.scannerTab.click();
+      await scanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await scanner.waitForTeamInList(teamAlpha);
+      await scanner.selectTeamFromList(teamAlpha);
+
+      // Claim the token
+      await scanner.manualScan(token.SF_RFID);
+      await scanner.expectScanAccepted();
+      await scanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => state.scores?.find(s => s.teamId === teamAlpha)?.currentScore === expectedScore,
+        5000
+      );
+
+      // Delete it from Team Details. Address the card by TRANSACTION id: in
+      // networked mode the card's RFID cell renders `transaction.rfid`, which
+      // only locally-built transactions carry — backend-delivered ones use
+      // `tokenId`, so the cell is empty and a text match on the token finds
+      // nothing. The delete button's data-arg is the only id on the card.
+      const transactionId = await scanner.findTransactionId(
+        orchestratorInfo.url, token.SF_RFID, teamAlpha
+      );
+      expect(transactionId).toBeTruthy();
+
+      await scanner.finishTeam();
+      await scanner.openScoreboard();
+      await scanner.waitForTeamInScoreboard(teamAlpha);
+      await scanner.openTeamDetails(teamAlpha);
+      await expect(scanner.tokenDetailCards).toHaveCount(1);
+      await scanner.deleteTransactionFromTeamDetailsById(transactionId);
+
+      // Backend drops the transaction and the score with it
+      await scanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => !(state.session?.transactions || []).some(t => t.tokenId === token.SF_RFID)
+          && (state.scores?.find(s => s.teamId === teamAlpha)?.currentScore ?? 0) === 0,
+        5000
+      );
+
+      await scanner.closeTeamDetails();
+      await scanner.closeScoreboard();
+      if (!(await scanner.teamEntryScreen.isVisible())) {
+        await scanner.finishTeam();
+      }
+
+      // Rescan the SAME token — accepted, not a duplicate, and it scores again
+      await scanner.selectTeamFromList(teamAlpha);
+      await scanner.manualScan(token.SF_RFID);
+      await scanner.expectScanAccepted();
+
+      await scanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => state.scores?.find(s => s.teamId === teamAlpha)?.currentScore === expectedScore,
+        5000
+      );
+      const restored = await getTeamScore(page, teamAlpha, 'networked', orchestratorInfo.url);
+      expect(restored).toBe(expectedScore);
+
+      console.log(`✓ Token rescannable after delete; score restored to $${expectedScore.toLocaleString()}`);
+
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
+
+  // ========================================
+  // TEST: Station identity survives a page reload
+  // ========================================
+
+  test('keeps the assigned station name in the device header after a page reload', async () => {
+    // C-7: only Settings.save() painted #deviceIdDisplay, so every reload put
+    // "Device ID: 001" back in the header while scans still went out under the
+    // real station name. A GM reading the header would mis-attribute scans and
+    // could "fix" a non-problem mid-game.
+    //
+    // This test does its own page setup instead of initializeGMScannerWithMode:
+    // that helper installs an addInitScript which re-clears aln_* and rewrites
+    // `deviceId` on EVERY navigation, so it would wipe the wizard's saved
+    // identity and auth token on the very reload under test. Here the prep is
+    // one-shot, guarded by a sessionStorage sentinel that survives reload.
+    const stationName = `GM_Reload_${Date.now()}`;
+    const teamAlpha = `Team Alpha ${Date.now()}`;
+
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+
+    try {
+      await page.addInitScript((sentinel) => {
+        if (sessionStorage.getItem(sentinel)) return; // reload: keep what the wizard saved
+        sessionStorage.setItem(sentinel, '1');
+        const stale = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('aln_') || key === 'gameSessionMode'
+            || key === 'deviceId' || key === 'transactions' || key === 'scannedTokens')) {
+            stale.push(key);
+          }
+        }
+        stale.forEach((key) => localStorage.removeItem(key));
+      }, '__e2e_reload_identity_prepped');
+
+      await page.goto('/gm-scanner/', { waitUntil: 'networkidle', timeout: 30000 });
+      await page.waitForSelector('#gameModeScreen', { state: 'visible', timeout: 10000 });
+
+      const scanner = new GMScannerPage(page);
+      await scanner.selectNetworkedMode();
+      await scanner.manualConnect(orchestratorInfo.url, stationName, ADMIN_PASSWORD);
+      await scanner.waitForConnection();
+
+      // The wizard's assignment is visible immediately (save() path)
+      await expect(scanner.deviceIdDisplay).toHaveText(stationName, { timeout: 5000 });
+
+      // An active session is required for the post-reload state validation to
+      // pass — otherwise the app clears stale state and shows the wizard again
+      // instead of auto-reconnecting.
+      await scanner.createSessionWithTeams('Reload Identity', [teamAlpha]);
+
+      await page.reload({ waitUntil: 'networkidle', timeout: 30000 });
+      await scanner.waitForReconnected(30000);
+
+      // The load() path must paint the header too
+      await expect(scanner.deviceIdDisplay).toHaveText(stationName, { timeout: 10000 });
+      expect((await scanner.deviceIdDisplay.textContent()).trim()).not.toBe('001');
+
+      console.log(`✓ Device header still reads "${stationName}" after reload`);
+
+    } finally {
       await page.close();
       await context.close();
     }

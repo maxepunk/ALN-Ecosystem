@@ -49,6 +49,14 @@ function addConsoleCapture(page, testName) {
   });
 }
 
+/**
+ * The networked Reset All Scores confirm text. A networked reset also clears
+ * transactions and the dedup guard (backend decision A3), so the wording must
+ * promise that — asserted in every reset test below.
+ */
+const RESET_CONFIRM_TEXT =
+  'Reset all team scores to zero? This also clears all transactions and makes every token scannable again.';
+
 let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
@@ -282,9 +290,13 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
         5000
       );
 
-      // Setup dialog handler BEFORE clicking
+      // Setup dialog handler BEFORE clicking.
+      // Capture the message rather than asserting inside the handler — an
+      // assertion failure in a dialog callback surfaces as an unhandled
+      // rejection that can crash the Playwright worker.
+      let resetDialogMessage = null;
       page.once('dialog', async dialog => {
-        expect(dialog.message()).toContain('Reset all team scores to zero');
+        resetDialogMessage = dialog.message();
         await dialog.accept();
       });
 
@@ -302,6 +314,12 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
         },
         5000
       );
+
+      // A networked reset is NOT score-only (backend decision A3): it also
+      // clears transactions and the dedup guard, so every token becomes
+      // scannable again. The confirm text must say so — a GM who reads the
+      // old "scores only" wording would not expect history to vanish.
+      expect(resetDialogMessage).toBe(RESET_CONFIRM_TEXT);
 
       // After reset, both teams have zero scores so scoreboard should show 2 entries with $0
       await expect(scoreboardEntries).toHaveCount(2, { timeout: 10000 });
@@ -388,7 +406,23 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
         5000
       );
 
-      console.log('✓ Score adjustment via team details UI completed');
+      // A-1: Team Details reads BACKEND truth. Reopen it so renderTeamDetails
+      // runs against the post-adjustment score, and check the GM can actually
+      // SEE that an adjustment happened — the adjustments section is the only
+      // place the delta and its reason are surfaced. It stays display:none
+      // until backendScore.adminAdjustments is non-empty.
+      await gmScanner.navigateToAdminPanel();
+      await gmScanner.clickTeamInScoreBoard('Team Alpha');
+      await gmScanner.teamDetailsScreen.waitFor({ state: 'visible', timeout: 5000 });
+
+      await expect(gmScanner.teamAdminAdjustmentsSection).toBeVisible({ timeout: 5000 });
+      await expect(gmScanner.teamAdminAdjustmentsSection).toContainText('Test bonus');
+
+      // Total is backend currentScore, not a client recomputation
+      const shownTotal = await gmScanner.getTeamDetailsScoreNumeric('total');
+      expect(shownTotal).toBe(expectedTokenScore + adjustmentAmount);
+
+      console.log('✓ Score adjustment via team details UI completed (adjustments section visible)');
 
     } finally {
       await page.close();
@@ -623,6 +657,261 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       );
 
       console.log('✓ Scan blocked while paused; succeeded after resume');
+
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
+
+  test('Reset All Scores makes an already-scanned token scannable again', async () => {
+    // END-TO-END proof of the dedup-guard clearing chain (A-3/A-4 + W8):
+    //   backend score:reset clears transactions AND the first-come guard
+    //   → scores:reset broadcast + the sync:full built AFTER that clear
+    //   → the scanner drops the token from its own local scanned set
+    // If the sync:full were built BEFORE transactions were cleared (the
+    // listener-order bug), the client would rebuild its dedup set from the
+    // stale transaction list and reject the rescan with "Token Already
+    // Scanned" — no backend call, nothing in the logs.
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+    addConsoleCapture(page, 'Test8-ResetRescan');
+
+    const token = testTokens.personalToken;
+    const expectedScore = calculateExpectedScore(token);
+
+    try {
+      const gmScanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+
+      await gmScanner.navigateToAdminPanel();
+      await gmScanner.createSessionWithTeams('Reset Rescan Test', ['Team Alpha']);
+      await gmScanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => state.session?.status === 'active',
+        5000
+      );
+
+      // First scan — claims the token
+      await gmScanner.scannerTab.click();
+      await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await gmScanner.selectTeamFromList('Team Alpha');
+      await gmScanner.manualScan(token.SF_RFID);
+      await gmScanner.expectScanAccepted();
+      await gmScanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => state.scores?.find(s => s.teamId === 'Team Alpha')?.currentScore === expectedScore,
+        5000
+      );
+      await gmScanner.finishTeam();
+
+      // Reset all scores from the admin panel, asserting the confirm wording
+      // promises exactly what the backend does.
+      await gmScanner.navigateToAdminPanel();
+      let dialogMessage = null;
+      page.once('dialog', async (dialog) => {
+        dialogMessage = dialog.message();
+        await dialog.accept();
+      });
+      await gmScanner.resetScoresBtn.click();
+
+      await gmScanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => (state.scores || []).every(s => s.currentScore === 0)
+          && (state.session?.transactions || []).length === 0,
+        5000
+      );
+      expect(dialogMessage).toBe(RESET_CONFIRM_TEXT);
+
+      // Rescan the SAME token — must be accepted and score again.
+      await gmScanner.scannerTab.click();
+      await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await gmScanner.selectTeamFromList('Team Alpha');
+      await gmScanner.manualScan(token.SF_RFID);
+      await gmScanner.expectScanAccepted();
+
+      await gmScanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => state.scores?.find(s => s.teamId === 'Team Alpha')?.currentScore === expectedScore,
+        5000
+      );
+
+      console.log('✓ Token scannable again after Reset All Scores');
+
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
+
+  test('Reset All Scores still frees tokens after a system reset', async () => {
+    // Same chain as above, but run on a session created by system:reset.
+    // systemReset.js re-registers listeners from scratch; if it wired the
+    // BROADCAST listeners before the session/score/persistence ones, the
+    // sync:full following a later scores:reset would again be assembled from
+    // not-yet-cleared transactions. Nothing else in the suite exercises a
+    // scores:reset on a post-system-reset session.
+    test.setTimeout(120000); // system reset + two sessions + several scans
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+    addConsoleCapture(page, 'Test9-SysResetRescan');
+
+    const token = testTokens.personalToken;
+    const expectedScore = calculateExpectedScore(token);
+
+    try {
+      const gmScanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+
+      await gmScanner.navigateToAdminPanel();
+      await gmScanner.createSessionWithTeams('Pre-SystemReset', ['Team Alpha']);
+
+      // Claim the token in the FIRST session
+      await gmScanner.scannerTab.click();
+      await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await gmScanner.selectTeamFromList('Team Alpha');
+      await gmScanner.manualScan(token.SF_RFID);
+      await gmScanner.expectScanAccepted();
+      await gmScanner.finishTeam();
+
+      // End, then system:reset + create a fresh session (adminResetAndCreateNew)
+      await gmScanner.navigateToAdminPanel();
+      await gmScanner.endSession();
+      await gmScanner.resetAndCreateNew('Post-SystemReset');
+      await gmScanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => state.session?.status === 'active' && state.session?.name === 'Post-SystemReset',
+        10000
+      );
+
+      // The new session starts with no teams — create one from the scanner.
+      await gmScanner.scannerTab.click();
+      await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await gmScanner.enterTeam('Team Alpha');
+      await gmScanner.confirmTeam();
+
+      // The token is free again in the new session
+      await gmScanner.manualScan(token.SF_RFID);
+      await gmScanner.expectScanAccepted();
+      await gmScanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => state.scores?.find(s => s.teamId === 'Team Alpha')?.currentScore === expectedScore,
+        5000
+      );
+      await gmScanner.finishTeam();
+
+      // NOW the subject of the test: scores:reset on a post-system-reset session
+      await gmScanner.navigateToAdminPanel();
+      let sysResetDialogMessage = null;
+      page.once('dialog', async (dialog) => {
+        sysResetDialogMessage = dialog.message();
+        await dialog.accept();
+      });
+      await gmScanner.resetScoresBtn.click();
+      await gmScanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => (state.scores || []).every(s => s.currentScore === 0)
+          && (state.session?.transactions || []).length === 0,
+        5000
+      );
+      expect(sysResetDialogMessage).toBe(RESET_CONFIRM_TEXT);
+
+      await gmScanner.scannerTab.click();
+      await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await gmScanner.selectTeamFromList('Team Alpha');
+      await gmScanner.manualScan(token.SF_RFID);
+      await gmScanner.expectScanAccepted();
+
+      await gmScanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => state.scores?.find(s => s.teamId === 'Team Alpha')?.currentScore === expectedScore,
+        5000
+      );
+
+      console.log('✓ Token scannable again after Reset All Scores on a post-system-reset session');
+
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
+
+  test('keeps the ended session, its history and the report button across a sync:request', async () => {
+    // C-1/W8: endSession() used to null currentSession, so the NEXT sync:full
+    // carried session: null with empty transactions. Re-opening the admin tab
+    // calls refreshAllDisplays() → sync:request → sync:full, which wiped the
+    // GM's history and replaced the ended-session panel (with its Download
+    // Report button) with the empty "Create New Session" state — right at the
+    // moment the GM wants the report.
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+    addConsoleCapture(page, 'Test10-EndedSessionSurvives');
+
+    const token = testTokens.personalToken;
+
+    try {
+      const gmScanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+
+      await gmScanner.navigateToAdminPanel();
+      await gmScanner.createSessionWithTeams('Ended Session Survives', ['Team Alpha']);
+
+      await gmScanner.scannerTab.click();
+      await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await gmScanner.selectTeamFromList('Team Alpha');
+      await gmScanner.manualScan(token.SF_RFID);
+      await gmScanner.expectScanAccepted();
+      await gmScanner.finishTeam();
+
+      await gmScanner.navigateToAdminPanel();
+      await gmScanner.endSession();
+
+      // Backend truth FIRST — establish what the ended session still holds
+      // before touching the UI, so a later UI assertion cannot be satisfied by
+      // a stale DOM that merely happens to agree.
+      const state = await gmScanner.getStateFromBackend(orchestratorInfo.url);
+      expect(state.session?.status).toBe('ended');
+      expect((state.session?.transactions || []).length).toBe(1);
+
+      // Force a FRESH sync:full: leaving and re-entering the admin view calls
+      // MonitoringDisplay.refreshAllDisplays() → sync:request.
+      //
+      // The UI assertions below only mean something once that round-trip has
+      // been APPLIED. Run too early they pass against the pre-sync DOM, which
+      // still shows the correct ended panel from the session:update that ended
+      // the session — i.e. they would pass even if sync:full wiped everything.
+      // MonitoringDisplay.updateAllDisplays() logs on every sync:full it
+      // applies; arm the wait BEFORE the tab switch so the round-trip cannot
+      // complete before we are listening.
+      const syncFullApplied = page.waitForEvent('console', {
+        predicate: (msg) => msg.text().includes('[MonitoringDisplay] updateAllDisplays (Sync Full)'),
+        timeout: 15000,
+      });
+
+      await gmScanner.scannerTab.click();
+      await gmScanner.scannerView.waitFor({ state: 'visible', timeout: 5000 });
+      await gmScanner.navigateToAdminPanel();
+      await syncFullApplied;
+
+      // The ended-session panel and its Download Report button survive the
+      // sync:full (the assertions retry, covering the render tick after the log)
+      await expect(gmScanner.sessionEnded).toBeVisible({ timeout: 5000 });
+      await expect(
+        page.locator('button[data-action="app.downloadSessionReport"]')
+      ).toBeVisible();
+
+      // ...and so does the transaction history (claimed token cards)
+      await gmScanner.viewFullHistory();
+      const claimedCards = page.locator('#historyContainer .token-card.claimed');
+      await expect(claimedCards).toHaveCount(1, { timeout: 5000 });
+
+      console.log('✓ Ended session, history and Download Report survived sync:request');
 
     } finally {
       await page.close();

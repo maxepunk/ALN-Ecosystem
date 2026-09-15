@@ -316,16 +316,29 @@ test.describe('GM Scanner - Environment Control', () => {
       const audioSection = page.locator('#audio-output-section');
       await expect(audioSection).toBeVisible({ timeout: 10000 });
 
-      // Get available audio route options for video stream
-      const options = await gmScanner.getAudioRouteOptions('video');
-      console.log(`Audio route options for video: ${options.map(o => o.label).join(', ')}`);
+      // Get available audio route options for video stream.
+      // B-1/L-1: option[0] is the disabled `value=""` "Unknown sink"
+      // placeholder. It is not a route and cannot be selected — filter it out
+      // before picking a target, or selectOption('') throws.
+      const routeState = await gmScanner.getAudioRouteState('video');
+      // A silent `return` here would report a PASS for a test that asserted
+      // nothing. The audio service can be healthy while no real sink exists
+      // (the internal auto_null is filtered out of availableSinks), so the
+      // routing UI renders nothing — skip loudly instead.
+      test.skip(routeState === null,
+        'audio routing dropdowns not rendered (no live PipeWire sink)');
+      console.log(`Audio route options for video: ${routeState.selectable.map(o => o.label).join(', ')}`);
+      if (routeState.unknown) {
+        console.log('Current video route is the "Unknown sink" placeholder (backend route matches no live sink)');
+      }
 
-      if (options.length > 1) {
-        // Change to a different route
-        const currentValue = await gmScanner.getAudioRouteValue('video');
-        const newOption = options.find(o => o.value !== currentValue) || options[1];
+      if (routeState.selectable.length > 1) {
+        // Change to a different REAL route
+        const currentValue = routeState.value;
+        const newOption = routeState.selectable.find(o => o.value !== currentValue)
+          || routeState.selectable[1];
         await gmScanner.setAudioRoute('video', newOption.value);
-        console.log(`Audio route changed from ${currentValue} to ${newOption.value}`);
+        console.log(`Audio route changed from ${currentValue || '(unknown sink)'} to ${newOption.value}`);
 
         // Verify the dropdown reflects the change
         const updatedValue = await gmScanner.getAudioRouteValue('video');

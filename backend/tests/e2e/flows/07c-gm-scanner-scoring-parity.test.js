@@ -570,4 +570,93 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
 
     console.log(`✓ PARITY VERIFIED: Duplicate rejection behaved identically (final score: $${standaloneScore.toLocaleString()})`);
   });
+
+  // ========================================
+  // TEST 6: Team Details surfaces the group bonus (both modes)
+  // ========================================
+
+  test('Team Details shows the completed group and its bonus in both modes', async () => {
+    // A-1: Team Details must show the SAME numbers the backend holds, and the
+    // GM must be able to see WHY a team's total jumped — the bonus line and
+    // the "Completed Groups" section are the only places that is visible.
+    // Previously the screen recomputed base/bonus client-side, so a scanner
+    // that missed a group-completion broadcast quietly showed a smaller total
+    // than the scoreboard.
+    //
+    // Needs the injected fixture pack: production tokens have no group with a
+    // multiplier above x1, so no scan sequence can complete one.
+    const groupTokens = testTokens.groupTokens;
+    test.skip(groupTokens.length < 2, 'no completable group in the token set (fixture pack not injected?)');
+
+    const parityTeam = `ParityTD_${Date.now()}`;
+    const baseScore = groupTokens.reduce((sum, t) => sum + calculateExpectedScore(t), 0);
+    const bonus = calculateExpectedGroupBonus(groupTokens);
+    const expectedTotal = baseScore + bonus;
+    expect(bonus).toBeGreaterThan(0); // guards against a x1 group sneaking in
+
+    /** Scan every group token, then open Team Details for this team. */
+    const scanGroupAndOpenDetails = async (scanner) => {
+      for (let i = 0; i < groupTokens.length; i++) {
+        await scanner.manualScan(groupTokens[i].SF_RFID);
+        await scanner.waitForResult();
+        if (i < groupTokens.length - 1) await scanner.continueScan();
+      }
+      await scanner.finishTeam();
+      await scanner.openScoreboard();
+      await scanner.waitForTeamInScoreboard(parityTeam);
+      await scanner.openTeamDetails(parityTeam);
+    };
+
+    /** Assert the three things the GM reads off the screen. */
+    const assertTeamDetails = async (scanner, label) => {
+      await expect(scanner.teamCompletedGroupsSection).toBeVisible({ timeout: 5000 });
+
+      const shownBonus = await scanner.getTeamDetailsScoreNumeric('bonus');
+      expect(shownBonus).toBe(bonus);
+
+      const shownTotal = await scanner.getTeamDetailsScoreNumeric('total');
+      expect(shownTotal).toBe(expectedTotal);
+
+      console.log(`✓ ${label}: base $${baseScore.toLocaleString()}, bonus $${shownBonus.toLocaleString()}, total $${shownTotal.toLocaleString()}`);
+    };
+
+    // ---- STANDALONE ----
+    const standaloneContext = await createBrowserContext(browser, 'mobile');
+    const standalonePage = await createPage(standaloneContext);
+    const standaloneScanner = await initializeGMScannerWithMode(standalonePage, 'standalone', 'blackmarket');
+
+    await standaloneScanner.enterTeam(parityTeam);
+    await standaloneScanner.confirmTeam();
+    await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
+    await standaloneScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
+
+    await scanGroupAndOpenDetails(standaloneScanner);
+    await assertTeamDetails(standaloneScanner, 'standalone');
+
+    // ---- NETWORKED ----
+    const networkedContext = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const networkedPage = await createPage(networkedContext);
+    const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
+      orchestratorUrl: orchestratorInfo.url,
+      password: ADMIN_PASSWORD
+    });
+
+    await networkedScanner.createSessionWithTeams('Parity Test - Team Details', [parityTeam]);
+    await networkedScanner.scannerTab.click();
+    await networkedScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+    await networkedScanner.waitForTeamInList(parityTeam);
+    await networkedScanner.selectTeamFromList(parityTeam);
+
+    await scanGroupAndOpenDetails(networkedScanner);
+    await assertTeamDetails(networkedScanner, 'networked');
+
+    // The networked total is BACKEND truth, not a client recomputation —
+    // compare against /api/state over page.request (never evaluate(fetch)).
+    const state = await networkedScanner.getStateFromBackend(orchestratorInfo.url);
+    const backendScore = (state.scores || []).find(s => s.teamId === parityTeam);
+    expect(backendScore).toBeDefined();
+    expect(await networkedScanner.getTeamDetailsScoreNumeric('total')).toBe(backendScore.currentScore);
+
+    console.log(`✓ Team Details total matches backend currentScore ($${backendScore.currentScore.toLocaleString()})`);
+  });
 });

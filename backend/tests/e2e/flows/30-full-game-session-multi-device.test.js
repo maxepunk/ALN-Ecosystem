@@ -258,47 +258,72 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     // Capability manifest (mega-flow: inner steps fence on capabilities —
     // loud console notes — because test.skip would discard the whole game flow)
     const caps = await getCapabilities(orchestratorInfo.url);
-    const audioHealthy = caps.audio;
+
+    // Health alone is NOT a sufficient gate for this block. The routing UI is
+    // built from `availableSinks`, and the internal `auto_null` sink is
+    // filtered out of that list — so a machine where pactl works fine but has
+    // no real output device (no HDMI sink active, no BT speaker connected)
+    // reports audio: healthy and still renders NO dropdowns. Key the fence on
+    // the thing every assertion below actually needs: a rendered dropdown.
+    // getAudioRouteState() returns null when there is none.
+    const videoRouteState = caps.audio ? await gmScanner1.getAudioRouteState('video') : null;
+    const audioHealthy = caps.audio && videoRouteState !== null;
 
     if (!audioHealthy) {
-      console.log('⚠ SKIPPING audio routing checks: audio service not healthy (no PipeWire) — covered on real hardware');
+      console.log(`⚠ SKIPPING audio routing checks: audio service healthy=${caps.audio}, routing dropdowns rendered=${videoRouteState !== null} (no real PipeWire sink) — covered on venue hardware`);
     }
 
     let initialVideoRoute = null;
     if (audioHealthy) {
-    // Wait for dropdowns to be visible
+    // Dropdowns rendered (implied by videoRouteState !== null)
     await expect(gmScanner1.audioRoutingDropdowns).toBeVisible();
     console.log('✓ Audio routing dropdowns visible');
 
-    // Check video route initial state
-    // Default is 'hdmi', but actual value might be a specific sink name or 'hdmi' 
-    // depending on available sinks. We just check if it has a value.
-    initialVideoRoute = await gmScanner1.getAudioRouteValue('video');
-    expect(initialVideoRoute).toBeTruthy();
-    console.log(`✓ Initial video route value: ${initialVideoRoute}`);
+    // Check video route initial state.
+    //
+    // B-1/L-1: the dropdown's FIRST option is a disabled `value=""` "Unknown
+    // sink" placeholder, and a route the backend reports that matches no
+    // available sink now selects that placeholder rather than silently
+    // falling back to the first real sink. So '' is a LEGITIMATE state, and
+    // the old `expect(initialVideoRoute).toBeTruthy()` would fail on it.
+    // Assert the honest contract instead: the value is either one of the
+    // real (non-placeholder) sink values, or '' meaning "unknown sink".
+    initialVideoRoute = videoRouteState.value;
 
-    // Get available options to test toggling
-    const videoOptions = await gmScanner1.getAudioRouteOptions('video');
-    console.log(`  Available video sinks: ${videoOptions.map(o => o.label).join(', ')}`);
+    const selectableValues = videoRouteState.selectable.map(o => o.value);
+    if (videoRouteState.unknown) {
+      console.log('✓ Initial video route: (unknown sink placeholder) — backend route matches no live sink');
+    } else {
+      expect(selectableValues).toContain(initialVideoRoute);
+      console.log(`✓ Initial video route value: ${initialVideoRoute}`);
+    }
 
-    if (videoOptions.length > 1) {
-      // Test toggling if we have multiple sinks
-      const targetOption = videoOptions.find(o => o.value !== initialVideoRoute);
-      if (targetOption) {
-        console.log(`  → Changing video route to: ${targetOption.label}`);
-        await gmScanner1.setAudioRoute('video', targetOption.value);
+    console.log(`  Available video sinks: ${videoRouteState.selectable.map(o => o.label).join(', ')}`);
 
-        // wait for value update (should be immediate in UI, but verified)
-        const newRoute = await gmScanner1.getAudioRouteValue('video');
-        expect(newRoute).toBe(targetOption.value);
-        console.log('✓ Video route changed successfully');
+    // Toggle only among REAL sinks — the placeholder is disabled and cannot
+    // be selected programmatically.
+    const targetOption = videoRouteState.selectable.find(o => o.value !== initialVideoRoute);
+    if (targetOption) {
+      console.log(`  → Changing video route to: ${targetOption.label}`);
+      await gmScanner1.setAudioRoute('video', targetOption.value);
 
-        // Revert to initial
+      // wait for value update (should be immediate in UI, but verified)
+      const newRoute = await gmScanner1.getAudioRouteValue('video');
+      expect(newRoute).toBe(targetOption.value);
+      console.log('✓ Video route changed successfully');
+
+      // Revert to initial. Only possible when the initial value was a real
+      // sink — the placeholder cannot be re-selected, so record what we
+      // actually left behind for the end-of-session assertion.
+      if (!videoRouteState.unknown) {
         await gmScanner1.setAudioRoute('video', initialVideoRoute);
         console.log('✓ Reverted video route to initial state');
+      } else {
+        initialVideoRoute = targetOption.value;
+        console.log('✓ Initial route was the unknown-sink placeholder — keeping the new real sink');
       }
     } else {
-      console.log('⚠ Skipping route toggle test: only 1 sink available (CI environment?)');
+      console.log('⚠ Skipping route toggle test: fewer than 2 real sinks available (CI environment?)');
     }
     } // end if (audioHealthy)
 
@@ -540,16 +565,45 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     await gmScanner2.selectTeamFromList(teamAlpha);
 
     const detectiveTokens = round1Tokens.slice(0, 3);
+
+    // Diagnostic: what the backend already holds before GM2's first scan.
+    // If any of these tokens is already claimed, a later "already scanned"
+    // verdict is correct behaviour rather than a dedup bug.
+    const preScanState = await gmScanner2.getStateFromBackend(orchestratorInfo.url);
+    const preClaimed = (preScanState.session?.transactions || [])
+      .map(t => `${t.tokenId}/${t.teamId}`);
+    console.log(`  GM2 will scan: ${detectiveTokens.join(', ')}`);
+    console.log(`  Already claimed before GM2 scans: ${preClaimed.length ? preClaimed.join(', ') : '(none)'}`);
+
+    const gm2ScanOutcomes = [];
     for (const tokenId of detectiveTokens) {
       await gmScanner2.manualScan(tokenId);
       await gmScanner2.waitForResult(5000);
+
+      const title = ((await gmScanner2.getResultTitle()) || '').trim();
+      let rejection = null;
+      try {
+        await gmScanner2.expectScanAccepted();
+      } catch (err) {
+        rejection = err.message;
+      }
+      gm2ScanOutcomes.push({ tokenId, title, rejection });
+      console.log(`  → GM2 (Detective) scanned ${tokenId} for ${teamAlpha} — result: "${title}"`);
+
       await gmScanner2.continueScan();
-      console.log(`  → GM2 (Detective) scanned ${tokenId} for ${teamAlpha}`);
     }
+
+    const gm2Rejected = gm2ScanOutcomes.filter(o => o.rejection);
+    if (gm2Rejected.length > 0) {
+      console.log(`  GM2 REJECTED scans: ${JSON.stringify(gm2Rejected.map(o => ({ tokenId: o.tokenId, title: o.title })))}`);
+    }
+    expect(gm2Rejected).toEqual([]);
 
     // VERIFY: GM2 history shows correct transaction count
     await gmScanner2.openHistory();
     const gm2HistoryCount = await gmScanner2.historyContainer.locator('.transaction-card, .token-card, .history-entry').count();
+    const backendAfter = await gmScanner2.getStateFromBackend(orchestratorInfo.url);
+    console.log(`  GM2 history cards: ${gm2HistoryCount}; backend transactions: ${(backendAfter.session?.transactions || []).length}`);
     expect(gm2HistoryCount).toBe(detectiveTokens.length);
     console.log(`✓ GM2 history shows ${gm2HistoryCount} transactions`);
     await gmScanner2.closeHistory();
@@ -747,28 +801,35 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       await gmScanner1.waitForResult(5000);
       console.log(`✓ GM1 scanned ${deletionTestToken} as blackmarket for ${teamBeta}`);
 
-      // 11. GM1 opens scoreboard and team details to delete transaction
-      // Navigate back to team entry screen where scoreboard button is visible
+      // 11. GM1 opens scoreboard and team details to delete transaction.
+      // Address the card by TRANSACTION id, not by token: in networked mode
+      // the card's RFID cell renders `transaction.rfid`, a field only the
+      // locally-built transaction carries — backend-delivered ones use
+      // `tokenId`, leaving the cell empty. A text match on the token id
+      // therefore finds nothing and the old `if (hasToken)` guard skipped
+      // this whole deletion step in silence.
+      const deletionTxId = await gmScanner1.findTransactionId(
+        orchestratorInfo.url, deletionTestToken, teamBeta
+      );
+      expect(deletionTxId).toBeTruthy();
+
       await gmScanner1.finishTeam();
       await gmScanner1.openScoreboard();
       await gmScanner1.waitForTeamInScoreboard(teamBeta);
       await gmScanner1.openTeamDetails(teamBeta);
       console.log(`✓ Opened team details for ${teamBeta}`);
 
-      // Check if token is visible in team details
-      const hasToken = await gmScanner1.hasTokenInTeamDetails(deletionTestToken);
-      if (hasToken) {
-        // Delete the transaction
-        await gmScanner1.deleteTransactionFromTeamDetails(deletionTestToken);
-        console.log(`✓ Deleted transaction for ${deletionTestToken}`);
+      await gmScanner1.deleteTransactionFromTeamDetailsById(deletionTxId);
+      console.log(`✓ Deleted transaction for ${deletionTestToken}`);
 
-        // VERIFY: Token no longer in team details
-        const stillHasToken = await gmScanner1.hasTokenInTeamDetails(deletionTestToken);
-        expect(stillHasToken).toBe(false);
-        console.log('✓ Transaction removed from team details');
-      } else {
-        console.log(`⚠️ Token ${deletionTestToken} not visible in team details, skipping deletion`);
-      }
+      // VERIFY: the card is gone and the backend dropped the transaction
+      await expect(gmScanner1.teamDetailsCardForTransaction(deletionTxId)).toHaveCount(0);
+      await gmScanner1.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => !(state.session?.transactions || []).some(t => t.id === deletionTxId),
+        5000
+      );
+      console.log('✓ Transaction removed from team details and backend');
 
       await gmScanner1.closeTeamDetails();
       await gmScanner1.closeScoreboard();
@@ -785,7 +846,23 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       await gmScanner1.selectTeamFromList(teamBeta);
       await gmScanner1.manualScan(deletionTestToken);
       await gmScanner1.waitForResult(5000);
-      console.log(`✓ GM1 rescanned ${deletionTestToken} as detective for ${teamBeta}`);
+
+      // A-3/A-4: deleting a transaction must free the token again on EVERY
+      // station — both the client's local dedup set and the backend's
+      // first-come-first-served guard. Previously this rescan was performed
+      // but its outcome never asserted, so a re-rejected token passed
+      // silently. Two surfaces, two spellings: the client renders
+      // "Token Already Scanned", the backend rejection says "Duplicate".
+      await gmScanner1.expectScanAccepted();
+
+      // ...and the backend actually recorded it again.
+      await gmScanner1.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => (state.session?.transactions || [])
+          .some(t => t.tokenId === deletionTestToken && t.teamId === teamBeta),
+        5000
+      );
+      console.log(`✓ GM1 rescanned ${deletionTestToken} as detective for ${teamBeta} — accepted after delete`);
     } else {
       console.log('⚠️ Skipping deletion test - not enough tokens');
     }
@@ -823,6 +900,9 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     // Audio section should still be visible and HDMI selected (toggled back in Phase 1.5)
     expect(finalEnvState.audioSectionVisible).toBe(true);
     if (audioHealthy) {
+      // initialVideoRoute is whatever Phase 1.5 actually left selected — a real
+      // sink name, or '' when the backend's route matches no live sink and the
+      // disabled "Unknown sink" placeholder stayed selected (B-1/L-1).
       expect(finalEnvState.videoRoute).toBe(initialVideoRoute);
     }
     // BT section state should be consistent (no phantom devices from session activity)
