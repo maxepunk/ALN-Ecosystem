@@ -26,18 +26,25 @@ class ProcessMonitor extends EventEmitter {
    * @param {string[]} options.args - Arguments for the command
    * @param {string} options.label - Label for logging
    * @param {string} [options.pidFile] - Path to PID file for orphan recovery after SIGKILL
+   * @param {string|string[]} [options.orphanMatch] - Basename(s) of argv[0] to match exactly
+   *   during orphan recovery instead of `command`. Needed when `command` is a wrapper that
+   *   execs to a differently-named binary (e.g. `cvlc` execs to `vlc`, so `/proc/PID/cmdline`'s
+   *   argv[0] basename is never "cvlc" after the exec). Any one entry matching is sufficient.
    * @param {string[]} [options.stdio] - stdio config for spawn (default: ['ignore', 'pipe', 'pipe'])
    * @param {Object} [options.env] - Environment variables for spawn (default: inherit parent)
    * @param {number} [options.maxFailures=5] - Max consecutive failures before giving up
    * @param {number} [options.restartDelay=5000] - Base restart delay (ms)
    * @param {number} [options.backoffMultiplier=2] - Backoff multiplier
    */
-  constructor({ command, args, label, pidFile, stdio, env, maxFailures, restartDelay, backoffMultiplier }) {
+  constructor({ command, args, label, pidFile, orphanMatch, stdio, env, maxFailures, restartDelay, backoffMultiplier }) {
     super();
     this._command = command;
     this._args = args;
     this._label = label;
     this._pidFile = pidFile || null;
+    this._orphanMatch = orphanMatch
+      ? (Array.isArray(orphanMatch) ? orphanMatch : [orphanMatch])
+      : null;
     this._stdio = stdio || null;
     this._env = env || undefined;
     this._maxFailures = maxFailures ?? DEFAULTS.maxFailures;
@@ -174,16 +181,22 @@ class ProcessMonitor extends EventEmitter {
 
   /**
    * Kill an orphaned process from a previous server instance.
-   * Reads PID file, verifies /proc/PID/cmdline matches our command
-   * (guards against PID reuse), sends SIGTERM if confirmed.
+   * Reads PID file, verifies the basename of /proc/PID/cmdline's argv[0]
+   * matches our command exactly (guards against PID reuse — a substring
+   * check would false-positive on an unrelated process whose path merely
+   * contains our command name, e.g. `node /opt/vlc-tools/x.js`), sends
+   * SIGTERM if confirmed.
    */
   _killOrphan() {
     if (!this._pidFile) return;
     try {
       const pid = parseInt(fs.readFileSync(this._pidFile, 'utf8').trim(), 10);
       if (isNaN(pid)) return;
-      const cmdline = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').replace(/\0/g, ' ');
-      if (!cmdline.includes(this._command)) return;
+      const cmdline = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8');
+      const argv0 = cmdline.split('\0')[0] || '';
+      const basename = argv0.split('/').pop();
+      const matchers = this._orphanMatch || [this._command];
+      if (!matchers.includes(basename)) return;
       process.kill(pid, 'SIGTERM');
       logger.info(`${this._label}: killed orphan process`, { pid });
     } catch {

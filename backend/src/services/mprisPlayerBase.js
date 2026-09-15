@@ -53,6 +53,10 @@ class MprisPlayerBase extends EventEmitter {
     // Unique D-Bus name for sender filtering (prevents cross-contamination)
     this._ownerBusName = null;
     this._resolvingOwner = false;
+    // Senders we've already logged a mismatch for since the last _resolveOwner()
+    // call — keeps mismatch logging to one line per distinct sender instead of
+    // once per signal (VLC emits many in quick succession).
+    this._mismatchedSenders = new Set();
   }
 
   // ── Core D-Bus Methods ──
@@ -256,6 +260,16 @@ class MprisPlayerBase extends EventEmitter {
     // If _ownerBusName is null (not yet resolved), process all signals (safe fallback).
     if (this._ownerBusName && signal.sender && signal.sender !== this._ownerBusName) {
       // Sender mismatch — could be restarted instance or different player.
+      // Log once per distinct sender (VLC emits many signals in quick
+      // succession — logging every one would flood the log).
+      if (!this._mismatchedSenders.has(signal.sender)) {
+        this._mismatchedSenders.add(signal.sender);
+        logger.info(`[${this._label}] MPRIS signal from unexpected sender`, {
+          label: this._label,
+          sender: signal.sender,
+          owner: this._ownerBusName,
+        });
+      }
       // Trigger async re-resolution (debounced by flag) and drop this signal.
       if (!this._resolvingOwner) {
         this._resolvingOwner = true;
@@ -297,25 +311,36 @@ class MprisPlayerBase extends EventEmitter {
    */
   async _resolveOwner() {
     const dest = this._getDestination();
+    const previous = this._ownerBusName;
     if (!dest) {
       this._ownerBusName = null;
-      return;
-    }
-    try {
-      const { stdout } = await execFileAsync('dbus-send', [
-        '--session', '--type=method_call', '--print-reply',
-        '--dest=org.freedesktop.DBus', '/org/freedesktop/DBus',
-        'org.freedesktop.DBus.GetNameOwner', `string:${dest}`
-      ], { timeout: 2000 });
-      const match = stdout.match(/string "([^"]+)"/);
-      this._ownerBusName = match ? match[1] : null;
-      if (this._ownerBusName) {
-        logger.debug(`[${this._label}] Resolved D-Bus owner`, {
-          destination: dest, owner: this._ownerBusName,
-        });
+    } else {
+      try {
+        const { stdout } = await execFileAsync('dbus-send', [
+          '--session', '--type=method_call', '--print-reply',
+          '--dest=org.freedesktop.DBus', '/org/freedesktop/DBus',
+          'org.freedesktop.DBus.GetNameOwner', `string:${dest}`
+        ], { timeout: 2000 });
+        const match = stdout.match(/string "([^"]+)"/);
+        this._ownerBusName = match ? match[1] : null;
+        if (this._ownerBusName) {
+          logger.info(`[${this._label}] Resolved D-Bus owner`, {
+            destination: dest, owner: this._ownerBusName, previous,
+          });
+        } else {
+          logger.info(`[${this._label}] D-Bus owner not resolved`, { destination: dest });
+        }
+      } catch {
+        this._ownerBusName = null;
+        logger.info(`[${this._label}] D-Bus owner not resolved`, { destination: dest });
       }
-    } catch {
-      this._ownerBusName = null;
+    }
+
+    // Only clear the mismatch-log dedup when the owner actually changed —
+    // a persistent foreign sender across repeated no-op re-resolutions
+    // would otherwise re-log every cycle forever.
+    if (this._ownerBusName !== previous) {
+      this._mismatchedSenders.clear();
     }
   }
 
@@ -329,6 +354,9 @@ class MprisPlayerBase extends EventEmitter {
     await this._resolveOwner();
     if (!this._ownerBusName && oldOwner) {
       this._ownerBusName = oldOwner;
+      logger.info(`[${this._label}] Re-resolution failed — keeping previous owner`, {
+        owner: oldOwner,
+      });
     }
   }
 

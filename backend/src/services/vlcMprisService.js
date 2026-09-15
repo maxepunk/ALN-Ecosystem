@@ -104,6 +104,10 @@ class VlcMprisService extends MprisPlayerBase {
       args: this._buildVlcArgs(),
       label: 'VLC',
       pidFile: '/tmp/aln-pm-vlc.pid',
+      // cvlc is a shell wrapper that execs to /usr/bin/vlc — /proc/PID/cmdline
+      // for the orphaned process never contains "cvlc", so the default
+      // command-match orphan reap never fires. Match either name instead.
+      orphanMatch: ['vlc', 'cvlc'],
       stdio: ['ignore', 'ignore', 'pipe'],
       env: { ...process.env, DISPLAY: process.env.DISPLAY || ':0' },
       restartDelay: 3000,

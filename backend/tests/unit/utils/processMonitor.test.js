@@ -583,4 +583,157 @@ describe('ProcessMonitor', () => {
       expect(fs.writeFileSync).not.toHaveBeenCalled();
     });
   });
+
+  // ── 6: orphanMatch option (P0.3 — cvlc execs to vlc, so this._command never
+  // appears in /proc/PID/cmdline; orphanMatch lets callers match the resolved
+  // binary instead) ──
+
+  describe('orphanMatch option', () => {
+    let orphanMatchMonitor;
+
+    beforeEach(() => {
+      orphanMatchMonitor = new ProcessMonitor({
+        command: 'cvlc',
+        args: ['--fullscreen'],
+        label: 'VLC',
+        pidFile: '/tmp/aln-pm-vlc.pid',
+        orphanMatch: ['vlc', 'cvlc'],
+      });
+    });
+
+    afterEach(() => {
+      orphanMatchMonitor.stop();
+    });
+
+    it('should kill orphan when cmdline is the resolved binary (vlc), not the wrapper (cvlc)', () => {
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === '/tmp/aln-pm-vlc.pid') return '54321';
+        if (filePath === '/proc/54321/cmdline') return '/usr/bin/vlc\0-I\0dummy\0--fullscreen';
+        throw new Error('ENOENT');
+      });
+
+      orphanMatchMonitor.start();
+
+      expect(killSpy).toHaveBeenCalledWith(54321, 'SIGTERM');
+      killSpy.mockRestore();
+    });
+
+    it('should kill orphan when cmdline still shows the wrapper (cvlc)', () => {
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === '/tmp/aln-pm-vlc.pid') return '54321';
+        if (filePath === '/proc/54321/cmdline') return 'cvlc\0--fullscreen';
+        throw new Error('ENOENT');
+      });
+
+      orphanMatchMonitor.start();
+
+      expect(killSpy).toHaveBeenCalledWith(54321, 'SIGTERM');
+      killSpy.mockRestore();
+    });
+
+    it('should NOT kill when PID was reused by an unrelated process', () => {
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === '/tmp/aln-pm-vlc.pid') return '54321';
+        if (filePath === '/proc/54321/cmdline') return 'node\0something.js';
+        throw new Error('ENOENT');
+      });
+
+      orphanMatchMonitor.start();
+
+      expect(killSpy).not.toHaveBeenCalledWith(54321, expect.anything());
+      killSpy.mockRestore();
+    });
+
+    it('should fall back to this._command matching when orphanMatch is not provided', () => {
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      const defaultMatchMonitor = new ProcessMonitor({
+        command: 'dbus-monitor',
+        args: ['--session'],
+        label: 'test-monitor-2',
+        pidFile: '/tmp/aln-pm-test-monitor-2.pid',
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === '/tmp/aln-pm-test-monitor-2.pid') return '11111';
+        if (filePath === '/proc/11111/cmdline') return 'dbus-monitor\0--session';
+        throw new Error('ENOENT');
+      });
+
+      defaultMatchMonitor.start();
+
+      expect(killSpy).toHaveBeenCalledWith(11111, 'SIGTERM');
+      killSpy.mockRestore();
+      defaultMatchMonitor.stop();
+    });
+
+    it('should NOT kill when an unrelated binary path merely CONTAINS a matcher as a substring', () => {
+      // Regression guard: match must be on the argv[0] basename, not a
+      // substring of the whole cmdline (which would false-positive on paths
+      // like /opt/vlc-tools/x.js).
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === '/tmp/aln-pm-vlc.pid') return '54321';
+        if (filePath === '/proc/54321/cmdline') return 'node\0/opt/vlc-tools/x.js';
+        throw new Error('ENOENT');
+      });
+
+      orphanMatchMonitor.start();
+
+      expect(killSpy).not.toHaveBeenCalledWith(54321, expect.anything());
+      killSpy.mockRestore();
+    });
+
+    it('should NOT kill a differently-named binary whose basename merely starts with a matcher', () => {
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === '/tmp/aln-pm-vlc.pid') return '54321';
+        if (filePath === '/proc/54321/cmdline') return '/usr/bin/vlc-wrapper\0--fullscreen';
+        throw new Error('ENOENT');
+      });
+
+      orphanMatchMonitor.start();
+
+      expect(killSpy).not.toHaveBeenCalledWith(54321, expect.anything());
+      killSpy.mockRestore();
+    });
+
+    it('should handle an empty cmdline (zombie process) without throwing or killing', () => {
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === '/tmp/aln-pm-vlc.pid') return '54321';
+        // A zombie/defunct process has an empty (but readable) cmdline file.
+        if (filePath === '/proc/54321/cmdline') return '';
+        throw new Error('ENOENT');
+      });
+
+      expect(() => orphanMatchMonitor.start()).not.toThrow();
+
+      expect(killSpy).not.toHaveBeenCalledWith(54321, expect.anything());
+      killSpy.mockRestore();
+    });
+
+    it('should kill when orphanMatch is passed as a single string (not array)', () => {
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      const stringMatchMonitor = new ProcessMonitor({
+        command: 'cvlc',
+        args: ['--fullscreen'],
+        label: 'VLC-string',
+        pidFile: '/tmp/aln-pm-vlc-string.pid',
+        orphanMatch: 'vlc',
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === '/tmp/aln-pm-vlc-string.pid') return '54321';
+        if (filePath === '/proc/54321/cmdline') return '/usr/bin/vlc\0-I\0dummy';
+        throw new Error('ENOENT');
+      });
+
+      stringMatchMonitor.start();
+
+      expect(killSpy).toHaveBeenCalledWith(54321, 'SIGTERM');
+      killSpy.mockRestore();
+      stringMatchMonitor.stop();
+    });
+  });
 });

@@ -1,9 +1,15 @@
 const EventEmitter = require('events');
 
 jest.mock('child_process');
+jest.mock('../../../src/utils/logger', () => ({
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+}));
 
 describe('MprisPlayerBase', () => {
-  let MprisPlayerBase, execFile, spawn, registry;
+  let MprisPlayerBase, execFile, spawn, registry, logger;
 
   function mockExecFileSuccess(stdout = '') {
     execFile.mockImplementation((cmd, args, opts, cb) => {
@@ -79,6 +85,7 @@ describe('MprisPlayerBase', () => {
     spawn.mockReturnValue(createMockSpawnProc());
     MprisPlayerBase = require('../../../src/services/mprisPlayerBase');
     registry = require('../../../src/services/serviceHealthRegistry');
+    logger = require('../../../src/utils/logger');
   });
 
   afterEach(() => {
@@ -719,6 +726,12 @@ describe('MprisPlayerBase', () => {
 
       // Old owner preserved
       expect(player._ownerBusName).toBe(':1.50');
+
+      // P0.4: restore-stale-owner branch logs the kept owner
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringMatching(/re-resolution failed/i),
+        expect.objectContaining({ owner: ':1.50' })
+      );
     });
 
     it('should process all signals when owner is not resolved (null)', () => {
@@ -735,6 +748,207 @@ describe('MprisPlayerBase', () => {
       jest.advanceTimersByTime(100);
 
       expect(player.state).toBe('playing');
+    });
+  });
+
+  describe('P0.4 instrumentation', () => {
+    describe('sender-mismatch logging', () => {
+      it('should log ONE info line for repeated mismatches from the same sender', () => {
+        const player = createTestPlayer();
+        player._ownerBusName = ':1.50';
+        player._refreshOwner = jest.fn().mockResolvedValue(undefined);
+
+        player._handleMprisSignal({
+          changedInterface: 'org.mpris.MediaPlayer2.Player',
+          sender: ':1.99',
+          properties: { PlaybackStatus: 'Playing' },
+          raw: '',
+        });
+        player._handleMprisSignal({
+          changedInterface: 'org.mpris.MediaPlayer2.Player',
+          sender: ':1.99',
+          properties: { PlaybackStatus: 'Paused' },
+          raw: '',
+        });
+        player._handleMprisSignal({
+          changedInterface: 'org.mpris.MediaPlayer2.Player',
+          sender: ':1.99',
+          properties: { PlaybackStatus: 'Playing' },
+          raw: '',
+        });
+
+        const mismatchLogs = logger.info.mock.calls.filter(
+          ([, meta]) => meta && meta.sender === ':1.99'
+        );
+        expect(mismatchLogs).toHaveLength(1);
+        expect(mismatchLogs[0][1]).toEqual(
+          expect.objectContaining({ label: 'test', sender: ':1.99', owner: ':1.50' })
+        );
+      });
+
+      it('should log once per distinct mismatched sender', () => {
+        const player = createTestPlayer();
+        player._ownerBusName = ':1.50';
+        player._refreshOwner = jest.fn().mockResolvedValue(undefined);
+
+        player._handleMprisSignal({
+          changedInterface: 'org.mpris.MediaPlayer2.Player',
+          sender: ':1.98',
+          properties: { PlaybackStatus: 'Playing' },
+          raw: '',
+        });
+        player._handleMprisSignal({
+          changedInterface: 'org.mpris.MediaPlayer2.Player',
+          sender: ':1.99',
+          properties: { PlaybackStatus: 'Playing' },
+          raw: '',
+        });
+
+        const mismatchLogs = logger.info.mock.calls.filter(
+          ([, meta]) => meta && (meta.sender === ':1.98' || meta.sender === ':1.99')
+        );
+        expect(mismatchLogs).toHaveLength(2);
+      });
+
+      it('should clear the mismatched-sender set on _resolveOwner (logs again after re-resolution)', async () => {
+        const player = createTestPlayer();
+        mockExecFileError('No such name'); // every _resolveOwner() call fails fast
+        player._ownerBusName = ':1.50';
+
+        // First mismatch: logs once, internally triggers _refreshOwner -> _resolveOwner
+        // (fails, old owner preserved).
+        player._handleMprisSignal({
+          changedInterface: 'org.mpris.MediaPlayer2.Player',
+          sender: ':1.99',
+          properties: { PlaybackStatus: 'Playing' },
+          raw: '',
+        });
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        logger.info.mockClear();
+
+        // Simulate a fresh, unrelated resolution (e.g. VLC restart) — this
+        // must clear the mismatched-sender set regardless of outcome.
+        await player._resolveOwner();
+        player._ownerBusName = ':1.50'; // pin owner back for a clean mismatch check
+        player._refreshOwner = jest.fn().mockResolvedValue(undefined);
+        player._handleMprisSignal({
+          changedInterface: 'org.mpris.MediaPlayer2.Player',
+          sender: ':1.99',
+          properties: { PlaybackStatus: 'Playing' },
+          raw: '',
+        });
+
+        const mismatchLogs = logger.info.mock.calls.filter(
+          ([, meta]) => meta && meta.sender === ':1.99'
+        );
+        expect(mismatchLogs).toHaveLength(1);
+      });
+    });
+
+    describe('_resolveOwner() logging', () => {
+      it('should log at info level on success, including destination/owner/previous', async () => {
+        const player = createTestPlayer();
+        player._ownerBusName = ':1.40';
+        mockExecFileSuccess('string ":1.77"');
+
+        await player._resolveOwner();
+
+        expect(player._ownerBusName).toBe(':1.77');
+        expect(logger.info).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({
+            destination: 'org.mpris.MediaPlayer2.testplayer',
+            owner: ':1.77',
+            previous: ':1.40',
+          })
+        );
+        // Scoped to this specific message (not "no debug call ever"), so an
+        // unrelated future debug line elsewhere doesn't break this test.
+        expect(logger.debug.mock.calls.some(([msg]) => /Resolved D-Bus owner/.test(msg))).toBe(false);
+      });
+
+      it('should log an info "owner not resolved" line when the dbus call fails', async () => {
+        const player = createTestPlayer();
+        mockExecFileError('No such name');
+
+        await player._resolveOwner();
+
+        expect(player._ownerBusName).toBeNull();
+        expect(logger.info).toHaveBeenCalledWith(
+          expect.stringContaining('owner not resolved'),
+          expect.objectContaining({ destination: 'org.mpris.MediaPlayer2.testplayer' })
+        );
+      });
+
+      it('should log an info "owner not resolved" line when the reply has no owner match', async () => {
+        const player = createTestPlayer();
+        mockExecFileSuccess('unparseable reply');
+
+        await player._resolveOwner();
+
+        expect(player._ownerBusName).toBeNull();
+        expect(logger.info).toHaveBeenCalledWith(
+          expect.stringContaining('owner not resolved'),
+          expect.objectContaining({ destination: 'org.mpris.MediaPlayer2.testplayer' })
+        );
+      });
+
+      it('should clear the mismatch-log dedup only when the resolved owner actually changes', async () => {
+        const player = createTestPlayer();
+        player._ownerBusName = ':1.50';
+
+        const mismatchLogCount = () =>
+          logger.info.mock.calls.filter(([, meta]) => meta && meta.sender === ':1.99').length;
+
+        // Cycle 1: foreign sender mismatches, refresh resolves to the SAME owner.
+        mockExecFileSuccess('string ":1.50"');
+        player._handleMprisSignal({
+          changedInterface: 'org.mpris.MediaPlayer2.Player',
+          sender: ':1.99',
+          properties: { PlaybackStatus: 'Playing' },
+          raw: '',
+        });
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+        expect(mismatchLogCount()).toBe(1);
+
+        // Cycle 2: same sender, same owner again — dedup Set was NOT cleared
+        // (owner unchanged), so this must stay suppressed.
+        player._handleMprisSignal({
+          changedInterface: 'org.mpris.MediaPlayer2.Player',
+          sender: ':1.99',
+          properties: { PlaybackStatus: 'Paused' },
+          raw: '',
+        });
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+        expect(mismatchLogCount()).toBe(1);
+
+        // Cycle 3: this mismatch is still suppressed (checked before its
+        // refresh runs), but its refresh resolves to a DIFFERENT owner —
+        // clearing the dedup Set for the next signal.
+        mockExecFileSuccess('string ":1.77"');
+        player._handleMprisSignal({
+          changedInterface: 'org.mpris.MediaPlayer2.Player',
+          sender: ':1.99',
+          properties: { PlaybackStatus: 'Playing' },
+          raw: '',
+        });
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+        expect(mismatchLogCount()).toBe(1);
+        expect(player._ownerBusName).toBe(':1.77');
+
+        // Cycle 4: dedup Set is now empty — same sender logs again.
+        player._handleMprisSignal({
+          changedInterface: 'org.mpris.MediaPlayer2.Player',
+          sender: ':1.99',
+          properties: { PlaybackStatus: 'Paused' },
+          raw: '',
+        });
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+        expect(mismatchLogCount()).toBe(2);
+      });
     });
   });
 });
