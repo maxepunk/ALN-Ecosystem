@@ -22,6 +22,11 @@ class SessionService extends EventEmitter {
 
   initState() {
     this.currentSession = null;
+    // C-1 (W8): the most recently ended session, retained so sync:full can
+    // still describe the show after End Session. getCurrentSession() keeps its
+    // null-after-end contract; this is a SEPARATE pointer, cleared by
+    // createSession() and by reset() (which runs initState()).
+    this._lastEndedSession = null;
     // F-BCORE-07: promise-chain write queue — session persistence writes
     // must land in call order (node-persist setItem is not atomic; two
     // overlapping saves could leave the OLDER snapshot on disk)
@@ -161,6 +166,10 @@ class SessionService extends EventEmitter {
         await this.endSession();
       }
 
+      // A new session supersedes the retained ended one (C-1): clear AFTER the
+      // implicit endSession() above, which would otherwise re-populate it.
+      this._lastEndedSession = null;
+
       // Create new session in setup state (transitions to active via startGame)
       this.currentSession = new Session({
         name: sessionData.name,
@@ -267,6 +276,20 @@ class SessionService extends EventEmitter {
    */
   getCurrentSession() {
     return this.currentSession;
+  }
+
+  /**
+   * Get the most recently ended session (C-1).
+   *
+   * Survives endSession() so sync:full can keep describing the show until a new
+   * session is created or the system is reset. NOT a fallback for gameplay
+   * logic — scanning, scoring and device registration must keep using
+   * getCurrentSession(), which is null once the session has ended.
+   *
+   * @returns {Session|null}
+   */
+  getLastEndedSession() {
+    return this._lastEndedSession || null;
   }
 
   /**
@@ -446,6 +469,11 @@ class SessionService extends EventEmitter {
       });
 
       logger.info('Session ended', { sessionId: session.id });
+
+      // Retain the ended session (C-1) BEFORE nulling currentSession, so
+      // buildSyncFullPayload can still deliver its transactions, player scans
+      // and scores to a GM that reconnects or switches to the Admin tab.
+      this._lastEndedSession = session;
 
       // Clear current session only if it's still the same session
       if (this.currentSession === session) {

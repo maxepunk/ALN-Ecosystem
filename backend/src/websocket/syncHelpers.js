@@ -47,7 +47,18 @@ async function buildSyncFullPayload({
   soundService,
   deviceFilter = {},
 }) {
-  const session = sessionService.getCurrentSession();
+  // C-1 (W8): getCurrentSession() is null once a session has ended (a contract
+  // gameplay code relies on). sync:full must still describe the ended show —
+  // otherwise the next one (reconnect, sync:request on the Scanner→Admin tab
+  // switch, scores:reset) wipes the GM Scanner's history, player scans and the
+  // Download Report button. Fall back to the retained ended session for the
+  // session-content fields ONLY; `devices` stays bound to the live session so
+  // no stale connections are reported.
+  const currentSession = sessionService.getCurrentSession();
+  const endedSession = currentSession
+    ? null
+    : (sessionService.getLastEndedSession?.() ?? null);
+  const session = currentSession ?? endedSession;
 
   // Video state — single source of truth is videoQueueService.getState().
   // Same shape as service:state video-domain pushes; both write to the GM
@@ -57,7 +68,14 @@ async function buildSyncFullPayload({
   // were removed in commit 756ee7fa (2026-02-28 getState() migration).
   const videoStatus = videoQueueService.getState();
 
-  const scores = transactionService.getTeamScores();
+  // transactionService reads scores off the CURRENT session, so it returns []
+  // once the session has ended — take the ended session's own scores instead,
+  // in the same shape and descending order getTeamScores() produces.
+  const scores = endedSession
+    ? (endedSession.scores || [])
+      .map(score => (score.toJSON ? score.toJSON() : score))
+      .sort((a, b) => b.currentScore - a.currentScore)
+    : transactionService.getTeamScores();
 
   // Enrich ALL transactions with token data (for full state restoration)
   // Frontend DataManager needs complete transaction history.
@@ -83,8 +101,8 @@ async function buildSyncFullPayload({
 
   // Build device list (optionally filtering to connected-only)
   let devices = [];
-  if (session) {
-    let deviceList = session.connectedDevices || [];
+  if (currentSession) {
+    let deviceList = currentSession.connectedDevices || [];
     if (deviceFilter.connectedOnly) {
       deviceList = deviceList.filter(d => d.connectionStatus === 'connected');
     }

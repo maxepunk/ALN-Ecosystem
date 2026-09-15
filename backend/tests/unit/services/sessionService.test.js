@@ -1258,3 +1258,75 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
   });
 });
+
+/**
+ * C-1 (W8): an ended session must stay addressable so the next sync:full does
+ * not wipe the GM Scanner's history, player scans and Download Report button.
+ * getCurrentSession() keeps its null-after-end contract; the ended session is
+ * exposed through a SEPARATE accessor.
+ */
+describe('SessionService - ended session retention (C-1)', () => {
+  beforeEach(async () => {
+    await resetAllServices();
+  });
+
+  afterEach(async () => {
+    if (sessionService.currentSession) {
+      await sessionService.endSession();
+    }
+    sessionService.removeAllListeners();
+  });
+
+  it('retains the ended session after endSession() while currentSession goes null', async () => {
+    const created = await sessionService.createSession({
+      name: 'Retention Test',
+      teams: ['Team Alpha'],
+    });
+
+    await sessionService.endSession();
+
+    expect(sessionService.getCurrentSession()).toBeNull();
+
+    const ended = sessionService.getLastEndedSession();
+    expect(ended).not.toBeNull();
+    expect(ended.id).toBe(created.id);
+    expect(ended.status).toBe('ended');
+    expect(ended.endTime).toBeTruthy();
+  });
+
+  it('returns null from getLastEndedSession() when nothing has ever ended', () => {
+    expect(sessionService.getLastEndedSession()).toBeNull();
+  });
+
+  it('clears the retained session when a new session is created', async () => {
+    await sessionService.createSession({ name: 'First', teams: [] });
+    await sessionService.endSession();
+    expect(sessionService.getLastEndedSession()).not.toBeNull();
+
+    await sessionService.createSession({ name: 'Second', teams: [] });
+
+    expect(sessionService.getLastEndedSession()).toBeNull();
+    expect(sessionService.getCurrentSession().name).toBe('Second');
+  });
+
+  it('clears the retained session when createSession implicitly ends a running session', async () => {
+    await sessionService.createSession({ name: 'Running', teams: [] });
+
+    // createSession() calls endSession() internally when a session exists —
+    // the retained pointer must not survive that internal end.
+    await sessionService.createSession({ name: 'Replacement', teams: [] });
+
+    expect(sessionService.getLastEndedSession()).toBeNull();
+  });
+
+  it('clears the retained session on reset() (system reset)', async () => {
+    await sessionService.createSession({ name: 'Reset Retention', teams: [] });
+    await sessionService.endSession();
+    expect(sessionService.getLastEndedSession()).not.toBeNull();
+
+    await sessionService.reset();
+
+    expect(sessionService.getLastEndedSession()).toBeNull();
+    expect(sessionService.getCurrentSession()).toBeNull();
+  });
+});

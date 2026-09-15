@@ -353,3 +353,135 @@ describe('buildSyncFullPayload contract conformance (CC-2)', () => {
     expect(() => validateWebSocketEvent(event, 'sync:full')).not.toThrow();
   });
 });
+
+/**
+ * C-1 (W8): after a session ends, sessionService.getCurrentSession() is null by
+ * contract. buildSyncFullPayload must fall back to the retained ended session so
+ * the next sync:full (reconnect, sync:request on the Scanner→Admin tab switch,
+ * scores:reset) does not wipe the GM Scanner's history, player scans and session
+ * panel. Only session / recentTransactions / playerScans / scores use the
+ * fallback — devices stay bound to the LIVE session.
+ */
+describe('buildSyncFullPayload after session end (C-1)', () => {
+  const ENDED_ID = '8f14e45f-ce0a-4a3e-9f2c-1b7d4c6e5a10';
+
+  function makeEndedSession() {
+    return {
+      id: ENDED_ID,
+      transactions: [{
+        id: 'c9b1a2d3-4e5f-4a6b-8c7d-9e0f1a2b3c4d', tokenId: 'tok1', teamId: 'Team Alpha', deviceId: 'gm-1',
+        mode: 'blackmarket', status: 'accepted', points: 5000,
+        timestamp: '2026-09-15T02:00:00.000Z', summary: null,
+      }],
+      playerScans: [{
+        tokenId: 'tok9', deviceId: 'PLAYER_001', deviceType: 'player',
+        timestamp: '2026-09-15T01:59:00.000Z',
+      }],
+      connectedDevices: [{
+        id: 'gm-1', type: 'gm', name: 'GM 1', connectionTime: '2026-09-15T01:00:00.000Z',
+        connectionStatus: 'connected', ipAddress: '10.0.0.5',
+      }],
+      scores: [
+        {
+          teamId: 'Team Alpha', currentScore: 5000, baseScore: 5000, bonusPoints: 0,
+          tokensScanned: 1, completedGroups: [], adminAdjustments: [],
+          lastUpdate: '2026-09-15T02:00:00.000Z',
+        },
+        {
+          teamId: 'Team Beta', currentScore: 9000, baseScore: 9000, bonusPoints: 0,
+          tokensScanned: 2, completedGroups: [], adminAdjustments: [],
+          lastUpdate: '2026-09-15T02:00:00.000Z',
+        },
+      ],
+      toJSON: () => ({
+        id: ENDED_ID, name: 'Ended Show', startTime: '2026-09-15T01:00:00.000Z',
+        endTime: '2026-09-15T02:00:00.000Z', status: 'ended',
+        teams: ['Team Alpha', 'Team Beta'], metadata: {},
+      }),
+    };
+  }
+
+  function makeServices({ current = null, lastEnded = makeEndedSession(), withAccessor = true } = {}) {
+    const sessionService = { getCurrentSession: () => current };
+    if (withAccessor) {
+      sessionService.getLastEndedSession = () => lastEnded;
+    }
+    return {
+      sessionService,
+      transactionService: {
+        // Mirrors the real service: scores come from the CURRENT session, so
+        // once it is null getTeamScores() is empty.
+        getTeamScores: () => (current ? [{ teamId: 'live', currentScore: 1 }] : []),
+        getToken: () => ({ memoryType: 'Technical', metadata: { rating: 5, group: 'G (x2)', owner: 'Alex' } }),
+      },
+      videoQueueService: {
+        getState: () => ({
+          status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: false,
+        }),
+      },
+    };
+  }
+
+  it('reports the ended session instead of null', async () => {
+    const payload = await buildSyncFullPayload(makeServices());
+    expect(payload.session).not.toBeNull();
+    expect(payload.session.id).toBe(ENDED_ID);
+    expect(payload.session.status).toBe('ended');
+    expect(payload.session.endTime).toBe('2026-09-15T02:00:00.000Z');
+  });
+
+  it('returns the ended session transactions, enriched', async () => {
+    const payload = await buildSyncFullPayload(makeServices());
+    expect(payload.recentTransactions).toHaveLength(1);
+    expect(payload.recentTransactions[0]).toEqual(expect.objectContaining({
+      id: 'c9b1a2d3-4e5f-4a6b-8c7d-9e0f1a2b3c4d', tokenId: 'tok1', memoryType: 'Technical', valueRating: 5, isUnknown: false,
+    }));
+  });
+
+  it('returns the ended session player scans', async () => {
+    const payload = await buildSyncFullPayload(makeServices());
+    expect(payload.playerScans).toHaveLength(1);
+    expect(payload.playerScans[0].tokenId).toBe('tok9');
+  });
+
+  it('falls back to the ended session scores (transactionService is empty once the session is null)', async () => {
+    const payload = await buildSyncFullPayload(makeServices());
+    expect(payload.scores).toHaveLength(2);
+    // Same descending order as transactionService.getTeamScores()
+    expect(payload.scores.map(s => s.teamId)).toEqual(['Team Beta', 'Team Alpha']);
+    expect(payload.scores[0].currentScore).toBe(9000);
+  });
+
+  it('leaves devices bound to the live session (no stale devices from the ended one)', async () => {
+    const payload = await buildSyncFullPayload(makeServices());
+    expect(payload.devices).toEqual([]);
+  });
+
+  it('prefers the live session when one exists', async () => {
+    const current = {
+      id: '2a2f9d45-5d2d-441d-b32c-52c939f3c103', transactions: [], connectedDevices: [], playerScans: [],
+      scores: [], toJSON: () => ({
+        id: '2a2f9d45-5d2d-441d-b32c-52c939f3c103', name: 'Live', startTime: '2026-09-15T03:00:00.000Z',
+        status: 'active', teams: [], metadata: {},
+      }),
+    };
+    const payload = await buildSyncFullPayload(makeServices({ current }));
+    expect(payload.session.status).toBe('active');
+    expect(payload.recentTransactions).toEqual([]);
+    expect(payload.scores).toEqual([{ teamId: 'live', currentScore: 1 }]);
+  });
+
+  it('still yields session:null when nothing has ended and the accessor is absent', async () => {
+    const payload = await buildSyncFullPayload(makeServices({ withAccessor: false }));
+    expect(payload.session).toBeNull();
+    expect(payload.recentTransactions).toEqual([]);
+    expect(payload.playerScans).toEqual([]);
+    expect(payload.scores).toEqual([]);
+  });
+
+  it('produces an ended-session envelope that validates against the SyncFull schema', async () => {
+    const data = await buildSyncFullPayload(makeServices());
+    const event = { event: 'sync:full', data, timestamp: new Date().toISOString() };
+    expect(() => validateWebSocketEvent(event, 'sync:full')).not.toThrow();
+  });
+});

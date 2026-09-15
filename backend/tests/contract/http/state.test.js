@@ -138,7 +138,9 @@ describe('GET /api/state', () => {
   });
 
   it('should return state even when no session exists', async () => {
-    // End session temporarily
+    // End session temporarily. C-1: an ended session is retained until a new
+    // session is created or the system is reset, so /api/state (which shares
+    // buildSyncFullPayload with sync:full) still describes it.
     await sessionService.endSession();
 
     const response = await request(app.app)
@@ -150,8 +152,10 @@ describe('GET /api/state', () => {
     expect(response.body).toHaveProperty('scores');
     expect(response.body).toHaveProperty('serviceHealth');
 
-    // Session should be null when no active session
-    expect(response.body.session).toBe(null);
+    // The ended session stays visible (C-1) so the GM Scanner does not lose
+    // its history and Download Report button on the next sync.
+    expect(response.body.session).not.toBeNull();
+    expect(response.body.session.status).toBe('ended');
 
     // Recreate session for other tests
     createdSession = await sessionService.createSession({

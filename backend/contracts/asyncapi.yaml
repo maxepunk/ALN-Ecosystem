@@ -314,7 +314,12 @@ components:
               - displayStatus
             properties:
               session:
-                description: Current session (matches Session schema from OpenAPI)
+                description: >-
+                  Current session (matches Session schema from OpenAPI).
+                  null when no session has ever existed or after a system reset;
+                  an ended session (status "ended") remains present, together with
+                  its transactions, playerScans and scores, until a new session is
+                  created or the system is reset (2026-09-15).
                 oneOf:
                   - type: object
                     required:
