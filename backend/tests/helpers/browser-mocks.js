@@ -415,7 +415,8 @@ class MockDataManager extends EventTarget {
     return this.scannedTokens.has(tokenId);
   }
 
-  // Clear scanned tokens (for duplicate detection bypass or test cleanup)
+  // Mirrors UnifiedDataManager.clearScannedTokens — called by test cleanup AND by
+  // messageRouters' gameOpsRouter on a scores:reset broadcast (A-4).
   clearScannedTokens() {
     this.scannedTokens.clear();
   }
@@ -464,6 +465,14 @@ class MockDataManager extends EventTarget {
 
   addTransactionFromBroadcast(tx) {
     if (tx) this.transactions.push(tx);
+  }
+
+  // Mirrors UnifiedDataManager.getTransactions — messageRouters' gameOpsRouter
+  // reads the cache on transaction:deleted to decide whether the token is still
+  // claimed before unmarking it (A-3). Without this the router falls back to an
+  // empty list and always unmarks. (New UDM methods MUST be mirrored here.)
+  getTransactions() {
+    return this.transactions;
   }
 
   handlePlayerScan() { }
@@ -521,6 +530,19 @@ class MockDataManager extends EventTarget {
     if (scoreData && scoreData.teamId) {
       this.backendScores.set(scoreData.teamId, scoreData);
     }
+  }
+
+  // A-1: UnifiedDataManager exposes the backend score row through an accessor
+  // (the Map itself lives on NetworkedStorage). GameOpsRenderer.renderTeamDetails
+  // calls this, so the mock must have it or team details throws.
+  getBackendTeamScore(teamId) {
+    return this.backendScores.get(teamId) ?? null;
+  }
+
+  // A-2: consumed by getEnhancedTeamTransactions / calculateTeamScoreWithBonuses.
+  // Elements are { name, normalizedName, multiplier }; the mock tracks no groups.
+  getTeamCompletedGroups() {
+    return [];
   }
 
   // Required by TokenManager.buildGroupInventory()
