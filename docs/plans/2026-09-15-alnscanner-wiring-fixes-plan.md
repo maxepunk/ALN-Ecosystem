@@ -305,3 +305,36 @@ Then flow 30 ran at the venue with `TEST_LOG_LEVEL=debug` and four new debug-lev
 **HEVC length probe (venue, single production-argument instance):** `kai001.mp4` via OpenUri → `mpris:length` = 27.702 s reported within 1.0 s. So today's "length 0 for the whole playback" was ANOTHER artefact of the harness instance (`--intf dummy`, no `-A pulse`, no vout flag), not of HEVC or of production.
 
 **Grounded conclusion for W9:** the E2E harness's own VLC instance is not representative of production: at the bench (no display) it reports "Playing" ~29.5 s late on OpenUri, and even with a display it reports no length until the end of an HEVC clip. Production, and an orchestrator-owned instance under the harness, are fast and complete. Therefore the harness must stop spawning its own VLC (C1's core), and identity-based addressing (C2) is justified only on its own merits (three-worker runs, orphan hijack), not as a flake fix. B stays off the table: no evidence of in-process signal loss anywhere today.
+
+## W10 — reliability for the next game + a trustworthy E2E suite (sequence agreed 2026-09-15 at the venue)
+
+Goal restated by the owner: the system is stable and reliable for the next game, and the E2E suite gives accurate, trustworthy results. Everything below serves one or the other. Game date is not imminent. Both branches pushed first (ALNScanner e4bfe8a, parent 3acab7a0).
+
+**Deferred with reasons:** A (engine safety net) — after P0 its only production trigger is a video that ends before its first tick, which today's evidence shows only on the unrepresentative harness instance; nonzero risk (post-video anchoring, cue chains, stop cascade); revisit if a production trigger appears. C2 (identity-based VLC addressing) — three-worker runs are the CI script's setting and CI has no VLC; the Pi's own `test:e2e` runs one worker; orphan hijack is mitigated by P0.3's reap fix; hygiene only. B — no evidence anywhere.
+
+| Pkg | Scope | Owner / model | Exclusive files |
+|-----|-------|---------------|-----------------|
+| C1 | Harness stops spawning VLC; orchestrator's ProcessMonitor owns the only instance; gates move to capabilities; one-VLC invariant; flow-30 comment corrected; README | Opus | `backend/tests/e2e/setup/vlc-service.js`, `setup/test-server.js`, `flows/00-smoke-test`, `flows/22-*`, `flows/30-*`, `tests/e2e/README.md` |
+| FA | F1 effective-sink display (routes report a concrete sink for ALL three streams; unrouted → resolved default) + F3 idle-stream volume persists instead of erroring | Opus | `backend/src/services/audioRoutingService.js` + unit tests, `contracts/asyncapi.yaml` (prose first), `flows/07d-04-*` |
+| FB | F2 MPD-disconnect visibility: backend resets cached playback state on MPD exit and reconnects on the supervisor's restart event; renderer has an explicit offline state and stops the progress timer when disconnected | Opus | `backend/src/services/musicService.js` + unit tests, `ALNScanner/src/ui/renderers/MusicRenderer.js`, `ALNScanner/src/styles/**` (one disabled/offline rule), ALNScanner unit tests, `flows/07d-03-*` |
+
+**Gates (lead):** per package — unit suites + coverage ratchets, adversarial review, targeted E2E flow(s) on this kit. After all three — dist rebuild, ONE full `npm run test:e2e` (one worker, all tiers incl. `@hardware`) on the kit, push, restore show posture (PM2 start, system reset of `VENUE-TEST`, idle loop on TV, BT sink present, 8 services healthy).
+
+### C1 spec
+1. `setupVLC()` no longer spawns anything: it becomes a compatibility shim returning `{ type: 'orchestrator' }` (flows still call it before `startOrchestrator()`); `cleanup()` a no-op. Delete the spawn/`waitForVLCReady` code. `isVLCAvailable()` may remain for diagnostics.
+2. Remove the `vlcInfo.type === 'real'` gate in flow 30 (~:502) and flow 22's private `isVLCHealthy()` (~:41): use `getCapabilities(orchestratorInfo.url)` / `requireCapabilities` / `waitForCapability(url, 'vlc')` before first playback.
+3. `test-server.js`: do NOT set `VLC_HW_ACCEL` (auto-detect: `--vout=gles2` on Pi 5 plays on headless Xorg — probed). Keep `TEST_LOG_LEVEL`.
+4. One-VLC invariant in `00-smoke-test`: while the orchestrator runs, `pgrep -x vlc` count is exactly 1 and the orchestrator output (TEST_DEBUG) contains no "Existing VLC processes found at init"; `test.skip` when `cvlc` is absent (CI) or workers > 1.
+5. Flow 30 ~:529 comment: replace the "two-instance signal cache" explanation with the grounded one (harness instance reported Playing ~29.5 s late at the bench and no HEVC length; production/venue path 0.3 s; harness no longer spawns VLC).
+6. README "Environment Classes": harness no longer spawns VLC; video flows exercise the orchestrator's instance with production arguments.
+Acceptance (lead runs): 22, 25, 30, 07d-03, 08 pass on this kit; exactly one `vlc` process during a run.
+
+### FA spec
+F1: `audioRoutingService.getState()` and `getRoutingStatus()` report `routes` for ALL of `video`, `music`, `sound`: explicit route → its concrete sink name (existing `_resolveRouteSink`); no explicit route → the `defaultSink` alias resolved to a concrete name the same way. Update asyncapi prose FIRST ("routes always lists the three streams; a stream without an explicit route reports the sink it will use"). `_routingData` unchanged. Unit: no persisted routes + HDMI cached → all three = HDMI name; explicit music=BT → music = bluez name; no sinks → alias passthrough as today.
+F3: `setStreamVolume(stream, volume)` with no live sink-input: persist `_routingData.volumes[stream]`, emit `volume:changed`, return success (applied by `_identifySinkInput` when the stream appears — verify that path reads `volumes`). Unit: no sink-input → success + persisted + event; then a sink-input appears → volume applied.
+E2E (07d-04): cold admin panel shows a real sink name for all three streams (gate: `availableSinks` non-empty); set Sound volume with nothing playing → ack success, no error toast.
+
+### FB spec
+Backend: in the ProcessMonitor `exited` handler, reset `this.state = 'stopped'`, `this.track = null` (and playlist position if tracked), emit `playback:changed` + `track:changed` so the health-change push carries a consistent snapshot; in the `restarted` handler, attempt `checkConnection()` after ~1 s with 3 retries (do not wait for the 15 s revalidation); keep `_setConnected` both directions. Unit: exit → state stopped/track null + events; restart → reconnect attempted within ~1 s.
+Client: `MusicRenderer` — when `connected` is false: stop the progress timer regardless of `state`, use the flag (not a hard-coded class) for `music--connected`, render a visible "Music offline — reconnecting…" line, keep controls disabled; add one stylesheet rule for the offline state / disabled transport (opacity + cursor). Unit: disconnected push stops the timer and shows the line; reconnect push clears it.
+E2E (07d-03): read `/tmp/aln-pm-mpd.pid`, `process.kill` it, expect the panel offline line within 3 s and the transport re-enabled within 10 s without reload.
