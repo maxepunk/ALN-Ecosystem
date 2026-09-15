@@ -154,3 +154,9 @@ Raw per-hit lists and verdicts for the mechanical checks were kept in the sessio
 | C-1 | FIXED (ended session retained in sync:full until create/reset; also un-blanks the wall scoreboard after End Session) | parent 8baed5b5 |
 | A-8, B-8 | ACCEPTED (owner) | |
 | C-2, C-6, C-11, C-12, remaining Lows, D dead-code list | OPEN, not scheduled | |
+
+## Follow-ups found during E2E verification (2026-09-15)
+
+- **Cue engine: a video-driven cue whose video ends before its first progress tick never completes.** `timelineRuntime.handleVideoLifecycle` (~:420-421) skips cues that have not yet left boundary mode, so `video:completed` for a very short clip is ignored and the cue stays active until stopped by hand. Reproduced with the headless harness VLC: `test_2sec.mp4` is already `Stopped` at position 0 ~1.7s after launch (length IS reported: 2.0s), while 27-30s clips report `Playing` with an advancing position. Production videos are long, so live risk is low. Fix candidate: on `completed` for a boundary-mode cue whose queued video matches the event, transition to video-driven completion instead of ignoring it.
+- **Flow 30 step 1.6.6 (`e2e-video-compound`) fails for that reason**, not for lack of hardware. Plan: give the cue an ~8s clip cut from `test_30sec.mp4` (30s is too close to the flow's 40s completion wait once VLC start-up is added); keep the cue duration-less so the test still proves video-driven completion. Needs a new small binary under `backend/public/videos/` — owner decision pending.
+- **E2E verification status:** touched flows re-run by the lead on both projects after the fixes (07b 8, 07c 6, 07d-02 9, 07d-03 14, admin-state-reactivity 6, 07d-04 8 passed / 2 skipped, 0 failed). Revert-checked: delete→rescan and reset→rescan fail with the router fix reverted; ended-session test fails with the sync-builder fix reverted. Flows that need venue hardware are listed in `backend/tests/e2e/README.md` → Environment Classes.
