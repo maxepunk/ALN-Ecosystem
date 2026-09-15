@@ -239,6 +239,33 @@ After an owner refresh, a dbus-monitor restart, or a VLC restart: one direct `Pl
 
 No config-only mitigation exists (`maxNonPlayingChecks` is a hard-coded local). A false completion is VISIBLE: display mode flips and ducking restores while the TV keeps playing; the operator can re-issue the display mode. P0 is the code mitigation and is small enough to land before the next game.
 
-### Order and gates
+### Decision (owner, 2026-09-15): Option 1 — P0 → C2 (harness VLC removed as part of it) → A; B only on post-C2 evidence
 
-P0 → C1 + diagnostic → A → C2 (recommended) → B (only on evidence). Each: own commits on `production-2026-07`, adversarial review, full unit + integration + touched-flow E2E before the next.
+### P0 — execution plan (team lead; strict TDD; no commits by agents)
+
+Honest framing: no production evidence exists that a false completion has fired on the current code. P0 is defensive hardening plus two real bugs (skip marker, orphan reap). It is also what makes A safe.
+
+| Task | Owner / model | Files (exclusive) | Depends on |
+|------|---------------|-------------------|------------|
+| P0.1 live-position guard | Agent X, Opus (timing logic, event shape) | `backend/src/services/videoQueueService.js` (`monitorVlcPlayback`), `tests/unit/services/videoQueueService*.test.js` | — |
+| P0.2 skip marker on `video:completed` | Agent X (same file), then consumers | `videoQueueService.js` (`skipCurrent`, `completePlayback`), `cueEngineService.js` / `cueEngineWiring.js` / `cue/timelineRuntime.js` ONLY for payload plumbing, their unit tests | P0.1 (same file) |
+| P0.3 orphan reap matches the executed binary | Agent Y, Sonnet (mechanical) | `backend/src/utils/processMonitor.js`, `tests/unit/utils/processMonitor*.test.js` | — |
+| P0.4 instrumentation: mismatch drop (rate-limited per sender), owner resolve/refresh outcome incl. the "restored stale owner" branch | Agent Y | `backend/src/services/mprisPlayerBase.js`, its unit tests | — |
+| Review | RV, Opus code-reviewer | read-only | X, Y done |
+| Verification + commit | lead | — | review clean |
+
+**P0.1 spec.** In the non-playing branch of `checkStatus`, remember the previous poll's `status.time`. If cached state is non-playing but `time` moved forward since the previous poll AND `time < length - 1` (or length unknown), treat VLC as playing: reset `nonPlayingChecks`, log ONE info line per video ("VLC cache says <state> but position advancing at Ns — change signal lost?"), keep monitoring. If `time` did not move, count as today. Natural end (near-end check) unchanged. Do not add D-Bus reads. Also carry the last live `time` on the completion emit (P0.2 shape) so A can anchor a natural end.
+
+**P0.2 spec.** `skipCurrent()` reads the live position (one `getStatus()`), then `completePlayback(item, { skipped: true, position })`. `completePlayback` emits `video:completed` with the item as the FIRST argument unchanged (every existing consumer keeps working) and the marker `{ skipped, position, lastTime }` as a SECOND argument. Before changing anything, map EVERY `video:completed` listener (grep src/) and state what each reads: `cueEngineWiring` → `handleVideoLifecycleEvent('completed', data)` must forward the marker so `timelineRuntime.handleVideoLifecycle`'s existing `data?.skipped` / `data.position` path (~:464-466) becomes live; `standingEvaluator` reads `payload.queueItem?.tokenId` — verify whether that ever matched the item shape and report (do not silently fix an unrelated bug; if it is one, say so). Add a `timelineRuntime` unit case: video-mode cue, skip at 12 s of 30 s → post-video anchored at 12 s.
+
+**P0.3 spec.** `_killOrphan` compares `/proc/<pid>/cmdline` against the wrapper name (`cvlc`) while `cvlc` execs to `vlc`, so it never matches. Match the resolved binary basename OR accept an explicit `orphanMatch` option set by `vlcMprisService` to `vlc`. Test with fake cmdlines for both names and a non-matching pid-reuse case (must NOT kill).
+
+**P0.4 spec.** In `_handleMprisSignal`'s mismatch branch: one info line per distinct sender (Set), with sender + current owner. In `_resolveOwner`/`_refreshOwner`: info line with old → new owner, and an explicit line when the restore-stale-owner branch runs. No behaviour change.
+
+**Verification gate (lead runs every step; agents' output is not trusted):**
+1. Each agent: RED-first tests, revert-check at least one test per task, run its own test files.
+2. Lead: `cd backend && npm test && npm run coverage:check`; `npm run test:integration`.
+3. Lead: adversarial review of the diff (RV).
+4. Lead, real-infra observable for P0.1 on this bench: run flow 30 on mobile-chrome twice with `TEST_LOG_LEVEL=info TEST_DEBUG=true`. Before P0.1, a stale cached "stopped" produced "Video playback completed" ~2 s after "started via VLC" (see 10:40:57 → 10:40:59 in the 2026-09-15 verbose log). After P0.1 that pattern must not occur; instead the "position advancing — change signal lost?" line appears and completion lands near the clip length. (The cue step itself may still wedge until C2 — the guard fixes the queue, not the missing progress ticks — and that is expected; record it.)
+5. Lead: E2E video flows that exercise skip and completion: `22`, `25` (both @hardware; VLC plays headless here), `07d-03`, `08`, on chromium, with the new log lines visible; all must pass or skip for a documented environment reason.
+6. Commit per task on `production-2026-07`; update this plan's status; memory note if a new gotcha surfaced.
