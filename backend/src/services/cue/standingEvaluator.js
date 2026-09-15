@@ -26,7 +26,9 @@ const { GAME_EVENT_NORMALIZERS } = require('../../gameRules/cueVocabulary');
 const ENGINE_EVENT_NORMALIZERS = {
   'video:loading': payload => ({ tokenId: payload.tokenId }),
   'video:started': payload => ({ tokenId: payload.queueItem?.tokenId, duration: payload.duration }),
-  'video:completed': payload => ({ tokenId: payload.queueItem?.tokenId }),
+  // videoQueueService emits the queue ITEM itself here (video:started wraps
+  // it in { queueItem }, video:completed does not) — read both shapes.
+  'video:completed': payload => ({ tokenId: payload?.tokenId ?? payload?.queueItem?.tokenId }),
   'video:paused': payload => ({ tokenId: payload?.tokenId }),
   'video:resumed': payload => ({ tokenId: payload?.tokenId }),
   'player:scan': payload => ({ tokenId: payload.tokenId, deviceId: payload.deviceId, deviceType: payload.deviceType }),

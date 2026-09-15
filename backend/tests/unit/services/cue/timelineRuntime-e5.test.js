@@ -373,6 +373,77 @@ describe('E5 — Three-segment compound-cue timeline', () => {
       await flushAsync();
       expect(execCmd).toHaveBeenCalledWith(expect.objectContaining({ action: 'sound:play' }));
     });
+    it('anchors post-video at the skip position carried on the completion MARKER (P0.2)', async () => {
+      // The real emit is video:completed(queueItem, marker): the queue item is
+      // the first argument and the skip marker the second. Before P0.2 the
+      // marker did not exist, so a GM skip anchored the post-video segment at
+      // the FULL video duration and every remaining entry fired at once.
+      const execCmd = require('../../../../src/services/commandExecutor').executeCommand;
+      gameClockService.getElapsed.mockReturnValue(0);
+
+      cueEngineService.loadCues([{
+        id: 'post-skip-marker', label: 'Post Skip Marker',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { tokenId: 'tok3' } },
+          { at: 40, action: 'sound:play', payload: { file: 'after-skip.wav' } },
+        ],
+      }]);
+
+      await cueEngineService.fireCue('post-skip-marker');
+      execCmd.mockClear();
+
+      // Video is 30s long and 3s in — the cue is past the boundary and in
+      // video drive mode.
+      cueEngineService.handleVideoProgressEvent({ position: 0.1, duration: 30, tokenId: 'tok3' });
+      await flushAsync();
+
+      // GM skips at 12s. videoQueueService emits the item, then the marker.
+      const queueItem = { tokenId: 'tok3', videoPath: 'tok3.mp4', duration: 30 };
+      cueEngineService.handleVideoLifecycleEvent('completed', queueItem, {
+        skipped: true, position: 12, lastTime: 12,
+      });
+      await flushAsync();
+
+      const activeCue = cueEngineService.activeCues.get('post-skip-marker');
+      expect(activeCue).toBeDefined(); // still active (has a post-video entry)
+      // Anchored at the real skip position (12), NOT the full duration (30)
+      expect(activeCue.elapsed).toBeCloseTo(12, 1);
+    });
+
+    it('anchors a skip with NO position at the last known elapsed, never the full duration (P0.2)', async () => {
+      // skipCurrent reports position: null when it is taken inside the first
+      // poll second (lastLiveTime still null). Falling back to videoDuration
+      // would anchor a 3s-in skip at the full 30s and fire every remaining
+      // entry immediately — the exact mis-anchor P0.2 exists to remove.
+      const execCmd = require('../../../../src/services/commandExecutor').executeCommand;
+      gameClockService.getElapsed.mockReturnValue(0);
+
+      cueEngineService.loadCues([{
+        id: 'post-skip-null', label: 'Post Skip Null',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { tokenId: 'tok4' } },
+          { at: 40, action: 'sound:play', payload: { file: 'after-null.wav' } },
+        ],
+      }]);
+
+      await cueEngineService.fireCue('post-skip-null');
+      execCmd.mockClear();
+
+      cueEngineService.handleVideoProgressEvent({ position: 0.1, duration: 30, tokenId: 'tok4' });
+      await flushAsync();
+
+      const queueItem = { tokenId: 'tok4', videoPath: 'tok4.mp4', duration: 30 };
+      cueEngineService.handleVideoLifecycleEvent('completed', queueItem, {
+        skipped: true, position: null, lastTime: null,
+      });
+      await flushAsync();
+
+      const activeCue = cueEngineService.activeCues.get('post-skip-null');
+      expect(activeCue).toBeDefined();
+      // 0.1 * 30s of progress = 3s seen before the skip
+      expect(activeCue.elapsed).toBe(3); // last known elapsed, not 30 and not null
+    });
+
   });
 
   describe('F-SHOW-08: video event correlation by tokenId', () => {

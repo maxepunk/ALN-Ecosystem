@@ -224,6 +224,334 @@ describe('VideoQueueService - Queue Management', () => {
     });
   });
 
+  describe('monitorVlcPlayback live-position guard (P0.1)', () => {
+    // The VLC state served by getStatus() comes from a D-Bus *cache* that can
+    // miss a PropertiesChanged "Playing" signal. The live Position read is the
+    // one trustworthy signal, so a cached non-playing state with an advancing
+    // position must NOT be treated as the end of the video (false completion:
+    // display mode flips, ducking restores, cues are told the video ended
+    // while the TV keeps playing).
+    const vlcService = require('../../../src/services/vlcMprisService');
+    const logger = require('../../../src/utils/logger');
+    const config = require('../../../src/config');
+    let queueItem;
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      queueItem = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      queueItem.startPlayback();
+      videoQueueService.currentItem = queueItem;
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.restoreAllMocks();
+    });
+
+    // Feed one status object per poll; the last one repeats afterwards.
+    const mockPolls = (polls) => {
+      const spy = jest.spyOn(vlcService, 'getStatus');
+      polls.forEach(p => spy.mockResolvedValueOnce(p));
+      spy.mockResolvedValue(polls[polls.length - 1]);
+      return spy;
+    };
+
+    const signalLostLines = (infoSpy) => infoSpy.mock.calls.filter(
+      call => typeof call[0] === 'string' && call[0].includes('change signal lost')
+    );
+
+    it('does NOT complete while the cached state is non-playing but the live position advances', async () => {
+      const infoSpy = jest.spyOn(logger, 'info');
+      mockPolls([
+        { state: 'stopped', position: 1 / 30, length: 30, time: 1.0 },
+        { state: 'stopped', position: 2 / 30, length: 30, time: 2.0 },
+        { state: 'stopped', position: 3 / 30, length: 30, time: 3.0 },
+      ]);
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      await videoQueueService.monitorVlcPlayback(queueItem, 30);
+      await jest.advanceTimersByTimeAsync(3000);
+
+      expect(completed).not.toHaveBeenCalled();
+      expect(videoQueueService.currentItem).toBe(queueItem);
+      // ONE info line per video, not one per poll
+      expect(signalLostLines(infoSpy)).toHaveLength(1);
+    });
+
+    it('keeps emitting video:progress while the cached state is stale', async () => {
+      // The guard knows VLC is playing, so video-driven compound cues must
+      // keep getting ticks through the whole stale-state window.
+      mockPolls([
+        { state: 'stopped', position: 1 / 30, length: 30, time: 1.0 },
+        { state: 'stopped', position: 2 / 30, length: 30, time: 2.0 },
+        { state: 'stopped', position: 3 / 30, length: 30, time: 3.0 },
+      ]);
+      const progress = jest.fn();
+      videoQueueService.on('video:progress', progress);
+
+      await videoQueueService.monitorVlcPlayback(queueItem, 30);
+      await jest.advanceTimersByTimeAsync(3000);
+
+      // Poll 1 has no previous time yet, so the guard engages from poll 2.
+      expect(progress).toHaveBeenCalledTimes(2);
+      expect(progress).toHaveBeenLastCalledWith(expect.objectContaining({
+        queueItem, position: 3 / 30, duration: 30, progress: 10,
+      }));
+    });
+
+    it('does NOT emit video:progress from the guard when the length is unknown', async () => {
+      mockPolls([
+        { state: 'stopped', position: 0, length: 0, time: 5.0 },
+        { state: 'stopped', position: 0, length: 0, time: 6.0 },
+      ]);
+      const progress = jest.fn();
+      videoQueueService.on('video:progress', progress);
+
+      await videoQueueService.monitorVlcPlayback(queueItem, 0);
+      await jest.advanceTimersByTimeAsync(2000);
+
+      expect(progress).not.toHaveBeenCalled();
+    });
+
+    it('resumeCurrent restarts monitoring WITHOUT discarding the last live position', async () => {
+      // lastLiveTime is reset per video in playVideo, not in
+      // monitorVlcPlayback: a pause/resume restarts the monitor, and a skip
+      // taken before its first poll must still report the real position.
+      const originalFlag = config.features.videoPlayback;
+      config.features.videoPlayback = true;
+      jest.spyOn(vlcService, 'pause').mockResolvedValue();
+      jest.spyOn(vlcService, 'resume').mockResolvedValue();
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing', position: 0.4, length: 30, time: 12,
+      });
+
+      videoQueueService.lastLiveTime = 12; // seen just before the pause
+
+      try {
+        await videoQueueService.pauseCurrent();
+        await videoQueueService.resumeCurrent();
+      } finally {
+        config.features.videoPlayback = originalFlag;
+      }
+
+      expect(videoQueueService.lastLiveTime).toBe(12);
+    });
+
+    it('completes after the grace period when the cached state is non-playing and the position is static', async () => {
+      mockPolls([
+        { state: 'stopped', position: 0.5, length: 30, time: 15.0 },
+        { state: 'stopped', position: 0.5, length: 30, time: 15.0 },
+      ]);
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      await videoQueueService.monitorVlcPlayback(queueItem, 30);
+      await jest.advanceTimersByTimeAsync(1000); // grace check 1
+      expect(completed).not.toHaveBeenCalled();
+      await jest.advanceTimersByTimeAsync(1000); // confirmed stopped
+
+      expect(completed).toHaveBeenCalledTimes(1);
+    });
+
+    it('still completes when the position advances inside the final second (natural end)', async () => {
+      mockPolls([
+        { state: 'stopped', position: 29.2 / 30, length: 30, time: 29.2 },
+        { state: 'stopped', position: 29.6 / 30, length: 30, time: 29.6 },
+      ]);
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      await videoQueueService.monitorVlcPlayback(queueItem, 30);
+      await jest.advanceTimersByTimeAsync(1000);
+      expect(completed).not.toHaveBeenCalled();
+      await jest.advanceTimersByTimeAsync(1000);
+
+      expect(completed).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT complete when the length is unknown and the position advances', async () => {
+      mockPolls([
+        { state: 'stopped', position: 0, length: 0, time: 5.0 },
+        { state: 'stopped', position: 0, length: 0, time: 6.0 },
+        { state: 'stopped', position: 0, length: 0, time: 7.0 },
+      ]);
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      await videoQueueService.monitorVlcPlayback(queueItem, 0);
+      await jest.advanceTimersByTimeAsync(3000);
+
+      expect(completed).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('video:completed skip marker (P0.2)', () => {
+    // completePlayback emits the queue item UNCHANGED as the first argument
+    // (every existing consumer keeps working) plus a marker as the second, so
+    // the cue engine can anchor its post-video segment at the real skip
+    // position instead of the full video duration.
+    const vlcService = require('../../../src/services/vlcMprisService');
+    const config = require('../../../src/config');
+
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.restoreAllMocks();
+    });
+
+    it('skipCurrent carries the position the monitor last saw, with NO new D-Bus read', async () => {
+      // The monitor polled the live position within the last second. A fresh
+      // getStatus() here would run _ensureConnection() + a dbus-send (5s caps
+      // each) ahead of stop()'s own, roughly doubling skip latency when D-Bus
+      // is wedged, and checkConnection() mutates vlcService.state as a side
+      // effect.
+      const originalFlag = config.features.videoPlayback;
+      config.features.videoPlayback = true;
+      jest.spyOn(vlcService, 'stop').mockResolvedValue();
+      const getStatusSpy = jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing', position: 0.4, length: 30, time: 12,
+      });
+
+      const item = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      item.startPlayback();
+      videoQueueService.currentItem = item;
+      videoQueueService.lastLiveTime = 12; // last poll of monitorVlcPlayback
+
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      try {
+        await videoQueueService.skipCurrent();
+      } finally {
+        config.features.videoPlayback = originalFlag;
+      }
+
+      expect(completed).toHaveBeenCalledTimes(1);
+      const [emittedItem, marker] = completed.mock.calls[0];
+      expect(emittedItem).toBe(item); // first argument unchanged
+      expect(marker).toMatchObject({ skipped: true, position: 12 });
+      expect(getStatusSpy).not.toHaveBeenCalled();
+    });
+
+    it('skipCurrent marks the position null when the monitor never saw one', async () => {
+      const originalFlag = config.features.videoPlayback;
+      config.features.videoPlayback = true;
+      jest.spyOn(vlcService, 'stop').mockResolvedValue();
+
+      const item = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      item.startPlayback();
+      videoQueueService.currentItem = item;
+      videoQueueService.lastLiveTime = null;
+
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      let result;
+      try {
+        result = await videoQueueService.skipCurrent();
+      } finally {
+        config.features.videoPlayback = originalFlag;
+      }
+
+      expect(result).toBe(true);
+      const [, marker] = completed.mock.calls[0];
+      expect(marker).toMatchObject({ skipped: true, position: null });
+    });
+
+    it('skipCurrent clears the fallback timer BEFORE its awaits', async () => {
+      // The fallback timer fires completePlayback(queueItem) with no marker.
+      // If it survives into skipCurrent's awaits, it completes the item first
+      // and the real skip marker is lost to completePlayback's early return,
+      // while skipCurrent still reports success.
+      const originalFlag = config.features.videoPlayback;
+      config.features.videoPlayback = true;
+
+      let timerDuringStop = 'not-observed';
+      jest.spyOn(vlcService, 'stop').mockImplementation(async () => {
+        timerDuringStop = videoQueueService.playbackTimer;
+      });
+
+      const item = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      item.startPlayback();
+      videoQueueService.currentItem = item;
+      videoQueueService.playbackTimer = setTimeout(() => {}, 60000);
+
+      try {
+        await videoQueueService.skipCurrent();
+      } finally {
+        config.features.videoPlayback = originalFlag;
+      }
+
+      expect(timerDuringStop).toBeNull();
+    });
+
+    it('starts each video with no carried-over live position', async () => {
+      // Unit env runs with ENABLE_VIDEO_PLAYBACK=false, so playVideo takes the
+      // simulated-playback branch — which never went through
+      // monitorVlcPlayback, the only place that used to clear lastLiveTime.
+      jest.useFakeTimers();
+      videoQueueService.lastLiveTime = 99; // stale value from a previous video
+
+      const item = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      item.duration = 5;
+
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      await videoQueueService.playVideo(item);
+      await jest.advanceTimersByTimeAsync(5000); // simulated completion timer
+
+      expect(completed).toHaveBeenCalledTimes(1);
+      const [, marker] = completed.mock.calls[0];
+      expect(marker.lastTime).toBeNull();
+    });
+
+    it('a natural completion carries the last live position, not a skip', async () => {
+      jest.useFakeTimers();
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing', position: 0.99, length: 30, time: 29.7,
+      });
+
+      const item = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      item.startPlayback();
+      videoQueueService.currentItem = item;
+
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      await videoQueueService.monitorVlcPlayback(item, 30);
+      await jest.advanceTimersByTimeAsync(1000); // near-end path
+
+      expect(completed).toHaveBeenCalledTimes(1);
+      const [emittedItem, marker] = completed.mock.calls[0];
+      expect(emittedItem).toBe(item);
+      expect(marker).toEqual({ skipped: false, position: null, lastTime: 29.7 });
+    });
+
+    it('the fallback timer completion is marked as not skipped', async () => {
+      jest.useFakeTimers();
+      // Playing with no usable length: neither the near-end check nor the
+      // stopped-grace path fires, so only the fallback timer completes it.
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing', position: 0, length: 0, time: 0,
+      });
+
+      const item = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      item.startPlayback();
+      videoQueueService.currentItem = item;
+
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      await videoQueueService.monitorVlcPlayback(item, 10); // fallback at 15s
+      await jest.advanceTimersByTimeAsync(15000);
+
+      expect(completed).toHaveBeenCalledTimes(1);
+      const [, marker] = completed.mock.calls[0];
+      expect(marker).toEqual({ skipped: false, position: null, lastTime: null });
+    });
+  });
+
   describe('getState() queue entries (F-GMCMD-18)', () => {
     it('includes duration on pending queue entries', () => {
       // The GM renderer shows item.duration — without it every row reads "0s"

@@ -152,9 +152,25 @@ describe('cueEngineWiring', () => {
       expect(cueEngineService.handleVideoLifecycleEvent).toHaveBeenCalledWith('resumed', { a: 2 });
       expect(cueEngineService.handleGameEvent).toHaveBeenCalledWith('video:resumed', { a: 2 });
 
+      // video:completed forwards a second argument (the skip marker); it is
+      // undefined when the emit carries none.
       services.videoQueueService.emit('video:completed', { a: 3 });
-      expect(cueEngineService.handleVideoLifecycleEvent).toHaveBeenCalledWith('completed', { a: 3 });
+      expect(cueEngineService.handleVideoLifecycleEvent).toHaveBeenCalledWith('completed', { a: 3 }, undefined);
       expect(cueEngineService.handleGameEvent).toHaveBeenCalledWith('video:completed', { a: 3 });
+    });
+
+    it('forwards the video:completed skip marker to the lifecycle handler (P0.2)', () => {
+      // videoQueueService.completePlayback emits (queueItem, marker) — the
+      // marker must reach cueEngineService or a GM skip anchors the
+      // post-video segment at the full video duration.
+      const item = { tokenId: 'tok1', videoPath: 'tok1.mp4' };
+      const marker = { skipped: true, position: 12, lastTime: 12 };
+
+      services.videoQueueService.emit('video:completed', item, marker);
+
+      expect(cueEngineService.handleVideoLifecycleEvent).toHaveBeenCalledWith('completed', item, marker);
+      // The standing-cue (game event) path is unaffected: first argument only
+      expect(cueEngineService.handleGameEvent).toHaveBeenCalledWith('video:completed', item);
     });
 
     it('forwards session:created with only the sessionId', () => {

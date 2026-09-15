@@ -85,6 +85,23 @@ describe('standingEvaluator', () => {
     });
   });
 
+  describe('EVENT_NORMALIZERS: video:completed payload shape', () => {
+    it('reads tokenId from the queue item videoQueueService actually emits', () => {
+      // videoQueueService emits video:completed with the queue ITEM itself
+      // (`this.emit('video:completed', queueItem, marker)`), never a
+      // `{ queueItem }` wrapper — unlike video:started, which does wrap. The
+      // normalizer was copy-pasted from video:started, so every standing cue
+      // triggered on video:completed with a tokenId condition saw
+      // tokenId === undefined.
+      const { EVENT_NORMALIZERS } = standingEvaluator;
+      const normalizer = EVENT_NORMALIZERS['video:completed'];
+
+      expect(normalizer({ tokenId: 'tok1', videoPath: 'tok1.mp4' })).toEqual({ tokenId: 'tok1' });
+      // The wrapped shape keeps working
+      expect(normalizer({ queueItem: { tokenId: 'tok2' } })).toEqual({ tokenId: 'tok2' });
+    });
+  });
+
   describe('parseClockTime()', () => {
     const { parseClockTime } = require('../../../../src/services/cue/standingEvaluator');
 

@@ -1025,6 +1025,28 @@ describe('CueEngineService', () => {
       expect(cueEngineService.activeCues.has('vd-video-complete')).toBe(false);
     });
 
+    it('preserves the queue-item prototype when merging the completion marker', () => {
+      // The marker merge must not flatten the VideoQueueItem into a plain
+      // object: package A reads getPlaybackDuration() off it as a last-resort
+      // anchor, and toJSON()/isPlaying() live on the prototype too.
+      const spy = jest.spyOn(cueEngineService._timeline, 'handleVideoLifecycle').mockReturnValue([]);
+      class FakeQueueItem {
+        constructor() { this.tokenId = 'tok1'; this.videoPath = 'tok1.mp4'; }
+        getPlaybackDuration() { return 42; }
+      }
+      const item = new FakeQueueItem();
+
+      cueEngineService.handleVideoLifecycleEvent('completed', item, {
+        skipped: true, position: 12, lastTime: 12,
+      });
+
+      const payload = spy.mock.calls[0][1];
+      expect(typeof payload.getPlaybackDuration).toBe('function');
+      expect(payload.getPlaybackDuration()).toBe(42);
+      expect(payload).toMatchObject({ tokenId: 'tok1', skipped: true, position: 12 });
+      spy.mockRestore();
+    });
+
     it('should NOT complete cue on video:completed if videoStarted is false', async () => {
       const completedHandler = jest.fn();
       cueEngineService.on('cue:completed', completedHandler);

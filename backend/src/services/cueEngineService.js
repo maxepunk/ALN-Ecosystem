@@ -368,15 +368,28 @@ class CueEngineService extends EventEmitter {
    * Handle video lifecycle events (paused/resumed/completed).
    * E5 + F-SHOW-08.
    * @param {'paused'|'resumed'|'completed'} eventType
-   * @param {Object} data
+   * @param {Object} data - The video queue item (or a paused/resumed payload)
+   * @param {Object} [marker] - video:completed only: {skipped, position, lastTime}
    */
-  handleVideoLifecycleEvent(eventType, data) {
+  handleVideoLifecycleEvent(eventType, data, marker) {
     const gameClockService = require('./gameClockService');
     const currentClockElapsed = gameClockService.getElapsed();
 
+    // videoQueueService emits video:completed(queueItem, marker). Merge the
+    // two so the timeline sees the item's fields (tokenId) AND how the video
+    // ended — a skip must anchor the post-video segment at the real position,
+    // not at the full video duration. The merge keeps the item's PROTOTYPE:
+    // a plain spread would drop getPlaybackDuration()/isPlaying()/toJSON().
+    let payload = data;
+    if (marker) {
+      payload = (data && typeof data === 'object')
+        ? Object.assign(Object.create(Object.getPrototypeOf(data)), data, marker)
+        : { ...marker };
+    }
+
     const completedCues = this._timeline.handleVideoLifecycle(
       eventType,
-      data,
+      payload,
       (cueId, activeCue, _progress) => {
         this.emit('cue:status', { cueId, state: activeCue.state });
       },

@@ -25,6 +25,9 @@ class VideoQueueService extends EventEmitter {
     this.playbackTimer = null;
     this._heldVideos = [];
     this._prePlayHooks = [];
+    // Last live VLC position (seconds) seen by monitorVlcPlayback; carried on
+    // the video:completed marker so the cue engine can anchor a natural end.
+    this.lastLiveTime = null;
 
     // Listen for VLC recovery to notify GM about held items
     registry.on('health:changed', ({ serviceId, status }) => {
@@ -142,6 +145,11 @@ class VideoQueueService extends EventEmitter {
     // "Cannot start playback for item with status playing".
     queueItem.startPlayback();
     this.currentItem = queueItem;
+    // Per-video lifetime: the live position of the PREVIOUS video must never
+    // reach this one's completion marker. Owned here (not in
+    // monitorVlcPlayback) so the simulated-playback branch is covered too and
+    // so a pause/resume — which restarts the monitor — keeps the position.
+    this.lastLiveTime = null;
 
     // Run pre-play hooks (blocking — e.g., attention sound completes before video)
     for (const hook of this._prePlayHooks) {
@@ -334,12 +342,69 @@ class VideoQueueService extends EventEmitter {
     let nonPlayingChecks = 0;
     const maxNonPlayingChecks = 1; // Allow 1 check (1 second) of non-playing state
 
+    // P0.1 live-position guard. vlcService.state is served from the D-Bus
+    // monitor's CACHE, which cannot notice it is wrong when a PropertiesChanged
+    // "Playing" signal is dropped. status.time is the one live read (Position),
+    // so a cached non-playing state with an ADVANCING position means the state
+    // signal was lost, not that the video ended. Without this, two polls of a
+    // stale "stopped" produce a false completion ~2s in: display mode flips
+    // back, ducking restores and waiting cues are told the video ended while
+    // the TV keeps playing.
+    let prevTime = null;           // status.time from the previous poll
+    let signalLostLogged = false;  // ONE info line per video, not per poll
+
     const checkStatus = async () => {
       try {
         const status = await vlcService.getStatus();
 
+        const time = typeof status.time === 'number' ? status.time : null;
+        const length = typeof status.length === 'number' ? status.length : 0;
+        const advancing = time !== null && prevTime !== null && time > prevTime;
+        if (time !== null) {
+          prevTime = time;
+          // Keep the last MEANINGFUL position: a stopped VLC reports 0, which
+          // would otherwise erase the anchor the cue engine needs.
+          if (time > 0) {
+            this.lastLiveTime = time;
+          }
+        }
+
         // Check if still playing or paused
         if (status.state !== 'playing' && status.state !== 'paused') {
+          // Live position still moving, and not inside the final second:
+          // trust the position over the cached state and keep monitoring.
+          if (advancing && (length <= 0 || time < length - 1)) {
+            nonPlayingChecks = 0;
+            if (!signalLostLogged) {
+              signalLostLogged = true;
+              logger.info(
+                `VLC cache says ${status.state} but position advancing at ${time}s - change signal lost?`,
+                {
+                  itemId: queueItem.id,
+                  tokenId: queueItem.tokenId,
+                  videoPath: queueItem.videoPath,
+                  state: status.state,
+                  time,
+                  length,
+                }
+              );
+            }
+
+            // The guard has established that VLC IS playing, so the
+            // video-driven compound-cue timeline must keep receiving ticks
+            // through the whole stale-state window.
+            if (length > 0) {
+              const position = time / length;
+              this.emit('video:progress', {
+                queueItem,
+                progress: Math.round(position * 100),
+                position,
+                duration: length,
+              });
+            }
+            return;
+          }
+
           nonPlayingChecks++;
 
           // If consistently non-playing for more than 1 check, video is complete
@@ -439,9 +504,15 @@ class VideoQueueService extends EventEmitter {
   /**
    * Complete video playback
    * @param {VideoQueueItem} queueItem - Queue item that completed
+   * @param {Object} [marker] - How the video ended: {skipped, position}
+   * @param {boolean} [marker.skipped] - True when a GM skipped the video
+   * @param {number} [marker.position] - Live position (seconds) at skip time
+   * The emitted marker also carries lastTime (the last live position the
+   * monitor saw); no consumer reads it yet — it is reserved for package A's
+   * natural-end anchoring.
    * @private
    */
-  completePlayback(queueItem) {
+  completePlayback(queueItem, marker = {}) {
     if (!queueItem || queueItem !== this.currentItem) {
       return;
     }
@@ -460,7 +531,14 @@ class VideoQueueService extends EventEmitter {
       duration: queueItem.getPlaybackDuration(),
     });
 
-    this.emit('video:completed', queueItem);
+    // The item stays the FIRST argument (unchanged for every existing
+    // consumer); the marker is a SECOND argument carrying how the video ended
+    // so the cue engine can anchor its post-video segment correctly.
+    this.emit('video:completed', queueItem, {
+      skipped: !!marker.skipped,
+      position: marker.position ?? null,
+      lastTime: this.lastLiveTime ?? null,
+    });
 
     // Clean up completed items from queue to prevent accumulation
     this.clearCompleted();
@@ -488,6 +566,23 @@ class VideoQueueService extends EventEmitter {
       clearInterval(this.progressTimer);
       this.progressTimer = null;
     }
+    // Clear the fallback timer BEFORE the awaits below: if it fired in that
+    // window it would complete the item with no marker, and the real skip
+    // marker would be lost to completePlayback's early return while this
+    // method still reported success.
+    if (this.playbackTimer) {
+      clearTimeout(this.playbackTimer);
+      this.playbackTimer = null;
+    }
+
+    // Skip position = the position the monitor last polled (within the last
+    // second). Deliberately NOT a fresh getStatus(): that would add
+    // _ensureConnection() + a dbus-send ahead of stop()'s own — roughly
+    // doubling skip latency when D-Bus is wedged — and checkConnection()
+    // mutates vlcService.state as a side effect. The cue engine needs this so
+    // a skip anchors the post-video segment at the real position instead of
+    // the full video duration.
+    const position = this.lastLiveTime ?? null;
 
     // Best-effort VLC stop — if VLC crashed, there's nothing to stop,
     // but we must still complete the queue item to avoid a stuck queue.
@@ -499,7 +594,7 @@ class VideoQueueService extends EventEmitter {
       }
     }
 
-    this.completePlayback(this.currentItem);
+    this.completePlayback(this.currentItem, { skipped: true, position });
     return true;
   }
 
@@ -1034,6 +1129,7 @@ class VideoQueueService extends EventEmitter {
     this.currentItem = null;
     this._heldVideos = [];
     this._prePlayHooks = [];
+    this.lastLiveTime = null;
     heldIdCounter = 0;
 
     // 3. Log completion

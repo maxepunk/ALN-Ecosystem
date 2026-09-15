@@ -85,9 +85,12 @@ function setupCueEngineForwarding({
     'videoQueue->video:resumed->cueEngine:lifecycle'
   );
 
+  // video:completed carries a second argument (the {skipped, position,
+  // lastTime} marker) — forward BOTH so a GM skip anchors the post-video
+  // segment at the real skip position.
   listenerRegistry.addTrackedListener(
     videoQueueService, 'video:completed',
-    (data) => cueEngineService.handleVideoLifecycleEvent('completed', data),
+    (data, marker) => cueEngineService.handleVideoLifecycleEvent('completed', data, marker),
     'videoQueue->video:completed->cueEngine:lifecycle'
   );
 

@@ -460,9 +460,15 @@ class TimelineRuntime {
         // Determine actual elapsed at video end.
         // E5: "clock-driven resumes from actual video end time"
         let videoEndElapsed;
-        if (data?.skipped && data.position !== undefined) {
-          // Skip: actual position at skip time (provided by the event)
-          videoEndElapsed = data.position;
+        // A skip NEVER anchors at the video duration: skipCurrent reports a
+        // null position when it is taken before the monitor's first poll, and
+        // the full duration would fire every remaining entry at once. Fall
+        // back to the last known elapsed instead (typeof, not
+        // `!== undefined`, so null does not anchor at null).
+        if (data?.skipped) {
+          videoEndElapsed = typeof data.position === 'number'
+            ? data.position
+            : activeCue.elapsed;
         } else if (activeCue.videoDuration > 0) {
           // Natural end: use the known video duration as the authoritative end position.
           // The last progress event may not have been at exactly 100% (VLC often fires
