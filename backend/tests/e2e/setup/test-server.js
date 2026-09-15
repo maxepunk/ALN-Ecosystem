@@ -78,7 +78,7 @@ const TEST_ENV = {
   HOST: '0.0.0.0',
   ENABLE_VIDEO_PLAYBACK: 'true',
   ADMIN_PASSWORD: process.env.TEST_ADMIN_PASSWORD || '@LN-c0nn3ct',
-  LOG_LEVEL: 'warn', // Reduce noise in test output
+  LOG_LEVEL: process.env.TEST_LOG_LEVEL || 'warn', // warn = quiet; TEST_LOG_LEVEL=info + TEST_DEBUG=true to see the orchestrator's own lines
   ENABLE_HTTPS: process.env.TEST_HTTPS || 'false',
   SSL_KEY_PATH: './ssl/key.pem',
   SSL_CERT_PATH: './ssl/cert.pem',

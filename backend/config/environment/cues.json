@@ -111,7 +111,7 @@
           "at": 0,
           "action": "video:queue:add",
           "payload": {
-            "videoFile": "test_2sec.mp4"
+            "videoFile": "test_30sec.mp4"
           }
         },
         {

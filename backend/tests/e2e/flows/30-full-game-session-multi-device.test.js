@@ -524,9 +524,18 @@ test.describe('Full Game Session Multi-Device Flow', () => {
         console.log('⚠️ Video progress container not visible (VLC may not have started playback)');
       }
 
-      // Wait for video compound cue completion (cue completes when all timeline entries fire,
-      // not when video ends — maxAt=1s, but VLC startup has latency)
-      await gmScanner1.waitForCueComplete('e2e-video-compound', 40000);
+      // Wait for video compound cue completion. A cue with a video entry parks in
+      // boundary mode until the FIRST video:progress tick, then fires its remaining
+      // entries and completes (maxAt=1s). videoQueueService only emits progress once
+      // vlcMprisService reports a length > 0, and that service serves state/length from
+      // a signal cache filtered by bus-name owner. The harness runs its own headless VLC
+      // AND the orchestrator starts a second instance, so signals from the playing
+      // instance can be dropped until the owner is re-resolved: state/length lag by up
+      // to ~30s, and a 2s clip ended before any tick (deterministic wedge, probed
+      // 2026-09-15). e2e-video-compound now plays test_30sec.mp4 so a late tick still
+      // lands; KNOWN FLAKY until the two-instance signal issue is fixed — see
+      // docs/plans/2026-09-15-alnscanner-wiring-review.md → Follow-ups.
+      await gmScanner1.waitForCueComplete('e2e-video-compound', 60000);
       console.log('✓ Video-driven compound cue completed');
     } else {
       console.log(`  Skipping video compound cue (VLC: ${vlcInfo.type})`);
