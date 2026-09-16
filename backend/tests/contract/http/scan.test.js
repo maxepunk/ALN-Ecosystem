@@ -8,7 +8,7 @@ const app = require('../../../src/app');
 const { initializeServices } = require('../../../src/app');
 const { validateHTTPResponse } = require('../../helpers/contract-validator');
 const tokenService = require('../../../src/services/tokenService');
-const { resetAllServices } = require('../../helpers/service-reset');
+const { resetAllServices, cleanupInitializedServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 const videoQueueService = require('../../../src/services/videoQueueService');
 const transactionService = require('../../../src/services/transactionService');
@@ -18,6 +18,10 @@ describe('POST /api/scan', () => {
   beforeAll(async () => {
     await initializeServices();
   });
+
+  // Stop the dbus-monitor / pactl children initializeServices() spawned —
+  // otherwise they outlive jest as PPid-1 orphans on the host.
+  afterAll(cleanupInitializedServices);
 
   // Test isolation: Ensure clean state before each test
   beforeEach(async () => {
@@ -195,6 +199,10 @@ describe('POST /api/scan/batch', () => {
   beforeAll(async () => {
     await initializeServices();
   });
+
+  // Stop the dbus-monitor / pactl children initializeServices() spawned —
+  // otherwise they outlive jest as PPid-1 orphans on the host.
+  afterAll(cleanupInitializedServices);
 
   // Test isolation: Ensure clean state before each test
   beforeEach(async () => {

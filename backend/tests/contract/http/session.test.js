@@ -8,7 +8,7 @@ const app = require('../../../src/app');
 const { initializeServices } = require('../../../src/app');
 const { validateHTTPResponse } = require('../../helpers/contract-validator');
 const tokenService = require('../../../src/services/tokenService');
-const { resetAllServices } = require('../../helpers/service-reset');
+const { resetAllServices, cleanupInitializedServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 const transactionService = require('../../../src/services/transactionService');
 const videoQueueService = require('../../../src/services/videoQueueService');
@@ -20,6 +20,10 @@ describe('GET /api/session', () => {
     // Initialize services ONCE for all tests
     await initializeServices();
   });
+
+  // Stop the dbus-monitor / pactl children initializeServices() spawned —
+  // otherwise they outlive jest as PPid-1 orphans on the host.
+  afterAll(cleanupInitializedServices);
 
   beforeEach(async () => {
     // Full reset of all services

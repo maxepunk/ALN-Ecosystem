@@ -323,6 +323,34 @@ async function resetAllServicesForTesting(io, services, options = {}) {
 }
 
 /**
+ * Stop the real child processes that `initializeServices()` spawns.
+ *
+ * `src/app.js` initializeServices() calls `bluetoothService.init()` and
+ * `audioRoutingService.init()`, which start REAL ProcessMonitor children:
+ * `dbus-monitor --system ... sender='org.bluez'` and `pactl subscribe`. The
+ * contract suites call initializeServices() in beforeAll and never stop them,
+ * so every `npx jest` run reparented 2-3 of each to init (PPid 1) and left them
+ * running on the box for good. `resetAllServices()` does not help — it only
+ * resets session/transaction/videoQueue/offlineQueue.
+ *
+ * Both `cleanup()` methods already exist for production shutdown
+ * (`src/server.js`), so no production code exists purely for tests.
+ *
+ * Pair this with any `beforeAll(() => initializeServices())`:
+ *
+ *     afterAll(cleanupInitializedServices);
+ *
+ * Idempotent and safe when init() never ran — both cleanups no-op on a null
+ * monitor.
+ */
+function cleanupInitializedServices() {
+  require('../../src/services/bluetoothService').cleanup();
+  require('../../src/services/audioRoutingService').cleanup();
+  // The 15s health revalidation timer is started by initializeServices() too.
+  require('../../src/services/serviceHealthRegistry').stopRevalidation();
+}
+
+/**
  * Log test file entry for diagnostic tracking
  * Call this in beforeAll() to track which test file is running
  * @param {string} testFileName - Name of the test file
@@ -351,6 +379,7 @@ function logTestFileExit(testFileName) {
 module.exports = {
   resetAllServices,
   resetAllServicesForTesting,
+  cleanupInitializedServices,
   getServiceListenerCounts,
   checkForListenerLeaks,
   logTestFileEntry,
