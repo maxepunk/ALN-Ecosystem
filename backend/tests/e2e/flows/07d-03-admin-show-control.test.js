@@ -64,9 +64,12 @@ async function sendGMCommand(orchestratorUrl, action, payload = {}) {
  * Resolve the pid of the MPD process supervised by THIS test's orchestrator.
  *
  * Refuses to return anything it cannot prove, because the caller SIGKILLs the
- * result and `/tmp/aln-pm-mpd.pid` is shared with the production PM2
- * orchestrator on this kit. A stale pidfile plus pid reuse would otherwise
- * kill an unrelated process — worst case, the show's own MPD.
+ * result. The pidfile is read from THIS orchestrator's private
+ * `ALN_PIDFILE_DIR` (`orchestratorInfo.pidFileDir`, set by test-server), so it
+ * is no longer the `/tmp/aln-pm-mpd.pid` shared with the production PM2
+ * orchestrator on this kit. The /proc proofs below are kept as defence in
+ * depth: a stale pidfile plus pid reuse would otherwise kill an unrelated
+ * process — worst case, the show's own MPD.
  *
  * Two proofs, both from /proc:
  *   - argv[0]'s basename is exactly `mpd` (rules out pid reuse)
@@ -75,15 +78,17 @@ async function sendGMCommand(orchestratorUrl, action, payload = {}) {
  *     spawns MPD from it, so MPD is that process's immediate child.
  *
  * @param {number} ownerPid - pid of the orchestrator under test
+ * @param {string} pidDir - private PID-file dir of the orchestrator under test
  * @returns {{pid: number|null, reason: string|null}}
  */
-function resolveSupervisedMpdPid(ownerPid) {
+function resolveSupervisedMpdPid(ownerPid, pidDir) {
   const deny = (reason) => ({ pid: null, reason });
   if (!Number.isInteger(ownerPid)) return deny('orchestrator pid unknown');
+  if (!pidDir) return deny('orchestrator PID-file dir unknown');
 
   let pid;
   try {
-    pid = parseInt(fs.readFileSync('/tmp/aln-pm-mpd.pid', 'utf8').trim(), 10);
+    pid = parseInt(fs.readFileSync(path.join(pidDir, 'aln-pm-mpd.pid'), 'utf8').trim(), 10);
   } catch (e) {
     return deny(`no ProcessMonitor pidfile: ${e.message}`);
   }
@@ -593,7 +598,7 @@ test.describe('GM Scanner - Show Control', () => {
 
     // ProcessMonitor writes the supervised child's pid to a FIXED path that the
     // production PM2 orchestrator also uses, so prove ownership before killing.
-    const { pid: mpdPid, reason } = resolveSupervisedMpdPid(orchestratorInfo.process?.pid);
+    const { pid: mpdPid, reason } = resolveSupervisedMpdPid(orchestratorInfo.process?.pid, orchestratorInfo.pidFileDir);
     test.skip(!mpdPid, `cannot safely identify this test's MPD: ${reason}`);
 
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });

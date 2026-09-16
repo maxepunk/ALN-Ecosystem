@@ -29,6 +29,8 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs').promises;
+const fsSync = require('fs');
+const os = require('os');
 const net = require('net');
 const axios = require('axios');
 const https = require('https');
@@ -70,6 +72,74 @@ let orchestratorProcess = null;
 let serverPort = null;
 let serverProtocol = 'http';
 let cleanupRegistered = false;
+
+// Private ProcessMonitor PID-file directory for the orchestrators this harness
+// spawns. Passed to each spawn as ALN_PIDFILE_DIR and surfaced on the returned
+// info object as `pidFileDir`.
+//
+// WHY: without it every spawned orchestrator shares /tmp/aln-pm-*.pid with the
+// PM2 production orchestrator on this box (and with any jest run).
+// ProcessMonitor.start() -> _killOrphan() SIGTERMs whatever pid that file names
+// as soon as /proc/<pid>/cmdline's argv[0] basename matches, so an E2E
+// orchestrator booting VLC or MPD could reap the production instance's
+// children, and vice versa.
+//
+// SCOPE — per Playwright PARALLEL SLOT, not per spawn and not per worker
+// process. Successive orchestrators in the same slot MUST share this directory:
+// when stopOrchestrator escalates to SIGKILL, ProcessMonitor's
+// process.on('exit') hook never runs and VLC is orphaned, and the next
+// orchestrator's _killOrphan() is the only thing that reaps it — which it can
+// only do by reading the same pidfile.
+//
+// Keying on process.pid is NOT enough: Playwright starts a brand new worker
+// process for every retry, so a retry would get a fresh directory and could
+// never reap the VLC the failed attempt orphaned, which flows/00-smoke-test
+// then reports as a stray. TEST_PARALLEL_INDEX is stable across retries within
+// a slot and distinct between slots, so it isolates parallel workers while
+// keeping retries connected. (`||`, not `??`: slot "0" is a non-empty string
+// and stays, while an empty value correctly falls back.) Outside Playwright —
+// a direct `node` require of this module — the pid keeps it unique.
+const PID_FILE_SLOT = process.env.TEST_PARALLEL_INDEX || String(process.pid);
+const PID_FILE_DIR = path.join(os.tmpdir(), `aln-e2e-${PID_FILE_SLOT}`);
+let pidFileDir = null;
+let pidFileExitHookRegistered = false;
+
+/**
+ * Create this slot's private PID-file directory (idempotent).
+ * @returns {string} Absolute directory path
+ */
+function allocatePidFileDir() {
+  fsSync.mkdirSync(PID_FILE_DIR, { recursive: true });
+  pidFileDir = PID_FILE_DIR;
+  // Synchronous 'exit' listener — the async cleanup() below cannot do this,
+  // because nothing after its first `await` runs during process exit. Registered
+  // here rather than in registerCleanupHandler() so a spawn that never became
+  // healthy still gets its directory cleaned up.
+  if (!pidFileExitHookRegistered) {
+    process.on('exit', releasePidFileDir);
+    pidFileExitHookRegistered = true;
+  }
+  return pidFileDir;
+}
+
+/**
+ * Remove the private PID-file directory. Called on harness exit only (see the
+ * process.on('exit') hook in allocatePidFileDir).
+ * Guarded to our own temp-dir prefix so a stray value can never delete /tmp.
+ */
+function releasePidFileDir() {
+  if (!pidFileDir) return;
+  const isOurs = path.dirname(pidFileDir) === os.tmpdir()
+    && path.basename(pidFileDir).startsWith('aln-e2e-');
+  if (isOurs) {
+    try {
+      fsSync.rmSync(pidFileDir, { recursive: true, force: true });
+    } catch (error) {
+      logger.debug('Failed to remove E2E PID-file dir', { dir: pidFileDir, error: error.message });
+    }
+  }
+  pidFileDir = null;
+}
 
 // Output of the CURRENT orchestrator process, so tests can assert on what it
 // logged — e.g. the one-VLC invariant in flows/00-smoke-test checks that the
@@ -115,7 +185,7 @@ const TEST_ENV = {
  * @param {number} [options.timeout=30000] - Startup timeout in ms
  * @param {boolean} [options.preserveSession=false] - Keep session data from previous run
  * @param {string} [options.storageType='memory'] - Storage backend ('memory' or 'file')
- * @returns {Promise<Object>} Server info { url, port, protocol, process }
+ * @returns {Promise<Object>} Server info { url, port, protocol, process, pidFileDir }
  *
  * @example
  * // Dynamic port (recommended for parallel tests)
@@ -176,7 +246,8 @@ async function startOrchestrator(options = {}) {
         url: getOrchestratorUrl(),
         port: serverPort,
         protocol: serverProtocol,
-        process: orchestratorProcess
+        process: orchestratorProcess,
+        pidFileDir
       };
     }
   }
@@ -187,9 +258,14 @@ async function startOrchestrator(options = {}) {
   }
 
   // Update test environment
+  allocatePidFileDir();
+
   const env = {
     ...process.env,
     ...TEST_ENV,
+    // Keep this orchestrator's ProcessMonitor pidfiles out of /tmp — see the
+    // pidFileDir declaration above.
+    ALN_PIDFILE_DIR: pidFileDir,
     PORT: String(port),
     ENABLE_HTTPS: String(enableHttps),
     STORAGE_TYPE: storageType,  // Use parameter instead of TEST_ENV default
@@ -276,7 +352,8 @@ async function startOrchestrator(options = {}) {
       url: getOrchestratorUrl(),
       port: serverPort,
       protocol: serverProtocol,
-      process: orchestratorProcess
+      process: orchestratorProcess,
+      pidFileDir
     };
   } catch (error) {
     // Include output in error for debugging
@@ -292,6 +369,8 @@ async function startOrchestrator(options = {}) {
       orchestratorProcess.kill('SIGTERM');
       orchestratorProcess = null;
     }
+    // PID-file dir deliberately kept: a half-started orchestrator may have left
+    // a VLC/MPD orphan that only the next spawn's _killOrphan() can reap.
 
     throw new Error(`Orchestrator startup failed: ${error.message}\n\nServer output:\n${combinedOutput}`);
   }
@@ -528,6 +607,9 @@ function registerCleanupHandler() {
       logger.info('Cleaning up orchestrator on process exit');
       await stopOrchestrator({ timeout: 2000 });
     }
+    // NOTE: the PID-file dir is removed by the synchronous process.on('exit')
+    // listener registered in allocatePidFileDir() — anything after the await
+    // above would never run during process exit.
   };
 
   process.on('exit', cleanup);
@@ -561,7 +643,8 @@ function getServerStatus() {
     pid: orchestratorProcess.pid,
     port: serverPort,
     protocol: serverProtocol,
-    url: getOrchestratorUrl()
+    url: getOrchestratorUrl(),
+    pidFileDir
   };
 }
 

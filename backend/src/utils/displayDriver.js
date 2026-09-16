@@ -20,14 +20,24 @@ const { spawn, execFile, execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const logger = require('./logger');
+const { resolvePidFile } = require('./pidFile');
 
 // Module-level state (persistent across calls within a process lifetime)
 let browserProcess = null;
 let visible = false;
 let launchPromise = null;  // Guard against concurrent spawns
 
-// PID file for orphan recovery (matches ProcessMonitor pattern)
-const PID_FILE = '/tmp/aln-pm-scoreboard-chromium.pid';
+// PID file for orphan recovery (matches ProcessMonitor pattern).
+// _doLaunch() SIGKILLs whatever pid it finds here, so a jest run or an E2E
+// orchestrator must never read the production box's copy of this file.
+// Resolved at USE, not at import: ALN_PIDFILE_DIR may be set after this module
+// loads, and an import-time constant would freeze the wrong directory in.
+const PID_FILE_NAME = 'aln-pm-scoreboard-chromium.pid';
+
+/** @returns {string} Absolute scoreboard pidfile path in the active pidfile dir. */
+function pidFilePath() {
+  return resolvePidFile(PID_FILE_NAME);
+}
 
 // Configuration
 const DISPLAY = process.env.DISPLAY || ':0';
@@ -101,7 +111,7 @@ async function _doLaunch() {
   // PID-scoped (not system-wide pkill) so concurrent orchestrators don't interfere.
   let killedOrphan = false;
   try {
-    const oldPid = parseInt(fs.readFileSync(PID_FILE, 'utf8').trim(), 10);
+    const oldPid = parseInt(fs.readFileSync(pidFilePath(), 'utf8').trim(), 10);
     if (!isNaN(oldPid)) {
       // Verify it's actually a chromium process before killing
       const cmdline = fs.readFileSync(`/proc/${oldPid}/cmdline`, 'utf8').replace(/\0/g, ' ');
@@ -173,7 +183,7 @@ async function _doLaunch() {
   // Write PID file for orphan recovery on next server start
   if (browserProcess?.pid) {
     try {
-      fs.writeFileSync(PID_FILE, String(browserProcess.pid));
+      fs.writeFileSync(pidFilePath(), String(browserProcess.pid));
     } catch (err) {
       logger.debug('[DisplayDriver] Failed to write PID file', { error: err.message });
     }
@@ -316,7 +326,7 @@ async function cleanup() {
 
   // Remove PID file (clean shutdown — no orphan to recover)
   try {
-    fs.unlinkSync(PID_FILE);
+    fs.unlinkSync(pidFilePath());
   } catch {
     // Already removed or never written
   }

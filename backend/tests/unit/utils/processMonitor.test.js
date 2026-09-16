@@ -24,6 +24,11 @@ const ProcessMonitor = require('../../../src/utils/processMonitor');
 
 // ── Helpers ──
 
+// ProcessMonitor keeps only the BASENAME of a caller's pidFile and puts it in
+// ALN_PIDFILE_DIR (see the module header). Callers still pass their /tmp paths,
+// so assertions have to compare against the RESOLVED path.
+const resolvePid = (p) => ProcessMonitor.resolvePidFile(p);
+
 function createMockSpawnProc() {
   const proc = new EventEmitter();
   proc.stdout = new EventEmitter();
@@ -509,7 +514,7 @@ describe('ProcessMonitor', () => {
     it('should kill orphaned process found in PID file on start', () => {
       const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath === '/tmp/aln-pm-test-monitor.pid') return '12345';
+        if (filePath === resolvePid('/tmp/aln-pm-test-monitor.pid')) return '12345';
         if (filePath === '/proc/12345/cmdline') return 'dbus-monitor\0--session\0--monitor';
         throw new Error('ENOENT');
       });
@@ -523,7 +528,7 @@ describe('ProcessMonitor', () => {
     it('should NOT kill process if PID was reused by different command', () => {
       const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath === '/tmp/aln-pm-test-monitor.pid') return '12345';
+        if (filePath === resolvePid('/tmp/aln-pm-test-monitor.pid')) return '12345';
         if (filePath === '/proc/12345/cmdline') return 'node\0src/server.js';
         throw new Error('ENOENT');
       });
@@ -546,7 +551,7 @@ describe('ProcessMonitor', () => {
         throw new Error('ESRCH');
       });
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath === '/tmp/aln-pm-test-monitor.pid') return '12345';
+        if (filePath === resolvePid('/tmp/aln-pm-test-monitor.pid')) return '12345';
         if (filePath === '/proc/12345/cmdline') return 'dbus-monitor\0--session\0--monitor';
         throw new Error('ENOENT');
       });
@@ -562,7 +567,7 @@ describe('ProcessMonitor', () => {
       pidMonitor.start();
 
       expect(fs.writeFileSync).toHaveBeenCalledWith(
-        '/tmp/aln-pm-test-monitor.pid',
+        resolvePid('/tmp/aln-pm-test-monitor.pid'),
         String(mockProc.pid)
       );
     });
@@ -573,7 +578,7 @@ describe('ProcessMonitor', () => {
       pidMonitor.start();
       pidMonitor.stop();
 
-      expect(fs.unlinkSync).toHaveBeenCalledWith('/tmp/aln-pm-test-monitor.pid');
+      expect(fs.unlinkSync).toHaveBeenCalledWith(resolvePid('/tmp/aln-pm-test-monitor.pid'));
     });
 
     it('should NOT write PID file when pidFile option is omitted', () => {
@@ -608,7 +613,7 @@ describe('ProcessMonitor', () => {
     it('should kill orphan when cmdline is the resolved binary (vlc), not the wrapper (cvlc)', () => {
       const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath === '/tmp/aln-pm-vlc.pid') return '54321';
+        if (filePath === resolvePid('/tmp/aln-pm-vlc.pid')) return '54321';
         if (filePath === '/proc/54321/cmdline') return '/usr/bin/vlc\0-I\0dummy\0--fullscreen';
         throw new Error('ENOENT');
       });
@@ -622,7 +627,7 @@ describe('ProcessMonitor', () => {
     it('should kill orphan when cmdline still shows the wrapper (cvlc)', () => {
       const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath === '/tmp/aln-pm-vlc.pid') return '54321';
+        if (filePath === resolvePid('/tmp/aln-pm-vlc.pid')) return '54321';
         if (filePath === '/proc/54321/cmdline') return 'cvlc\0--fullscreen';
         throw new Error('ENOENT');
       });
@@ -636,7 +641,7 @@ describe('ProcessMonitor', () => {
     it('should NOT kill when PID was reused by an unrelated process', () => {
       const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath === '/tmp/aln-pm-vlc.pid') return '54321';
+        if (filePath === resolvePid('/tmp/aln-pm-vlc.pid')) return '54321';
         if (filePath === '/proc/54321/cmdline') return 'node\0something.js';
         throw new Error('ENOENT');
       });
@@ -656,7 +661,7 @@ describe('ProcessMonitor', () => {
         pidFile: '/tmp/aln-pm-test-monitor-2.pid',
       });
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath === '/tmp/aln-pm-test-monitor-2.pid') return '11111';
+        if (filePath === resolvePid('/tmp/aln-pm-test-monitor-2.pid')) return '11111';
         if (filePath === '/proc/11111/cmdline') return 'dbus-monitor\0--session';
         throw new Error('ENOENT');
       });
@@ -674,7 +679,7 @@ describe('ProcessMonitor', () => {
       // like /opt/vlc-tools/x.js).
       const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath === '/tmp/aln-pm-vlc.pid') return '54321';
+        if (filePath === resolvePid('/tmp/aln-pm-vlc.pid')) return '54321';
         if (filePath === '/proc/54321/cmdline') return 'node\0/opt/vlc-tools/x.js';
         throw new Error('ENOENT');
       });
@@ -688,7 +693,7 @@ describe('ProcessMonitor', () => {
     it('should NOT kill a differently-named binary whose basename merely starts with a matcher', () => {
       const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath === '/tmp/aln-pm-vlc.pid') return '54321';
+        if (filePath === resolvePid('/tmp/aln-pm-vlc.pid')) return '54321';
         if (filePath === '/proc/54321/cmdline') return '/usr/bin/vlc-wrapper\0--fullscreen';
         throw new Error('ENOENT');
       });
@@ -702,7 +707,7 @@ describe('ProcessMonitor', () => {
     it('should handle an empty cmdline (zombie process) without throwing or killing', () => {
       const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath === '/tmp/aln-pm-vlc.pid') return '54321';
+        if (filePath === resolvePid('/tmp/aln-pm-vlc.pid')) return '54321';
         // A zombie/defunct process has an empty (but readable) cmdline file.
         if (filePath === '/proc/54321/cmdline') return '';
         throw new Error('ENOENT');
@@ -724,7 +729,7 @@ describe('ProcessMonitor', () => {
         orphanMatch: 'vlc',
       });
       fs.readFileSync.mockImplementation((filePath) => {
-        if (filePath === '/tmp/aln-pm-vlc-string.pid') return '54321';
+        if (filePath === resolvePid('/tmp/aln-pm-vlc-string.pid')) return '54321';
         if (filePath === '/proc/54321/cmdline') return '/usr/bin/vlc\0-I\0dummy';
         throw new Error('ENOENT');
       });
@@ -734,6 +739,94 @@ describe('ProcessMonitor', () => {
       expect(killSpy).toHaveBeenCalledWith(54321, 'SIGTERM');
       killSpy.mockRestore();
       stringMatchMonitor.stop();
+    });
+  });
+
+  // ── 7: PID-file isolation (ALN_PIDFILE_DIR) ──
+  //
+  // Regression guard for 2026-09-15: a unit run on the production Pi built a
+  // real ProcessMonitor with pidFile '/tmp/aln-pm-vlc.pid', and start() ->
+  // _killOrphan() SIGTERMed the pid it found there — the live show's VLC — then
+  // overwrote the file with the mocked pid. Nothing in the jest layers may read
+  // or write a pidfile outside ALN_PIDFILE_DIR.
+
+  describe('PID-file isolation (ALN_PIDFILE_DIR)', () => {
+    const realFs = jest.requireActual('fs');
+    const nodePath = require('path');
+
+    it('resolves pidfiles into ALN_PIDFILE_DIR, keeping only the basename', () => {
+      const dir = process.env.ALN_PIDFILE_DIR;
+      expect(dir).toBeTruthy();
+      expect(dir).not.toBe('/tmp');
+
+      const resolved = ProcessMonitor.resolvePidFile('/tmp/aln-pm-vlc.pid');
+
+      expect(resolved).toBe(nodePath.join(dir, 'aln-pm-vlc.pid'));
+      expect(resolved.startsWith(dir)).toBe(true);
+      expect(resolved).not.toBe('/tmp/aln-pm-vlc.pid');
+    });
+
+    it('returns null when no pidFile is supplied', () => {
+      expect(ProcessMonitor.resolvePidFile(null)).toBeNull();
+      expect(ProcessMonitor.resolvePidFile(undefined)).toBeNull();
+      expect(ProcessMonitor.resolvePidFile('')).toBeNull();
+    });
+
+    it('stores the resolved path on the instance, not the caller literal', () => {
+      const vlcMonitor = new ProcessMonitor({
+        command: 'cvlc',
+        args: ['--fullscreen'],
+        label: 'VLC-isolation',
+        pidFile: '/tmp/aln-pm-vlc.pid',
+        orphanMatch: ['vlc', 'cvlc'],
+      });
+
+      expect(vlcMonitor._pidFile).toBe(nodePath.join(process.env.ALN_PIDFILE_DIR, 'aln-pm-vlc.pid'));
+      vlcMonitor.stop();
+    });
+
+    it('_killOrphan reads the overridden dir and never touches /tmp/aln-pm-*.pid', () => {
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+
+      // Real pidfile, real read, real /proc — only child_process.spawn stays
+      // mocked. The pidfile points at THIS process (a live, definitely-running
+      // pid), so the only thing standing between the monitor and a kill is the
+      // argv[0] matcher: argv[0] here is 'node', the monitor matches
+      // 'definitely-not-a-real-binary'. A kill would mean the guard is gone.
+      const probePath = nodePath.join(process.env.ALN_PIDFILE_DIR, 'aln-pm-isolation-probe.pid');
+      realFs.writeFileSync(probePath, String(process.pid));
+      fs.readFileSync.mockImplementation((...args) => realFs.readFileSync(...args));
+
+      const probeMonitor = new ProcessMonitor({
+        command: 'definitely-not-a-real-binary',
+        args: [],
+        label: 'isolation-probe',
+        pidFile: '/tmp/aln-pm-isolation-probe.pid',
+      });
+
+      try {
+        probeMonitor.start();
+
+        expect(probeMonitor._pidFile).toBe(probePath);
+        expect(killSpy).not.toHaveBeenCalled();
+
+        // Every path the monitor touched stayed inside the private dir.
+        const touched = [
+          ...fs.readFileSync.mock.calls.map((c) => c[0]),
+          ...fs.writeFileSync.mock.calls.map((c) => c[0]),
+          ...fs.unlinkSync.mock.calls.map((c) => c[0]),
+        ].filter((c) => typeof c === 'string' && c.includes('aln-pm-'));
+
+        expect(touched.length).toBeGreaterThan(0);
+        for (const target of touched) {
+          expect(target.startsWith(process.env.ALN_PIDFILE_DIR)).toBe(true);
+          expect(target.startsWith('/tmp/aln-pm-')).toBe(false);
+        }
+      } finally {
+        probeMonitor.stop();
+        killSpy.mockRestore();
+        try { realFs.unlinkSync(probePath); } catch { /* stop() may have removed it */ }
+      }
     });
   });
 });

@@ -6,12 +6,33 @@
  * orphan prevention (process.on('exit')), shutdown guard, max failure cap.
  *
  * Services provide: command, args, label. Listen to 'line' events.
+ *
+ * ## PID-file isolation (ALN_PIDFILE_DIR)
+ *
+ * Every caller passes an absolute `pidFile` under `/tmp` (e.g. `/tmp/aln-pm-vlc.pid`).
+ * Only the BASENAME is honoured — the directory always comes from
+ * `process.env.ALN_PIDFILE_DIR`, defaulting to `/tmp`. This is a hard safety
+ * boundary, not a convenience:
+ *
+ *   `start()` → `_killOrphan()` reads the pidfile and SIGTERMs the pid it finds
+ *   whenever `/proc/<pid>/cmdline`'s argv[0] basename matches. With a fixed
+ *   `/tmp` path, three unrelated process trees share one file — the PM2
+ *   production orchestrator, every E2E-spawned orchestrator, and any jest test
+ *   that constructs a real ProcessMonitor. On 2026-09-15 that let the unit
+ *   suite reap the live show's VLC on the production box (and then overwrite
+ *   the pidfile with a mocked pid).
+ *
+ * Production leaves the variable unset and keeps `/tmp`. The jest configs set a
+ * per-run temp dir; the E2E harness sets a per-parallel-slot dir. Resolution
+ * itself lives in `src/utils/pidFile.js`; `ProcessMonitor.resolvePidFile(p)`
+ * re-exports it so callers holding a ProcessMonitor can compute the same path.
  */
 
 const { spawn } = require('child_process');
 const fs = require('fs');
 const EventEmitter = require('events');
 const logger = require('./logger');
+const { resolvePidFile } = require('./pidFile');
 
 const DEFAULTS = {
   maxFailures: 5,
@@ -25,7 +46,9 @@ class ProcessMonitor extends EventEmitter {
    * @param {string} options.command - Command to spawn
    * @param {string[]} options.args - Arguments for the command
    * @param {string} options.label - Label for logging
-   * @param {string} [options.pidFile] - Path to PID file for orphan recovery after SIGKILL
+   * @param {string} [options.pidFile] - Path to PID file for orphan recovery after SIGKILL.
+   *   Only the basename is used; the directory comes from `ALN_PIDFILE_DIR` (default `/tmp`).
+   *   See the PID-file isolation note in the module header.
    * @param {string|string[]} [options.orphanMatch] - Basename(s) of argv[0] to match exactly
    *   during orphan recovery instead of `command`. Needed when `command` is a wrapper that
    *   execs to a differently-named binary (e.g. `cvlc` execs to `vlc`, so `/proc/PID/cmdline`'s
@@ -41,7 +64,7 @@ class ProcessMonitor extends EventEmitter {
     this._command = command;
     this._args = args;
     this._label = label;
-    this._pidFile = pidFile || null;
+    this._pidFile = resolvePidFile(pidFile);
     this._orphanMatch = orphanMatch
       ? (Array.isArray(orphanMatch) ? orphanMatch : [orphanMatch])
       : null;
@@ -227,6 +250,16 @@ class ProcessMonitor extends EventEmitter {
   /** @returns {boolean} Whether the process is currently running */
   isRunning() {
     return this._proc !== null;
+  }
+
+  /**
+   * Resolve a pidfile path exactly as the constructor does.
+   * Exposed so tests and the E2E harness can locate a live monitor's pidfile.
+   * @param {string|null|undefined} pidFile
+   * @returns {string|null}
+   */
+  static resolvePidFile(pidFile) {
+    return resolvePidFile(pidFile);
   }
 }
 

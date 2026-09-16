@@ -33,5 +33,38 @@
  * ONCE after ALL test files complete (safe for process-wide cleanup).
  */
 
-// This file is intentionally left empty
-// See comments above for test isolation strategy
+// ## ProcessMonitor PID-file isolation (defence in depth)
+//
+// jest.config.base.js allocates ONE temp dir per run and every forked worker
+// inherits it through process.env. This is the backstop for the case where that
+// inheritance does not happen (a worker launched with a scrubbed env, a suite
+// run through a config that does not extend the base). Falling through to the
+// default /tmp would let ProcessMonitor._killOrphan() SIGTERM a process owned
+// by the production orchestrator, so the fallback is a private directory, never
+// /tmp. Runs before the test file's own requires (setupFilesAfterEnv).
+//
+// jest.globalTeardown.js only knows the PARENT's directory, so a fallback dir
+// created inside a worker has to clean itself up here. Removing it after every
+// test file is safe: resolvePidFile() recreates the directory on demand, and a
+// pidfile is only meaningful while its process is alive.
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+const WORKER_FALLBACK_PREFIX = 'aln-jest-worker-';
+
+if (!process.env.ALN_PIDFILE_DIR) {
+  process.env.ALN_PIDFILE_DIR = fs.mkdtempSync(path.join(os.tmpdir(), WORKER_FALLBACK_PREFIX));
+}
+
+if (path.basename(process.env.ALN_PIDFILE_DIR).startsWith(WORKER_FALLBACK_PREFIX)) {
+  afterAll(() => {
+    try {
+      fs.rmSync(process.env.ALN_PIDFILE_DIR, { recursive: true, force: true });
+    } catch {
+      // Best effort — it is a temp dir either way.
+    }
+  });
+}
+
+// Nothing else here on purpose — see the isolation strategy above.

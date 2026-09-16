@@ -5,6 +5,29 @@
  * DO NOT run this directly - use jest.config.js or jest.integration.config.js
  */
 
+const fsBase = require('fs');
+const osBase = require('os');
+const pathBase = require('path');
+
+// Isolate ProcessMonitor PID files for this jest run.
+//
+// SAFETY-CRITICAL, not hygiene. Several suites (vlcMprisService,
+// mprisPlayerBase, audioRouting, bluetooth) construct REAL ProcessMonitor
+// instances, and ProcessMonitor.start() -> _killOrphan() reads the pidfile and
+// SIGTERMs the pid inside it whenever /proc/<pid>/cmdline's argv[0] basename
+// matches. With the default /tmp paths, that file belongs to whatever else is
+// running on the box: on 2026-09-15 a unit run on the production Pi read
+// /tmp/aln-pm-vlc.pid, killed the live show's VLC, and then overwrote the file
+// with a mocked pid. Pointing the whole run at a private directory makes the
+// unit suite structurally incapable of touching another process tree.
+//
+// Set here (not in a setup file) so it lands before ANY module loads and is
+// inherited by every forked jest worker, matching how ENABLE_VIDEO_PLAYBACK and
+// HOME_ASSISTANT_TOKEN are handled below. Removed in jest.globalTeardown.js.
+if (!process.env.ALN_PIDFILE_DIR) {
+  process.env.ALN_PIDFILE_DIR = fsBase.mkdtempSync(pathBase.join(osBase.tmpdir(), 'aln-jest-'));
+}
+
 // Prevent unit/contract tests from spawning real VLC processes.
 // Integration tests that need VLC should explicitly set ENABLE_VIDEO_PLAYBACK=true.
 // config/index.js reads this at require time: videoPlayback = process.env.ENABLE_VIDEO_PLAYBACK !== 'false'

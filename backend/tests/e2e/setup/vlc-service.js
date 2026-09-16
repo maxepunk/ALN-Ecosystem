@@ -4,7 +4,10 @@
  * The orchestrator owns the only VLC instance. `vlcMprisService.init()` starts
  * `cvlc` under a ProcessMonitor with PRODUCTION arguments (including the Pi 5
  * `--vout=gles2` auto-detection and `-A pulse`), supervises it, and reaps
- * orphans via /tmp/aln-pm-vlc.pid. E2E flows therefore exercise the same VLC
+ * orphans via its `aln-pm-vlc.pid` file. Under E2E that file lives in the
+ * harness's private ALN_PIDFILE_DIR (see test-server.js), not /tmp, so E2E and
+ * the production PM2 orchestrator never reap each other's children. E2E flows
+ * therefore exercise the same VLC
  * the show runs on.
  *
  * WHY THIS FILE NO LONGER SPAWNS VLC

@@ -530,7 +530,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
       'orchestrator logged "[VLC] Existing VLC processes found at init" — another VLC existed at '
       + 'startup. Likely causes: a VLC from the previous flow still dying (see the pre-start wait '
       + 'in beforeAll), a PM2 orchestrator running on this box, or an orphan the '
-      + '/tmp/aln-pm-vlc.pid reap missed'
+      + 'aln-pm-vlc.pid reap missed (that file is in the harness ALN_PIDFILE_DIR, not /tmp)'
     ).not.toContain('Existing VLC processes found at init');
 
     console.log('✓ One-VLC invariant holds (orchestrator-owned instance only)');
