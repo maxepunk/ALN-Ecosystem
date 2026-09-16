@@ -15,6 +15,18 @@ const { withTimeout, TimeoutError } = require('../utils/withTimeout');
 const MPD_STATE_MAP = Object.freeze({ play: 'playing', pause: 'paused', stop: 'stopped' });
 
 /**
+ * Post-crash reconnect schedule (F2, venue 2026-09-15). The supervisor
+ * respawns MPD ~5s after it dies, but recovery used to wait on the 15s health
+ * revalidation tick — up to ~20s of dead transport controls on the GM panel.
+ * We probe shortly after the respawn instead, with a few bounded retries for a
+ * slow MPD database rescan; the revalidation tick remains the long-run safety
+ * net, so this does not need to keep trying forever.
+ */
+const RECONNECT_FIRST_DELAY_MS = 1000;
+const RECONNECT_RETRY_DELAY_MS = 2000;
+const RECONNECT_MAX_ATTEMPTS = 4;   // 1 initial probe + 3 retries
+
+/**
  * Parse MPD's `listallinfo` multi-record output. Each track starts with a
  * `file:` key; subsequent metadata keys belong to that track until the next
  * `file:` line. Exported so HTTP routes can use it without reaching into
@@ -79,6 +91,7 @@ class MusicService extends EventEmitter {
     this._stopped = false;  // set by cleanup() to short-circuit racing handlers
     this._reconnecting = false;  // guards concurrent checkConnection() reconnects
     this._eventsWired = false;   // tracks per-mpd-client listener registration
+    this._reconnectTimer = null; // post-crash reconnect probe (see spawnMpd)
   }
 
   getState() {
@@ -112,6 +125,7 @@ class MusicService extends EventEmitter {
     // (e.g., _handlePlayerEvent mid-await) bail out before mutating state.
     this._stopped = true;
     this._stopPlaylistWatcher();
+    this._clearReconnectTimer();
     if (this._mpd) {
       try { await this._mpd.disconnect(); } catch (_) { /* ignore */ }
       this._mpd = null;
@@ -617,11 +631,53 @@ class MusicService extends EventEmitter {
       // Drop the stale mpd2 client so the next checkConnection reconnects
       // cleanly to the respawned MPD instance.
       this._mpd = null;
+      this._eventsWired = false;
       // CRITICAL: also flip the health registry — without this, the
       // commandExecutor SERVICE_DEPENDENCIES gate keeps thinking music
       // is healthy and dispatches commands to a dead service.
       this._setConnected(false, `MPD exited code=${code} signal=${signal}`);
+
+      // F2 (venue 2026-09-15): the cached playback snapshot must die with the
+      // process. Flipping `connected` alone left getState() reporting
+      // state:'playing' plus the last track, so the health-change push and the
+      // music push disagreed and the GM progress bar kept animating a track
+      // nothing was playing.
+      const hadTrack = this.track !== null;
+      const hadPlaylist = this.playlist !== null;
+      this.state = 'stopped';
+      this.track = null;
+      // A respawned MPD comes back with an EMPTY queue, so a retained
+      // playlist.id is a lie: the GM Scanner's Smart Play reads it as "queue
+      // loaded" and sends a bare music:play, which no-ops against the empty
+      // queue instead of reloading the playlist. The post-restart reconnect's
+      // _refreshAfterCommand re-reads MPD's real state right afterwards.
+      this.playlist = null;
+
+      // Normal shutdown reaches this handler too: server.js calls cleanup()
+      // (which sets _stopped) before stopMpd(), and stop() kills the child,
+      // which closes and emits 'exited'. That is teardown, not a crash — no
+      // listener should be woken to push a snapshot.
+      if (this._stopped) return;
+      this.emit('playback:changed', { state: this.state });
+      // Only announce what was actually lost. All-null events would fire any
+      // standing cue triggered on music:track:changed / music:playlist:changed
+      // every time MPD died with nothing loaded.
+      if (hadTrack) this.emit('track:changed', { track: null });
+      // Flat shape, matching loadPlaylist/setShuffle — the cue engine's
+      // condition evaluator indexes into this payload, so it must not be null.
+      if (hadPlaylist) {
+        this.emit('playlist:changed', {
+          id: null, name: null, position: 0, total: 0, shuffle: false, loop: false,
+        });
+      }
     });
+
+    // F2: recover as soon as the supervisor has respawned MPD rather than
+    // waiting for the next 15s health revalidation.
+    this._procMon.on('restarted', () => {
+      this._scheduleReconnect();
+    });
+
     this._procMon.start();
   }
 
@@ -629,10 +685,43 @@ class MusicService extends EventEmitter {
    * Stop the supervised MPD process. Safe to call when not spawned.
    */
   stopMpd() {
+    this._clearReconnectTimer();
     if (this._procMon) {
       this._procMon.stop();
       this._procMon = null;
     }
+  }
+
+  _clearReconnectTimer() {
+    if (this._reconnectTimer) {
+      clearTimeout(this._reconnectTimer);
+      this._reconnectTimer = null;
+    }
+  }
+
+  /**
+   * Probe for a respawned MPD, with bounded retries (F2). Only ever armed from
+   * the ProcessMonitor 'restarted' event. checkConnection() carries its own
+   * `_reconnecting` guard, so a probe that lands on top of an in-flight health
+   * revalidation returns the current (still false) state and we simply retry
+   * instead of opening a second mpd2 client.
+   * @param {number} attempt - 1-based probe number
+   */
+  _scheduleReconnect(attempt = 1) {
+    if (this._stopped) return;
+    this._clearReconnectTimer();
+    const delay = attempt === 1 ? RECONNECT_FIRST_DELAY_MS : RECONNECT_RETRY_DELAY_MS;
+    this._reconnectTimer = setTimeout(async () => {
+      this._reconnectTimer = null;
+      if (this._stopped) return;
+      let ok = false;
+      try {
+        ok = await this.checkConnection();
+      } catch (err) {
+        require('../utils/logger').warn(`[Music] post-restart reconnect failed: ${err.message}`);
+      }
+      if (!ok && attempt < RECONNECT_MAX_ATTEMPTS) this._scheduleReconnect(attempt + 1);
+    }, delay);
   }
 }
 

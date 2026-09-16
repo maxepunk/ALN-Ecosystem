@@ -856,6 +856,179 @@ describe('MusicService — spawnMpd', () => {
   });
 });
 
+// ── F2 (venue 2026-09-15): MPD-crash visibility + prompt recovery ───────────
+// When MPD died the panel kept animating a stale "playing" track: musicService
+// only flipped `connected`, so the pushed snapshot still carried
+// state:'playing' + the last track. And recovery waited on the 15s health
+// revalidation, costing up to ~20s of dead controls.
+describe('MusicService — MPD crash recovery (F2)', () => {
+  let service;
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-mpd-crash-'));
+    const musicDir = path.join(tmpDir, 'music');
+    fs.mkdirSync(musicDir);
+    service = new MusicService({
+      socketPath: path.join(tmpDir, 'mpd.sock'),
+      configFile: path.join(tmpDir, 'mpd.conf'),
+      musicDir,
+      mpdRuntimeDir: tmpDir,
+    });
+  });
+
+  afterEach(async () => {
+    service.stopMpd();
+    await service.cleanup();
+    jest.useRealTimers();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('exit resets the cached playback snapshot to stopped/no-track', async () => {
+    await service.spawnMpd();
+    service.connected = true;
+    service.state = 'playing';
+    service.track = { file: 'a.mp3', title: 'A', position: 12, duration: 200 };
+    service.playlist = { id: 'p1', name: 'P1', position: 3, total: 10 };
+
+    service._procMon.emit('exited', { code: 137, signal: 'SIGKILL' });
+
+    expect(service.state).toBe('stopped');
+    expect(service.track).toBeNull();
+    // The whole snapshot the GM panel receives must be self-consistent.
+    expect(service.getState()).toMatchObject({
+      connected: false, state: 'stopped', track: null, playlist: null,
+    });
+  });
+
+  it('exit clears the loaded playlist and announces it', async () => {
+    // A respawned MPD comes back with an EMPTY queue. Keeping playlist.id set
+    // told the GM Scanner's Smart Play that a queue was loaded, so its play
+    // button sent a bare `music:play` that silently no-opped against the empty
+    // queue instead of reloading the playlist.
+    await service.spawnMpd();
+    service.connected = true;
+    service.playlist = { id: 'p1', name: 'P1', position: 3, total: 10 };
+    const playlistChanged = jest.fn();
+    service.on('playlist:changed', playlistChanged);
+
+    service._procMon.emit('exited', { code: 137, signal: 'SIGKILL' });
+
+    expect(service.playlist).toBeNull();
+    expect(playlistChanged).toHaveBeenCalledTimes(1);
+    // Payload stays the flat shape loadPlaylist/setShuffle emit — the cue
+    // engine's condition evaluator indexes into it, so it must never be null.
+    expect(playlistChanged).toHaveBeenCalledWith(
+      expect.objectContaining({ id: null, position: 0, total: 0 })
+    );
+  });
+
+  it('exit with nothing loaded emits neither track:changed nor playlist:changed', async () => {
+    // Don't push all-null events into the cue engine for a crash that lost
+    // nothing — a `music:track:changed` standing cue would fire on them.
+    await service.spawnMpd();
+    service.connected = true;
+    service.track = null;
+    service.playlist = null;
+    const trackChanged = jest.fn();
+    const playlistChanged = jest.fn();
+    service.on('track:changed', trackChanged);
+    service.on('playlist:changed', playlistChanged);
+
+    service._procMon.emit('exited', { code: 137, signal: 'SIGKILL' });
+
+    expect(trackChanged).not.toHaveBeenCalled();
+    expect(playlistChanged).not.toHaveBeenCalled();
+  });
+
+  it('exit emits playback:changed and track:changed exactly once each', async () => {
+    await service.spawnMpd();
+    service.connected = true;
+    service.state = 'playing';
+    service.track = { file: 'a.mp3', title: 'A' };
+    const playback = jest.fn();
+    const trackChanged = jest.fn();
+    service.on('playback:changed', playback);
+    service.on('track:changed', trackChanged);
+
+    service._procMon.emit('exited', { code: 137, signal: 'SIGKILL' });
+
+    expect(playback).toHaveBeenCalledTimes(1);
+    expect(playback).toHaveBeenCalledWith({ state: 'stopped' });
+    expect(trackChanged).toHaveBeenCalledTimes(1);
+    expect(trackChanged).toHaveBeenCalledWith({ track: null });
+  });
+
+  it('exit during cleanup() does not emit (teardown, not a crash)', async () => {
+    await service.spawnMpd();
+    const playback = jest.fn();
+    const trackChanged = jest.fn();
+    service.on('playback:changed', playback);
+    service.on('track:changed', trackChanged);
+
+    service._stopped = true;  // cleanup() sets this before tearing down
+    service._procMon.emit('exited', { code: 0, signal: null });
+
+    expect(playback).not.toHaveBeenCalled();
+    expect(trackChanged).not.toHaveBeenCalled();
+  });
+
+  it('restart triggers a reconnect attempt within ~1s (not the 15s revalidation)', async () => {
+    jest.useFakeTimers();
+    await service.spawnMpd();
+    const check = jest.spyOn(service, 'checkConnection').mockResolvedValue(true);
+
+    service._procMon.emit('restarted', { attempt: 1, delay: 5000 });
+    expect(check).not.toHaveBeenCalled();  // not synchronous — MPD needs a moment
+
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(check).toHaveBeenCalledTimes(1);
+  });
+
+  it('restart reconnect stops retrying once checkConnection succeeds', async () => {
+    jest.useFakeTimers();
+    await service.spawnMpd();
+    const check = jest.spyOn(service, 'checkConnection').mockResolvedValue(true);
+
+    service._procMon.emit('restarted', { attempt: 1, delay: 5000 });
+    await jest.advanceTimersByTimeAsync(10000);
+
+    expect(check).toHaveBeenCalledTimes(1);
+  });
+
+  it('restart reconnect retries up to 3 more times while MPD stays down', async () => {
+    jest.useFakeTimers();
+    await service.spawnMpd();
+    const check = jest.spyOn(service, 'checkConnection').mockResolvedValue(false);
+
+    service._procMon.emit('restarted', { attempt: 1, delay: 5000 });
+    await jest.advanceTimersByTimeAsync(1000);
+    expect(check).toHaveBeenCalledTimes(1);
+    await jest.advanceTimersByTimeAsync(2000);
+    expect(check).toHaveBeenCalledTimes(2);
+    await jest.advanceTimersByTimeAsync(2000);
+    expect(check).toHaveBeenCalledTimes(3);
+    await jest.advanceTimersByTimeAsync(2000);
+    expect(check).toHaveBeenCalledTimes(4);
+    // Bounded: the 15s health revalidation owns recovery from here on.
+    await jest.advanceTimersByTimeAsync(30000);
+    expect(check).toHaveBeenCalledTimes(4);
+  });
+
+  it('restart reconnect does not fire after stopMpd()', async () => {
+    jest.useFakeTimers();
+    await service.spawnMpd();
+    const check = jest.spyOn(service, 'checkConnection').mockResolvedValue(false);
+    const procMon = service._procMon;
+
+    procMon.emit('restarted', { attempt: 1, delay: 5000 });
+    service.stopMpd();
+    await jest.advanceTimersByTimeAsync(10000);
+
+    expect(check).not.toHaveBeenCalled();
+  });
+});
+
 describe('MusicService — reset', () => {
   it('reset() clears state without disconnecting MPD', () => {
     const service = new MusicService();

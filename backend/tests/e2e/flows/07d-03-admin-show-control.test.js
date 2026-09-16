@@ -18,6 +18,8 @@
  * @group show-control
  */
 
+const fs = require('fs');
+const path = require('path');
 const { test, expect, chromium } = require('@playwright/test');
 const { startOrchestrator, stopOrchestrator, clearSessionData } = require('../setup/test-server');
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
@@ -59,6 +61,55 @@ async function sendGMCommand(orchestratorUrl, action, payload = {}) {
 }
 
 /**
+ * Resolve the pid of the MPD process supervised by THIS test's orchestrator.
+ *
+ * Refuses to return anything it cannot prove, because the caller SIGKILLs the
+ * result and `/tmp/aln-pm-mpd.pid` is shared with the production PM2
+ * orchestrator on this kit. A stale pidfile plus pid reuse would otherwise
+ * kill an unrelated process — worst case, the show's own MPD.
+ *
+ * Two proofs, both from /proc:
+ *   - argv[0]'s basename is exactly `mpd` (rules out pid reuse)
+ *   - PPid is the orchestrator this test spawned (rules out the PM2 instance).
+ *     test-server spawns `node src/server.js` directly and ProcessMonitor
+ *     spawns MPD from it, so MPD is that process's immediate child.
+ *
+ * @param {number} ownerPid - pid of the orchestrator under test
+ * @returns {{pid: number|null, reason: string|null}}
+ */
+function resolveSupervisedMpdPid(ownerPid) {
+  const deny = (reason) => ({ pid: null, reason });
+  if (!Number.isInteger(ownerPid)) return deny('orchestrator pid unknown');
+
+  let pid;
+  try {
+    pid = parseInt(fs.readFileSync('/tmp/aln-pm-mpd.pid', 'utf8').trim(), 10);
+  } catch (e) {
+    return deny(`no ProcessMonitor pidfile: ${e.message}`);
+  }
+  if (!Number.isInteger(pid) || pid <= 1) return deny(`unusable pid in pidfile: ${pid}`);
+
+  let argv0;
+  let ppid;
+  try {
+    const cmdline = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8');
+    argv0 = path.basename(cmdline.split('\0')[0] || '');
+    const status = fs.readFileSync(`/proc/${pid}/status`, 'utf8');
+    const m = status.match(/^PPid:\s*(\d+)/m);
+    ppid = m ? parseInt(m[1], 10) : null;
+  } catch (e) {
+    return deny(`pid ${pid} is not running (stale pidfile)`);
+  }
+
+  if (argv0 !== 'mpd') return deny(`pid ${pid} is '${argv0}', not mpd — stale pidfile with pid reuse`);
+  if (ppid !== ownerPid) {
+    return deny(`mpd pid ${pid} has PPid ${ppid}, not this test's orchestrator (${ownerPid}) `
+      + '— refusing to kill an MPD this test does not own');
+  }
+  return { pid, reason: null };
+}
+
+/**
  * Parse clock display text (MM:SS) to total seconds.
  * SessionRenderer always renders game clock as MM:SS format.
  * @param {string} text - Clock display text
@@ -75,7 +126,7 @@ test.describe('GM Scanner - Show Control', () => {
   test.beforeAll(async () => {
     await clearSessionData();
     vlcInfo = await setupVLC();
-    console.log(`VLC started: ${vlcInfo.type} mode`);
+    console.log(`VLC ownership: ${vlcInfo.type}`);
     orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
     browser = await chromium.launch({
       headless: true,
@@ -525,6 +576,65 @@ test.describe('GM Scanner - Show Control', () => {
 
       expect(ack.data.success).toBe(false);
       console.log(`Gated execution rejected ${testCommand.action}: ${ack.data.message}`);
+
+    } finally {
+      await context.close();
+    }
+  });
+
+  test('Music panel shows offline and recovers when MPD dies', async () => {
+    // F2 (venue 2026-09-15): MPD was SIGKILLed mid-show and the panel gave no
+    // sign of it — musicService flipped only `connected`, so the pushed
+    // snapshot still read state:'playing' with the last track and the progress
+    // bar kept animating. Recovery also waited on the 15s health revalidation.
+    // This test kills the real supervised MPD and asserts both halves: the
+    // outage becomes visible, and the panel comes back on its own.
+    requireCapabilities(test, caps, ['music']);
+
+    // ProcessMonitor writes the supervised child's pid to a FIXED path that the
+    // production PM2 orchestrator also uses, so prove ownership before killing.
+    const { pid: mpdPid, reason } = resolveSupervisedMpdPid(orchestratorInfo.process?.pid);
+    test.skip(!mpdPid, `cannot safely identify this test's MPD: ${reason}`);
+
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+
+    try {
+      const gmScanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+
+      await gmScanner.navigateToAdminPanel();
+
+      // Baseline: the music panel is rendered and reports a healthy MPD.
+      const musicPanel = page.locator('#music-section .music');
+      await expect(musicPanel).toBeVisible({ timeout: 10000 });
+      const offlineLine = page.locator('#music-offline');
+      const nextBtn = page.locator('#music-section [data-action="admin.musicNext"]');
+      await expect(offlineLine).toBeHidden();
+      await expect(nextBtn).toBeEnabled();
+
+      process.kill(mpdPid, 'SIGKILL');
+      console.log(`Killed supervised MPD (pid ${mpdPid})`);
+
+      // The outage must be VISIBLE, not just "the buttons stopped working".
+      // Path: ProcessMonitor 'exited' → _setConnected(false) → health:changed
+      // → broadcasts pushes the music domain → MusicRenderer offline state.
+      await expect(offlineLine).toBeVisible({ timeout: 3000 });
+      await expect(nextBtn).toBeDisabled();
+      console.log('Music panel showed the offline line');
+
+      // Recovery without a page reload. The budget is the sum of the real
+      // worst case, not a round number: ProcessMonitor's delay is
+      // 5000·2^failures, and a SIGKILLed MPD that produced no output first
+      // counts as a failure, so the respawn lands at ~10s. The 1s reconnect
+      // probe then usually fires before MPD is listening on its socket, so
+      // recovery falls to the +2s retry — ~13s, plus the second or two this
+      // test already spent asserting the offline state.
+      await expect(nextBtn).toBeEnabled({ timeout: 25000 });
+      await expect(offlineLine).toBeHidden();
+      console.log('Music panel recovered without a reload');
 
     } finally {
       await context.close();
