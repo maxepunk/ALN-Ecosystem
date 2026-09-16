@@ -5,7 +5,7 @@
 
 'use strict';
 
-const { buildSyncFullPayload, buildHeldItemsState } = require('../../../src/websocket/syncHelpers');
+const { buildSyncFullPayload, buildHeldItemsState, buildMusicState } = require('../../../src/websocket/syncHelpers');
 
 describe('buildSyncFullPayload recentTransactions enrichment', () => {
   function makeMinimalServices({ transactions = [], token = null } = {}) {
@@ -479,9 +479,26 @@ describe('buildSyncFullPayload after session end (C-1)', () => {
     expect(payload.scores).toEqual([]);
   });
 
+  it('yields empty scores when the ended session carries no scores array', async () => {
+    const lastEnded = { ...makeEndedSession(), scores: undefined };
+    const payload = await buildSyncFullPayload(makeServices({ lastEnded }));
+    expect(payload.session.id).toBe(ENDED_ID);
+    expect(payload.scores).toEqual([]);
+  });
+
   it('produces an ended-session envelope that validates against the SyncFull schema', async () => {
     const data = await buildSyncFullPayload(makeServices());
     const event = { event: 'sync:full', data, timestamp: new Date().toISOString() };
     expect(() => validateWebSocketEvent(event, 'sync:full')).not.toThrow();
+  });
+});
+
+describe('buildMusicState', () => {
+  it('returns the service state with an empty playlists list when getPlaylists is absent', () => {
+    const state = {
+      connected: true, state: 'playing', volume: 50, track: null, playlist: null, pausedByGameClock: false,
+    };
+    const musicService = { getState: () => state };
+    expect(buildMusicState(musicService)).toEqual({ ...state, playlists: [] });
   });
 });
