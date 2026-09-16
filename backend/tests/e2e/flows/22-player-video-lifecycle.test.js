@@ -21,7 +21,7 @@ const { startOrchestrator, stopOrchestrator, clearSessionData } = require('../se
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
 const { createBrowserContext, createPage, closeAllContexts } = require('../setup/browser-contexts');
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
-const { refreshCapabilities, requireCapabilities } = require('../helpers/capabilities');
+const { refreshCapabilities, requireCapabilities, waitForCapability } = require('../helpers/capabilities');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { selectTestTokens } = require('../helpers/token-selection');
 const { connectWithAuth, waitForEvent, disconnectSocket } = require('../../helpers/websocket-core');
@@ -29,19 +29,8 @@ const https = require('https');
 
 let browser = null;
 let orchestratorInfo = null;
-let vlcInfo = null;
 let testTokens = null;
 let videoToken = null;
-
-/**
- * Check if VLC is healthy via /api/state.
- * @param {string} orchestratorUrl - Backend URL
- * @returns {Promise<boolean>} true if VLC status is 'healthy'
- */
-async function isVLCHealthy(orchestratorUrl) {
-  // Fresh capability probe (vlc can flap under load — don't trust the cache)
-  return (await refreshCapabilities(orchestratorUrl)).vlc;
-}
 
 /**
  * POST /api/scan as a player device.
@@ -89,8 +78,9 @@ test.describe('Player Video Lifecycle @hardware', () => {
 
   test.beforeAll(async () => {
     await clearSessionData();
-    vlcInfo = await setupVLC();
-    console.log(`VLC started: ${vlcInfo.type} mode`);
+    // No-op shim: VLC is spawned and supervised by the orchestrator's
+    // ProcessMonitor with production arguments (setup/vlc-service.js).
+    await setupVLC();
     orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
 
     browser = await chromium.launch({
@@ -105,9 +95,15 @@ test.describe('Player Video Lifecycle @hardware', () => {
       console.warn('No video token available — all video lifecycle tests will be skipped');
     }
 
-    // Check VLC health at suite level (individual tests re-check)
-    const vlcHealthy = await isVLCHealthy(orchestratorInfo.url);
-    if (!vlcHealthy) {
+    // Give the orchestrator's VLC a chance to report healthy before the tests
+    // gate on it. vlcMprisService.init() is awaited before the server listens,
+    // but it gives up waiting for D-Bus registration after 5s and lets startup
+    // continue — so /health can be online with VLC not yet on the bus. That is
+    // the give-up path, not the normal case. Individual tests re-gate with
+    // requireCapabilities, so a timeout here is a warning, not a failure.
+    try {
+      await waitForCapability(orchestratorInfo.url, 'vlc', 15000);
+    } catch {
       console.warn('VLC not healthy — video lifecycle tests will be skipped');
     }
   });

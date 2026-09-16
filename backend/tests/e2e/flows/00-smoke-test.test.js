@@ -3,7 +3,7 @@
  *
  * Validates that all Phase 1 infrastructure components work together:
  * - Test server (orchestrator lifecycle)
- * - VLC service (mock/real)
+ * - VLC ownership (orchestrator-owned instance; the harness spawns none)
  * - Browser contexts (multi-instance)
  * - WebSocket client (JWT auth, events)
  * - SSL certificate handling (HTTPS)
@@ -20,13 +20,15 @@
 
 const { test, expect, chromium } = require('@playwright/test');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 // Test infrastructure imports
 const {
   startOrchestrator,
   stopOrchestrator,
   getOrchestratorUrl,
-  clearSessionData
+  clearSessionData,
+  getOrchestratorOutput
 } = require('../setup/test-server');
 
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
@@ -75,6 +77,30 @@ let orchestratorInfo = null;
 let vlcInfo = null;
 let testTokens = null;  // Dynamically selected tokens from production database
 
+/** @returns {number} live processes named exactly "vlc" (cvlc execs /usr/bin/vlc) */
+function countVlcProcesses() {
+  try {
+    return execFileSync('pgrep', ['-x', 'vlc'], { stdio: 'pipe' })
+      .toString()
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .length;
+  } catch {
+    return 0; // pgrep exits 1 when nothing matches
+  }
+}
+
+/** @returns {boolean} whether the orchestrator could start a VLC here at all */
+function isCvlcInstalled() {
+  try {
+    execFileSync('which', ['cvlc'], { stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // ========================================
 // SETUP & TEARDOWN
 // ========================================
@@ -85,9 +111,22 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     // 1. Clear any existing session data
     await clearSessionData();
 
-    // 2. Start VLC (mock or real)
+    // 2. VLC ownership (no-op shim — the orchestrator's ProcessMonitor spawns
+    //    the only VLC, with production arguments). See setup/vlc-service.js.
     vlcInfo = await setupVLC();
-    console.log(`VLC started: ${vlcInfo.type} mode`);
+    console.log(`VLC ownership: ${vlcInfo.type}`);
+
+    // 2b. Wait out a VLC left dying by the PREVIOUS flow. stopOrchestrator
+    //     resolves when the node process exits, which can precede the death of
+    //     the VLC it SIGTERMed; this orchestrator's init audits the process
+    //     table on the way up and would legitimately log "Existing VLC
+    //     processes found at init" — which the invariant test asserts against.
+    try {
+      await expect.poll(countVlcProcesses, { timeout: 10000 }).toBe(0);
+    } catch {
+      console.warn(`VLC still running before startup (${countVlcProcesses()} process(es))`
+        + ' — the one-VLC invariant test may fail');
+    }
 
     // 3. Start orchestrator with HTTPS
     orchestratorInfo = await startOrchestrator({
@@ -134,9 +173,8 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     await stopOrchestrator();
     console.log('Orchestrator stopped');
 
-    // Stop VLC
+    // VLC cleanup shim (the orchestrator stopped its own VLC above)
     await cleanupVLC();
-    console.log('VLC stopped');
   });
 
   test.afterEach(async () => {
@@ -457,6 +495,46 @@ test.describe('E2E Infrastructure Smoke Test', () => {
 
     console.log('✓ Full integration flow completed successfully');
   });
+
+  // ========================================
+  // TEST 11: One-VLC Invariant
+  // ========================================
+
+  test('orchestrator owns the only VLC', async () => {
+    // The harness stopped spawning its own VLC (2026-09-15): two instances
+    // raced for org.mpris.MediaPlayer2.vlc, and the harness-launched one was
+    // unrepresentative (late "Playing", no HEVC length). This test is the
+    // regression guard for that — see setup/vlc-service.js for the evidence.
+
+    // Skip where the invariant cannot be observed:
+    //  - no cvlc binary (CI containers): the orchestrator cannot start VLC at all
+    //  - >1 Playwright worker: parallel orchestrators legitimately own one VLC each
+    test.skip(!isCvlcInstalled(), 'cvlc is not installed here — the orchestrator cannot own a VLC');
+
+    const { workers } = test.info().config;
+    test.skip(workers !== 1, `needs a single worker to count VLC processes (workers=${workers})`);
+
+    // The orchestrator spawns VLC inside initializeServices(), which is awaited
+    // before it listens, so the process normally exists by the time /health
+    // answers. init() does give up waiting for D-Bus registration after 5s and
+    // continue, so poll briefly instead of sampling once — but a count that
+    // stays at 0 means VLC failed to start, not that it is still on its way.
+    await expect.poll(countVlcProcesses, {
+      message: 'exactly one vlc process should run while the orchestrator is up',
+      timeout: 15000,
+    }).toBe(1);
+
+    // The orchestrator must also have found a clean process table at init.
+    expect(
+      getOrchestratorOutput().combined,
+      'orchestrator logged "[VLC] Existing VLC processes found at init" — another VLC existed at '
+      + 'startup. Likely causes: a VLC from the previous flow still dying (see the pre-start wait '
+      + 'in beforeAll), a PM2 orchestrator running on this box, or an orphan the '
+      + '/tmp/aln-pm-vlc.pid reap missed'
+    ).not.toContain('Existing VLC processes found at init');
+
+    console.log('✓ One-VLC invariant holds (orchestrator-owned instance only)');
+  });
 });
 
 /**
@@ -464,7 +542,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
  *
  * If all tests pass, Phase 1 infrastructure is complete:
  * ✓ Test server lifecycle management
- * ✓ VLC service (mock/real)
+ * ✓ One-VLC invariant (orchestrator owns the only instance)
  * ✓ Browser context management
  * ✓ WebSocket authentication and events
  * ✓ HTTPS/SSL certificate handling

@@ -81,7 +81,7 @@ test.describe('Player Scanner Networked Scanning', () => {
 
     // 2. Start VLC
     vlcInfo = await setupVLC();
-    console.log(`VLC started: ${vlcInfo.type} mode`);
+    console.log(`VLC ownership: ${vlcInfo.type}`);
 
     // 3. Start orchestrator with HTTPS
     orchestratorInfo = await startOrchestrator({

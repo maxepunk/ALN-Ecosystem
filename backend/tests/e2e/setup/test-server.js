@@ -71,6 +71,19 @@ let serverPort = null;
 let serverProtocol = 'http';
 let cleanupRegistered = false;
 
+// Output of the CURRENT orchestrator process, so tests can assert on what it
+// logged — e.g. the one-VLC invariant in flows/00-smoke-test checks that the
+// orchestrator never logged "[VLC] Existing VLC processes found at init".
+// Collected regardless of TEST_DEBUG (TEST_DEBUG only mirrors it to this
+// process's stdio).
+//
+// These are POINTERS to the arrays of the current spawn. Each spawn allocates
+// its own arrays and its stdio handlers close over THOSE, so a late chunk from
+// a dying process lands in its own (now unreferenced) array instead of
+// polluting the next orchestrator's output.
+let outputBuffer = [];
+let errorBuffer = [];
+
 // Test environment configuration
 const TEST_ENV = {
   NODE_ENV: 'test',
@@ -205,13 +218,16 @@ async function startOrchestrator(options = {}) {
     stdio: ['ignore', 'pipe', 'pipe']
   });
 
-  // Collect output for debugging
-  const outputBuffer = [];
-  const errorBuffer = [];
+  // Collect output for debugging (see getOrchestratorOutput). Per-spawn arrays,
+  // captured by the handlers below; the module-level pointers track the latest.
+  const spawnOutput = [];
+  const spawnErrors = [];
+  outputBuffer = spawnOutput;
+  errorBuffer = spawnErrors;
 
   orchestratorProcess.stdout.on('data', (data) => {
     const output = data.toString();
-    outputBuffer.push(output);
+    spawnOutput.push(output);
     if (process.env.TEST_DEBUG === 'true') {
       process.stdout.write(`[orchestrator] ${output}`);
     }
@@ -219,7 +235,7 @@ async function startOrchestrator(options = {}) {
 
   orchestratorProcess.stderr.on('data', (data) => {
     const output = data.toString();
-    errorBuffer.push(output);
+    spawnErrors.push(output);
     if (process.env.TEST_DEBUG === 'true') {
       process.stderr.write(`[orchestrator:err] ${output}`);
     }
@@ -266,9 +282,9 @@ async function startOrchestrator(options = {}) {
     // Include output in error for debugging
     const combinedOutput = [
       '=== STDOUT ===',
-      ...outputBuffer,
+      ...spawnOutput,
       '=== STDERR ===',
-      ...errorBuffer
+      ...spawnErrors
     ].join('\n');
 
     // Kill process on startup failure
@@ -549,6 +565,25 @@ function getServerStatus() {
   };
 }
 
+/**
+ * Get the output captured from the current orchestrator process.
+ *
+ * Buffers are reset on every `startOrchestrator()` spawn, so this reflects the
+ * running instance only. Used by assertions about what the orchestrator logged
+ * (e.g. the one-VLC invariant in flows/00-smoke-test).
+ *
+ * @returns {{stdout: string, stderr: string, combined: string}}
+ *
+ * @example
+ * expect(getOrchestratorOutput().combined)
+ *   .not.toContain('Existing VLC processes found at init');
+ */
+function getOrchestratorOutput() {
+  const stdout = outputBuffer.join('');
+  const stderr = errorBuffer.join('');
+  return { stdout, stderr, combined: `${stdout}${stderr}` };
+}
+
 module.exports = {
   startOrchestrator,
   stopOrchestrator,
@@ -556,5 +591,6 @@ module.exports = {
   getOrchestratorUrl,
   clearSessionData,
   waitForHealthy,
-  getServerStatus
+  getServerStatus,
+  getOrchestratorOutput
 };

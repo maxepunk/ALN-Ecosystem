@@ -56,7 +56,7 @@ test.describe('GM Scanner — Music Playlist Control', () => {
   test.beforeAll(async () => {
     await clearSessionData();
     vlcInfo = await setupVLC();
-    console.log(`VLC started: ${vlcInfo.type} mode`);
+    console.log(`VLC ownership: ${vlcInfo.type}`);
     orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
     browser = await chromium.launch({
       headless: true,

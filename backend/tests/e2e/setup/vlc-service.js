@@ -1,34 +1,61 @@
 /**
- * VLC Service Helper for E2E Testing
+ * VLC Service Helper for E2E Testing — COMPATIBILITY SHIM (spawns nothing)
  *
- * Ensures VLC media player is running for E2E tests.
- * VLC is controlled via D-Bus MPRIS (not HTTP).
+ * The orchestrator owns the only VLC instance. `vlcMprisService.init()` starts
+ * `cvlc` under a ProcessMonitor with PRODUCTION arguments (including the Pi 5
+ * `--vout=gles2` auto-detection and `-A pulse`), supervises it, and reaps
+ * orphans via /tmp/aln-pm-vlc.pid. E2E flows therefore exercise the same VLC
+ * the show runs on.
  *
- * KEY DESIGN PRINCIPLES:
- * - Use real VLC when available, graceful degradation when unavailable
- * - D-Bus MPRIS is the sole control interface (no HTTP fallback)
- * - No mock fallback — E2E tests require real VLC or skip video tests
+ * WHY THIS FILE NO LONGER SPAWNS VLC
+ * ----------------------------------
+ * This helper predates orchestrator-owned VLC (2026-03-02). It used to start
+ * its own `cvlc --intf dummy --no-video-title-show --quiet` before the
+ * orchestrator, which then found the D-Bus bus name already taken and drove
+ * THAT instance. Two problems, both measured at the venue on 2026-09-15:
  *
- * REAL VLC SETUP:
- * - VLC must be running with D-Bus MPRIS interface
- * - D-Bus destination: org.mpris.MediaPlayer2.vlc
- * - Control via dbus-send CLI commands
+ * 1. Latency. On the bench (no display attached, Xorg with no connected
+ *    output) the harness instance reported PlaybackStatus=Playing ~29.5 s
+ *    after OpenUri. The orchestrator's instance, in-process, is 0.32 s from
+ *    play command to observed "playing" — no gap at any hop. The harness
+ *    instance is launched with no `--vout` flag, so its video-output creation
+ *    is the plausible (not proven) cause; either way it is not what production
+ *    does.
+ * 2. Missing metadata. Even WITH a display, the harness instance reported no
+ *    `mpris:length` for an HEVC clip until playback ended, so
+ *    videoQueueService emitted no `video:progress` at all (the `length > 0`
+ *    guard) and video-driven compound cues parked in boundary mode forever.
+ *    The same clip through a single production-argument instance reported
+ *    `mpris:length` within 1.0 s.
+ *
+ * Two instances also race for `org.mpris.MediaPlayer2.vlc`, so which process
+ * answered a D-Bus call was never stable.
+ *
+ * `setupVLC()` and `cleanup()` remain exported (19 flows call them before
+ * `startOrchestrator()` / in `afterAll`) and are now no-ops. Video flows gate
+ * on the `vlc` capability from `helpers/capabilities.js` instead of on a
+ * harness-owned mode string.
+ *
+ * Evidence: docs/plans/2026-09-15-alnscanner-wiring-fixes-plan.md
+ *   → "Venue step 2" and "Grounded conclusion for W9".
+ *
+ * @module tests/e2e/setup/vlc-service
  */
 
-const { execFileSync, spawn } = require('child_process');
+const { execFileSync } = require('child_process');
 const logger = require('../../../src/utils/logger');
 
 const VLC_DBUS_DEST = 'org.mpris.MediaPlayer2.vlc';
-const VLC_MAX_WAIT_MS = 10000; // 10s to wait for VLC startup
-const VLC_HEALTH_CHECK_INTERVAL_MS = 500; // Check every 500ms
-
-// Singleton state
-let vlcProcess = null;
-let vlcMode = null; // 'real' | 'unavailable' | null
 
 /**
- * Check if VLC is available via D-Bus MPRIS
- * @returns {Promise<boolean>} true if VLC is running and responds to D-Bus
+ * Diagnostic only: is SOMETHING answering on the VLC MPRIS bus name?
+ *
+ * Tests must NOT gate on this — a bus-name ping says nothing about which
+ * process owns the name or whether the orchestrator considers VLC healthy.
+ * Use `helpers/capabilities.js` (`getCapabilities` / `requireCapabilities` /
+ * `waitForCapability`), which reads the orchestrator's own serviceHealth.
+ *
+ * @returns {Promise<boolean>} true if the MPRIS bus name responds to a Ping
  */
 async function isVLCAvailable() {
   try {
@@ -39,185 +66,41 @@ async function isVLCAvailable() {
       '/org/mpris/MediaPlayer2',
       'org.freedesktop.DBus.Peer.Ping'
     ], { timeout: 2000, stdio: 'pipe' });
-
-    logger.debug('VLC is available (D-Bus responsive)');
     return true;
   } catch {
-    logger.debug('VLC not available (D-Bus check failed)');
     return false;
   }
 }
 
 /**
- * Start VLC if not already running
- * @returns {Promise<boolean>} true if VLC started or already running
- */
-async function startVLCIfNeeded() {
-  if (await isVLCAvailable()) {
-    logger.info('VLC already running - skipping startup');
-    return true;
-  }
-
-  logger.info('Starting VLC for E2E tests...');
-
-  try {
-    vlcProcess = spawn('cvlc', [
-      '--intf', 'dummy',
-      '--no-video-title-show',
-      '--quiet'
-    ], {
-      detached: true,
-      stdio: 'ignore',
-      env: { ...process.env, DISPLAY: process.env.DISPLAY || ':0' }
-    });
-    // spawn() ENOENT (cvlc not installed) arrives ASYNCHRONOUSLY via the
-    // 'error' event — without a handler it becomes an uncaughtException
-    // that kills the Playwright worker before any test runs, defeating
-    // this module's own graceful-degradation design ("require real VLC
-    // or skip video tests"). Swallow it here; waitForVLCReady times out
-    // and setupVLC reports 'unavailable'.
-    vlcProcess.on('error', (err) => {
-      logger.warn('VLC spawn failed (binary not available?)', { error: err.message });
-      vlcProcess = null;
-    });
-    vlcProcess.unref();
-
-    logger.debug('VLC process spawned', { pid: vlcProcess.pid });
-
-    const ready = await waitForVLCReady(VLC_MAX_WAIT_MS);
-
-    if (ready) {
-      logger.info('VLC started successfully for E2E tests');
-      return true;
-    } else {
-      logger.warn('VLC failed to become ready within timeout');
-      vlcProcess = null;
-      return false;
-    }
-  } catch (error) {
-    logger.error('Failed to start VLC', { error: error.message });
-    vlcProcess = null;
-    return false;
-  }
-}
-
-/**
- * Stop VLC process if started by this helper
- * @returns {Promise<void>}
- */
-async function stopVLC() {
-  if (!vlcProcess) {
-    logger.debug('No VLC process to stop (not started by helper)');
-    return;
-  }
-
-  logger.info('Stopping VLC process...');
-
-  try {
-    process.kill(-vlcProcess.pid, 'SIGTERM');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    vlcProcess = null;
-    logger.info('VLC process stopped');
-  } catch (error) {
-    logger.warn('Error stopping VLC process', { error: error.message });
-    vlcProcess = null;
-  }
-}
-
-/**
- * Wait for VLC D-Bus interface to be ready
- * Uses condition-based polling
+ * No-op compatibility shim. VLC is started and supervised by the orchestrator.
  *
- * @param {number} timeoutMs - Maximum time to wait
- * @returns {Promise<boolean>} true if VLC became ready
- */
-async function waitForVLCReady(timeoutMs = VLC_MAX_WAIT_MS) {
-  const startTime = Date.now();
-  let attempts = 0;
-
-  while (Date.now() - startTime < timeoutMs) {
-    attempts++;
-
-    // Fast-fail: spawn 'error' handler nulls vlcProcess when the binary
-    // is missing — no point polling D-Bus for the full timeout per flow
-    if (vlcProcess === null) {
-      logger.warn('VLC process gone (spawn failed) — aborting readiness wait', { attempts });
-      return false;
-    }
-
-    if (await isVLCAvailable()) {
-      logger.debug('VLC ready', { attempts, elapsedMs: Date.now() - startTime });
-      return true;
-    }
-
-    await new Promise(resolve => setTimeout(resolve, VLC_HEALTH_CHECK_INTERVAL_MS));
-  }
-
-  logger.warn('VLC readiness timeout', { attempts, elapsedMs: Date.now() - startTime });
-  return false;
-}
-
-/**
- * Smart VLC setup: Check D-Bus, try to start, report availability
- * This is the main entry point for E2E tests.
- *
- * @returns {Promise<Object>} VLC service info
- *   - type: 'real' | 'unavailable'
+ * @returns {Promise<{type: string, note: string}>}
  */
 async function setupVLC() {
-  logger.info('Setting up VLC for E2E tests (D-Bus MPRIS)...');
-
-  // Strategy 1: Check if VLC is already running
-  if (await isVLCAvailable()) {
-    logger.info('Using existing VLC instance (D-Bus)');
-    vlcMode = 'real';
-    return { type: 'real' };
-  }
-
-  // Strategy 2: Try to start VLC
-  if (await startVLCIfNeeded()) {
-    logger.info('Using newly started VLC instance');
-    vlcMode = 'real';
-    return { type: 'real' };
-  }
-
-  // No fallback — E2E video tests require real VLC
-  logger.warn('VLC not available for E2E tests — video-dependent tests may fail');
-  vlcMode = 'unavailable';
-  return { type: 'unavailable' };
+  logger.debug('setupVLC() is a no-op — the orchestrator owns VLC');
+  return {
+    type: 'orchestrator',
+    note: 'VLC is owned by the orchestrator ProcessMonitor'
+  };
 }
 
 /**
- * Cleanup VLC resources
+ * No-op compatibility shim. The orchestrator stops its VLC on shutdown
+ * (`vlcMprisService.cleanup()` stops the ProcessMonitor).
+ *
  * @returns {Promise<void>}
  */
 async function cleanup() {
-  logger.info('Cleaning up VLC resources...');
-  await stopVLC();
-  vlcMode = null;
-  logger.info('VLC cleanup complete');
-}
-
-/**
- * Get current VLC mode
- * @returns {'real'|'unavailable'|null}
- */
-function getVLCMode() {
-  return vlcMode;
+  // Nothing to clean up: this helper owns no process.
 }
 
 module.exports = {
-  // Core functions
+  // Diagnostics
   isVLCAvailable,
-  startVLCIfNeeded,
-  stopVLC,
-  waitForVLCReady,
 
-  // High-level setup
+  // Compatibility shims (no-ops)
   setupVLC,
   cleanup,
   reset: cleanup,
-
-  // State inspection
-  getVLCMode,
 };

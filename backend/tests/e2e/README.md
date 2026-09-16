@@ -63,7 +63,32 @@ presence when the capability alone is not enough.
 **Runs anywhere** (no venue hardware): session lifecycle, scoring and parity,
 transaction delete/rescan, dedup and reset behaviour, admin panel navigation,
 history and report surfaces, player scanner flows, scoreboard rendering. Video
-flows run here too when a headless `cvlc --intf dummy` is reachable.
+flows run here too wherever the orchestrator can start VLC.
+
+**VLC ownership:** the harness spawns no VLC of its own. `setup/vlc-service.js`
+is a no-op shim (`setupVLC()` / `cleanup()` are kept only because 19 flows call
+them); the orchestrator's `vlcMprisService.init()` starts the single instance
+under a ProcessMonitor with PRODUCTION arguments, so video flows exercise what
+the show runs on — including the Pi 5 `--vout=gles2` auto-detection, which plays
+fine on a headless Xorg. Do NOT set `VLC_HW_ACCEL` in the test environment:
+overriding it is exactly the divergence this removed. Video flows gate on the
+`vlc` capability (`requireCapabilities` / `waitForCapability`), never on a
+harness-owned mode string, and `flows/00-smoke-test` asserts the invariant that
+exactly one `vlc` process runs while the orchestrator is up.
+
+The two video-lifecycle flows — `22-player-video-lifecycle` and
+`25-scoreboard-video-lifecycle` — are tagged `@hardware` (as is
+`08-display-control`), because verifying real output needs an attached display;
+they are excluded from `npm run test:e2e:tier-l`. Flows that merely drive VLC
+without watching the picture, such as `30-full-game-session-multi-device`, stay
+untagged and rely on the `vlc` capability gate.
+
+The harness used to start its own `cvlc --intf dummy` before the orchestrator,
+which then drove that instance. It was measurably unrepresentative (venue
+probes, 2026-09-15): "Playing" reported ~29.5 s after OpenUri with no display
+attached, and no `mpris:length` for an HEVC clip until playback ended, which
+starved `video:progress` and wedged video-driven compound cues. Two instances
+also raced for the `org.mpris.MediaPlayer2.vlc` bus name.
 
 **Needs venue hardware:**
 
@@ -74,7 +99,7 @@ flows run here too when a headless `cvlc --intf dummy` is reachable.
 | Lighting scene activation | WLED controllers online in Home Assistant | HA can be up with valid scenes while every light is `unavailable`; activation then returns an HA error. Scene *listing* still works. |
 | Music playback, ducking, cascade | MP3s in `backend/public/music/` + a live MPD | `backend/public/music/` is gitignored, so a fresh clone has an empty library and MPD queues filenames that do not exist. |
 | Health card timestamps, "Check Now" toast | At least one service DOWN | The health dashboard collapses to a single line when all 8 services are healthy — no per-service cards, and "Check Now" is rendered only for down services. These use `requireDegraded`. |
-| Real video output | HDMI display attached | Headless VLC reports `playing` over D-Bus without any picture. Backend health checks verify D-Bus reachability, never actual output. |
+| Real video output | HDMI display attached | VLC reports `playing` over D-Bus with no display attached and no picture anywhere. Backend health checks verify D-Bus reachability, never actual output. |
 
 **Audio route dropdowns:** every route `<select>` carries a disabled
 `Unknown sink` placeholder at option index 0 with `value=""`, so a test must

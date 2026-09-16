@@ -28,7 +28,7 @@ const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
 const { setupHA } = require('../setup/ha-service');
 const { setupSound, cleanupTestAudioFixtures } = require('../setup/sound-service');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
-const { getCapabilities, waitForCapability } = require('../helpers/capabilities');
+const { getCapabilities, refreshCapabilities, waitForCapability } = require('../helpers/capabilities');
 
 const {
   createBrowserContext,
@@ -47,7 +47,6 @@ const { ScoreboardPage } = require('../helpers/page-objects/ScoreboardPage');
 
 let browser = null;
 let orchestratorInfo = null;
-let vlcInfo = null;
 let haInfo = null;
 let soundInfo = null;
 let testTokens = null;
@@ -70,8 +69,11 @@ test.describe('Full Game Session Multi-Device Flow', () => {
   test.beforeAll(async () => {
     await clearSessionData();
 
-    // Setup all services (parallel where possible)
-    vlcInfo = await setupVLC();
+    // Setup all services (parallel where possible).
+    // setupVLC() is a no-op shim: VLC belongs to the orchestrator's
+    // ProcessMonitor, so its status is read from the capability manifest
+    // after startOrchestrator() below, not from this helper.
+    await setupVLC();
     [haInfo, soundInfo] = await Promise.all([
       setupHA(),
       setupSound(),
@@ -80,7 +82,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     // ═══════════════════════════════════════════════
     // SERVICE STATUS BANNER
     // ═══════════════════════════════════════════════
-    const serviceStatus = { vlc: vlcInfo, ha: haInfo, sound: soundInfo };
+    const serviceStatus = { ha: haInfo, sound: soundInfo };
     console.log('\n╔══════════════════════════════════════════╗');
     console.log('║  E2E SERVICE STATUS                      ║');
     for (const [name, info] of Object.entries(serviceStatus)) {
@@ -107,6 +109,26 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       // Dynamic port assignment (port=0) prevents conflicts when running parallel workers
       timeout: 30000
     });
+
+    // VLC status comes from the orchestrator that owns it. Probe only AFTER
+    // giving it a chance to report healthy: vlcMprisService.init() gives up
+    // waiting for D-Bus after 5s and lets startup continue, so /health can be
+    // online while VLC is still registering. getCapabilities caches per URL for
+    // the whole run, so an early `false` would be sticky — wait first, then take
+    // a fresh manifest (which also primes the cache the test body reads).
+    try {
+      await waitForCapability(orchestratorInfo.url, 'vlc', 15000);
+    } catch {
+      // Leave the verdict to the manifest below — this is a warning path.
+    }
+    const startupCaps = await refreshCapabilities(orchestratorInfo.url);
+    console.log(`  vlc (orchestrator-owned): ${startupCaps.vlc ? 'HEALTHY' : 'UNAVAILABLE'}`);
+    if (!startupCaps.vlc) {
+      console.warn('  1 service(s) degraded: vlc (orchestrator reports not healthy)');
+      if (process.env.E2E_REQUIRE_REAL === 'true') {
+        throw new Error('E2E_REQUIRE_REAL=true but services degraded: vlc');
+      }
+    }
 
     // Select test tokens dynamically from production database
     testTokens = await selectTestTokens(orchestratorInfo.url);
@@ -498,8 +520,8 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     console.log('✓ Clock-driven compound cue completed (removed from active cues UI)');
     } // end if (cueDepsHealthy)
 
-    // 1.6.6: Fire video-driven compound cue (IF VLC is real)
-    if (vlcInfo.type === 'real') {
+    // 1.6.6: Fire video-driven compound cue (IF the orchestrator's VLC is healthy)
+    if (caps.vlc) {
       // Wait for VLC to be idle before firing video compound cue
       // (prevents video_busy hold if previous activity left VLC in use)
       await gmScanner1.waitForVideoIdle(10000);
@@ -526,19 +548,27 @@ test.describe('Full Game Session Multi-Device Flow', () => {
 
       // Wait for video compound cue completion. A cue with a video entry parks in
       // boundary mode until the FIRST video:progress tick, then fires its remaining
-      // entries and completes (maxAt=1s). videoQueueService only emits progress once
-      // vlcMprisService reports a length > 0, and that service serves state/length from
-      // a signal cache filtered by bus-name owner. The harness runs its own headless VLC
-      // AND the orchestrator starts a second instance, so signals from the playing
-      // instance can be dropped until the owner is re-resolved: state/length lag by up
-      // to ~30s, and a 2s clip ended before any tick (deterministic wedge, probed
-      // 2026-09-15). e2e-video-compound now plays test_30sec.mp4 so a late tick still
-      // lands; KNOWN FLAKY until the two-instance signal issue is fixed — see
-      // docs/plans/2026-09-15-alnscanner-wiring-review.md → Follow-ups.
+      // entries and completes (maxAt=1s), and videoQueueService only emits progress
+      // once vlcMprisService reports a length > 0.
+      //
+      // This step used to be flaky for a harness-only reason: the harness spawned its
+      // own `cvlc --intf dummy` and the orchestrator drove THAT instance. Measured at
+      // the venue on 2026-09-15 — at the bench (no display) it reported "Playing"
+      // ~29.5s after OpenUri, and even with a display it published no `mpris:length`
+      // for an HEVC clip until playback ended, so no progress tick ever arrived and a
+      // short clip finished while the cue was still parked. A single
+      // production-argument instance is fast and complete (0.32s command→playing in
+      // process; `mpris:length` within 1.0s), and the July-18 live show ran this exact
+      // video-driven path end to end.
+      //
+      // The harness no longer spawns VLC (setup/vlc-service.js): this exercises the
+      // orchestrator's own instance. e2e-video-compound plays test_30sec.mp4, which
+      // leaves ample room for the first tick. The 60s budget is kept as headroom for
+      // load on the Pi, not to absorb a 30s signal gap.
       await gmScanner1.waitForCueComplete('e2e-video-compound', 60000);
       console.log('✓ Video-driven compound cue completed');
     } else {
-      console.log(`  Skipping video compound cue (VLC: ${vlcInfo.type})`);
+      console.log('  Skipping video compound cue (orchestrator reports vlc capability unhealthy)');
     }
 
     console.log('=== Phase 1.6 Complete ===\n');
