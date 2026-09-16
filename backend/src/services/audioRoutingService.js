@@ -69,6 +69,23 @@ const SINK_CACHE_TTL = 5000;
  */
 const SINK_INPUT_VOLUME_DEBOUNCE = 100;
 
+/**
+ * Raised by _setStreamVolumeLive when the stream has no live sink-input.
+ *
+ * A distinct type so setStreamVolume can tell "nothing is playing on this
+ * stream" (F3 — normal, the level is stored as intent) apart from a real pactl
+ * failure (still an error). The MESSAGE is load-bearing too: duckingEngine
+ * matches on 'No active sink-input' to treat a duck target that stopped playing
+ * as a no-op rather than a ducking failure.
+ */
+class NoSinkInputError extends Error {
+  constructor(stream) {
+    super(`No active sink-input found for stream '${stream}'`);
+    this.name = 'NoSinkInputError';
+    this.stream = stream;
+  }
+}
+
 class AudioRoutingService extends EventEmitter {
   constructor() {
     super();
@@ -345,7 +362,10 @@ class AudioRoutingService extends EventEmitter {
    * outward-facing snapshots carry the resolved name.
    *
    * An alias with no matching sink present passes through unresolved — the GM sees
-   * the configured intent rather than a wrong sink.
+   * the configured intent rather than a wrong sink. A CONCRETE route name whose sink
+   * has vanished likewise passes through for display, while playback falls back to
+   * HDMI in applyRouting (pre-existing B-1 behaviour: display shows intent, playback
+   * shows what is possible).
    *
    * @param {string} alias - Route value ('hdmi', 'bluetooth', or a concrete sink name)
    * @param {Array} [sinks] - Sink list to resolve against (defaults to the cache,
@@ -362,29 +382,66 @@ class AudioRoutingService extends EventEmitter {
   }
 
   /**
+   * Resolve the concrete sink EVERY stream will actually play on (F1).
+   *
+   * Persistence only ever holds an explicit route for the streams a GM has
+   * routed by hand (the shipped default defines `video` alone), but playback
+   * falls back to `defaultSink` for the rest — so a cold panel showed the HDMI
+   * sink for Video and "Unknown sink" for Music and Sound, which is not what
+   * those streams would do. The outward snapshots therefore report all three
+   * streams, with an unrouted one carrying the resolved default.
+   *
+   * Reporting only: `_routingData.routes` is untouched, so persistence and
+   * applyRouting's own fallback logic behave exactly as before. Streams outside
+   * VALID_STREAMS are not reported — the contract names three.
+   *
+   * @param {Array} [sinks] - Sink list to resolve against (see _resolveRouteSink)
+   * @returns {Object} stream name → concrete sink name (or unresolved alias)
+   * @private
+   */
+  _resolveEffectiveRoutes(sinks = this._sinkCache || this._lastGoodSinks) {
+    const routes = {};
+    for (const stream of VALID_STREAMS) {
+      const route = this._routingData.routes[stream];
+      const configured = (route && typeof route === 'object') ? route.sink : route;
+      routes[stream] = this._resolveRouteSink(
+        configured ?? this._routingData.defaultSink,
+        sinks
+      );
+    }
+    return routes;
+  }
+
+  /**
    * Get current audio routing state snapshot (sync).
    * @returns {{routes: Object, defaultSink: string, ducking: Object, availableSinks: Array, volumes: Object}}
    */
   getState() {
-    const routes = {};
-    for (const [stream, route] of Object.entries(this._routingData.routes)) {
-      routes[stream] = this._resolveRouteSink(typeof route === 'object' ? route.sink : route);
-    }
+    // Resolve routes against the same list this snapshot reports as available.
+    const sinks = this._sinkCache || this._lastGoodSinks;
     return {
-      routes,
+      routes: this._resolveEffectiveRoutes(sinks),
       defaultSink: this._routingData.defaultSink,
       ducking: this._duckingEngine.getActiveState(),
       // Fall back to the last good list: a sink event nulls the cache before the
       // refetch lands, and this snapshot is sync — reporting an empty sink list
       // there would blank the GM's dropdown for the width of that window.
-      availableSinks: this._buildAvailableSinksSnapshot(this._sinkCache || this._lastGoodSinks),
+      availableSinks: this._buildAvailableSinksSnapshot(sinks),
       volumes: { ...this._routingData.volumes },
     };
   }
 
   /**
-   * Get full routing status for sync:full payloads.
-   * @returns {Object} Full routing state
+   * Async routing snapshot that fetches the sink list before resolving, rather
+   * than reading the cache.
+   *
+   * NOTE (RV-10): nothing in src/ calls this — sync:full and the `audio`
+   * service:state domain both go through the sync getState() via
+   * environmentHelpers.buildEnvironmentState. Kept as the fresh-fetch variant
+   * (and pinned by a parity test against getState) for callers that cannot
+   * tolerate a stale cache.
+   *
+   * @returns {Promise<{routes: Object, defaultSink: string, availableSinks: Array}>}
    */
   async getRoutingStatus() {
     // Fetch first so routes resolve against the SAME sink list this snapshot
@@ -394,16 +451,10 @@ class AudioRoutingService extends EventEmitter {
 
     // Normalize routes to flat strings (internal format is { sink: 'hdmi' })
     // so sync:full and routing:changed events use the same shape for the GM Scanner,
-    // resolving aliases to concrete sink names (B-1 — see _resolveRouteSink).
-    const routes = {};
-    for (const [stream, route] of Object.entries(this._routingData.routes)) {
-      routes[stream] = this._resolveRouteSink(
-        typeof route === 'object' ? route.sink : route,
-        availableSinks
-      );
-    }
+    // resolving aliases to concrete sink names (B-1 — see _resolveRouteSink) and
+    // covering every stream, defaulted ones included (F1).
     return {
-      routes,
+      routes: this._resolveEffectiveRoutes(availableSinks),
       defaultSink: this._routingData.defaultSink,
       availableSinks,
     };
@@ -412,13 +463,21 @@ class AudioRoutingService extends EventEmitter {
   // ── Stream Routing ──
 
   /**
-   * Apply routing for a stream: find the VLC sink-input and move it to the target sink.
+   * Apply routing for a stream: find its sink-input and move it to the target sink.
    * Falls back to HDMI when the target sink is unavailable.
    * @param {string} stream - Stream name
    * @param {string} [sinkOverride] - Optional sink to use instead of the persisted route
+   * @param {Object} [options]
+   * @param {string} [options.sinkInputIndex] - Move THIS sink-input instead of looking one
+   *   up by app name. The reactive path (_identifySinkInput) knows the id from the pactl
+   *   event, and a lookup would return the oldest registered input for the stream — wrong
+   *   whenever two sounds overlap.
+   * @param {string} [options.skipIfOnSinkId] - Numeric sink id the input is already
+   *   attached to. When it is the target, the move (and the routing:applied broadcast it
+   *   would trigger) is skipped — every new sound effect would otherwise churn both.
    * @returns {Promise<void>}
    */
-  async applyRouting(stream, sinkOverride) {
+  async applyRouting(stream, sinkOverride, { sinkInputIndex = null, skipIfOnSinkId = null } = {}) {
     this._validateStream(stream);
 
     const targetSinkType = sinkOverride || this.getStreamRoute(stream);
@@ -446,8 +505,17 @@ class AudioRoutingService extends EventEmitter {
       throw new Error(`No available sink for stream '${stream}' (requested: ${targetSinkType})`);
     }
 
+    if (skipIfOnSinkId !== null && String(targetSink.id) === String(skipIfOnSinkId)) {
+      logger.debug('Sink-input already on its target sink, no move needed', {
+        stream, sink: targetSink.name,
+      });
+      return;
+    }
+
     const appName = STREAM_APP_NAMES[stream];
-    const sinkInput = await this._findSinkInputWithRetry(appName);
+    const sinkInput = sinkInputIndex !== null
+      ? { index: sinkInputIndex }
+      : await this._findSinkInputWithRetry(appName);
 
     if (!sinkInput || !sinkInput.index) {
       logger.warn('No active sink-input found', { stream });
@@ -572,7 +640,7 @@ class AudioRoutingService extends EventEmitter {
     // Find the sink-input for this app
     const sinkInput = await this.findSinkInput(appName);
     if (!sinkInput || !sinkInput.index) {
-      throw new Error(`No active sink-input found for stream '${stream}'`);
+      throw new NoSinkInputError(stream);
     }
 
     // Set the live volume
@@ -602,12 +670,32 @@ class AudioRoutingService extends EventEmitter {
    * For transient volume changes that should NOT be persisted (e.g., ducking),
    * use _setStreamVolumeLive directly.
    *
+   * F3: a stream with no live sink-input is NOT an error. Setting the Sound or
+   * Video level before anything is playing is ordinary pre-show behaviour; it
+   * used to be rejected ("No active sink-input found...") and toasted as a
+   * failure. The level is stored and broadcast as operator intent, and
+   * _identifySinkInput applies it when that stream's sink-input appears. A real
+   * pactl failure still rejects.
+   *
    * @param {string} stream - Stream name (video, music, sound)
    * @param {number} volume - Volume percentage (0-100)
    * @returns {Promise<void>}
    */
   async setStreamVolume(stream, volume) {
-    const clampedVolume = await this._setStreamVolumeLive(stream, volume);
+    this._validateStream(stream);
+
+    // Clamped here as well as in _setStreamVolumeLive: the idle path never
+    // reaches that helper, and the stored + broadcast value must still be sane.
+    const clampedVolume = Math.max(0, Math.min(100, volume));
+
+    try {
+      await this._setStreamVolumeLive(stream, clampedVolume);
+    } catch (err) {
+      if (!(err instanceof NoSinkInputError)) throw err;
+      logger.info('Stream volume stored for an idle stream (no sink-input yet)', {
+        stream, volume: clampedVolume,
+      });
+    }
 
     this._routingData.volumes[stream] = clampedVolume;
 
@@ -662,6 +750,12 @@ class AudioRoutingService extends EventEmitter {
    * @private
    */
   _buildAvailableSinksSnapshot(rawSinks) {
+    // Tolerate a non-array: this is the single choke point for getState(),
+    // getRoutingStatus() and route resolution, and getState() runs inside
+    // pushServiceState's debounce timer where a throw is swallowed and the
+    // domain push silently never happens. No sinks degrades to "no sinks"
+    // (aliases pass through unresolved), never to a lost broadcast.
+    if (!Array.isArray(rawSinks)) return [];
     return rawSinks.filter(s => s.name !== 'auto_null');
   }
 
@@ -957,9 +1051,10 @@ class AudioRoutingService extends EventEmitter {
   async _identifySinkInput(id) {
     let appName = null;
     let stream = null;
+    let listOutput = null;
     try {
-      const stdout = await this._execFile('pactl', ['list', 'sink-inputs']);
-      const parsed = pactlClient.parseSinkInputById(stdout, id);
+      listOutput = await this._execFile('pactl', ['list', 'sink-inputs']);
+      const parsed = pactlClient.parseSinkInputById(listOutput, id);
 
       if (parsed) {
         const { appName: name, binary, mediaName } = parsed;
@@ -982,6 +1077,29 @@ class AudioRoutingService extends EventEmitter {
         }
       }
     } catch { /* non-fatal — registry just won't have this entry */ }
+
+    // Reactive routing (RV-10 HIGH-1): put the new sink-input on the sink its
+    // stream is routed to. applyRouting otherwise only runs for `video` (on
+    // video:started and on an explicit audio:route:set), so an MPD or pw-play
+    // stream stayed wherever WirePlumber's own default put it while the panel
+    // reported the resolved route — the snapshot promises the sink the stream
+    // WILL use, and this is what makes that true.
+    //
+    // Runs before the volume re-apply: the move is what decides which device
+    // the level applies to. Own try/catch — routing must never cost us the
+    // registry entry or the stored volume. Reached only from the 'new'
+    // sink-input branch, so the 'change' event this move produces goes to the
+    // volume re-read, never back into here.
+    if (stream) {
+      try {
+        await this.applyRouting(stream, undefined, {
+          sinkInputIndex: id,
+          skipIfOnSinkId: this._extractSinkIdForSinkInput(listOutput, id),
+        });
+      } catch (err) {
+        logger.warn('Failed to route new sink-input', { stream, id, error: err.message });
+      }
+    }
 
     // Reactive volume application: re-apply user's persisted volume if any.
     // Wrapped in its own try/catch so a failed pactl set doesn't undo the
@@ -1304,6 +1422,29 @@ class AudioRoutingService extends EventEmitter {
    */
   _extractVolumeForSinkInput(output, sinkInputIdx) {
     return pactlClient.extractVolumeForSinkInput(output, sinkInputIdx);
+  }
+
+  /**
+   * Read the sink a sink-input is currently attached to out of a
+   * `pactl list sink-inputs` dump (the section's `Sink: 152` line).
+   *
+   * Belongs beside the other sink-input parsers in audio/pactlClient.js; it
+   * lives here until that module is next touched.
+   *
+   * @param {string} output - Raw `pactl list sink-inputs` output
+   * @param {string} sinkInputIdx - Sink-input id
+   * @returns {string|null} Numeric sink id as a string, or null when unknown
+   * @private
+   */
+  _extractSinkIdForSinkInput(output, sinkInputIdx) {
+    if (!output) return null;
+    const section = output.split(/Sink Input #/).find(part => {
+      const idMatch = part.match(/^(\d+)/);
+      return idMatch && idMatch[1] === sinkInputIdx;
+    });
+    if (!section) return null;
+    const sinkMatch = section.match(/^[ \t]*Sink:[ \t]*(\d+)/m);
+    return sinkMatch ? sinkMatch[1] : null;
   }
 
   /**

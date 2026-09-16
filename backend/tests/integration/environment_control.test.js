@@ -36,6 +36,24 @@ function waitForServiceState(socket, domain, predicate) {
   });
 }
 
+/**
+ * The sink an alias route resolves to ON THIS MACHINE.
+ *
+ * Routes are reported as CONCRETE PipeWire sink names (B-1), and every stream
+ * reports the sink it will actually use (F1), so the reported value depends on
+ * what hardware is present: with a sink of that type available it is that sink's
+ * name, with none available the alias passes through unresolved. Asserting the
+ * bare alias only held on a bench with no HDMI output and no BT speaker.
+ *
+ * @param {Object} audioState - audio domain state (routes/availableSinks/...)
+ * @param {'hdmi'|'bluetooth'} alias
+ * @returns {string} the sink name to expect for a stream routed to `alias`
+ */
+function resolvedRoute(audioState, alias) {
+  const match = (audioState?.availableSinks || []).find(sink => sink.type === alias);
+  return match ? match.name : alias;
+}
+
 /** Mock bluetooth service as unavailable (most tests need this) */
 function mockBluetoothUnavailable() {
   jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
@@ -138,7 +156,8 @@ describe('Environment Control Integration', () => {
       const syncData = gm1.lastSyncFull;
       const env = syncData.data?.environment || syncData.environment;
 
-      expect(env.audio.routes.video).toBe('hdmi');
+      // Default route is the `hdmi` alias; the snapshot reports what it resolves to.
+      expect(env.audio.routes.video).toBe(resolvedRoute(env.audio, 'hdmi'));
     });
   });
 
@@ -221,16 +240,20 @@ describe('Environment Control Integration', () => {
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_020');
 
-      // Wait for service:state audio with video route changed to bluetooth
+      // Wait for service:state audio with video route changed to bluetooth.
+      // The push carries the sink the alias resolves to on this machine, so the
+      // predicate must resolve it the same way — on a Pi with a paired speaker
+      // that is `bluez_output.*`, on a bare bench it is the alias itself.
       const routingPromise = waitForServiceState(gm1, 'audio',
-        (s) => s.routes?.video === 'bluetooth');
+        (s) => s.routes?.video === resolvedRoute(s, 'bluetooth'));
 
       sendGmCommand(gm1, 'audio:route:set', { stream: 'video', sink: 'bluetooth' });
 
       const routingEvent = await routingPromise;
 
       // Verify the audio state snapshot shows the new route
-      expect(routingEvent.data.state.routes.video).toBe('bluetooth');
+      const audioState = routingEvent.data.state;
+      expect(audioState.routes.video).toBe(resolvedRoute(audioState, 'bluetooth'));
     });
 
     it('should receive gm:command:ack after successful audio route change', async () => {

@@ -1520,15 +1520,67 @@ Sink Input #42
       );
     });
 
-    it('does NOT persist when no sink-input is found (volume set failed)', async () => {
+    // F3 (venue 2026-09-15): moving the Video slider with nothing playing was
+    // rejected ("No active sink-input found for stream 'video'") and toasted as an
+    // error. Setting a level for an idle stream is ordinary pre-show behaviour —
+    // the value is operator intent, and _identifySinkInput re-applies it when that
+    // stream's sink-input appears. Supersedes the earlier "must not persist" rule,
+    // which existed to keep levels that never reached pactl out of persistence.
+    it('succeeds and persists when the stream has no live sink-input', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue(null);
+      const handler = jest.fn();
+      audioRoutingService.on('volume:changed', handler);
+
+      await expect(audioRoutingService.setStreamVolume('video', 50)).resolves.toBeUndefined();
+
+      expect(audioRoutingService._routingData.volumes.video).toBe(50);
+      expect(persistenceService.save).toHaveBeenCalledWith(
+        'config:audioRouting',
+        expect.objectContaining({
+          volumes: expect.objectContaining({ video: 50 }),
+        })
+      );
+      expect(handler).toHaveBeenCalledWith({ stream: 'video', volume: 50 });
+      audioRoutingService.removeListener('volume:changed', handler);
+    });
+
+    it('does not touch pactl when the stream has no live sink-input', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue(null);
+      mockExecFileSuccess('');
+
+      await audioRoutingService.setStreamVolume('sound', 40);
+
+      expect(execFile).not.toHaveBeenCalledWith(
+        'pactl', expect.arrayContaining(['set-sink-input-volume']),
+        expect.any(Object), expect.any(Function)
+      );
+    });
+
+    it('clamps the stored value for an idle stream too', async () => {
       jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue(null);
 
-      await expect(audioRoutingService.setStreamVolume('video', 50))
-        .rejects.toThrow(/No active sink-input/);
+      await audioRoutingService.setStreamVolume('music', 150);
 
-      // _routingData.volumes should NOT have video — we don't want to persist
-      // volumes for streams that never got the pactl call through
+      expect(audioRoutingService._routingData.volumes.music).toBe(100);
+    });
+
+    // The idle case is accepted; a REAL pactl failure is still an error, and must
+    // not persist a level the sink-input never received.
+    it('still rejects, and does not persist, when the pactl write fails', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
+      mockExecFileError('Connection refused');
+
+      await expect(audioRoutingService.setStreamVolume('video', 50))
+        .rejects.toThrow(/Connection refused/);
+
       expect(audioRoutingService._routingData.volumes.video).toBeUndefined();
+      expect(persistenceService.save).not.toHaveBeenCalled();
+    });
+
+    it('still rejects an invalid stream name', async () => {
+      await expect(audioRoutingService.setStreamVolume('bogus', 50))
+        .rejects.toThrow(/Invalid stream name/);
+
       expect(persistenceService.save).not.toHaveBeenCalled();
     });
 
@@ -1558,8 +1610,11 @@ Sink Input #42
       audioRoutingService.removeListener('volume:changed', handler);
     });
 
+    // F3 note: a MISSING sink-input is no longer a failure (see the idle-stream
+    // tests above), so the "failed write" this guards is a real pactl error.
     it('does NOT emit volume:changed when the pactl set failed', async () => {
-      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue(null);
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
+      mockExecFileError('Connection refused');
       const handler = jest.fn();
       audioRoutingService.on('volume:changed', handler);
 
@@ -2693,6 +2748,87 @@ Sink Input #42
     });
   });
 
+  // F1 (venue 2026-09-15): a cold admin panel showed the HDMI sink for Video but
+  // "Unknown sink" for Music and Sound — persistence only ever defines an explicit
+  // route for `video`, and the other two streams were omitted from the snapshot
+  // entirely even though playback falls back to defaultSink for them. The outward
+  // snapshot now reports the EFFECTIVE sink for all three streams.
+  describe('effective routes for every stream (F1)', () => {
+    const HDMI = 'alsa_output.platform-107c701400.hdmi.hdmi-stereo';
+    const BLUEZ = 'bluez_output.F4_4E_FD_53_5D_F2.1';
+
+    function cacheBothSinks() {
+      audioRoutingService._sinkCache = [
+        { id: '1', name: HDMI, type: 'hdmi', label: 'HDMI' },
+        { id: '2', name: BLUEZ, type: 'bluetooth', label: 'W-KING' },
+      ];
+    }
+
+    it('reports the resolved default sink for streams with no explicit route', () => {
+      cacheBothSinks(); // defaults route only `video` (to the hdmi alias)
+
+      expect(audioRoutingService.getState().routes)
+        .toEqual({ video: HDMI, music: HDMI, sound: HDMI });
+    });
+
+    it('keeps an explicit route and resolves the others to the default', async () => {
+      cacheBothSinks();
+      await audioRoutingService.setStreamRoute('music', 'bluetooth');
+
+      expect(audioRoutingService.getState().routes)
+        .toEqual({ video: HDMI, music: BLUEZ, sound: HDMI });
+    });
+
+    it('passes the alias through for every stream when no sinks are cached', () => {
+      expect(audioRoutingService.getState().routes)
+        .toEqual({ video: 'hdmi', music: 'hdmi', sound: 'hdmi' });
+    });
+
+    it('resolves a concrete defaultSink name unchanged', () => {
+      cacheBothSinks();
+      audioRoutingService._routingData.defaultSink = BLUEZ;
+
+      expect(audioRoutingService.getState().routes.sound).toBe(BLUEZ);
+    });
+
+    // Reporting change only: the internal table still holds just the explicit
+    // routes, so persistence and applyRouting's fallback logic are untouched.
+    it('does not write the defaulted streams into the internal routing table', () => {
+      cacheBothSinks();
+
+      audioRoutingService.getState();
+
+      expect(audioRoutingService._routingData.routes).toEqual({ video: { sink: 'hdmi' } });
+    });
+
+    // Defence in depth: getState() runs inside pushServiceState's 50 ms timer,
+    // where a throw is swallowed and the domain push silently never happens.
+    // Resolution must degrade to alias passthrough, never throw, whatever the
+    // cache holds.
+    it('never throws when neither sink list is an array', () => {
+      audioRoutingService._sinkCache = null;
+      audioRoutingService._lastGoodSinks = null;
+
+      const state = audioRoutingService.getState();
+
+      expect(state.routes).toEqual({ video: 'hdmi', music: 'hdmi', sound: 'hdmi' });
+      expect(state.availableSinks).toEqual([]);
+    });
+
+    it('getRoutingStatus() reports the same effective routes as getState()', async () => {
+      mockExecFileSuccess(
+        `47\t${HDMI}\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n`
+      );
+      // Routed to a sink that is NOT present — the alias must still pass through.
+      await audioRoutingService.setStreamRoute('music', 'bluetooth');
+
+      const status = await audioRoutingService.getRoutingStatus();
+
+      expect(status.routes).toEqual({ video: HDMI, music: 'bluetooth', sound: HDMI });
+      expect(status.routes).toEqual(audioRoutingService.getState().routes);
+    });
+  });
+
   // ── Persistence decoupling: ducking vs public setStreamVolume ──
   //
   // Regression guard: setStreamVolume() persists to _routingData.volumes (user intent).
@@ -2813,6 +2949,34 @@ Sink Input #42
       expect(setVolCalls[0][1]).toEqual(['set-sink-input-volume', '55', '80%']);
     });
 
+    // F3 (venue 2026-09-15): a level set while the stream was idle is what makes
+    // accepting that command correct rather than merely quiet — it must land on
+    // the sink-input that appears next.
+    it('applies a volume set while the stream was idle to the next sink-input', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue(null);
+      await audioRoutingService.setStreamVolume('sound', 35);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (args[0] === 'list' && args[1] === 'sink-inputs') {
+          cb(null, [
+            'Sink Input #77',
+            '\tProperties:',
+            '\t\tapplication.name = "pw-play"',
+          ].join('\n'), '');
+          return;
+        }
+        cb(null, '', '');
+      });
+
+      await audioRoutingService._identifySinkInput('77');
+
+      const setVolCalls = execFile.mock.calls.filter(
+        c => c[1][0] === 'set-sink-input-volume'
+      );
+      expect(setVolCalls.length).toBe(1);
+      expect(setVolCalls[0][1]).toEqual(['set-sink-input-volume', '77', '35%']);
+    });
+
     it('does NOT apply volume when stream has no persisted entry', async () => {
       // Empty volumes — nothing should be applied
       audioRoutingService._routingData.volumes = {};
@@ -2895,6 +3059,128 @@ Sink Input #42
         c => c[1][0] === 'set-sink-input-volume'
       );
       expect(setVolCalls.length).toBe(0);
+    });
+  });
+
+  // HIGH-1 (RV-10): F1 reports the sink each stream WILL use, but only `video`
+  // was ever moved there — applyRouting runs on video:started and on an explicit
+  // audio:route:set, and nothing moved an MPD or pw-play sink-input. With a second
+  // sink present WirePlumber parks music/sound on its own default while the panel
+  // claims HDMI. Every new sink-input is now routed to its stream's target.
+  describe('reactive routing on _identifySinkInput()', () => {
+    const HDMI = 'alsa_output.platform-107c701400.hdmi.hdmi-stereo';
+    const BLUEZ = 'bluez_output.F4_4E_FD_53_5D_F2.1';
+    const SINK_LIST = [
+      `152\t${HDMI}\tPipeWire\ts32le 2ch 48000Hz\tSUSPENDED`,
+      `158\t${BLUEZ}\tPipeWire\ts16le 2ch 48000Hz\tSUSPENDED`,
+    ].join('\n');
+
+    /** pactl mock: MPD sink-input #55 currently parked on `currentSinkId`. */
+    function mockMpdSinkInputOn(currentSinkId, { failMove = false } = {}) {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (args[0] === 'list' && args[1] === 'sink-inputs') {
+          cb(null, [
+            'Sink Input #55',
+            '\tDriver: PipeWire',
+            `\tSink: ${currentSinkId}`,
+            '\tProperties:',
+            '\t\tapplication.name = "Music Player Daemon"',
+            '\t\tmedia.name = "aln-music"',
+          ].join('\n'), '');
+          return;
+        }
+        if (args[0] === 'list' && args[1] === 'sinks') {
+          cb(null, SINK_LIST, '');
+          return;
+        }
+        if (args[0] === 'move-sink-input' && failMove) {
+          cb(new Error('pactl move failed'), '', '');
+          return;
+        }
+        cb(null, '', '');
+      });
+    }
+
+    const moveCalls = () => execFile.mock.calls.filter(c => c[1][0] === 'move-sink-input');
+
+    it('moves a new sink-input parked on the wrong sink to its resolved route', async () => {
+      mockMpdSinkInputOn('158'); // WirePlumber put MPD on the BT speaker
+
+      await audioRoutingService._identifySinkInput('55');
+
+      // music has no explicit route → defaultSink 'hdmi' → the HDMI sink
+      expect(moveCalls().map(c => c[1])).toEqual([['move-sink-input', '55', HDMI]]);
+    });
+
+    it('emits routing:applied for the stream it moved', async () => {
+      mockMpdSinkInputOn('158');
+      const handler = jest.fn();
+      audioRoutingService.on('routing:applied', handler);
+
+      await audioRoutingService._identifySinkInput('55');
+
+      expect(handler).toHaveBeenCalledWith(expect.objectContaining({ stream: 'music', sink: HDMI }));
+      audioRoutingService.removeListener('routing:applied', handler);
+    });
+
+    it('issues no pactl move when the sink-input is already on its target sink', async () => {
+      mockMpdSinkInputOn('152'); // already on HDMI
+
+      await audioRoutingService._identifySinkInput('55');
+
+      expect(moveCalls()).toHaveLength(0);
+    });
+
+    it('honours an explicit route when placing a new sink-input', async () => {
+      await audioRoutingService.setStreamRoute('music', 'bluetooth');
+      mockMpdSinkInputOn('152'); // parked on HDMI, but the GM routed music to BT
+
+      await audioRoutingService._identifySinkInput('55');
+
+      expect(moveCalls().map(c => c[1])).toEqual([['move-sink-input', '55', BLUEZ]]);
+    });
+
+    it('still applies the persisted volume when the move fails', async () => {
+      audioRoutingService._routingData.volumes = { music: 80 };
+      mockMpdSinkInputOn('158', { failMove: true });
+
+      await audioRoutingService._identifySinkInput('55');
+
+      const setVolCalls = execFile.mock.calls.filter(c => c[1][0] === 'set-sink-input-volume');
+      expect(setVolCalls.map(c => c[1])).toEqual([['set-sink-input-volume', '55', '80%']]);
+    });
+
+    it('registers the sink-input before routing so findSinkInput resolves it', async () => {
+      mockMpdSinkInputOn('158');
+
+      await audioRoutingService._identifySinkInput('55');
+
+      expect(audioRoutingService._sinkInputRegistry.get('55')).toEqual(
+        expect.objectContaining({ stream: 'music' })
+      );
+    });
+
+    it('does not route a sink-input it could not resolve to one of our streams', async () => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (args[0] === 'list' && args[1] === 'sink-inputs') {
+          cb(null, [
+            'Sink Input #90',
+            '\tSink: 158',
+            '\tProperties:',
+            '\t\tapplication.name = "Firefox"',
+          ].join('\n'), '');
+          return;
+        }
+        if (args[0] === 'list' && args[1] === 'sinks') {
+          cb(null, SINK_LIST, '');
+          return;
+        }
+        cb(null, '', '');
+      });
+
+      await audioRoutingService._identifySinkInput('90');
+
+      expect(moveCalls()).toHaveLength(0);
     });
   });
 

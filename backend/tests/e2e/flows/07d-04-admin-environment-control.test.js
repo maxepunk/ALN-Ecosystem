@@ -66,6 +66,40 @@ async function waitForMusicPlaying(orchestratorUrl, timeoutMs = 15000) {
   }).toPass({ timeout: timeoutMs });
 }
 
+/**
+ * Read the audio routing snapshot the backend reports (sync:full shape).
+ * @param {string} orchestratorUrl
+ * @returns {Promise<{routes: Object, defaultSink: string, availableSinks: Array, volumes: Object}>}
+ */
+async function fetchAudioState(orchestratorUrl) {
+  return await new Promise((resolve, reject) => {
+    const req = https.get(`${orchestratorUrl}/api/state`, {
+      rejectUnauthorized: false,
+      timeout: 5000,
+    }, (res) => {
+      let body = '';
+      res.on('data', (c) => { body += c; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(body).environment?.audio || {}); } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('state probe timeout')); });
+  });
+}
+
+/**
+ * Poll /api/state until the backend reports the given per-stream volume (F3).
+ * The slider dispatch is debounced 150ms client-side, so the persisted value —
+ * not the slider position — is the observable that proves the command landed.
+ */
+async function waitForAudioVolume(orchestratorUrl, stream, volume, timeoutMs = 10000) {
+  await expect(async () => {
+    const audio = await fetchAudioState(orchestratorUrl);
+    expect(audio.volumes?.[stream]).toBe(volume);
+  }).toPass({ timeout: timeoutMs });
+}
+
 let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
@@ -104,7 +138,7 @@ test.describe('GM Scanner - Environment Control', () => {
   test.beforeAll(async () => {
     await clearSessionData();
     vlcInfo = await setupVLC();
-    console.log(`VLC started: ${vlcInfo.type} mode`);
+    console.log(`VLC ownership: ${vlcInfo.type}`);
     orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
     browser = await chromium.launch({
       headless: true,
@@ -332,6 +366,30 @@ test.describe('GM Scanner - Environment Control', () => {
         console.log('Current video route is the "Unknown sink" placeholder (backend route matches no live sink)');
       }
 
+      // F1 (venue 2026-09-15): a cold panel showed the HDMI sink for Video but
+      // "Unknown sink" for Music and Sound — the backend omitted streams with no
+      // explicit route even though they play on the default sink. Read BEFORE the
+      // route change below, which would create an explicit route and mask it.
+      const coldAudio = await fetchAudioState(orchestratorInfo.url);
+      console.log(`Cold backend routes: ${JSON.stringify(coldAudio.routes)} (defaultSink ${coldAudio.defaultSink})`);
+      // Aliases only resolve to concrete names when real sinks exist; a machine
+      // whose only sink is the filtered-out auto_null has nothing to resolve to.
+      test.skip(!coldAudio.availableSinks?.length,
+        'no live PipeWire sinks — routes cannot resolve to concrete names');
+      expect(Object.keys(coldAudio.routes).sort()).toEqual(['music', 'sound', 'video']);
+
+      for (const stream of ['video', 'music', 'sound']) {
+        expect(coldAudio.routes[stream], `backend route for ${stream}`).toBeTruthy();
+
+        const streamState = await gmScanner.getAudioRouteState(stream);
+        expect(streamState, `${stream} routing dropdown should render`).not.toBeNull();
+        // A real sink name, not the disabled "Unknown sink" placeholder — and one
+        // the GM could also pick from the list.
+        expect(streamState.value, `${stream} route shown on the panel`).not.toBe('');
+        expect(streamState.selectable.map(o => o.value)).toContain(streamState.value);
+        console.log(`Cold panel route for ${stream}: ${streamState.value}`);
+      }
+
       if (routeState.selectable.length > 1) {
         // Change to a different REAL route
         const currentValue = routeState.value;
@@ -345,8 +403,28 @@ test.describe('GM Scanner - Environment Control', () => {
         expect(updatedValue).toBe(newOption.value);
       }
 
-      // Note: audio:volume:set requires an active PipeWire sink-input
-      // (VLC/aln-music/pw-play must be playing). Volume tested in video lifecycle tests.
+      // F3 (venue 2026-09-15): moving a slider for a stream with nothing playing
+      // was rejected ("No active sink-input found for stream 'sound'") and toasted
+      // as an error. Nothing plays on the sound stream in this test — exactly the
+      // pre-show case. The level must be accepted and persisted as operator intent.
+      const soundSlider = page.locator('input.volume-slider[data-stream="sound"]');
+      await expect(soundSlider).toBeVisible();
+      // Drive the real control: `input` is what domEventBindings listens for
+      // (debounced 150ms → audioController.setVolume → audio:volume:set).
+      await soundSlider.fill('45');
+      await soundSlider.dispatchEvent('input');
+
+      // Backend truth that the command was accepted, not merely quiet.
+      await waitForAudioVolume(orchestratorInfo.url, 'sound', 45);
+
+      // Secondary check — waitForAudioVolume above already proves the ack
+      // succeeded. A rejected ack would ALSO surface to the operator as
+      // "Command failed: ..." appended by uiManager.showError as a
+      // div.error-message inside #error-container (NOT a .toast), auto-dismissed
+      // after 5s, so the wait above stays inside that window.
+      const volumeErrors = await page.locator('#error-container .error-message').allTextContents();
+      console.log(`Operator errors after idle volume set: ${JSON.stringify(volumeErrors)}`);
+      expect(volumeErrors.join(' | ')).not.toContain('Command failed');
 
     } finally {
       await context.close();

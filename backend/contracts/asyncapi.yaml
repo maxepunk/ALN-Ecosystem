@@ -671,10 +671,13 @@ components:
                   audio:
                     type: object
                     description: |
-                      Audio routing snapshot (audioRoutingService.getState). `routes` values are
-                      CONCRETE PipeWire sink names resolved from the configured alias
-                      (`hdmi`/`bluetooth`), matching the `audio` service:state domain;
-                      an alias with no matching sink present passes through unresolved.
+                      Audio routing snapshot (audioRoutingService.getState). `routes` always
+                      lists all three streams (video, music, sound). Values are CONCRETE
+                      PipeWire sink names resolved from the configured alias
+                      (`hdmi`/`bluetooth`), matching the `audio` service:state domain; a
+                      stream with no explicit route reports the sink it will actually use —
+                      the resolved `defaultSink`. An alias with no matching sink present
+                      passes through unresolved.
                   lighting: { type: object }
               gameClock:
                 type: object
@@ -1555,6 +1558,11 @@ components:
         - `audio:route:set` — `{stream: 'video'|'music'|'sound', sink: 'hdmi'|'bluetooth'|<pipewire-sink-name>}`. The logical aliases `hdmi`/`bluetooth` resolve to the first matching sink; a specific PipeWire sink name (e.g. `bluez_output.AA_BB_CC_DD_EE_FF.1`) targets that exact device. The GM dropdown sends the specific sink name.
           Per-stream routing for all three streams. The GM sends a logical alias;
           audioRoutingService resolves it to an actual PipeWire sink name.
+        - `audio:volume:set` — `{stream: 'video'|'music'|'sound', volume: 0-100}`. Applied to the
+          live PipeWire sink-input when the stream is playing. With NO live sink-input the command
+          still SUCCEEDS: the level is persisted as operator intent, broadcast as `volume:changed`,
+          and applied when that stream's sink-input next appears. Setting a level for a stream that
+          is idle is normal pre-show behaviour and is never an error.
         - `lighting:scene:activate` — `{sceneId: string}` (required, HA entity ID)
         - `lighting:scenes:refresh` — `{}`
 
@@ -2248,11 +2256,13 @@ components:
                   - **health**: `{vlc: {status, message, lastChecked}, music: {...}, ...}` (all 8 services)
                   - **bluetooth**: `{scanning, pairedDevices[], connectedDevices[]}`
                   - **audio**: `{routes, defaultSink, ducking, availableSinks, volumes}`
-                    (each `routes` value is the CONCRETE PipeWire sink name the
-                    stream would be routed to — the configured alias `hdmi` /
-                    `bluetooth` is resolved against `availableSinks`, so a GM
-                    dropdown of sink names can match it directly. An alias with
-                    no matching sink present passes through unresolved.)
+                    (`routes` always lists the three streams video, music and sound.
+                    Each value is the CONCRETE PipeWire sink name the stream would be
+                    routed to — the configured alias `hdmi` / `bluetooth` is resolved
+                    against `availableSinks`, so a GM dropdown of sink names can match
+                    it directly. A stream with no explicit route reports the sink it
+                    will actually use: the resolved `defaultSink`. An alias with no
+                    matching sink present passes through unresolved.)
                   - **lighting**: `{connected, activeScene, scenes[]}`
                   - **sound**: `{playing[]}`
                   - **gameclock**: `{status, elapsed, startTime, totalPausedMs}`
@@ -2509,11 +2519,18 @@ components:
         routes:
           type: object
           description: |
-            Per-stream target, keyed by stream name (video/music/sound). Values are
-            CONCRETE PipeWire sink names resolved from the configured alias
-            (`hdmi`/`bluetooth`) against the current sink list; an alias with no
-            matching sink present passes through unresolved.
-          example: { video: "alsa_output.platform-107c701400.hdmi.hdmi-stereo" }
+            Per-stream target, keyed by stream name. ALWAYS lists all three streams
+            (video, music, sound). Values are CONCRETE PipeWire sink names resolved
+            from the configured alias (`hdmi`/`bluetooth`) against the current sink
+            list; a stream with no explicit route reports the sink it will actually
+            use — the resolved `defaultSink` — rather than being omitted. The value
+            is what the stream will play on: the orchestrator moves each sink-input
+            to its stream's route as it appears. An alias with no matching sink
+            present passes through unresolved.
+          example:
+            video: "alsa_output.platform-107c701400.hdmi.hdmi-stereo"
+            music: "bluez_output.AA_BB_CC_DD_EE_FF.1"
+            sound: "alsa_output.platform-107c701400.hdmi.hdmi-stereo"
         defaultSink: { type: string }
         ducking: { type: object }
         availableSinks: { type: array }
