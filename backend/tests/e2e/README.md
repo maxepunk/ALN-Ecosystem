@@ -84,11 +84,15 @@ without watching the picture, such as `30-full-game-session-multi-device`, stay
 untagged and rely on the `vlc` capability gate.
 
 The harness used to start its own `cvlc --intf dummy` before the orchestrator,
-which then drove that instance. It was measurably unrepresentative (venue
-probes, 2026-09-15): "Playing" reported ~29.5 s after OpenUri with no display
-attached, and no `mpris:length` for an HEVC clip until playback ended, which
-starved `video:progress` and wedged video-driven compound cues. Two instances
-also raced for the `org.mpris.MediaPlayer2.vlc` bus name.
+which then drove that instance, and two instances raced for the
+`org.mpris.MediaPlayer2.vlc` bus name. The flake it was blamed for ("Playing"
+reported ~28-30 s after OpenUri, no `mpris:length` until the clip ended) turned
+out to be a parser defect that hit any instance whose signals arrived in a
+particular order: `DbusSignalParser` completed a dbus-monitor block only when
+the next message header arrived, so the last block of a burst waited for the
+next signal. Fixed 2026-09-15 (structural completion of PropertiesChanged);
+the harness stays VLC-free because the orchestrator's instance is the one
+production runs.
 
 **Needs venue hardware:**
 

@@ -551,15 +551,14 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       // entries and completes (maxAt=1s), and videoQueueService only emits progress
       // once vlcMprisService reports a length > 0.
       //
-      // This step used to be flaky for a harness-only reason: the harness spawned its
-      // own `cvlc --intf dummy` and the orchestrator drove THAT instance. Measured at
-      // the venue on 2026-09-15 — at the bench (no display) it reported "Playing"
-      // ~29.5s after OpenUri, and even with a display it published no `mpris:length`
-      // for an HEVC clip until playback ended, so no progress tick ever arrived and a
-      // short clip finished while the cue was still parked. A single
-      // production-argument instance is fast and complete (0.32s command→playing in
-      // process; `mpris:length` within 1.0s), and the July-18 live show ran this exact
-      // video-driven path end to end.
+      // This step used to be flaky. It was first blamed on the harness's own
+      // `cvlc --intf dummy` instance; the real cause (found at the venue on
+      // 2026-09-15 with a bus capture beside the in-process trace) was
+      // DbusSignalParser completing a dbus-monitor block only when the NEXT
+      // message header arrived, so the Metadata+Playing block (which also carries
+      // `mpris:length`) sat unparsed for ~28 s whenever VLC's TrackList signal
+      // happened to precede it. Fixed by structural completion of
+      // PropertiesChanged; a start now reaches video:started in <0.5 s.
       //
       // The harness no longer spawns VLC (setup/vlc-service.js): this exercises the
       // orchestrator's own instance. e2e-video-compound plays test_30sec.mp4, which

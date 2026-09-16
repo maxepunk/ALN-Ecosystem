@@ -246,21 +246,3 @@ const axiosInstance = axios.create({
 });
 ```
 2. Or use HTTP mode for tests: `await startOrchestrator({ https: false })`
-
-## Next Steps
-
-1. Create additional helpers:
-   - `vlc-service.js` - VLC integration testing
-   - `browser-contexts.js` - Playwright browser management
-   - `websocket-client.js` - WebSocket test client
-
-2. Implement page objects:
-   - `helpers/page-objects/GMScannerPage.js`
-   - `helpers/page-objects/PlayerScannerPage.js`
-   - `helpers/page-objects/ScoreboardPage.js`
-
-3. Create test fixtures:
-   - `fixtures/test-tokens.json`
-   - `fixtures/test-videos/`
-
-See `docs/E2E_TEST_IMPLEMENTATION_PLAN.md` for complete roadmap.
