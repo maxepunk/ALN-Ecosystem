@@ -364,9 +364,11 @@ Fix: structural completion for `PropertiesChanged` (signature `sa{sv}as`, three 
 
 Follow-ups now moot or re-opened: A (engine safety net) stays deferred — its only trigger was this defect; the "HEVC reports no length" artefact was the same defect (the Metadata block carrying `mpris:length` was the stranded one); C2/B unchanged.
 
-### W10 P2 — pidfiles shared by production, E2E and unit tests (found 2026-09-15 18:00:40, in progress)
+### W10 P2 — pidfiles shared by production, E2E and unit tests (found 2026-09-15 18:00:40; DONE)
 
 A unit-test run (`vlcMprisService`/`mprisPlayerBase` suites) executed during the P1 re-run built a REAL `ProcessMonitor` with the real `/tmp/aln-pm-vlc.pid`; `_killOrphan()` read it and `process.kill`ed the E2E orchestrator's live VLC, then overwrote the pidfile with the mocked pid. The same fixed paths are shared by the PM2 production orchestrator and every E2E-spawned orchestrator (which is why the 07d-03 MPD-kill test had to prove ownership from /proc). Running `npm test` on the show box while PM2 is up would kill the show's VLC. Fix: `ALN_PIDFILE_DIR` resolved inside `ProcessMonitor` (default `/tmp`, production unchanged); jest unit/integration setups use a per-run temp dir; the E2E harness uses a per-orchestrator dir and exposes it as `pidFileDir` (07d-03 reads the MPD pidfile from there, ownership proofs kept); CLAUDE.md note.
 
-Remaining sequence: P2 gate → commit → ONE full `npm run test:e2e` on the kit → push both branches → restore show posture.
+P2 landed as two commits: pidfile isolation (`src/utils/pidFile.js`, resolved at use in ProcessMonitor and displayDriver; jest per-run temp dir; E2E per-parallel-slot dir exposed as `pidFileDir`; RV-12's six findings folded in) and the contract-suite process leak: six contract suites call `initializeServices()` in `beforeAll`, which spawns the real Bluetooth `dbus-monitor` and `pactl subscribe`, and nothing stopped them — every jest run left 2–3 of each parented to init. `cleanupInitializedServices()` (existing production cleanups) is now paired in `afterAll` at all seven sites. Definitive gate on the complete tree: backend 2272 unit+contract (112 suites), ratchet ✓ (76 files), integration 342 ✓, zero monitor/VLC processes and zero pidfiles left behind. Noted for the box: `fs.mkdirSync(..., {recursive:true})` under `/proc` never returns on this kernel.
+
+Remaining sequence (owner paused here): ONE full `npm run test:e2e` on the kit → push both branches → restore show posture (PM2 start, `system:reset` of `VENUE-TEST 2026-09-15`, idle loop on TV, Bluetooth sink present, 8 services healthy).
 
