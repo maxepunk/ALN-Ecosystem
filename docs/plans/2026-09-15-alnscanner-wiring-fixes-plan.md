@@ -304,7 +304,7 @@ Then flow 30 ran at the venue with `TEST_LOG_LEVEL=debug` and four new debug-lev
 
 **HEVC length probe (venue, single production-argument instance):** `kai001.mp4` via OpenUri → `mpris:length` = 27.702 s reported within 1.0 s. So today's "length 0 for the whole playback" was ANOTHER artefact of the harness instance (`--intf dummy`, no `-A pulse`, no vout flag), not of HEVC or of production.
 
-**Grounded conclusion for W9:** the E2E harness's own VLC instance is not representative of production: at the bench (no display) it reports "Playing" ~29.5 s late on OpenUri, and even with a display it reports no length until the end of an HEVC clip. Production, and an orchestrator-owned instance under the harness, are fast and complete. Therefore the harness must stop spawning its own VLC (C1's core), and identity-based addressing (C2) is justified only on its own merits (three-worker runs, orphan hijack), not as a flake fix. B stays off the table: no evidence of in-process signal loss anywhere today.
+**Grounded conclusion for W9 (SUPERSEDED — see W10 P1 below; the harness instance was never the cause, it only emitted signals in the order that exposes the parser defect every time):** the E2E harness's own VLC instance is not representative of production: at the bench (no display) it reports "Playing" ~29.5 s late on OpenUri, and even with a display it reports no length until the end of an HEVC clip. Production, and an orchestrator-owned instance under the harness, are fast and complete. Therefore the harness must stop spawning its own VLC (C1's core), and identity-based addressing (C2) is justified only on its own merits (three-worker runs, orphan hijack), not as a flake fix. B stays off the table: no evidence of in-process signal loss anywhere today.
 
 ## W10 — reliability for the next game + a trustworthy E2E suite (sequence agreed 2026-09-15 at the venue)
 
@@ -338,3 +338,35 @@ E2E (07d-04): cold admin panel shows a real sink name for all three streams (gat
 Backend: in the ProcessMonitor `exited` handler, reset `this.state = 'stopped'`, `this.track = null` (and playlist position if tracked), emit `playback:changed` + `track:changed` so the health-change push carries a consistent snapshot; in the `restarted` handler, attempt `checkConnection()` after ~1 s with 3 retries (do not wait for the 15 s revalidation); keep `_setConnected` both directions. Unit: exit → state stopped/track null + events; restart → reconnect attempted within ~1 s.
 Client: `MusicRenderer` — when `connected` is false: stop the progress timer regardless of `state`, use the flag (not a hard-coded class) for `music--connected`, render a visible "Music offline — reconnecting…" line, keep controls disabled; add one stylesheet rule for the offline state / disabled transport (opacity + cursor). Unit: disconnected push stops the timer and shows the line; reconnect push clears it.
 E2E (07d-03): read `/tmp/aln-pm-mpd.pid`, `process.kill` it, expect the panel offline line within 3 s and the transport re-enabled within 10 s without reload.
+
+### W10 — STATUS 2026-09-15 (evening, venue kit)
+
+| Pkg | Result | Commits |
+|-----|--------|---------|
+| C1 | Done. Harness shim; one-VLC invariant with a pre-start zero-VLC poll; capability waits in 22/30; per-spawn output buffers; README. RV-8 fix-forward applied. | parent `1fc9c589` |
+| FA | Done. Effective sink for all three streams; reactive `applyRouting(stream, …, {sinkInputIndex, skipIfOnSinkId})` from `_identifySinkInput` so the claim is true for music/sound too (RV-10 HIGH-1); idle-stream volume persists (`NoSinkInputError`); integration assertions resolve expected sinks from `availableSinks` (they had expected aliases and only passed on a bench with no sinks). | parent `2badc7d5` |
+| FB | Done. Exit handler resets the snapshot (flat cleared playlist — the cue evaluator indexes the payload); 1 s + 3×2 s reconnect after respawn; renderer offline line; E2E kills the real MPD only after proving argv0 and PPid (RV-9). | parent `af1fb56a`, ALNScanner `706ce08`, gitlink `e4db5cc5` |
+
+Gate: backend 2243 unit+contract, ratchet ✓ (two syncHelpers fallback-arm tests added, `e2fa5899`), integration 342 ✓; ALNScanner 1457 + ratchet ✓. Targeted flows on the kit (00, 22, 25, 30, 07d-03 incl. the MPD-kill test, 07d-04, 08): 72 passed, 17 by-design skips, and ONE flake in flow 22 that led to the finding below.
+
+### W10 P1 — the real cause of the "VLC stays stopped ~28–30 s" symptom (found and fixed 2026-09-15, parent `f1e2ddf9`)
+
+With C1 in place the flake appeared on the orchestrator-owned VLC at the venue with the display attached — so it was never the harness instance. An independent `dbus-monitor` capture run beside the E2E, compared with the in-process debug trace for the same sender (:1.2607):
+
+| Hop | Slow start | Fast start |
+|-----|-----------|-----------|
+| Metadata+PlaybackStatus=Playing on the bus | +0.231 s | +0.106 s |
+| Same block seen by `DbusSignalParser` | **+28.274 s** (exactly when the end-of-video Stopped header arrived) | +0.108 s (flushed by a TrackList signal that happened to follow) |
+
+`DbusSignalParser.feedLine()` emitted an accumulated message only when the NEXT message header arrived; `flush()` was never called. dbus-monitor prints each message as a block with no terminator, so the last block of a burst waited for the next signal. Whether it bit depended only on whether VLC's TrackList signal came before or after the Playing block. Two of six debug runs showed `video:started` at +28.4 s and still PASSED (the restore cue fired at video end), so earlier "green" runs hid it; the 30 s `waitForVlcLoaded` budget turned the same delay into a failure roughly one start in four. Every earlier theory (owner filter, debounce, pipe buffering, late VLC emission, "harness unrepresentative") was wrong; the bench reproduced it every time only because that instance always emitted in the slow order.
+
+Fix: structural completion for `PropertiesChanged` (signature `sa{sv}as`, three top-level arguments; quoted values blanked, completion counted only on bare scalar or bare closer lines) plus a 500 ms idle-flush fallback for other members (never for PropertiesChanged, so a chunk-split body is never emitted partially — RV-11 HIGH-1/2); parsers disposed on monitor stop. Tests use verbatim blocks from the venue capture; the venue-order test fails on the old parser. Verification on the kit: flow 22 ×8, slow order present in 6 of 8 starts, all 7 measurable starts ≤0.42 s to `video:started` (median 0.37 s); the eighth was the P2 collision below.
+
+Follow-ups now moot or re-opened: A (engine safety net) stays deferred — its only trigger was this defect; the "HEVC reports no length" artefact was the same defect (the Metadata block carrying `mpris:length` was the stranded one); C2/B unchanged.
+
+### W10 P2 — pidfiles shared by production, E2E and unit tests (found 2026-09-15 18:00:40, in progress)
+
+A unit-test run (`vlcMprisService`/`mprisPlayerBase` suites) executed during the P1 re-run built a REAL `ProcessMonitor` with the real `/tmp/aln-pm-vlc.pid`; `_killOrphan()` read it and `process.kill`ed the E2E orchestrator's live VLC, then overwrote the pidfile with the mocked pid. The same fixed paths are shared by the PM2 production orchestrator and every E2E-spawned orchestrator (which is why the 07d-03 MPD-kill test had to prove ownership from /proc). Running `npm test` on the show box while PM2 is up would kill the show's VLC. Fix: `ALN_PIDFILE_DIR` resolved inside `ProcessMonitor` (default `/tmp`, production unchanged); jest unit/integration setups use a per-run temp dir; the E2E harness uses a per-orchestrator dir and exposes it as `pidFileDir` (07d-03 reads the MPD pidfile from there, ownership proofs kept); CLAUDE.md note.
+
+Remaining sequence: P2 gate → commit → ONE full `npm run test:e2e` on the kit → push both branches → restore show posture.
+
