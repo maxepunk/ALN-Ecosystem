@@ -317,6 +317,35 @@ describe('MprisPlayerBase', () => {
       jest.advanceTimersByTime(60);
       expect(stateChangeSpy).toHaveBeenCalledWith({ state: 'playing' });
     });
+
+    // W10 F-C2 regression: at the venue on 2026-09-15 VLC emitted the
+    // "Playing" block LAST in its start-up burst, with the next signal ~28 s
+    // later at end-of-video. Boundary-only parsing left the state at 'stopped'
+    // for that whole window — the waitForVlcLoaded timeout.
+    it('should reach playing on the venue signal order with nothing following', () => {
+      const {
+        LOOP_STATUS, CAN_PLAY, TRACK_LIST, METADATA_PLAYING,
+      } = require('../../helpers/dbus-monitor-samples');
+
+      const player = createTestPlayer();
+      const stateChangeSpy = jest.fn();
+      player.on('playback:changed', stateChangeSpy);
+
+      player.startPlaybackMonitor();
+      const proc = spawn.mock.results[0].value;
+
+      for (const block of [LOOP_STATUS, CAN_PLAY, TRACK_LIST, METADATA_PLAYING]) {
+        for (const line of block) {
+          proc.stdout.emit('data', line + '\n');
+        }
+      }
+
+      // No further input at all — only the debounce window elapses
+      jest.advanceTimersByTime(60);
+
+      expect(stateChangeSpy).toHaveBeenCalledWith({ state: 'playing' });
+      expect(player.state).toBe('playing');
+    });
   });
 
   describe('stopPlaybackMonitor()', () => {

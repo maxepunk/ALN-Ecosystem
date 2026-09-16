@@ -248,6 +248,8 @@ class MprisPlayerBase extends EventEmitter {
       this._playbackMonitor = null;
     }
     if (this._mprisSignalParser) {
+      // Cancel the parser's idle-flush timer and drop any partial message
+      this._mprisSignalParser.dispose();
       this._mprisSignalParser = null;
     }
   }

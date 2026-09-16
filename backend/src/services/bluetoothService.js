@@ -553,6 +553,8 @@ class BluetoothService extends EventEmitter {
       this._deviceMonitor = null;
     }
     if (this._deviceSignalParser) {
+      // Cancel the parser's idle-flush timer and drop any partial message
+      this._deviceSignalParser.dispose();
       this._deviceSignalParser = null;
     }
   }

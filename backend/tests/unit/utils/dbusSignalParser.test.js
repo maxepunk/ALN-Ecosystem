@@ -363,4 +363,261 @@ describe('DbusSignalParser', () => {
       expect(signals[2].member).toBe('Third');
     });
   });
+  // ─────────────────────────────────────────────────────────────────────────
+  // W10 F-C2: a message must complete without waiting for the NEXT message.
+  //
+  // dbus-monitor writes each message as a multi-line block with no terminator.
+  // Boundary-only completion meant the LAST message in a burst sat unparsed
+  // until the next signal arrived — at the venue on 2026-09-15 the
+  // "PlaybackStatus=Playing" block reached the bus at +0.231 s but was not
+  // parsed in-process until +28.274 s, when the end-of-video "Stopped" header
+  // arrived. That is the ~28-30 s waitForVlcLoaded timeout.
+  // ─────────────────────────────────────────────────────────────────────────
+  describe('structural completion (PropertiesChanged)', () => {
+    const {
+      NAME_ACQUIRED,
+      LOOP_STATUS,
+      CAN_PLAY,
+      METADATA_PLAYING,
+    } = require('../../helpers/dbus-monitor-samples');
+
+    it('should emit a real Metadata+PlaybackStatus block with nothing following it', () => {
+      const signals = [];
+      parser.on('signal', (s) => signals.push(s));
+
+      for (const line of METADATA_PLAYING) parser.feedLine(line);
+
+      // No following header, no flush() — the block is structurally complete.
+      expect(signals).toHaveLength(1);
+      expect(signals[0].changedInterface).toBe('org.mpris.MediaPlayer2.Player');
+      expect(signals[0].properties.PlaybackStatus).toBe('Playing');
+      expect(signals[0].sender).toBe(':1.2607');
+    });
+
+    it('should emit on the final top-level line, not one line early', () => {
+      const signals = [];
+      parser.on('signal', (s) => signals.push(s));
+
+      for (const line of METADATA_PLAYING.slice(0, -1)) parser.feedLine(line);
+      expect(signals).toHaveLength(0);
+
+      parser.feedLine(METADATA_PLAYING[METADATA_PLAYING.length - 1]);
+      expect(signals).toHaveLength(1);
+    });
+
+    it('should emit a small real block (LoopStatus) with nothing following it', () => {
+      const signals = [];
+      parser.on('signal', (s) => signals.push(s));
+
+      for (const line of LOOP_STATUS) parser.feedLine(line);
+
+      expect(signals).toHaveLength(1);
+      expect(signals[0].properties).toEqual({ LoopStatus: 'None' });
+    });
+
+    it('should keep the raw body intact when completing structurally', () => {
+      const signals = [];
+      parser.on('signal', (s) => signals.push(s));
+
+      for (const line of METADATA_PLAYING) parser.feedLine(line);
+
+      expect(signals[0].raw).toContain('xesam:url');
+      expect(signals[0].raw).toContain('kai001.mp4');
+      expect(signals[0].raw).toContain('mpris:length');
+    });
+
+    it('should emit two back-to-back blocks in order with no duplicates', () => {
+      const signals = [];
+      parser.on('signal', (s) => signals.push(s));
+
+      for (const line of LOOP_STATUS) parser.feedLine(line);
+      expect(signals).toHaveLength(1);
+
+      for (const line of CAN_PLAY) parser.feedLine(line);
+      expect(signals).toHaveLength(2);
+
+      // The arrival of the next header must NOT re-emit an already-emitted block
+      for (const line of METADATA_PLAYING) parser.feedLine(line);
+      expect(signals).toHaveLength(3);
+
+      parser.flush();
+      expect(signals).toHaveLength(3);
+      expect(signals[0].properties.LoopStatus).toBe('None');
+      expect(signals[1].properties.CanPlay).toBe(true);
+      expect(signals[2].properties.PlaybackStatus).toBe('Playing');
+    });
+
+    // MED: dbus-monitor does not escape embedded quotes. A value that re-pairs
+    // the quote match must not leak its closers into the nesting count.
+    it('should not complete early on a string value containing quotes and closers', () => {
+      const signals = [];
+      parser.on('signal', (s) => signals.push(s));
+
+      // Real Metadata block with one extra entry whose title is adversarial
+      const titleEntry = [
+        '                dict entry(',
+        '                   string "xesam:title"',
+        '                   variant                      string "Take 5" ]]) mix"',
+        '                )',
+      ];
+      const insertAt = METADATA_PLAYING.findIndex((l) => l.includes('"xesam:url"')) - 1;
+      const lines = [
+        ...METADATA_PLAYING.slice(0, insertAt),
+        ...titleEntry,
+        ...METADATA_PLAYING.slice(insertAt),
+      ];
+
+      for (const line of lines) parser.feedLine(line);
+
+      expect(signals).toHaveLength(1);
+      expect(signals[0].properties.PlaybackStatus).toBe('Playing');
+      expect(signals[0].raw).toContain('Take 5');
+    });
+
+    it('should not complete early on a file path containing brackets', () => {
+      const signals = [];
+      parser.on('signal', (s) => signals.push(s));
+
+      const lines = METADATA_PLAYING.map((l) =>
+        l.replace('kai001.mp4', 'kai001 [take ]2)].mp4'));
+
+      for (const line of lines) parser.feedLine(line);
+
+      expect(signals).toHaveLength(1);
+      expect(signals[0].properties.PlaybackStatus).toBe('Playing');
+    });
+
+    it('should not structurally complete a non-PropertiesChanged signal', () => {
+      const signals = [];
+      parser.on('signal', (s) => signals.push(s));
+
+      for (const line of NAME_ACQUIRED) parser.feedLine(line);
+
+      expect(signals).toHaveLength(0);
+      parser.flush();
+      expect(signals).toHaveLength(1);
+      expect(signals[0].member).toBe('NameAcquired');
+    });
+  });
+
+  describe('idle flush fallback', () => {
+    const {
+      NAME_ACQUIRED,
+      METADATA_PLAYING,
+    } = require('../../helpers/dbus-monitor-samples');
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should flush a non-PropertiesChanged signal after the idle interval', () => {
+      const p = new DbusSignalParser({ idleFlushMs: 100 });
+      const signals = [];
+      p.on('signal', (s) => signals.push(s));
+
+      for (const line of NAME_ACQUIRED) p.feedLine(line);
+      expect(signals).toHaveLength(0);
+
+      jest.advanceTimersByTime(99);
+      expect(signals).toHaveLength(0);
+
+      jest.advanceTimersByTime(1);
+      expect(signals).toHaveLength(1);
+      expect(signals[0].member).toBe('NameAcquired');
+    });
+
+    // HIGH-1: idle-flushing a partial PropertiesChanged block would emit it
+    // without PlaybackStatus AND strand the remaining lines, which feedLine
+    // drops once the header has been consumed. Worse than the original bug.
+    it('should never idle-flush an incomplete PropertiesChanged block', () => {
+      const p = new DbusSignalParser({ idleFlushMs: 100 });
+      const signals = [];
+      p.on('signal', (s) => signals.push(s));
+
+      const half = METADATA_PLAYING.slice(0, Math.floor(METADATA_PLAYING.length / 2));
+      for (const line of half) p.feedLine(line);
+
+      jest.advanceTimersByTime(10000);
+      expect(signals).toHaveLength(0);
+
+      // Still delivered at the next message boundary (pre-existing behaviour)
+      p.feedLine(NAME_ACQUIRED[0]);
+      expect(signals).toHaveLength(1);
+      expect(signals[0].member).toBe('PropertiesChanged');
+    });
+
+    // HIGH-1: a pipe-chunk split mid-block must not cost us the tail
+    it('should emit one complete signal when a block is split by an idle gap', () => {
+      const p = new DbusSignalParser({ idleFlushMs: 100 });
+      const signals = [];
+      p.on('signal', (s) => signals.push(s));
+
+      for (const line of METADATA_PLAYING.slice(0, 20)) p.feedLine(line);
+
+      jest.advanceTimersByTime(5000);
+      expect(signals).toHaveLength(0);
+
+      for (const line of METADATA_PLAYING.slice(20)) p.feedLine(line);
+
+      expect(signals).toHaveLength(1);
+      expect(signals[0].properties.PlaybackStatus).toBe('Playing');
+      expect(signals[0].raw).toContain('kai001.mp4');
+    });
+
+    it('should re-arm the idle timer on each new line', () => {
+      const p = new DbusSignalParser({ idleFlushMs: 100 });
+      const signals = [];
+      p.on('signal', (s) => signals.push(s));
+
+      p.feedLine(NAME_ACQUIRED[0]);
+      jest.advanceTimersByTime(80);
+      p.feedLine(NAME_ACQUIRED[1]);
+      jest.advanceTimersByTime(80);
+      expect(signals).toHaveLength(0);
+
+      jest.advanceTimersByTime(20);
+      expect(signals).toHaveLength(1);
+    });
+
+    it('should not fire the idle timer after a structural emit', () => {
+      const p = new DbusSignalParser({ idleFlushMs: 100 });
+      const signals = [];
+      p.on('signal', (s) => signals.push(s));
+
+      for (const line of METADATA_PLAYING) p.feedLine(line);
+      expect(signals).toHaveLength(1);
+
+      jest.advanceTimersByTime(1000);
+      expect(signals).toHaveLength(1);
+    });
+
+    it('dispose() should cancel a pending idle flush', () => {
+      const p = new DbusSignalParser({ idleFlushMs: 100 });
+      const signals = [];
+      p.on('signal', (s) => signals.push(s));
+
+      for (const line of NAME_ACQUIRED) p.feedLine(line);
+      p.dispose();
+
+      jest.advanceTimersByTime(1000);
+      expect(signals).toHaveLength(0);
+    });
+
+    it('should default the idle interval to 500ms', () => {
+      const p = new DbusSignalParser();
+      const signals = [];
+      p.on('signal', (s) => signals.push(s));
+
+      for (const line of NAME_ACQUIRED) p.feedLine(line);
+      jest.advanceTimersByTime(499);
+      expect(signals).toHaveLength(0);
+
+      jest.advanceTimersByTime(1);
+      expect(signals).toHaveLength(1);
+    });
+  });
 });
