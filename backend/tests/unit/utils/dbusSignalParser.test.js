@@ -619,5 +619,37 @@ describe('DbusSignalParser', () => {
       jest.advanceTimersByTime(1);
       expect(signals).toHaveLength(1);
     });
+
+    it('should never arm the idle timer when idleFlushMs is 0 (flush() still works)', () => {
+      const p = new DbusSignalParser({ idleFlushMs: 0 });
+      const signals = [];
+      p.on('signal', (s) => signals.push(s));
+
+      for (const line of NAME_ACQUIRED) p.feedLine(line);
+      jest.advanceTimersByTime(10000);
+      expect(signals).toHaveLength(0);
+
+      p.flush();
+      expect(signals).toHaveLength(1);
+    });
+
+    it('should ignore whitespace-only body lines when counting PropertiesChanged arguments', () => {
+      const { LOOP_STATUS } = require('../../helpers/dbus-monitor-samples');
+      const p = new DbusSignalParser({ idleFlushMs: 100 });
+      const signals = [];
+      p.on('signal', (s) => signals.push(s));
+
+      // A blank line between arguments must not count as an argument, so the
+      // block still completes exactly on its real final line — not one early.
+      const [header, ...body] = LOOP_STATUS;
+      p.feedLine(header);
+      p.feedLine(body[0]);
+      p.feedLine('   ');
+      for (const line of body.slice(1, -1)) p.feedLine(line);
+      expect(signals).toHaveLength(0);
+      p.feedLine(body[body.length - 1]);
+      expect(signals).toHaveLength(1);
+      expect(signals[0].properties.LoopStatus).toBeDefined();
+    });
   });
 });
