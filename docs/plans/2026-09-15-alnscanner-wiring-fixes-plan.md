@@ -370,5 +370,17 @@ A unit-test run (`vlcMprisService`/`mprisPlayerBase` suites) executed during the
 
 P2 landed as two commits: pidfile isolation (`src/utils/pidFile.js`, resolved at use in ProcessMonitor and displayDriver; jest per-run temp dir; E2E per-parallel-slot dir exposed as `pidFileDir`; RV-12's six findings folded in) and the contract-suite process leak: six contract suites call `initializeServices()` in `beforeAll`, which spawns the real Bluetooth `dbus-monitor` and `pactl subscribe`, and nothing stopped them — every jest run left 2–3 of each parented to init. `cleanupInitializedServices()` (existing production cleanups) is now paired in `afterAll` at all seven sites. Definitive gate on the complete tree: backend 2272 unit+contract (112 suites), ratchet ✓ (76 files), integration 342 ✓, zero monitor/VLC processes and zero pidfiles left behind. Noted for the box: `fs.mkdirSync(..., {recursive:true})` under `/proc` never returns on this kernel.
 
-Remaining sequence (owner paused here): ONE full `npm run test:e2e` on the kit → push both branches → restore show posture (PM2 start, `system:reset` of `VENUE-TEST 2026-09-15`, idle loop on TV, Bluetooth sink present, 8 services healthy).
+### W10 P3 — a leaked child process fails its test file (2026-09-18; DONE)
+
+Enforcement for the P2 class of leak: a custom jest environment runs a `/proc` scan for real children of the worker in `teardown()` (after every hook, including a root-level `afterAll`), waits ~1 s for anything already told to stop, then SIGKILLs and fails the file naming `pid cmdline`. No module registry (immune to `jest.resetModules()`), no `afterAll` (immune to hook ordering). RV-13 drove the redesign from a registry+afterAll first draft.
+
+**Incident 2026-09-18 01:31.** The first draft's killing function accepted an owner pid and a test called it with 1; every user-owned child of init (desktop session, terminal, user systemd) was SIGKILLed and the box dropped to the login screen while the owner was away. The function now takes no arguments (asserted), re-verifies parentage before each kill, and the lesson is a standing memory rule. Nothing was lost; the box came back clean on re-login.
+
+**What the guard caught on first run:** 21 integration suites plus the display-events contract suite left a kiosk Chromium on the HDMI display pointed at port 3000 — `resetAllServices()` → `performSystemReset()` → `displayControlService.init()` pre-launches the scoreboard kiosk, and no teardown stopped it (before P2, the next orchestrator start reaped it by accident). Both shared teardown helpers now call `displayDriver.cleanup()`. Two further "leaks" were children mid-exit at teardown → the grace period.
+
+Gate on the final tree: backend 2281 unit+contract (113 suites), ratchet ✓, integration 342 ✓, zero kiosk/monitor/pactl/sleep processes before and after. Parent `13601519`..HEAD, ALNScanner `706ce08`, all local.
+
+Open, low priority: integration runs still launch a real kiosk Chromium per file (now cleaned up); a display-driver "inert" switch for boxes without a display would cut ~5 s per file and keep the show TV untouched during tests — owner's call, not started.
+
+Remaining sequence (owner check-in here): ONE full `npm run test:e2e` on the kit → push both branches → restore show posture (PM2 start, `system:reset` of `VENUE-TEST 2026-09-15`, idle loop on TV, Bluetooth sink present, 8 services healthy).
 
