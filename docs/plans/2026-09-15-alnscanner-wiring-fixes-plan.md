@@ -384,5 +384,11 @@ Gate on the final tree: backend 2281 unit+contract (113 suites), ratchet ✓, in
 
 Owner chose to close the kiosk exposure rather than only clean it up: the driver reads `DISPLAY_DRIVER` at call time and, when `off`, launches nothing and touches nothing on the display (one warn at first use). `jest.config.base.js` sets it off for unit, contract and integration; the driver's own tests force it on; E2E and production leave it unset. Integration wall time 86 s (was ~5 min). Gate: 2287 unit+contract, ratchet ✓, 342 integration, nothing left running.
 
-Remaining sequence (owner check-in here): ONE full `npm run test:e2e` on the kit → push both branches → restore show posture (PM2 start, `system:reset` of `VENUE-TEST 2026-09-15`, idle loop on TV, Bluetooth sink present, 8 services healthy).
+### W10 — CLOSED 2026-09-18
+
+Full `npm run test:e2e` on the venue kit (one worker, both browser projects, all tiers incl. `@hardware`): **152 passed, 2 flaky, 62 skipped, 47 min**, nothing left running. Pushed: ALNScanner `e4bfe8a..706ce08`, parent `3acab7a0..03747f11`, both `production-2026-07`. Show posture restored: PM2 orchestrator online, idle loop playing, scoreboard kiosk on :3000, no session, 8/8 healthy, HDMI + W-KING sinks.
+
+The two flaky entries are one test-isolation defect in flow 21 ("video alert displays for minimum 5 seconds", both projects): it rescans the same video token seconds after the previous test started it, gets the deliberate 409 "Video already playing", so no alert appears; the retry on a fresh orchestrator passes. Fix in the test (wait for the previous video to end or stop it). The 62 skips are project splits, designed-degradation tests (all services were healthy) and group-completion parity tests — the production token pack has no group with two or more tokens, so group-completion scoring has no E2E coverage on real content.
+
+**Follow-ups (next session, in this order):** Notion token sync + ESP32 asset update per DEPLOYMENT_GUIDE (raise the missing completable group); flow 21 isolation fix; A/C2/B remain deferred as recorded above.
 
