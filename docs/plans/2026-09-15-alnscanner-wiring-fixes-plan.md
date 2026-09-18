@@ -380,7 +380,9 @@ Enforcement for the P2 class of leak: a custom jest environment runs a `/proc` s
 
 Gate on the final tree: backend 2281 unit+contract (113 suites), ratchet ✓, integration 342 ✓, zero kiosk/monitor/pactl/sleep processes before and after. Parent `13601519`..HEAD, ALNScanner `706ce08`, all local.
 
-Open, low priority: integration runs still launch a real kiosk Chromium per file (now cleaned up); a display-driver "inert" switch for boxes without a display would cut ~5 s per file and keep the show TV untouched during tests — owner's call, not started.
+### W10 P4 — `DISPLAY_DRIVER=off` (2026-09-18; DONE)
+
+Owner chose to close the kiosk exposure rather than only clean it up: the driver reads `DISPLAY_DRIVER` at call time and, when `off`, launches nothing and touches nothing on the display (one warn at first use). `jest.config.base.js` sets it off for unit, contract and integration; the driver's own tests force it on; E2E and production leave it unset. Integration wall time 86 s (was ~5 min). Gate: 2287 unit+contract, ratchet ✓, 342 integration, nothing left running.
 
 Remaining sequence (owner check-in here): ONE full `npm run test:e2e` on the kit → push both branches → restore show posture (PM2 start, `system:reset` of `VENUE-TEST 2026-09-15`, idle loop on TV, Bluetooth sink present, 8 services healthy).
 
