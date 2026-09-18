@@ -39,6 +39,22 @@ function pidFilePath() {
   return resolvePidFile(PID_FILE_NAME);
 }
 
+// DISPLAY_DRIVER=off makes every entry point an inert no-op: nothing is
+// launched, nothing on the display is touched. For boxes with no display and
+// for the jest layers (set in jest.config.base.js; the Playwright harness leaves
+// it on because flows 08/25 test the real kiosk). Read at call time so a test
+// can flip it. Warned once per process so an accidental production setting is
+// visible at first use.
+let disabledWarned = false;
+function isDisabled() {
+  const disabled = String(process.env.DISPLAY_DRIVER || '').toLowerCase() === 'off';
+  if (disabled && !disabledWarned) {
+    disabledWarned = true;
+    logger.warn('[DisplayDriver] Disabled by DISPLAY_DRIVER=off — scoreboard kiosk will not be launched or shown');
+  }
+  return disabled;
+}
+
 // Configuration
 const DISPLAY = process.env.DISPLAY || ':0';
 const ENV = { ...process.env, DISPLAY };
@@ -209,6 +225,7 @@ async function _doLaunch() {
  * @returns {Promise<boolean>} True if Chromium process is alive
  */
 async function ensureBrowserRunning() {
+  if (isDisabled()) return false;
   if (browserProcess && !browserProcess.killed) {
     return true;
   }
@@ -230,6 +247,7 @@ async function ensureBrowserRunning() {
  * @returns {Promise<boolean>} True on success
  */
 async function showScoreboard() {
+  if (isDisabled()) { visible = false; return false; }
   const running = await ensureBrowserRunning();
   if (!running) return false;
 
@@ -261,6 +279,7 @@ async function showScoreboard() {
  * @returns {Promise<boolean>} Always true (non-fatal hide)
  */
 async function hideScoreboard() {
+  if (isDisabled()) { visible = false; return true; }
   const wid = await _findScoreboardWindow();
   if (!wid) {
     visible = false;

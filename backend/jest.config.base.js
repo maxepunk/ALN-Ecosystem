@@ -24,6 +24,15 @@ const pathBase = require('path');
 // Set here (not in a setup file) so it lands before ANY module loads and is
 // inherited by every forked jest worker, matching how ENABLE_VIDEO_PLAYBACK and
 // HOME_ASSISTANT_TOKEN are handled below. Removed in jest.globalTeardown.js.
+// The scoreboard kiosk Chromium is a real browser on the real HDMI display.
+// No unit, contract or integration assertion looks at it (the E2E flows 08 and
+// 25 do, and the Playwright harness does not load this config), so keep the
+// display driver inert under jest: no launch, no xdotool/wmctrl against the
+// show display, ~5 s saved per file that re-inits display control.
+if (!process.env.DISPLAY_DRIVER) {
+  process.env.DISPLAY_DRIVER = 'off';
+}
+
 if (!process.env.ALN_PIDFILE_DIR) {
   process.env.ALN_PIDFILE_DIR = fsBase.mkdtempSync(pathBase.join(osBase.tmpdir(), 'aln-jest-'));
 }

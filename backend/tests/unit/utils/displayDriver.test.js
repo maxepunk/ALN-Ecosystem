@@ -42,6 +42,9 @@ let displayDriver;
 beforeEach(() => {
   jest.resetModules();
   jest.clearAllMocks();
+  // jest.config.base.js turns the driver off for every jest layer; these tests
+  // exercise the real launch/show/hide paths (child_process is mocked).
+  process.env.DISPLAY_DRIVER = 'on';
   displayDriver = require('../../../src/utils/displayDriver');
 });
 
@@ -774,5 +777,62 @@ describe('displayDriver — PID-file write guard', () => {
       (c) => typeof c[0] === 'string' && c[0].includes('aln-pm-')
     );
     expect(pidWrites).toHaveLength(0);
+  });
+});
+
+describe('displayDriver — DISPLAY_DRIVER=off (no display / test layers)', () => {
+  // Read at call time, so a test can flip it without re-requiring the module.
+  beforeEach(() => { process.env.DISPLAY_DRIVER = 'off'; });
+  afterEach(() => { process.env.DISPLAY_DRIVER = 'on'; });
+
+  test('ensureBrowserRunning() resolves false and never spawns', async () => {
+    const { spawn } = require('child_process');
+    await expect(displayDriver.ensureBrowserRunning()).resolves.toBe(false);
+    expect(spawn).not.toHaveBeenCalled();
+  });
+
+  test('showScoreboard() resolves false without touching the display', async () => {
+    const { spawn, execFile } = require('child_process');
+    await expect(displayDriver.showScoreboard()).resolves.toBe(false);
+    expect(spawn).not.toHaveBeenCalled();
+    expect(execFile).not.toHaveBeenCalled();
+    expect(displayDriver.isScoreboardVisible()).toBe(false);
+  });
+
+  test('hideScoreboard() resolves true without touching the display', async () => {
+    const { execFile } = require('child_process');
+    await expect(displayDriver.hideScoreboard()).resolves.toBe(true);
+    expect(execFile).not.toHaveBeenCalled();
+  });
+
+  test('cleanup() is a no-op', async () => {
+    const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+    await expect(displayDriver.cleanup()).resolves.toBeUndefined();
+    expect(killSpy).not.toHaveBeenCalled();
+    killSpy.mockRestore();
+  });
+
+  test('warns exactly once that the driver is disabled', async () => {
+    const logger = require('../../../src/utils/logger');
+    const warnSpy = jest.spyOn(logger, 'warn');
+    await displayDriver.ensureBrowserRunning();
+    await displayDriver.showScoreboard();
+    await displayDriver.hideScoreboard();
+    const disabledWarnings = warnSpy.mock.calls.filter(([msg]) => /DISPLAY_DRIVER=off/.test(msg));
+    expect(disabledWarnings).toHaveLength(1);
+    warnSpy.mockRestore();
+  });
+
+  test('any value other than "off" keeps the driver enabled', async () => {
+    const { spawn, execFile } = require('child_process');
+    process.env.DISPLAY_DRIVER = 'on';
+    const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+    spawn.mockReturnValue(mockProc);
+    execFile.mockImplementation((cmd, args, opts, cb) => {
+      if (typeof opts === 'function') { cb = opts; }
+      cb(null, '', '');
+    });
+    await expect(displayDriver.ensureBrowserRunning()).resolves.toBe(true);
+    expect(spawn).toHaveBeenCalledTimes(1);
   });
 });
