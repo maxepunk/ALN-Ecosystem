@@ -67,4 +67,10 @@ if (path.basename(process.env.ALN_PIDFILE_DIR).startsWith(WORKER_FALLBACK_PREFIX
   });
 }
 
+// The leaked-child guard deliberately does NOT live here: an afterAll in a setup
+// file is declared before the test file's own root-level afterAll, and circus
+// runs them in that order, so it would flag a file before its cleanup ran. It
+// runs in the test environment's teardown instead — see
+// tests/helpers/jest-environment-guarded.js.
+
 // Nothing else here on purpose — see the isolation strategy above.

@@ -250,6 +250,11 @@ async function cleanupIntegrationTestServer(context) {
   const musicService = require('../../src/services/musicService');
   const vlcService = require('../../src/services/vlcMprisService');
 
+  // performSystemReset() (via resetAllServices) re-inits displayControlService,
+  // which pre-launches the scoreboard kiosk Chromium. Kill it with the production
+  // shutdown path or it outlives the test file on the HDMI display.
+  await require('../../src/utils/displayDriver').cleanup();
+
   await sessionService.reset();
   await transactionService.reset();
   await videoQueueService.reset();

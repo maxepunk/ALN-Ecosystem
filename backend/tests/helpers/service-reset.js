@@ -327,7 +327,8 @@ async function resetAllServicesForTesting(io, services, options = {}) {
  *
  * `src/app.js` initializeServices() calls `bluetoothService.init()` and
  * `audioRoutingService.init()`, which start REAL ProcessMonitor children:
- * `dbus-monitor --system ... sender='org.bluez'` and `pactl subscribe`. The
+ * `dbus-monitor --system ... sender='org.bluez'` and `pactl subscribe`, plus the
+ * scoreboard kiosk Chromium via displayControlService.init(). The
  * contract suites call initializeServices() in beforeAll and never stop them,
  * so every `npx jest` run reparented 2-3 of each to init (PPid 1) and left them
  * running on the box for good. `resetAllServices()` does not help — it only
@@ -343,11 +344,17 @@ async function resetAllServicesForTesting(io, services, options = {}) {
  * Idempotent and safe when init() never ran — both cleanups no-op on a null
  * monitor.
  */
-function cleanupInitializedServices() {
+async function cleanupInitializedServices() {
   require('../../src/services/bluetoothService').cleanup();
   require('../../src/services/audioRoutingService').cleanup();
   // The 15s health revalidation timer is started by initializeServices() too.
   require('../../src/services/serviceHealthRegistry').stopRevalidation();
+  // displayControlService.init() (called by initializeServices() AND by
+  // performSystemReset(), i.e. by resetAllServices() below) pre-launches the
+  // scoreboard kiosk Chromium on the HDMI display. It is not a ProcessMonitor
+  // child, so only displayDriver.cleanup() (the production shutdown path) stops
+  // it. Found by the leaked-child guard on 2026-09-18 across 22 suites.
+  await require('../../src/utils/displayDriver').cleanup();
 }
 
 /**

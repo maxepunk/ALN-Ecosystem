@@ -67,8 +67,12 @@ if (!process.env.ENABLE_AUDIO_WIRES) {
 }
 
 module.exports = {
-  // Test environment
-  testEnvironment: 'node',
+  // Test environment — node, plus a leaked-child check in its teardown().
+  // Teardown runs after every hook a test file declared (including its own
+  // root-level afterAll), which an afterAll in jest.setup.js cannot: circus runs
+  // afterAll hooks in declaration order and setup files are declared first.
+  // See tests/helpers/jest-environment-guarded.js.
+  testEnvironment: '<rootDir>/tests/helpers/jest-environment-guarded.js',
 
   // Transformation
   transform: {
