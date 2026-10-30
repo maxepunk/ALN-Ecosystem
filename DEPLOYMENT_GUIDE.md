@@ -328,7 +328,7 @@ the template have an entry below.
 
 Two keys the machine needs, `DBUS_SESSION_BUS_ADDRESS` and
 `XDG_RUNTIME_DIR`, sit in the template commented out
-(`backend/.env.example:178-179`). Set them by hand. They have their own
+(`backend/.env.example:179-180`). Set them by hand. They have their own
 subsection under "Display / Kiosk".
 
 #### Environment Variables Explained
@@ -490,7 +490,7 @@ VLC is controlled via **D-Bus MPRIS** (`org.mpris.MediaPlayer2.vlc`) — there i
 ##### Session bus and runtime directory (commented out in the template, set them by hand)
 
 The template carries both keys, commented out
-(`backend/.env.example:178-179`), and you set them by hand. The engine
+(`backend/.env.example:179-180`), and you set them by hand. The engine
 sets neither: a grep of `backend/src` for either name finds nothing.
 Every `pactl`, `dbus-send` and `dbus-monitor` call the orchestrator
 makes inherits them from the process environment, and PM2 freezes that
