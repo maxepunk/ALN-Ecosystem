@@ -195,9 +195,10 @@ absent); the repair is bounded (Appendix C) and is the first unit
 
 **Show-ready.** The state in which deploying for ALN is a live
 choice. Gate (ratified, Q5): (1) hardware-proven; (2) the hardening
-block and the truth sweep landed *(under revision 2026-10-30, owner:
-the sweep's charter is retired and the hardening pieces wait for the
-architecture pass, which restates this condition; `CURRENT-STATE.md`
+block and the truth sweep landed *(superseded 2026-10-30, owner: the
+sweep's charter is retired, the hardening pieces are rebuilt inside
+the architecture pass, and the pass's phase 2 takes this slot; the
+pass's roadmap revision restates the condition; `CURRENT-STATE.md`
 §0)*; (3) one full venue rehearsal done
 (§6, Stage C — an off-day machine swap, already defined as a full
 cutover rehearsal including the swap back); (4) the owner has

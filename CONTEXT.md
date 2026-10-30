@@ -331,10 +331,13 @@ you intend.
 - **Held item.** A cue or video that could not run because a needed
   service was down or a video was already playing. The engine parks it
   and tells the GM, who can release or discard it. Nothing is silently
-  dropped. Expiry differs by kind today: a held cue auto-discards
-  after 10 seconds (`heldItemsStore`), while a held video has no
-  expiry and waits for the GM. `videoQueueService` keeps its own
-  separate hold list; unifying the two is backlog.
+  dropped. Expiry differs by kind today: a cue held because a video
+  was already playing auto-discards after 10 seconds; a cue held
+  because a service was down, and every held video, has no expiry and
+  waits for the GM (`cueEngineService.js:751`, `:861`; corrected
+  2026-10-30 from "a held cue auto-discards after 10 seconds").
+  `videoQueueService` keeps its own separate hold list; unifying the
+  two is backlog.
 - **Dormant vs fault.** The health distinction from the kit model.
   *Dormant* means a service has no equipment configured tonight, on
   purpose. That is normal and must never show as an error, because
@@ -668,6 +671,12 @@ the GM scanner, and a game's own post-show tooling)
   toy pack. **Adoptable** — a stranger can stand the platform up and
   learn it. The gates live in the roadmap; deployment and sharing
   decisions are made AT states, not at phase boundaries.
+- **Architecture pass.** The whole-engine program that turns the
+  lessons of blue's run and the needs of the planned capabilities into
+  the engine's architecture and interfaces. Phase 1 decides the shared
+  rules and revises the roadmap. Phase 2 changes the engine to follow
+  them, each rule proven by a test. (Owner-ratified wording,
+  2026-10-30; decision record: `docs/plans/CURRENT-STATE.md` §0.)
 - **Truth sweep.** The roadmap's Block 3 as chartered on 2026-09-05:
   audit the routes by which service status reaches the GM's admin
   panel, and fix each false display with a rig test per fix. The

@@ -11,7 +11,7 @@ before acting.
   defines the whole-engine architecture pass. Its brief:
   `docs/plans/briefs/2026-10-30-architecture-pass-kickoff.md`. Nothing
   is built before that session ends. In progress since 2026-10-30;
-  rounds 1 and 2 are answered. Working log (git-ignored):
+  rounds 1 to 3 are answered. Working log (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
 - **Decisions so far (owner, 2026-10-30):**
   1. The architecture pass is the next unit. The paused hardening
@@ -50,14 +50,34 @@ before acting.
      every screen. Its census and five recorded desync bugs become
      evidence for the pass. `ROADMAP.md` §3, §4 and §10.1 and
      `CONTEXT.md` §7 carry notes.
-  - Open in round 3: when the engine code changes (the owner asked why
-    the pass changes no code; the roadmap must say when the
-    architectural work happens); how blue's fixes reveal the problem
-    areas of today's architecture (the owner's meaning of the brief's
-    question 6: an evidence method, not a process for future fixes);
-    the "architecture pass" glossary entry, which follows the first;
-    the seventh question's wording. After the code map: the method,
-    the test rig, prototypes, and what ends the pass.
+  7. The pass is one program in two phases (round 3, option c).
+     Phase 1 decides the shared rules for the whole engine together,
+     with throwaway prototypes allowed, and ends with the new roadmap.
+     Phase 2 changes the engine to follow the rules, one area at a
+     time, as the first work in that roadmap, before capture, preview
+     and phones; it takes the show-ready gate's second condition
+     (`ROADMAP.md` §3 note). Each area gets its detailed design just
+     before it is built and starts with its proof test failing on
+     today's engine. The remaining hardening pieces and the sweep's
+     purpose are rebuilt inside phase 2. The pass ends when every
+     rule's test passes on the rig. `CONTEXT.md` §7 has the
+     "architecture pass" entry.
+  8. Blue's fixes and unfixed findings are evidence (round 3; the
+     owner's meaning of the brief's question 6). For each: the problem
+     area, the design cause, every other place with that cause, the
+     design choice that removes it, and the proving test. Fixes that
+     share a cause become one design decision.
+  9. The seventh question (round 3): "does each component receive
+     what its role needs, and no more?", starting from the settled
+     roles: player scanners (web and ESP32, the same functions) show
+     token content and report scans, with no scoring and no live feed;
+     the GM scanner is the command center; the scoreboards show the
+     public results.
+  - Open in round 4: phase 1's outputs; two more questions from the
+    code map (how a copy may be updated and how old it is; whether a
+    reconnect snapshot matches the live update); phase 1's method,
+    including rebuilding the test rig; what ends phase 1. Then the
+    program document, for ratification.
 - **The branch.** This program's records live on the branch
   `claude/nice-curie-hescfv`, with three draft pull requests:
   ALN-Ecosystem #35, ALNScanner #17 and ALN-TokenData #8. `main` is
