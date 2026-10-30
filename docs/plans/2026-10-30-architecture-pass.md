@@ -13,9 +13,11 @@ running game changes, the way "one truth" already governs verdicts.
 It runs in two phases. Phase 1 decides the shared rules for the whole
 engine with the owner, one question round at a time, and ends with a
 new roadmap. Phase 2 changes the engine to follow the rules, one area
-at a time, before any other block, and it is the engine work that
-stands between today and green replacing blue. Its first steps: green's
-three small follow-ups, and the cause analysis of blue's fixes.
+at a time, before the capture block, the preview block and players'
+phones. It takes the show-ready gate's second condition: the engine
+work that must land before green can replace blue. First after
+ratification: green's three follow-ups as a separate small task, and
+phase 1's cause analysis.
 
 Vocabulary: `CONTEXT.md`, especially §2 (one truth, verdict), §4b
 (runtime state, authority, copy, delivery path) and §7 (architecture
@@ -37,15 +39,28 @@ architecture." The scope: "the whole engine." Blue keeps running the
 game until the new engine is ready to swap in on green, and no date
 governs the work (`CURRENT-STATE.md` §1).
 
-Why the engine needs it, from the evidence. "One truth" governs
-verdicts only: whether the kit meets the show's needs (`CONTEXT.md`
-§2). Runtime state has no rule. The map of the engine as built found
-that the backend keeps almost every game fact in one place, the
-current game session, while every screen holds copies, and each client
-invented its own rules for them
+Why the engine needs it, from the evidence. The kickoff brief states
+the gap: "one truth" governs readiness only, and the runtime state the
+GM watches has no rule like it (kickoff brief, "The recommendation on
+the table"; "verdicts" is now the word for what one truth checks,
+decision 3). The map of the engine as built found that the backend
+keeps almost every game fact in one place, the current game session,
+while every screen holds copies, and each client invented its own
+rules for them
 (`docs/plans/architecture-pass/2026-10-30-map-runtime-state.md` §1).
-Blue's September fixes treated those causes one case at a time
-(decision 8).
+Blue's September fixes added one special case at a time: three more
+places that update a tablet's claimed-token list, and a hand-written
+table that re-sends a service's state when its health changes (blue's
+fixes plan, W1 and W4, read with
+`git show origin/production-2026-07:docs/plans/2026-09-15-alnscanner-wiring-fixes-plan.md`).
+
+The owner's condition with decision 1 was that the orchestrator first
+understand the engine being built and the roadmap being adjusted,
+starting with how the truth sweep differs from the pass. The nine
+evidence files in §8 were made for it. In short: the truth sweep was a
+repair job on one path, service status in the GM panel, inside
+today's design; the pass decides the design itself, for the whole
+engine (runtime-state map §1, item 9; `CONTEXT.md` §7).
 
 ## 2. Scope
 
@@ -85,7 +100,7 @@ that raised each question; every file named is in
 | 5 | Does one question get one answer? | Twenty-two questions have more than one answerer, such as "is a video playing" and "is this token claimed" (runtime-state map §5, corrected in §0) |
 | 6 | What does each fact and each copy do at a boundary: a game starting or ending, a system reset, a restart, a pack change while running? | An ended game comes back after a restart and accepts player scans; a reset from the GM leaves music out of its rebuild (runtime-state map §0 and §8 Q6) |
 | 7 | Does each component receive what its role needs, and no more? | The scoreboard receives every transaction and the whole token file and filters on its own side; the state endpoint answers anyone on the kit network without a login (runtime-state map §0; `2026-10-30-map-inbound.md`) |
-| 8 | How may a copy be updated, and can a screen tell how old it is? | The GM updates copies from the same message by four different rules; health entries and messages carry times that no screen reads (runtime-state map §1 and §0) |
+| 8 | How may a copy be updated, and can a screen tell how old it is? | The GM updates copies from the same message by four different rules; health entries and messages carry times that no screen reads (runtime-state map §1 and §8, "what the six questions miss", item 1; the unread times: §0) |
 | 9 | Is each fact's reconnect snapshot built the same way as its live update? | For six facts it is not, and the GM applies the two by different rules (runtime-state map §4) |
 
 ## 4. Phase 1: decide the shared rules
@@ -106,10 +121,17 @@ bullet). The steps run in this order (decision 12):
 |---|---|---|---|---|
 | 1. Cause analysis | One small workflow over every blue fix, every finding blue left unfixed, and every finding in the evidence files: readers grouped by cause, a merge, a refute-by-default check. For each finding: the problem area, the design cause, every other place with that cause, the design choice that removes it, the proving test (decision 8) | A short list of causes, each with the fixes and findings behind it | Whether the list is right: anything missing or wrongly grouped | The cause analysis |
 | 2. Test rig | Rebuild the rung-1 rig from its recipe (`docs/plans/2026-09-12-container-baseline.md` §7) and reproduce the findings nobody has run: the GM panel falling behind live music, the ended game returning after a restart, the reset that leaves music out, the tablet that still refuses a deleted token. Phase 2's proof tests run on this rig too | A report of what the rig reproduced | Nothing; these are facts | Live-proof marks in the cause analysis |
-| 3. Design | Rule by rule, with the skills `codebase-design` and `improve-codebase-architecture`. For the hard rules, two or three competing designs written side by side: for example, claimed tokens that stay correct with offline scans, one record per service, and one setting that keeps tests and preview engines off the live machine. A throwaway prototype where the code's behaviour is uncertain; prototypes never merge. Every rule says how it serves hot-apply, the preview engine, capture and phones | One page per rule: the designs side by side, before-and-after diagrams, a recommendation. Pages are published for the owner to open, never left as temporary files | Which design | The rule and its proof test; its contract proposals; a decision record if it is hard to reverse; new terms in `CONTEXT.md` |
-| 4. Review | An adversarial review of the draft rules and roadmap: two reviewers with different angles, a checker for each finding, one fleet at a time | Only the findings that would change a decision | Each such finding, as a question | Corrections to the record |
+| 3. Design | Rule by rule, with the skills `codebase-design` and `improve-codebase-architecture`. For the hard rules, two or three competing designs written side by side; for example: keeping claimed tokens correct when a tablet scans offline, getting a service's health and state to the panel together, and keeping tests and preview engines off the live machine. A throwaway prototype where the code's behaviour is uncertain; prototypes never merge. Every rule says how it serves hot-apply, the preview engine, capture and phones | One page per rule: the designs side by side, before-and-after diagrams, a recommendation. Pages are published for the owner to open, never left as temporary files | Which design | The rule and its proof test; its contract proposals; a decision record if it is hard to reverse; new terms in `CONTEXT.md` |
+| 4. Review | An adversarial review of the draft rules and roadmap: two reviewers with different angles, a checker for each finding, one fleet at a time. A September review of this shape cost about six million helper tokens (`docs/agents/process.md` §2, rule 7 amendment) | Only the findings that would change a decision | Each such finding, as a question | Corrections to the record |
 | 5. Roadmap | Phase 2's areas in build order | The proposed order, with the dependency behind each step | The order | The new roadmap |
 | Ratification | Assemble the five documents | The five documents, already matching the decisions | Ratify | The state page names phase 2's first area |
+
+This flow carries the September re-charter's elements (decision 2).
+The evidence is the nine files in §8, plus steps 1 and 2. The draft
+with numbered questions is the design pages of step 3 and the numbered
+question rounds that settle them. The adversarial review is step 4.
+The grill rounds are the question rounds throughout. Ratification
+closes it.
 
 ### 4.2 What phase 1 hands over
 
@@ -117,9 +139,9 @@ Five documents, each already matching the decisions made in the rounds
 (decision 10):
 
 1. **The rules.** One per question, each with a proof test in plain
-   words: what to do, and what must happen. Example for question 1:
-   "Delete a transaction, and its token scans again on every tablet
-   within a second, with no reload."
+   words: what to do, and what must happen. An illustration of the
+   form only, not a decided test: "Delete a transaction; its token
+   scans again on every tablet, with no reload."
 2. **The cause analysis.** Every blue fix, every unfixed blue finding
    and every finding in the evidence, assigned to a cause and to the
    rule that removes it, or set aside with a reason.
@@ -177,13 +199,14 @@ Two examples from the definition session (round 3):
   update each tablet's claimed-token list: after a reload, after a
   deleted transaction, after Reset All Scores. The cause: every tablet
   keeps its own list, so it must hear about every way a claim can
-  change. The choice to weigh: the tablet shows the backend's list,
-  plus only its own offline scans the backend has not yet confirmed.
+  change. A candidate for phase 1 to weigh, not decided: the tablet
+  shows the backend's list, plus only its own offline scans the
+  backend has not yet confirmed.
 - **Frozen music and lighting panels (blue's W4).** Blue added a
   hand-written table that re-sends a service's own state when its
   health changes. The cause: health and state are separate facts on
-  separate paths. The choice to weigh: one record per service that
-  carries both.
+  separate paths. A candidate for phase 1 to weigh, not decided: one
+  record per service that carries both.
 
 Blue keeps running shows on its own branch under its containment rules
 (`CURRENT-STATE.md` §4).
@@ -195,23 +218,25 @@ ran (decision 2). Its fifth document becomes `ROADMAP.md` revision r5;
 the r4 text survives in git history, as r3's did.
 
 - **Block 2, hardening.** Its remaining pieces are rebuilt inside
-  phase 2 (decision 7). The on-hold briefs are not edited until phase
-  1 rules on them (hardening plan ruling 34); their recovered review
-  findings are evidence. The merged pieces (the equipment families,
-  the dormancy core, the harness minimum) are part of today's engine,
-  which phase 2 changes wherever a rule requires.
+  phase 2 (decision 7). The on-hold briefs are not edited until the
+  architecture pass rules on them (hardening plan ruling 34, an
+  orchestrator ruling); their recovered review findings are evidence.
+  The merged pieces (the equipment families, the dormancy core, the
+  harness minimum): see question 15, pending.
 - **Block 3, the truth sweep.** Its charter is retired. Its purpose
   moves into phase 2 and covers every screen. Its census and its five
   recorded desync bugs are evidence (decision 6).
-- **Blocks 4 to 6 and the later blocks** come after phase 2
-  (decision 7).
+- **Other blocks.** The capture block, the preview block and the
+  later blocks of `ROADMAP.md` §7, players' phones among them, come
+  after phase 2 (decisions 7 and 10). The new roadmap places Block 6.
 - **The show-ready gate.** Phase 2 takes the second condition
-  (decision 7). The gate's other conditions are unchanged.
+  (decision 7). The new roadmap restates the gate (decision 10).
 - **Until r5 exists,** dated notes in `ROADMAP.md` §3, §4 and §10.1
   mark what has changed (decisions 6 and 7).
-- **Green.** Its home hardware pass is the owner's to schedule and
-  needs nothing from the pass (`CURRENT-STATE.md` §6). Its three
-  follow-ups ship as one small task as soon as the definition session
+- **Green.** Its home hardware pass is the owner's to schedule
+  (`CURRENT-STATE.md` §6). Its three follow-ups, which stop a correct
+  green logging a false "WirePlumber rule missing" warning at every
+  boot, ship as one small task as soon as the definition session
   ends, alongside the pass (decision 4).
 
 ## 8. The evidence the pass starts from
@@ -248,8 +273,9 @@ for that.
 - Phase 1's rules, cause analysis and contract proposals live in
   `docs/plans/architecture-pass/`; decision records in `docs/adr/`;
   the new roadmap in `ROADMAP.md`.
-- Findings are committed as they land; fleets stay small and run one
-  at a time (`docs/agents/process.md` §2, rule 7 amendment).
+- Findings are committed as they land, and workflow fleets are sized
+  to the question (`docs/agents/process.md` §2, rule 7 amendment). The
+  adversarial review runs one fleet at a time (decision 12).
 
 ## 10. First steps after ratification
 
@@ -263,14 +289,14 @@ for that.
 
 | Section | Records decisions |
 |---|---|
-| 1. What the pass is | 1, 7, 8 |
+| 1. What the pass is | 1, 3, 7, 8 |
 | 2. Scope | 1, 9, 12 |
 | 3. The nine questions | 1, 5, 9, 11 |
-| 4. Phase 1 | 7, 8, 10, 12, 13, 14 |
+| 4. Phase 1 | 2, 7, 8, 10, 12, 13, 14 |
 | 5. Phase 2 | 6, 7 |
 | 6. How blue's fixes are used | 8 |
-| 7. How the pass revises the roadmap | 2, 4, 6, 7 |
-| 8. Evidence | the owner's condition in decision 1 |
+| 7. How the pass revises the roadmap | 2, 4, 6, 7, 10 |
+| 8. Evidence | the owner's condition in decision 1 (stated in §1) |
 | 9. Records | 14 |
 | 10. First steps | 4, 12 |
 

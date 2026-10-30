@@ -74,26 +74,36 @@ before acting.
      the GM scanner is the command center; the scoreboards show the
      public results.
   10. Phase 1 hands over five documents (round 4): the rules, one per
-      question, each with a plain-words proof test; the cause
-      analysis (decision 8); contract proposals, written before code;
-      decision records in a new `docs/adr/`; the new roadmap with
-      phase 2's areas in build order.
+      question, each with a plain-words proof test (what to do, what
+      must happen); the cause analysis (decision 8); contract
+      proposals, drafted for the two contract files before code;
+      decision records, one short note per hard-to-reverse choice, in
+      a new `docs/adr/`; the new roadmap with phase 2's areas in build
+      order, the remaining hardening pieces and the sweep's purpose
+      placed inside them, the show-ready gate restated and the later
+      blocks after phase 2.
   11. Two more questions (round 4): 8, "how may a copy be updated,
       and can a screen tell how old it is?"; 9, "is each fact's
       reconnect snapshot built the same way as its live update?".
       Phase 1 designs questions 1, 6, 8 and 9 together as one rule
       for live state.
-  12. Phase 1's method (round 4): the cause analysis as one small
-      workflow; the rung-1 test rig rebuilt and used to reproduce the
-      unrun findings (the music panel lag, the ended game returning
-      after a restart, the reset without music, the refused deleted
-      token); design rule by rule with `codebase-design` and
-      `improve-codebase-architecture` (confirmed for this pass;
-      competing designs side by side, visual reports published as
-      pages, throwaway prototypes that never merge, every rule saying
-      how it serves hot-apply, the preview engine, capture and
-      phones); an adversarial review, one fleet at a time; grill
-      rounds; ratification.
+  12. Phase 1's method (round 4), in order: (1) the cause analysis,
+      one small workflow (readers grouped by cause, a merge, a
+      skeptical check); (2) the rung-1 rig rebuilt from its recipe and
+      used to reproduce the unrun findings (the music panel lag, the
+      ended game returning after a restart, the reset without music,
+      the refused deleted token); phase 2's proof tests run on it too;
+      (3) design rule by rule with `codebase-design` (vocabulary,
+      "design it twice") and `improve-codebase-architecture` (a visual
+      report per design choice with before-and-after diagrams,
+      published as a page), both confirmed for this pass: for the hard
+      rules two or three competing designs side by side, a throwaway
+      prototype where the code's behaviour is uncertain, never merged,
+      and every rule saying how it serves hot-apply, the preview
+      engine, capture and phones; (4) an adversarial review of the
+      draft rules and roadmap: two reviewers with different angles, a
+      checker per finding, one fleet at a time; (5) grill rounds on
+      each decision; ratification.
   13. Phase 1 ends at ratification, once every question has a rule
       and proof test, every finding and blue fix is assigned or set
       aside with a reason, every rule serves the planned capabilities,
@@ -102,8 +112,17 @@ before acting.
   14. Phase 1 runs as a flow in which every decision is made in a
       question round with the evidence in view, and written into its
       document at once; ratification is a skim with no new decisions
-      (round 5). The rule now stands for every unit:
-      `docs/agents/process.md` §5, last bullet.
+      (round 5). The approved flow: step 1, the owner confirms the
+      cause list; step 2, facts only; step 3, one page per rule (the
+      designs side by side, before-and-after diagrams, a
+      recommendation) and the owner picks; step 4, only the review
+      findings that would change a decision come back, as questions;
+      step 5, the owner decides phase 2's build order; at ratification
+      the state page names phase 2's first area. The rule stands for
+      every unit: `docs/agents/process.md` §5, last bullet.
+      (Decisions 10, 12 and 14 were completed on 2026-10-30 from the
+      approved question text, after a record check found the first
+      summaries too short.)
   - Next: the pass's program document,
     `docs/plans/2026-10-30-architecture-pass.md` (draft built only
     from decisions 1 to 14 and the evidence; a record check by a
