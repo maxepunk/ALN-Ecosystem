@@ -10,7 +10,34 @@ before acting.
 - **The current unit** is a planning session with the owner that
   defines the whole-engine architecture pass. Its brief:
   `docs/plans/briefs/2026-10-30-architecture-pass-kickoff.md`. Nothing
-  is built before that session ends.
+  is built before that session ends. In progress since 2026-10-30;
+  round 1 is answered. Working log (git-ignored):
+  `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
+- **Decisions so far (owner, 2026-10-30):**
+  1. The architecture pass is the next unit. The paused hardening
+     pieces and the truth sweep wait for its answers. Its central
+     question: who decides each fact the GM sees (the authority,
+     `CONTEXT.md` §4b). It must also answer five more: does a
+     service's state travel with its health; how does the engine read
+     the programs it drives; can a test touch the live show; does one
+     question get one answer; who re-checks after a reset. The owner's
+     condition with the yes: the orchestrator must understand the
+     engine being built and the roadmap being adjusted, starting with
+     how the truth sweep differs from the pass.
+  2. The pass is a roadmap revision, run the way the September
+     re-charter ran: evidence, a draft with numbered questions, an
+     adversarial review, grill rounds, ratification. The
+     `CONTEXT.md` entry for "architecture pass" waits until its
+     difference from the truth sweep is settled.
+  3. Four terms are in `CONTEXT.md` §4b: runtime state, authority,
+     copy, delivery path. "Verdicts" names what one truth checks
+     (§1). While writing "authority" the orchestrator added that an
+     outside program can be one (VLC decides what is playing); the
+     owner has not yet confirmed that addition.
+  - Still open from round 1: the pass's outputs and the path for
+    blue's lessons (the owner did not follow them; to be re-asked in
+    plain words), and green's three follow-ups shipping when this
+    session ends (the owner leans yes; to confirm).
 - **The branch.** This program's records live on the branch
   `claude/nice-curie-hescfv`, with three draft pull requests:
   ALN-Ecosystem #35, ALNScanner #17 and ALN-TokenData #8. `main` is
@@ -106,8 +133,7 @@ touches blue's branch.
 
 ## 6. Open items, and who owns them
 
-- Owner: confirm or change the architecture pass at the planning
-  session.
+- Owner: the planning session's open questions (§0).
 - Owner, any time: green's home hardware pass from the start-here
   section of `DEPLOYMENT_GUIDE.md`. The guide is a plan to be proven on
   the bench. While the green follow-ups stay on hold, a correct green

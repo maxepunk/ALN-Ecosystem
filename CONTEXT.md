@@ -78,6 +78,13 @@ you intend.
      (one-auth doc).
   The fourth use, the long-running agent/container session, belongs to
   `docs/agents/process.md`, not to game vocabulary.
+- **"readiness"** has two meanings (split 2026-10-30, architecture
+  pass's definition session):
+  1. *Readiness states.* The roadmap's five named points, from
+     coherent on main to adoptable (§7).
+  2. *What one truth checks* (§2): whether the kit meets the show's
+     needs. Say **verdicts** for this meaning, the word §2 already
+     uses for resolve()'s output.
 - **"mode"** has four meanings:
   1. *Pack mode.* One entry in the pack's `modes[]` list, for example
      ALN's `blackmarket` and `detective`. Each entry declares flags:
@@ -366,6 +373,31 @@ you intend.
   feel the result. No code files, no config files. **Hot-apply (E10)**
   means reloading a pack without restarting the orchestrator; it is
   what makes this loop fast, and it is scheduled with the B pages.
+
+## 4b. Runtime state
+
+Settled 2026-10-30 at the architecture pass's definition session
+(decision record: `docs/plans/CURRENT-STATE.md` §0). These words name
+the facts a running game changes and where those facts live. They
+decide nothing about how the engine should hold them; that is the
+architecture pass's question.
+
+- **Runtime state.** Every fact about a running game that can change
+  during it: the game session and its phase, teams, transactions and
+  scores, claimed tokens, the video queue, the music, held items, the
+  game clock, running cues, and each service's health. Contrast the
+  verdicts of one truth (§2), which compare what the show needs with
+  what the kit has. Avoid "live state": "live" names a check depth
+  (§5).
+- **Authority.** The place that decides a runtime fact. It is an
+  engine module, or an outside program the engine drives: VLC decides
+  what is playing. Avoid "owner", which names the project owner and,
+  on a token, a character. Avoid "source of truth".
+- **Copy.** A runtime fact held anywhere except its authority: a GM
+  scanner's list of claimed tokens, the scoreboard's table, the
+  engine's cached picture of what VLC is doing. Avoid "mirror".
+- **Delivery path.** The route a runtime fact takes from its authority
+  to a screen.
 
 ## 5. Venue, kit, and installation
 

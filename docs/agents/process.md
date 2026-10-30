@@ -44,7 +44,18 @@ do not load on their own. The owner added a plugin-install line to
 the cloud environment's setup script on 2026-10-30, effective for
 sessions started after that. Running the hook by hand (rule 6, step
 0) also installs the declared plugins, but a plugin installed during
-a session registers only at the next session start. Release 1.3.1 no longer ships
+a session registers only at the next session start. Checked on
+2026-10-30: the setup-script line installs mattpocock-skills only;
+superpowers arrives through the start-up hook. Three mattpocock skills,
+`grill-with-docs`, `wait-what` and `improve-codebase-architecture`,
+carry `disable-model-invocation: true`: only the owner can start them,
+by slash command, and they never appear in an agent's skill list, so a
+restart does not help. An agent runs `grill-with-docs` as its two
+parts, `grilling` and `domain-modeling` (that is the skill's whole
+body), and follows `improve-codebase-architecture` by hand from its
+`SKILL.md` in the plugin cache. That skill writes its HTML report to
+the OS temp directory, which our containers erase; save the report in
+the repository instead. Release 1.3.1 no longer ships
 `resolving-merge-conflicts`; until a replacement is chosen, resolve
 merge conflicts by hand and regenerate pins with the repo's tooling.
 
