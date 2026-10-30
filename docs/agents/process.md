@@ -241,3 +241,8 @@ to any document follow this standard from now on.
   architecture and interfaces, not into patches on production.
 - Put every decision made in conversation on the state page at once.
 
+- Documents record decisions the owner made in conversation. The
+  owner never decides from a document first seen at ratification, so
+  ratifying is a skim. Anything new found while writing comes back as
+  a question first. (Owner, 2026-10-30, the architecture pass's
+  definition session.)

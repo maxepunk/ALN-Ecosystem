@@ -11,7 +11,7 @@ before acting.
   defines the whole-engine architecture pass. Its brief:
   `docs/plans/briefs/2026-10-30-architecture-pass-kickoff.md`. Nothing
   is built before that session ends. In progress since 2026-10-30;
-  rounds 1 to 4 are answered. Working log (git-ignored):
+  rounds 1 to 5 are answered. Working log (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
 - **Decisions so far (owner, 2026-10-30):**
   1. The architecture pass is the next unit. The paused hardening
@@ -99,9 +99,13 @@ before acting.
       aside with a reason, every rule serves the planned capabilities,
       the review's blocking findings are resolved, and the rig
       reproduces each finding marked for live proof (round 4).
-  - Open: the owner asked that phase 1's process be made clear (the
-    documents record decisions made together in conversation; the
-    owner skims and ratifies); then the program document.
+  14. Phase 1 runs as a flow in which every decision is made in a
+      question round with the evidence in view, and written into its
+      document at once; ratification is a skim with no new decisions
+      (round 5). The rule now stands for every unit:
+      `docs/agents/process.md` §5, last bullet.
+  - Next: the pass's program document, built only from decisions 1
+    to 14 and the evidence, sent to the owner for ratification.
 - **The branch.** This program's records live on the branch
   `claude/nice-curie-hescfv`, with three draft pull requests:
   ALN-Ecosystem #35, ALNScanner #17 and ALN-TokenData #8. `main` is
