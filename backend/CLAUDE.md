@@ -621,8 +621,8 @@ HTTP_REDIRECT_PORT=8000
 > Raspberry Pi OS Trixie ships 0.5.8) does not read Lua configuration
 > at all** — the drop-in is now a SPA-JSON `.conf` file in
 > `/etc/wireplumber/wireplumber.conf.d/`, and the boot check at
-> `audioRoutingService.js:618` still tests only the old Lua path, so a
-> Lua file copied onto a 0.5 machine silences the warning and does
+> `audioRoutingService.js:619-635` accepts either file, so a Lua file
+> copied onto a 0.5 machine still silences the warning and does
 > nothing. The rationale below is unchanged and still correct; the
 > Lua block is kept for machines on WirePlumber 0.4 (Bookworm).
 
