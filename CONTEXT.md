@@ -445,7 +445,7 @@ you intend.
   a DHCP option handing out the Pi as the DNS server. Swapping routers
   therefore costs three settings. The kit works with no internet
   connection.
-- **Blue/green.** The ratified cutover method (ROADMAP §3b). *Green*
+- **Blue/green.** The ratified cutover method (ROADMAP §6, formerly §3b). *Green*
   is a second Pi, prepared and tested as a complete production
   machine. *Blue* is the current production Pi, left untouched. The
   cutover is: unplug blue, plug in green; green takes the reserved IP.

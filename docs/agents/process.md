@@ -2,7 +2,8 @@
 
 This file says how work runs for the remainder of the program. It
 complements `docs/agents/issue-tracker.md`, `domain.md`, and
-`triage-labels.md`, and the subagent policy recorded in PHASE3-STATUS,
+`triage-labels.md`, and the subagent policy recorded in PHASE3-STATUS (its "Subagent policy
+ratified" entry; §3(d) below is the working summary),
 which says which model and effort level to use for which kind of agent.
 
 ## 1. Skill map (mattpocock-skills, by trigger)
@@ -12,12 +13,12 @@ occurs.
 
 | Skill | Trigger and instructions |
 |---|---|
-| `grill-with-docs` | Use for every phase-boundary definition session (ROADMAP §9.3) and every batch of owner questions. It runs the interview and also records new or sharpened terms into `CONTEXT.md` as they settle. Plain `grilling` skips that capture, so do not use it for these. |
+| `grill-with-docs` | Use for every phase-boundary definition session (ROADMAP §10.3) and every batch of owner questions. It runs the interview and also records new or sharpened terms into `CONTEXT.md` as they settle. Plain `grilling` skips that capture, so do not use it for these. |
 | `writing-for-agents` | Apply to every document an agent will consume. This includes workflow subagent prompts, skill files, CLAUDE.md edits, the docs/agents files, and the future open-source documentation. See §3 below for what this means for workflow prompts. |
 | `implement` (with `tdd` inside it and `code-review` at the end) | Use as the frame for every build stage (S-unit). The sequence it enforces: write tests first at the agreed seams, run typechecks and single test files often, run the full suite once at the end, run `code-review`, commit. The heavier mixed-model adversarial review still happens once per slice, at slice close. |
 | `wait-what` | The owner's tool. When invoked, re-explain the current state in plain language, using the CONTEXT.md vocabulary. |
 | `domain-modeling` | Use whenever a design discussion creates or sharpens a term. Update CONTEXT.md in the same session. |
-| `wizard` | Use to build the guided setup scripts for steps only a human can do: the green-Pi setup (ROADMAP §3b) and the cutover-day runbook. |
+| `wizard` | Use to build the guided setup scripts for steps only a human can do: the green-Pi setup (ROADMAP §6) and the cutover-day runbook. |
 | `resolving-merge-conflicts` | Use on merge-train day. The likely conflict source is submodule pins. |
 | `prototype` (UI branch) | Use to mock up screens before they are built: the Phase-4 D-track four-domain wireframes (these need no engine work and can start any time), and each B page before its build. Standing rule: never rebuild a screen without an approved design. |
 | `prototype` (LOGIC branch) | Available if the owner wants to feel BILL's contagion math before the real module exists. The owner has declined this by default; the offer stands at about half a work session. |
@@ -39,9 +40,11 @@ Skill tool cannot invoke it until the next session.
 
 Amended 2026-10-30: a cloud session starts in the folder above the
 five repositories, so this project's settings and its start-up hook
-do not load on their own. The cloud environment's setup script now
-installs mattpocock-skills (owner, 2026-10-30); run the hook by hand
-for the rest (rule 6, step 0). Release 1.3.1 no longer ships
+do not load on their own. The owner added a plugin-install line to
+the cloud environment's setup script on 2026-10-30, effective for
+sessions started after that. Running the hook by hand (rule 6, step
+0) also installs the declared plugins, but a plugin installed during
+a session registers only at the next session start. Release 1.3.1 no longer ships
 `resolving-merge-conflicts`; until a replacement is chosen, resolve
 merge conflicts by hand and regenerate pins with the repo's tooling.
 
@@ -94,7 +97,8 @@ rules:
    checklist adopted 2026-09-12; amended the same day, ruling R16 of
    the hardening plan: the state page first, then its pointers).**
    After any compaction or container restart, run these steps in this
-   order. Write the result of each step into the scratch progress file
+   order. Write the result of each step into the active unit's working log
+   (`.superpowers/sdd/<unit>/progress.md`, created if absent)
    before starting the next.
    0. Bootstrap (added 2026-10-30). In a cloud session, run
       `CLAUDE_PROJECT_DIR="$PWD" bash .claude/hooks/session-start.sh` from the ALN-Ecosystem
@@ -109,14 +113,17 @@ rules:
       page: `git status`, `git log`, the submodule pins. A claim the
       page or the record does not back is false. Fix the page or drop
       the claim before going on.
-   3. Reconcile live state against the page's running section. List
+   3. Reconcile live state against the page's live-state line (§0). List
       the agents, the background tasks, and the rig and test processes.
       Stop anything that is not on the page, and record what was
       stopped.
    4. Follow the page's pointers for the piece in flight: its brief,
       the plan's pins for it, the vocabulary sections it names, the
-      tail of the scratch progress file.
-   5. Send the owner a reload report in the checkpoint template.
+      tail of the unit's working log, if one survives.
+   5. Send the owner a reload report in the five-line checkpoint
+      format (hardening plan §8): what landed; what is in flight; what
+      is blocked and on whom; what the GM has if we stop here; open
+      risks.
    Only after step 5 may the agent change a file or dispatch anything.
    This rule exists because resuming from the summary alone has caused
    real errors: stale verdicts restated as current, invented vocabulary
@@ -154,8 +161,9 @@ rules:
    compaction but not an idle stretch. Commit fact sheets, review
    findings and reports into the repository as they land, not at the
    next checkpoint, and push the designated branch before any stop.
-   Size workflow fleets to the question: three large review fleets
-   at once exhausted the session's usage limit on 2026-09-13 and
+   Size workflow fleets to the question. A two-lens red team with one
+   refuter per finding cost about six million subagent tokens, and
+   three large review fleets at once exhausted the session's usage limit on 2026-09-13 and
    stopped every running agent.
 
 ## 3. Workflow-prompt standards

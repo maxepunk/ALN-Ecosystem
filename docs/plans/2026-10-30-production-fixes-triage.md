@@ -21,9 +21,15 @@ architecture and interfaces.
 **Method.** Each defect's code path was read on the new engine; the
 evidence column cites it. "Identical to July" means the file has the
 same content as the rollback tag `blue-2026-07`, so the new engine runs
-the code blue ran before the fixes. No tests were run: these are static
-traces, and every verdict should be confirmed by a red test when the fix
-is built.
+the code blue ran before the fixes. No tests were run: these verdicts come from reading the code, and each
+should be confirmed by a test that fails before the fix is built.
+
+**Coverage.** This record covers the fixes blue made, not every finding
+in blue's review: the findings blue left unfixed were not checked here.
+
+**Verdict words.** Port: carry the fix's behaviour and its test into the
+new engine. Drop: the new engine no longer needs it. The other verdicts
+say where the work belongs instead.
 
 ## Verdicts
 
@@ -64,7 +70,7 @@ Paths are relative to the parent repository; scanner paths start with
 | W9 P0.2 | A skipped video's position is lost on completion | Present | `videoQueueService.js:479` emits completion without a position | Port; check the cue engine's consumer |
 | W9 P0.3 | Stale-process clean-up can match the wrong process | Present | `backend/src/utils/processMonitor.js` identical to July | Supervisor work: it rewrites this code |
 | FB | A music-server crash is not visible at once; recovery waits for the next health sweep | Present | `backend/src/services/musicService.js` identical to July; `_setConnected` at `:230` reports to the health registry only | Supervisor work, with its regression test |
-| W10 P2 | Tests and the live system share fixed process-ID files, so a unit test can kill the live video player | Present | fixed paths at `vlcMprisService.js:117`, `musicService.js:607`, `audioRoutingService.js:793`, `bluetoothService.js:501`, `utils/displayDriver.js:53` | Supervisor work; required before tests run on a Pi |
+| W10 P2 | Tests and the live system share fixed process-ID files, so a unit test can kill the live video player | Present | fixed paths at `vlcMprisService.js:117`, `musicService.js:607`, `audioRoutingService.js:793`, `bluetoothService.js:501`, `backend/src/utils/displayDriver.js:53` | Supervisor work; required before tests run on a Pi |
 | W10 P3 | A test that leaves a real child process running still passes | Absent | no such guard | With the deferred test-harness work; required before tests run on a Pi |
 | W10 P4 | No switch keeps the kiosk browser off the TV during tests | Absent | no such switch | Same |
 | W10 C1 | The end-to-end harness starts a second video player beside the engine's own | Present | `backend/tests/e2e/setup/vlc-service.js:84-90` | With the test-harness work |
@@ -104,4 +110,8 @@ playback without a refresh. The new engine runs the same July code for
 the music service and the panel's music section (`musicService.js` and
 `MusicRenderer.js` are identical to the July tag), so the defect is
 expected there too, alongside the music bugs production already fixed.
+That is an expectation, not a demonstration: the files at both ends are
+identical to July, but the path between them has changed
+(`backend/src/websocket/broadcasts.js`, `cueEngineWiring.js`,
+`ALNScanner/src/admin/MonitoringDisplay.js`, `messageRouters.js`).
 Diagnosing it needs a live reproduction on the test rig or at the venue.

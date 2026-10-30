@@ -177,6 +177,8 @@ program built lives on chained branches. One honesty note stands:
 one older vehicle's CI has never been observed (the train table
 flags it — "watch it"). Timing is the owner's call (supersession 9);
 the walk is owner-paced.
+**Reached 2026-09-12** (record `a2fdc764`): the train was walked and
+`main` passed its full suites.
 
 **Hardware-proven.** A second machine ("green") built from the
 deployment docs and passing the home hardware pass (§6, Stage B):
@@ -258,7 +260,7 @@ used below:
   scanner. The owner's ask: make the next iteration "a bit more
   plug and play."
 
-**The clock:** the run opens 2026-09-18 and closes 10-18;
+**The clock** *(superseded 2026-10-30 by the owner; see §10.2)*: the run opens 2026-09-18 and closes 10-18;
 Mondays–Thursdays are the only swap windows.
 
 **Estimating rule** for every figure below: a unit shows its cost

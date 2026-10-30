@@ -1,39 +1,49 @@
-# Kickoff brief: the whole-engine architecture pass (definition session)
+# Kickoff brief: the whole-engine architecture pass (planning session)
 
 Written 2026-10-30 for the next session's orchestrator. Your first job
-is a planning session with the owner. Nothing is built until it ends.
-Vocabulary: `CONTEXT.md`. Process: `docs/agents/process.md`.
+is a planning session with the owner, the "definition session" a unit
+gets before its design opens (`docs/plans/ROADMAP.md` §10.3). Nothing
+is built until it ends. Vocabulary: `CONTEXT.md`. Process:
+`docs/agents/process.md`, including §5 on working with the owner.
 
 ## Steps, in order
 
-1. **Reload.** Run `docs/agents/process.md` rule 6, starting at
-   `docs/plans/CURRENT-STATE.md` §0. You are done when every claim on
-   that page has been checked against git, and you have confirmed that
-   nothing is running.
-2. **Bootstrap.** If the session started outside the project folder,
-   run `CLAUDE_PROJECT_DIR="$PWD" bash .claude/hooks/session-start.sh` from the repository root.
-   It sets up the submodules, the dependencies and the declared
-   plugins. Then confirm the mattpocock skills include
-   `grill-with-docs`, `wait-what`, `codebase-design` and
-   `improve-codebase-architecture`. If they are missing, tell the owner
-   which ones and carry on with `grilling` plus `domain-modeling`.
-3. **Read the evidence** listed below. Read only the sections named.
-   You are done when you can state each lesson theme in one plain
-   sentence, with the file that shows it.
-4. **Report to the owner** in the checkpoint template: where the
-   program stands, the recommendation on the table, and the questions
-   the session will settle.
-5. **Run the definition session** with `grill-with-docs`. Settle every
+1. **Bootstrap.** From the ALN-Ecosystem root, run
+   `CLAUDE_PROJECT_DIR="$PWD" bash .claude/hooks/session-start.sh`. It
+   sets up the submodules, the dependencies and the declared plugins.
+   Then check this session's skill list for `grill-with-docs`,
+   `wait-what`, `codebase-design` and `improve-codebase-architecture`.
+   If they are missing, the plugin was installed during this session
+   and registers only at the next one. Recommend that the owner restart
+   the session before the planning session starts. Until then, read
+   each skill's `SKILL.md` from
+   `~/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/`
+   and follow it by hand.
+2. **Reload.** Run `docs/agents/process.md` rule 6, starting at
+   `docs/plans/CURRENT-STATE.md` §0. Keep your working log at
+   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`. You are
+   done when every claim on the state page has been checked against git,
+   and you have confirmed that nothing is running.
+3. **Read the evidence** listed below, only the parts named. You are
+   done when you can state each lesson theme in one plain sentence,
+   with the file that shows it.
+4. **Report to the owner** in the five-line checkpoint format of the
+   hardening plan §8: what landed, what is in flight, what is blocked
+   and on whom, what the GM has if we stop here, and open risks. Follow
+   it with the recommendation on the table and the questions the
+   planning session will settle. Change no file before the owner has
+   this report.
+5. **Run the planning session** with `grill-with-docs`. Settle every
    open question below. Record each term in `CONTEXT.md` as it
    settles, and each decision on the state page as it is made.
 6. **Write the pass's program document** from the answers, at
-   `docs/plans/<date>-architecture-pass.md`. It covers scope, method,
-   evidence readers, outputs, and how the pass revises the roadmap.
-   Submit it to the owner for ratification.
+   `docs/plans/<ratification date>-architecture-pass.md`. It covers
+   scope, method, evidence readers, outputs, and how the pass revises
+   the roadmap. Submit it to the owner for ratification.
 
 The session is complete when the owner has ratified that document and
 the state page names the pass as the current unit, with its first
-step. Commit and push after every step.
+step. From step 5 on, commit and push after every step.
 
 ## The owner's direction (2026-10-30, the owner's words)
 
@@ -50,26 +60,27 @@ step. Commit and push after every step.
   truth sweep."
 - "No date that matters. We're going to be continuing to run the game
   off of blue until the new engine is ready to be swapped in on green."
-- No session data from the run is coming off blue.
+- No game data from the run is coming off blue.
 
 ## The recommendation on the table (proposed, not ratified)
 
 The orchestrator's assessment, given to the owner on 2026-10-30:
 
 - **The hardening block** has real architecture at its core: the "one
-  truth" rule (`CONTEXT.md` §2), one supervision path, the credential
-  rules. But it was run as a deadline race of task-sized changes, and
-  when its own adversarial pass found the core breaking its principle,
+  truth" rule (`CONTEXT.md` §2), a single supervision path for every
+  program the engine starts, and the rules for which credential opens
+  which door. But it was run as a deadline race of task-sized changes.
+  When its own adversarial pass found the core breaking its principle,
   the response was a list of patches.
 - **The truth sweep** is patch-shaped by charter: "fix every place the
   panel shows something false", with the score, transaction and
-  session screens left out (`ROADMAP.md` §4, Block 3). Blue's review
-  found its worst defects on exactly those screens.
+  session screens left out (`docs/plans/ROADMAP.md` §4, Block 3).
+  Blue's review found its worst defects on exactly those screens.
 - **The order's recorded reason** was that the sweep's tests should
-  lock in the final health words. The dormancy core already landed
-  them, so that reason is spent. The remaining hardening pieces all
-  put new state on the GM's panel, so the dependency now runs the
-  other way.
+  lock in the final health states (healthy, down, dormant). The
+  dormancy core already landed them, so that reason is spent. Most of
+  the remaining hardening pieces put new state on the GM's panel, so
+  the dependency now runs the other way.
 - **The gap:** "one truth" governs readiness only. The runtime state
   the GM watches has no rule like it.
 - **Recommendation:** make the whole-engine architecture pass the next
@@ -77,11 +88,11 @@ The orchestrator's assessment, given to the owner on 2026-10-30:
   state? That would mean one owner per fact in the engine, one
   delivery path to every screen, a reload that uses the live path, and
   a scanner that replaces its copy instead of adding to it. The
-  remaining hardening pieces and the truth sweep would be re-cut from
-  the answer.
+  remaining hardening pieces and the truth sweep would be re-planned
+  from the answer.
 
 The owner replied "great" and moved on to the handoff. Treat the
-recommendation as accepted in spirit, not ratified: the definition
+recommendation as accepted in spirit, not ratified: the planning
 session confirms or changes it.
 
 ## Evidence (read the named parts only)
@@ -92,56 +103,71 @@ session confirms or changes it.
     executive summary and the owner triage. Its root pattern: "the
     client mirrors backend state … and the mirror has add-only or
     one-shot update paths."
-  - `docs/plans/2026-09-15-alnscanner-wiring-fixes-plan.md`: the
-    sections W9 and W10. They cover the video status parser, the
-    shared process files, leaked test processes, and the logout
-    incident.
-- **Which of those defects the new engine still has:**
-  `docs/plans/2026-10-30-production-fixes-triage.md`. This is
-  evidence, not a port queue.
+  - `docs/plans/2026-09-15-alnscanner-wiring-fixes-plan.md`: section
+    W10, covering the video status parser (P1), the shared process
+    files (P2), leaked test processes and the 2026-09-18 incident in
+    which a test helper killed the desktop session (P3), and the
+    kiosk-off switch (P4). Section W9 covers the guard that trusts the
+    video's live position.
+- **Which of the defects blue fixed are still in the new engine:**
+  `docs/plans/2026-10-30-production-fixes-triage.md`. It covers the
+  fixes only, not the findings blue left unfixed, and it is evidence,
+  not a list of fixes to copy.
 - **Our own findings:** `docs/plans/2026-10-30-recovered-review-findings.md`
-  §1 conclusions and standing findings 1 to 4. They show one unknown
-  equipment name getting three answers on three code paths, and one
-  display state classified both healthy and down.
+  §1, the conclusions and standing findings 1 to 4. They show one
+  unknown equipment name getting three answers on three code paths,
+  and one display state classified both healthy and down.
 - **The owner's live-run issue:** the GM panel does not keep up with
   live music playback without a refresh. The music service and the
-  panel's music section are identical to July on the new engine.
+  panel's music section are identical to July on the new engine, but
+  the path between them has changed, so the defect is expected there,
+  not shown. It needs a live reproduction on the test rig.
+- **A doc that disagrees with the code:** root `CLAUDE.md` says no
+  service keeps its own connection flag; `musicService.js:73` and
+  `:231` still do.
 - **The doctrine:** `CONTEXT.md` §2 (one truth, three loops), §4
   (dormant vs fault, alarm integrity, status with verbs, self-heal,
   supervisor, service domain), §5 (endpoints vs stack, preflight,
-  paper vs live); `ROADMAP.md` §1 and §2.
-- **The roadmap's own census of the panel's paths:** `ROADMAP.md` §4,
-  Block 3.
+  paper vs live); `docs/plans/ROADMAP.md` §1 and §2.
+- **The roadmap's own census of the panel's paths:**
+  `docs/plans/ROADMAP.md` §4, Block 3.
 
 ## Lesson themes to test
 
 1. **State ownership.** The scanner keeps its own copies of backend
    state, and those copies mostly only grow.
 2. **Health and service state travel separately**, so one can change
-   without the other.
+   without the other. The music service still keeps a private
+   connection flag beside the health registry.
 3. **External programs are read by parsing their text output.** One
-   message-splitting bug caused the long video stall, and only venue
-   hardware exposed it.
-4. **Tests share the machine with the live system:** process files,
-   the TV, the live players.
-5. **One question, several code paths, several answers.** This is
-   our own adversarial pass's pattern.
-6. **Lifecycle ownership.** After a reset, nothing re-reports the
-   display.
+   message-splitting bug caused the long video stall. It was first
+   blamed on the test harness; a venue run disproved that, and the
+   bench then reproduced it every time.
+4. **Tests share the machine with the live system:** the files that
+   track running programs, the TV, and the running video and music
+   programs.
+5. **One question, several code paths, several answers.** This is the
+   pattern our own adversarial pass found.
+6. **Lifecycle ownership.** After a system reset, the display reads
+   down until a later launch, exit or manual check reports it; no step
+   of the reset re-checks it.
 
-## Open questions for the definition session
+## Open questions for the planning session
 
 1. Is the pass a roadmap revision, run the way the September
-   re-charter was (evidence, a grill, ratified changes), or a unit
-   inside the current blocks?
+   re-charter was, or a unit inside the current blocks? The
+   re-charter's records: `docs/plans/2026-09-04-roadmap-r4-draft.md`,
+   `2026-09-04-recharter-audit-corpus.md` and
+   `2026-09-04-recharter-audit-dependencies.md`.
 2. What does the pass produce? Options include a target architecture,
-   interface changes, decision records (`docs/adr/` does not exist
+   interface changes, decision records in `docs/adr/` (not created
    yet), and a revised block sequence.
-3. Method: which subsystems get an evidence reader? Candidates are the
-   backend services and their adapters, event and state delivery, the
-   GM scanner's state, the scoreboard and the player scanners, the
-   config tool, and the test environment. Size every fleet so it stays
-   inside the usage limit, and commit findings as they land.
+3. Method: which parts of the system get an evidence reader?
+   Candidates are the backend services and their adapters, event and
+   state delivery, the GM scanner's state, the scoreboard and the
+   player scanners, the config tool, and the test environment. Size
+   every fleet: a two-lens red team with one refuter per finding cost
+   about six million subagent tokens. Commit findings as they land.
 4. What happens to the paused Block 2 work? The merged dormancy core
    and harness minimum stand. Which of the on-hold briefs survive the
    redesign?
@@ -149,17 +175,7 @@ session confirms or changes it.
    screens hold the worst defects?
 6. How do lessons from future fixes on blue flow into the engine, as a
    standing step?
-7. Green can take its home hardware pass any time; the guide is ready.
-   Does the owner want that hardware pass before, during or after the
-   architecture pass?
-
-## Working with the owner (recorded from the owner's words)
-
-- Explain decisions by how the system behaves during a game, in plain
-  language a product manager follows. No internal codes or jargon.
-- Investigate before asking or asserting, and cite the files.
-- Weigh downstream consequences: duplicate code paths and new debt
-  count against a choice.
-- State dependencies, never a schedule. The schedule is the owner's.
-- Treat feedback as a reason to check the facts first, not to react.
-- Put every decision made in conversation on the state page at once.
+7. Green can take its home hardware test any time; the guide is ready.
+   When does the owner want that test, and should the three small green
+   follow-ups ship before it? Until they do, a correct green logs a
+   false "WirePlumber rule missing" warning at every boot.
