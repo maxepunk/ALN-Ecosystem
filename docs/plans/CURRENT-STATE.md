@@ -40,18 +40,21 @@ before acting.
   from the next session. The owner added a plugin-install line to the
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
-- **Live state** (2026-10-30, 09:58Z): two things running. (1) Green's
-  follow-ups: one Sonnet implementer in `.worktrees/green-followups`
-  (branch `claude/nice-curie-hescfv-green-followups`, base `12baf920`;
-  ledger and rulings in
-  `.superpowers/sdd/2026-09-12-block2-hardening-plan/progress.md`).
+- **Live state** (2026-10-30, 10:30Z; the container restarted at about
+  10:20Z, nothing lost). (1) Green's follow-ups: four commits on
+  `claude/nice-curie-hescfv-green-followups` in `.worktrees/green-followups`
+  (`403cb179..06e1de41`, base `12baf920`, unpushed), implementer done; the
+  task review is running. Ledger and rulings:
+  `.superpowers/sdd/2026-09-12-block2-hardening-plan/progress.md`.
   (2) The cause analysis: workflow `wf_5b8300fe-cb6` (script
-  `docs/agents/workflow-scripts/cause-analysis.js`), writing four
-  sheets `docs/plans/architecture-pass/2026-10-30-causes-*.md`, then
-  `2026-10-30-cause-analysis.md` and two check files. No test rig. Three
-  read-only mapping runs finished earlier on 2026-10-30 (`wf_7bc41460-e87`,
-  `wf_dfeaf164-afd`, `wf_3f365994-ba6`; about 4.2 million helper
-  tokens). Their nine files are the pass's evidence, all committed in
+  `docs/agents/workflow-scripts/cause-analysis.js`), resumed after the
+  restart from its run id. Blue's and the backend's sheets are
+  committed; the GM-scanner and clients-and-tests readers rerun, then
+  the merge into `2026-10-30-cause-analysis.md`, two check files and
+  the fold. No test rig. Three read-only mapping runs finished earlier
+  on 2026-10-30 (`wf_7bc41460-e87`, `wf_dfeaf164-afd`,
+  `wf_3f365994-ba6`; about 4.2 million helper tokens). Their nine
+  files are the pass's evidence, all committed in
   `docs/plans/architecture-pass/`: start with
   `2026-10-30-map-runtime-state.md` §0 (corrections) and §1. The last
   code merge, `209916b`, passed CI (run 303).
