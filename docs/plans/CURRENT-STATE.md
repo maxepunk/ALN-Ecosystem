@@ -11,7 +11,7 @@ before acting.
   defines the whole-engine architecture pass. Its brief:
   `docs/plans/briefs/2026-10-30-architecture-pass-kickoff.md`. Nothing
   is built before that session ends. In progress since 2026-10-30;
-  rounds 1 to 3 are answered. Working log (git-ignored):
+  rounds 1 to 4 are answered. Working log (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
 - **Decisions so far (owner, 2026-10-30):**
   1. The architecture pass is the next unit. The paused hardening
@@ -73,11 +73,35 @@ before acting.
      token content and report scans, with no scoring and no live feed;
      the GM scanner is the command center; the scoreboards show the
      public results.
-  - Open in round 4: phase 1's outputs; two more questions from the
-    code map (how a copy may be updated and how old it is; whether a
-    reconnect snapshot matches the live update); phase 1's method,
-    including rebuilding the test rig; what ends phase 1. Then the
-    program document, for ratification.
+  10. Phase 1 hands over five documents (round 4): the rules, one per
+      question, each with a plain-words proof test; the cause
+      analysis (decision 8); contract proposals, written before code;
+      decision records in a new `docs/adr/`; the new roadmap with
+      phase 2's areas in build order.
+  11. Two more questions (round 4): 8, "how may a copy be updated,
+      and can a screen tell how old it is?"; 9, "is each fact's
+      reconnect snapshot built the same way as its live update?".
+      Phase 1 designs questions 1, 6, 8 and 9 together as one rule
+      for live state.
+  12. Phase 1's method (round 4): the cause analysis as one small
+      workflow; the rung-1 test rig rebuilt and used to reproduce the
+      unrun findings (the music panel lag, the ended game returning
+      after a restart, the reset without music, the refused deleted
+      token); design rule by rule with `codebase-design` and
+      `improve-codebase-architecture` (confirmed for this pass;
+      competing designs side by side, visual reports published as
+      pages, throwaway prototypes that never merge, every rule saying
+      how it serves hot-apply, the preview engine, capture and
+      phones); an adversarial review, one fleet at a time; grill
+      rounds; ratification.
+  13. Phase 1 ends at ratification, once every question has a rule
+      and proof test, every finding and blue fix is assigned or set
+      aside with a reason, every rule serves the planned capabilities,
+      the review's blocking findings are resolved, and the rig
+      reproduces each finding marked for live proof (round 4).
+  - Open: the owner asked that phase 1's process be made clear (the
+    documents record decisions made together in conversation; the
+    owner skims and ratifies); then the program document.
 - **The branch.** This program's records live on the branch
   `claude/nice-curie-hescfv`, with three draft pull requests:
   ALN-Ecosystem #35, ALNScanner #17 and ALN-TokenData #8. `main` is
