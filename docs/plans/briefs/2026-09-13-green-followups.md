@@ -1,6 +1,6 @@
 # Green follow-ups brief — three code-side facts the guide repair could not fix (implementer)
 
-> ON HOLD 2026-10-30: paused until the whole-engine architecture pass re-cuts the remaining hardening work (`docs/plans/CURRENT-STATE.md` §0). Not dispatched.
+> CLEARED 2026-10-30 (owner, planning session round 2): ships as one small task as soon as the architecture pass's planning session ends (`docs/plans/CURRENT-STATE.md` §0). It was on hold earlier the same day, until the pass ruled on it. Not yet dispatched.
 
 Read this first; it is your single source of requirements. Vocabulary:
 `CONTEXT.md` §4 (alarm integrity), §5 (blue/green). Model: Sonnet. You

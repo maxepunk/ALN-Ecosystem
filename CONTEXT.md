@@ -668,6 +668,15 @@ the GM scanner, and a game's own post-show tooling)
   toy pack. **Adoptable** — a stranger can stand the platform up and
   learn it. The gates live in the roadmap; deployment and sharing
   decisions are made AT states, not at phase boundaries.
+- **Truth sweep.** The roadmap's Block 3 as chartered on 2026-09-05:
+  audit the routes by which service status reaches the GM's admin
+  panel, and fix each false display with a rig test per fix. The
+  scoring, transaction and session screens were left out to keep the
+  unit bounded. The owner retired this charter on 2026-10-30. Its
+  purpose, proving with rig tests and screen captures that every
+  screen tells the truth, moves into the build work the architecture
+  pass plans, and it covers every screen (decision record:
+  `docs/plans/CURRENT-STATE.md` §0).
 - **Retired code names.** Track letters (Track A–E), stage codes
   (BS/CS/PS numbers, B0–B12, C1–C4, E-numbers, O-numbers), and slice
   numbers are historical (owner-ruled 2026-09-04). Forward-looking

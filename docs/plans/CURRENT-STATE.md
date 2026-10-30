@@ -11,7 +11,7 @@ before acting.
   defines the whole-engine architecture pass. Its brief:
   `docs/plans/briefs/2026-10-30-architecture-pass-kickoff.md`. Nothing
   is built before that session ends. In progress since 2026-10-30;
-  round 1 is answered. Working log (git-ignored):
+  rounds 1 and 2 are answered. Working log (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
 - **Decisions so far (owner, 2026-10-30):**
   1. The architecture pass is the next unit. The paused hardening
@@ -30,14 +30,34 @@ before acting.
      `CONTEXT.md` entry for "architecture pass" waits until its
      difference from the truth sweep is settled.
   3. Four terms are in `CONTEXT.md` §4b: runtime state, authority,
-     copy, delivery path. "Verdicts" names what one truth checks
-     (§1). While writing "authority" the orchestrator added that an
-     outside program can be one (VLC decides what is playing); the
-     owner has not yet confirmed that addition.
-  - Still open from round 1: the pass's outputs and the path for
-    blue's lessons (the owner did not follow them; to be re-asked in
-    plain words), and green's three follow-ups shipping when this
-    session ends (the owner leans yes; to confirm).
+     copy, delivery path. An outside program can be an authority (VLC
+     decides what is playing; confirmed in round 2). "Verdicts" names
+     what one truth checks (§1).
+  4. Green's three follow-ups ship as one small task as soon as this
+     planning session ends (round 2; the brief's hold line says so).
+  5. The question set (round 2). Question 4 becomes "can anything
+     other than the live engine touch the live show?" (tests today, the
+     preview engine later). Question 6 becomes "what does each fact and
+     each copy do at a boundary?" (a game starting or ending, a system
+     reset, a restart, a pack change while running). A seventh question
+     asks what each component receives; the owner ruled that it must
+     start from the settled roles of the player scanners (web and ESP32
+     mirror each other), the GM scanner and the scoreboards. Its
+     wording is open in round 3.
+  6. The truth sweep's charter is retired (round 2). Its purpose,
+     proving with rig tests and screen captures that every screen tells
+     the truth, moves into the build work the pass plans and covers
+     every screen. Its census and five recorded desync bugs become
+     evidence for the pass. `ROADMAP.md` §3, §4 and §10.1 and
+     `CONTEXT.md` §7 carry notes.
+  - Open in round 3: when the engine code changes (the owner asked why
+    the pass changes no code; the roadmap must say when the
+    architectural work happens); how blue's fixes reveal the problem
+    areas of today's architecture (the owner's meaning of the brief's
+    question 6: an evidence method, not a process for future fixes);
+    the "architecture pass" glossary entry, which follows the first;
+    the seventh question's wording. After the code map: the method,
+    the test rig, prototypes, and what ends the pass.
 - **The branch.** This program's records live on the branch
   `claude/nice-curie-hescfv`, with three draft pull requests:
   ALN-Ecosystem #35, ALNScanner #17 and ALN-TokenData #8. `main` is
