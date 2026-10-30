@@ -1,5 +1,7 @@
 # The self-heal lane — the scanner's pack self-heal and the two owed tests (implementer brief, revision 3: three tasks)
 
+> ON HOLD 2026-10-30: paused until the whole-engine architecture pass re-cuts the remaining hardening work (`docs/plans/CURRENT-STATE.md` §0). Its pre-build red team left one blocking finding: `docs/plans/2026-10-30-recovered-review-findings.md` §3. Its flow is renumbered `33-pack-self-heal`; the profile check owns 32.
+
 Read this first; it is your single source of requirements, with the
 exact values to use verbatim. Vocabulary: `CONTEXT.md` §2 (one truth,
 three loops; activation; shim; benign emptiness), §5 (the pack

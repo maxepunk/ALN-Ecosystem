@@ -1,5 +1,7 @@
 # The supervisor lane — the supervisor and the fault buttons (implementer brief, revision 2: three tasks)
 
+> ON HOLD 2026-10-30: paused until the whole-engine architecture pass re-cuts the remaining hardening work (`docs/plans/CURRENT-STATE.md` §0). Revision 2 was never re-reviewed, and the dormancy-core findings were to fold into it first: `docs/plans/2026-10-30-recovered-review-findings.md` §1.
+
 Read this first; it is your single source of requirements, with the
 exact values to use verbatim. Vocabulary: `CONTEXT.md` §2 (one truth,
 three loops), §4 (dormant vs fault, alarm integrity, status with verbs,

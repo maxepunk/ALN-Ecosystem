@@ -1,8 +1,10 @@
 # Dormancy-core survivors brief — the standing findings of the adversarial pass (implementer)
 
+> ON HOLD 2026-10-30: paused until the whole-engine architecture pass re-cuts the remaining hardening work (`docs/plans/CURRENT-STATE.md` §0). The implementation was lost with the container before review; the adversarial report this brief cites was lost too, and its surviving text is in `docs/plans/2026-10-30-recovered-review-findings.md` §1.
+
 Read this first; it is your single source of requirements. The FACTS
 (mechanics, reproductions, evidence) live in the adversarial report
-`/home/user/ALN-Ecosystem/.superpowers/sdd/2026-09-12-block2-hardening-plan/dormancy-core-adversarial.md`,
+`/home/user/ALN-Ecosystem/.superpowers/sdd/2026-09-12-block2-hardening-plan/dormancy-core-adversarial.md` (lost; its surviving text is §1 of `docs/plans/2026-10-30-recovered-review-findings.md`),
 section "Standing findings", numbered 1–12; read the numbered entries
 this brief names before touching their code. Vocabulary: `CONTEXT.md`
 §4 (dormant vs fault, alarm integrity, status with verbs), §5

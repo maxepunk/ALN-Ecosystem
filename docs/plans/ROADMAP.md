@@ -643,6 +643,8 @@ grill. The second game's design track runs owner-paced alongside
 everything, starting now (§7.2).
 
 ### 10.2 The calendar anchor
+**Superseded 2026-10-30 (owner):** the run ended on 2026-10-18, on blue. No date governs the work now: "We're going to be continuing to run the game off of blue until the new engine is ready to be swapped in on green." The text below is the September anchor, kept as history.
+
 2026-09-18 through 2026-10-18: weekly ALN shows on
 `production-2026-07`. Engineering never touches the running
 production. Any swap meets the show-ready gate and happens only in a

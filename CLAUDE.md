@@ -498,4 +498,6 @@ Multi-context: root `CONTEXT.md` (the ubiquitous language — SEEDED 2026-08-29,
 
 Skill wiring (mattpocock-skills by trigger, plus the adopted superpowers rows), the seven session/continuity rules (the stage is the unit; workflows carry bulk reads; write for the cold agent; reload before resuming; compact only at a checkpoint with the tree pushed), and workflow-prompt standards. See `docs/agents/process.md`.
 
+**Cloud sessions start in the folder above the five repositories**, so this project's start-up hook does not run on its own: run `CLAUDE_PROJECT_DIR="$PWD" bash .claude/hooks/session-start.sh` from this repository's root first. The program's working records live on branch `claude/nice-curie-hescfv` until draft PR #35 merges (2026-10-30); if this clone is on `main`, check that branch out, then start at `docs/plans/CURRENT-STATE.md`.
+
 **After any compaction or container restart:** before changing any file, reload the required context set in full — `docs/agents/process.md` rule 6 names the set (process.md, root CONTEXT.md, CURRENT-STATE.md, the active unit's design doc with its execution record, the component CLAUDE.md for each area touched). The compaction summary says where to look; the documents are what to rely on.

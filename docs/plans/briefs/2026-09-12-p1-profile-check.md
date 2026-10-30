@@ -1,5 +1,7 @@
 # P1 brief — the installation profile check at boot (implementer)
 
+> ON HOLD 2026-10-30: paused until the whole-engine architecture pass re-cuts the remaining hardening work (`docs/plans/CURRENT-STATE.md` §0). Its pre-build red team left one blocking finding: `docs/plans/2026-10-30-recovered-review-findings.md` §4.
+
 Read this first; it is your single source of requirements, with the
 exact values to use verbatim. Vocabulary: `CONTEXT.md` §2 (the gate,
 one truth), §4 (dormant vs fault, alarm integrity), §5 (preflight, paper

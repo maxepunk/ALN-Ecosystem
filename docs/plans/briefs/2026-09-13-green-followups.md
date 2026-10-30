@@ -1,5 +1,7 @@
 # Green follow-ups brief — three code-side facts the guide repair could not fix (implementer)
 
+> ON HOLD 2026-10-30: paused until the whole-engine architecture pass re-cuts the remaining hardening work (`docs/plans/CURRENT-STATE.md` §0). Not dispatched.
+
 Read this first; it is your single source of requirements. Vocabulary:
 `CONTEXT.md` §4 (alarm integrity), §5 (blue/green). Model: Sonnet. You
 dispatch no subagents; review arrives from the orchestrator after your

@@ -1,5 +1,7 @@
 # The credentials lane — every connection presents a verified credential (implementer brief, revision 3)
 
+> ON HOLD 2026-10-30: paused until the whole-engine architecture pass re-cuts the remaining hardening work (`docs/plans/CURRENT-STATE.md` §0). Thirteen standing pre-build red-team findings and three orchestrator rulings were never applied to this revision: `docs/plans/2026-10-30-recovered-review-findings.md` §2.
+
 Read this first; it is your single source of requirements, with the
 exact values to use verbatim. Vocabulary: `CONTEXT.md` §2 (one truth,
 three loops), §4 (alarm integrity), §6 (identity and attribution: auth

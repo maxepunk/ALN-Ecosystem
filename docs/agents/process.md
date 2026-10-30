@@ -27,6 +27,7 @@ occurs.
 | `unslop` (repo skill at `.claude/skills/unslop/`, installed 2026-08-29 from poteto/plugins, MIT) | Applies to all new human-facing prose: docs, chat replies to the owner, commit messages, PR bodies. It removes AI writing tells and adds plain, direct voice. It pairs with the §4 plain-language standard. §4 governs structure and clarity; unslop governs voice and tells. Scope ruling (owner-confirmed 2026-08-29): the pattern sections apply in full to reference documents; the "adding soul" section applies to prose and replies, never to reference documents, because a glossary must not have opinions; glossary entries use the bold lead-in form the skill itself blesses ("**Term.** Definition."). Application is an editorial read, not search-and-replace; grep may index token-level patterns only. Committed documents are not swept without cause, but retrofit is allowed on demonstrated need (owner amendment, 2026-08-29): when work shows that a committed passage's wording causes real ambiguity or confusion, unslop that passage then and there, and treat the hit as a trigger to review the whole document for the same class of problem, since one bad passage is evidence about its neighbors. Meaning stays; the edit is noted where the document tracks its changes. |
 | `subagent-driven-development` (superpowers plugin; adopted 2026-09-12) | The delegation frame for every build task handed to an implementer subagent: one implementer per task, a file-based brief as the single source of requirements, a task review (spec and quality) after each task, fix loops under the five-round rule with model escalation, and one whole-branch review at the end. Implementers never run in parallel on shared files; coupled seams are one task; a cross-repo parity change is one task holding both sides. Inside a task the implementer follows `implement` and `tdd`. The unit's execution record is the ledger, never the skill's git-ignored scratch directory. |
 | `verification-before-completion` (superpowers plugin; adopted 2026-09-12) | Apply before every completion claim, commit, push, or pull request: run the proving command fresh, read its exit code directly, then claim. An agent's success report is checked against the diff and a fresh run, never trusted. |
+| `improve-codebase-architecture` and `codebase-design` (mattpocock-skills release 1.3.1; recorded 2026-10-30) | Use for the whole-engine architecture pass and for any design of a module's interface or a seam. `codebase-design` supplies the vocabulary of deep modules; `improve-codebase-architecture` looks for places to deepen them. Confirm their use at the pass's definition session. |
 
 Plugin delivery (recorded 2026-09-12): the mattpocock skills and the
 superpowers skills ship as plugins from the official marketplace and are
@@ -35,6 +36,14 @@ that marketplace, so the session-start hook installs any declared
 official-marketplace plugin that is missing. Plugins register at session
 start: a plugin installed mid-session is readable from its cache but the
 Skill tool cannot invoke it until the next session.
+
+Amended 2026-10-30: a cloud session starts in the folder above the
+five repositories, so this project's settings and its start-up hook
+do not load on their own. The cloud environment's setup script now
+installs mattpocock-skills (owner, 2026-10-30); run the hook by hand
+for the rest (rule 6, step 0). Release 1.3.1 no longer ships
+`resolving-merge-conflicts`; until a replacement is chosen, resolve
+merge conflicts by hand and regenerate pins with the repo's tooling.
 
 Not wired in, because the PHASE3-STATUS and slice-train system already
 covers their jobs (available on request): `to-tickets`, `to-spec`,
@@ -87,6 +96,12 @@ rules:
    After any compaction or container restart, run these steps in this
    order. Write the result of each step into the scratch progress file
    before starting the next.
+   0. Bootstrap (added 2026-10-30). In a cloud session, run
+      `CLAUDE_PROJECT_DIR="$PWD" bash .claude/hooks/session-start.sh` from the ALN-Ecosystem
+      root: it sets up the submodules, dependencies and declared
+      plugins, and it does not run on its own when the session starts
+      outside the project. If the clone is on `main`, first check out
+      the program's working branch, which the root `CLAUDE.md` names.
    1. Read `docs/plans/CURRENT-STATE.md`, the entry point, one screen.
       Nothing else is required reading; its pointers say what to open
       and when.
@@ -134,6 +149,15 @@ rules:
    mid-round. Compaction keeps the session, so installed skills stay as
    they are; a new container is a new session.
 
+   Amended 2026-10-30, after a pause in which the container was
+   reclaimed and every scratch file was lost: scratch survives
+   compaction but not an idle stretch. Commit fact sheets, review
+   findings and reports into the repository as they land, not at the
+   next checkpoint, and push the designated branch before any stop.
+   Size workflow fleets to the question: three large review fleets
+   at once exhausted the session's usage limit on 2026-09-13 and
+   stopped every running agent.
+
 ## 3. Workflow-prompt standards
 
 Every prompt written for a workflow subagent must include:
@@ -179,3 +203,21 @@ on the spot, and then review the whole document for the same class of
 problem, since one bad passage is evidence about the rest (owner
 amendment, 2026-08-29). Meaning stays; note the edit. New entries added
 to any document follow this standard from now on.
+
+## 5. Working with the owner (recorded 2026-10-30 from the owner's words)
+
+- Explain each decision by how the system behaves during a game, in
+  plain language a product manager follows. Leave out internal codes
+  and jargon.
+- Investigate before asking or asserting, and cite the files. A
+  question about implementation detail comes after the question about
+  how the system works in practice.
+- Weigh downstream consequences. Duplicate code paths and new debt
+  count against a choice.
+- State dependencies, never a schedule. The schedule is the owner's.
+- Treat feedback as a reason to check the facts first, not a cue to
+  react.
+- Lessons from the production machine go into the engine's
+  architecture and interfaces, not into patches on production.
+- Put every decision made in conversation on the state page at once.
+
