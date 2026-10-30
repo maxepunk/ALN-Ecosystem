@@ -1,6 +1,6 @@
 # Green follow-ups brief — three code-side facts the guide repair could not fix (implementer)
 
-> CLEARED 2026-10-30 (owner, planning session round 2): ships as one small task alongside the architecture pass, now that its definition session has ended (`docs/plans/2026-10-30-architecture-pass.md` §10; decision 4 in its Appendix A). It was on hold earlier the same day, until the pass ruled on it. Not yet dispatched.
+> DONE 2026-10-30: merged into `claude/nice-curie-hescfv` at `089dd527` after a task review, a final whole-branch review and one re-reviewed fix wave; the record is in `docs/plans/2026-09-12-block2-hardening-plan.md` §9. Cleared the same day by the owner (planning session round 2; decision 4 in `docs/plans/2026-10-30-architecture-pass.md` Appendix A).
 
 Read this first; it is your single source of requirements. Vocabulary:
 `CONTEXT.md` §4 (alarm integrity), §5 (blue/green). Model: Sonnet. You

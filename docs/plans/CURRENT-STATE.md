@@ -15,9 +15,11 @@ before acting.
   decisions 1 to 16. Working log (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
 - **First steps** (program document §10):
-  1. Green's three follow-ups: one small task from
-     `docs/plans/briefs/2026-09-13-green-followups.md`, run alongside
-     the pass (decision 4).
+  1. Green's three follow-ups: done. Merged on 2026-10-30 at
+     `089dd527` after a task review, a final whole-branch review and
+     one re-reviewed fix wave; the merged tree passed the full backend
+     suite (151 files, 3127 tests), the coverage check and lint
+     (hardening plan §9).
   2. Phase 1, step 1, the cause analysis: one small workflow (readers
      split by source, a merge that groups every finding by cause, a
      refute-by-default check), written into
@@ -40,24 +42,21 @@ before acting.
   from the next session. The owner added a plugin-install line to the
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
-- **Live state** (2026-10-30, 10:30Z; the container restarted at about
-  10:20Z, nothing lost). (1) Green's follow-ups: four commits on
-  `claude/nice-curie-hescfv-green-followups` in `.worktrees/green-followups`
-  (`403cb179..06e1de41`, base `12baf920`, unpushed), implementer done; the
-  task review is running. Ledger and rulings:
-  `.superpowers/sdd/2026-09-12-block2-hardening-plan/progress.md`.
-  (2) The cause analysis: workflow `wf_5b8300fe-cb6` (script
+- **Live state** (2026-10-30, 11:20Z; the container restarted at about
+  10:20Z, nothing lost). Running: the cause analysis, workflow
+  `wf_5b8300fe-cb6` (script
   `docs/agents/workflow-scripts/cause-analysis.js`), resumed after the
-  restart from its run id. Blue's and the backend's sheets are
-  committed; the GM-scanner and clients-and-tests readers rerun, then
-  the merge into `2026-10-30-cause-analysis.md`, two check files and
-  the fold. No test rig. Three read-only mapping runs finished earlier
+  restart from its run id. Its four reader sheets and the merge into
+  `2026-10-30-cause-analysis.md` are committed; the two-part check
+  (`2026-10-30-cause-analysis-check-1.md` and `-2.md`) and the fold
+  follow. No worktrees. No test rig. Three read-only mapping runs finished earlier
   on 2026-10-30 (`wf_7bc41460-e87`, `wf_dfeaf164-afd`,
   `wf_3f365994-ba6`; about 4.2 million helper tokens). Their nine
   files are the pass's evidence, all committed in
   `docs/plans/architecture-pass/`: start with
   `2026-10-30-map-runtime-state.md` §0 (corrections) and §1. The last
-  code merge, `209916b`, passed CI (run 303).
+  code merge, `089dd527` (green's follow-ups), was pushed on
+  2026-10-30; its CI run is recorded in the hardening plan's §9.
 
 ## 1. The goal (owner, 2026-10-30)
 
@@ -131,8 +130,8 @@ touches blue's branch.
   checks and panel, the final wiring, the close review. Those with
   briefs carry an on-hold line; the preflight checks and panel, the
   wiring and the close review have no brief yet. The piece names are
-  the plan's plain names (plan §4). Green's three follow-ups ship now
-  (§0).
+  the plan's plain names (plan §4). Green's three follow-ups merged on
+  2026-10-30 (`089dd527`).
 - **Block 3, truth sweep:** never started; its audit notes were lost.
   Its charter is retired, and its purpose moves into the pass's phase
   2, covering every screen (decision 6).
@@ -147,8 +146,8 @@ touches blue's branch.
   cause list (§0).
 - Owner, any time: green's home hardware pass from the start-here
   section of `DEPLOYMENT_GUIDE.md`. The guide is a plan to be proven on
-  the bench. Until green's follow-ups merge (§0), a correct green logs
-  a false "WirePlumber rule missing" warning at every boot. One check
+  the bench. Green's follow-ups merged on 2026-10-30, so a correct
+  green no longer logs a false "WirePlumber rule missing" warning. One check
   to add on the bench (the follow-ups' final review, 2026-10-30): in an
   SSH shell on green, run
   `env | grep -E '^(DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR)='`. The
