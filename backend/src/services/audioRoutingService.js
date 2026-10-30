@@ -611,25 +611,25 @@ class AudioRoutingService extends EventEmitter {
    * Verify the WirePlumber config drop-in that disables restore-stream for VLC.
    * Without this rule, WP persists VLC's mute/volume state and can silently
    * restore a stale muted state across orchestrator restarts (incident 2026-05-22).
-   * The rule is present when EITHER file exists: WirePlumber 0.5+ reads the
-   * .conf (green), WirePlumber 0.4 reads the .lua (blue).
+   * The rule is present when EITHER file is readable (R_OK), because WirePlumber
+   * runs as the login user: 0.5+ reads the .conf (green), 0.4 the .lua (blue).
    * Non-fatal — orchestrator continues with degraded protection if missing.
    * @private
    */
   async _verifyWirePlumberRule() {
     const confPath = '/etc/wireplumber/wireplumber.conf.d/51-aln-vlc-no-restore.conf';
     const luaPath = '/etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua';
-    const fsp = require('fs').promises;
+    const fs = require('fs');
     try {
-      await Promise.any([fsp.access(confPath), fsp.access(luaPath)]);
-    } catch {
+      await Promise.any([confPath, luaPath].map(p => fs.promises.access(p, fs.constants.R_OK)));
+    } catch (err) {
       logger.warn(
         'WirePlumber rule missing — VLC mute/volume state may persist across sessions. ' +
         'Without this rule, a stale muted state can silently break video audio after restart. ' +
-        `Neither ${confPath} (WirePlumber 0.5) nor ${luaPath} (WirePlumber 0.4) exists. ` +
+        `Neither ${confPath} (WirePlumber 0.5) nor ${luaPath} (WirePlumber 0.4) is present and readable. ` +
         'Install procedure: see backend/CLAUDE.md "WirePlumber Configuration Dependency" or ' +
         'DEPLOYMENT_GUIDE.md, the WirePlumber step.',
-        { rulePaths: [confPath, luaPath] }
+        { rulePaths: [confPath, luaPath], codes: (err.errors ?? []).map(e => e?.code) }
       );
     }
   }
