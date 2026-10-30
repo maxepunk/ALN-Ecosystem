@@ -23,7 +23,10 @@ concurrency:
 jobs:
   rung1:
     name: Harness + live-flow audit
-    runs-on: ubuntu-latest
+    # Pinned 2026-10-30: ubuntu-latest moved to Ubuntu 26.04, where the pinned
+    # Playwright (1.57) refuses to install Chromium or its dependencies
+    # (Test run 304). Unpin when Playwright is upgraded.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:

@@ -221,7 +221,10 @@ jobs:
 
   backend-e2e-tier-l:
     name: Backend E2E Tier L (${{ matrix.leg }})
-    runs-on: ubuntu-latest
+    # Pinned 2026-10-30: ubuntu-latest moved to Ubuntu 26.04, where the pinned
+    # Playwright (1.57) refuses to install Chromium or its dependencies
+    # (Test run 304). Unpin when Playwright is upgraded.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       # Dual-pack gate (A3 slice 0, program §5): the SAME Tier L suite must
