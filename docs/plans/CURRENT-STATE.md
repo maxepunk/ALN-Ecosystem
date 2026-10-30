@@ -148,7 +148,13 @@ touches blue's branch.
 - Owner, any time: green's home hardware pass from the start-here
   section of `DEPLOYMENT_GUIDE.md`. The guide is a plan to be proven on
   the bench. Until green's follow-ups merge (§0), a correct green logs
-  a false "WirePlumber rule missing" warning at every boot.
+  a false "WirePlumber rule missing" warning at every boot. One check
+  to add on the bench (the follow-ups' final review, 2026-10-30): in an
+  SSH shell on green, run
+  `env | grep -E '^(DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR)='`. The
+  guide's step 8 assumes both are unset there. If both print, step 8,
+  gate item 8.4 of `docs/preflight-checklist.md` and the comment in
+  `backend/.env.example` need correcting together.
 - Owner: review the visible-change list (ROADMAP Appendix B) once a
   running new engine exists.
 - Owner, open: may task branches be pushed as a backup? Only the
