@@ -55,8 +55,10 @@ before acting.
   files are the pass's evidence, all committed in
   `docs/plans/architecture-pass/`: start with
   `2026-10-30-map-runtime-state.md` §0 (corrections) and §1. The last
-  code merge, `089dd527` (green's follow-ups), was pushed on
-  2026-10-30; its CI run is recorded in the hardening plan's §9.
+  code merge, `089dd527` (green's follow-ups), passed CI run 305 on
+  2026-10-30, after `04578a40` pinned the jobs that install
+  Playwright's Chromium to ubuntu-24.04 (GitHub's default image moved
+  to 26.04, which Playwright 1.57 refuses).
 
 ## 1. The goal (owner, 2026-10-30)
 
