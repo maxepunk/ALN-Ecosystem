@@ -65,3 +65,6 @@ backend/test_output.log
 
 # Design-pane screenshots live in the DesignSync project, not git
 docs/design/pages/**/*.png
+
+# Agent working scratch (docs/agents/process.md): never committed
+.superpowers/

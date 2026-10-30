@@ -171,9 +171,9 @@ ratification: PR #32 is the final recorded vehicle), **reviewed as
 one whole** (ratified, Q1r: a dedicated review of the full train's
 combined diff, run by a separate session with fresh context, before
 any vehicle merges), and walked in order; `main` green on the full
-suites; the dual-pack end-to-end run green on `main`. Today `main`
-is still identical to the July production release; everything this
-program built lives on chained branches. One honesty note stands:
+suites; the dual-pack end-to-end run green on `main`. At ratification on 2026-09-05, `main`
+was still identical to the July production release, and everything
+this program built lived on chained branches. One honesty note stands:
 one older vehicle's CI has never been observed (the train table
 flags it — "watch it"). Timing is the owner's call (supersession 9);
 the walk is owner-paced.

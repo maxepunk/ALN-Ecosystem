@@ -36,8 +36,8 @@ engine is ready to swap in on green, the second machine (blue and
 green: `CONTEXT.md` §5). No date governs the work. Lessons from blue's
 run go into the engine's architecture and interfaces, never into
 patches on blue or one-for-one ports. The architecture pass covers the
-whole engine. The order of the hardening block before the truth sweep
-is under review. The end goal stands: an open-source show platform
+whole engine. The order of the hardening block (Block 2) before the truth sweep
+(Block 3; `docs/plans/ROADMAP.md` §4) is under review. The end goal stands: an open-source show platform
 (`docs/plans/ROADMAP.md` §1).
 
 ## 2. What happened since 2026-09-13
@@ -88,7 +88,7 @@ touches blue's branch.
 
 ## 5. Where the program stands (`docs/plans/ROADMAP.md` §4)
 
-- **Block 1, unlock:** done except green's home hardware test
+- **Block 1, unlock:** done except green's home hardware pass
   (ROADMAP §6, Stage B). The baseline screen images were never
   captured; ruling R22 moved them into the truth-sweep work, which has
   not started.
@@ -108,7 +108,7 @@ touches blue's branch.
 
 - Owner: confirm or change the architecture pass at the planning
   session.
-- Owner, any time: green's home hardware test from the start-here
+- Owner, any time: green's home hardware pass from the start-here
   section of `DEPLOYMENT_GUIDE.md`. The guide is a plan to be proven on
   the bench. While the green follow-ups stay on hold, a correct green
   logs a false "WirePlumber rule missing" warning at every boot.
@@ -136,7 +136,7 @@ touches blue's branch.
 - The frame and the gates: `docs/plans/ROADMAP.md` §1, §3, §4, §10.
 - Setting up green: `DEPLOYMENT_GUIDE.md`, its start-here section.
 - Rebuilding the test rig: `backend/tests/rung1/` and the recipe in
-  `docs/plans/briefs/2026-09-12-container-baseline.md` §7.
+  `docs/plans/2026-09-12-container-baseline.md` §7.
 - How work runs: `docs/agents/process.md`; reusable workflow scripts in
   `docs/agents/workflow-scripts/`.
 - History: the plan's §9 and `docs/plans/PHASE3-STATUS.md`, never on

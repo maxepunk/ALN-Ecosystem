@@ -20,7 +20,7 @@ architecture and interfaces.
 
 **Method.** Each defect's code path was read on the new engine; the
 evidence column cites it. "Identical to July" means the file has the
-same content as the rollback tag `blue-2026-07`, so the new engine runs
+same content as the July tag `blue-2026-07`, so the new engine runs
 the code blue ran before the fixes. No tests were run: these verdicts come from reading the code, and each
 should be confirmed by a test that fails before the fix is built.
 
@@ -112,6 +112,8 @@ the music service and the panel's music section (`musicService.js` and
 expected there too, alongside the music bugs production already fixed.
 That is an expectation, not a demonstration: the files at both ends are
 identical to July, but the path between them has changed
-(`backend/src/websocket/broadcasts.js`, `cueEngineWiring.js`,
-`ALNScanner/src/admin/MonitoringDisplay.js`, `messageRouters.js`).
+(`backend/src/websocket/broadcasts.js`,
+`backend/src/services/cueEngineWiring.js`,
+`ALNScanner/src/admin/MonitoringDisplay.js`,
+`ALNScanner/src/network/messageRouters.js`).
 Diagnosing it needs a live reproduction on the test rig or at the venue.

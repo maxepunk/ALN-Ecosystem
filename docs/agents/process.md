@@ -162,7 +162,8 @@ rules:
    findings and reports into the repository as they land, not at the
    next checkpoint, and push the designated branch before any stop.
    Size workflow fleets to the question. A two-lens red team with one
-   refuter per finding cost about six million subagent tokens, and
+   refuter per finding cost about six million subagent tokens (the
+   credentials review's completion notice, 2026-09-13: 5.9 million), and
    three large review fleets at once exhausted the session's usage limit on 2026-09-13 and
    stopped every running agent.
 

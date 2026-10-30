@@ -38,7 +38,7 @@ is built until it ends. Vocabulary: `CONTEXT.md`. Process:
    settles, and each decision on the state page as it is made.
 6. **Write the pass's program document** from the answers, at
    `docs/plans/<ratification date>-architecture-pass.md`. It covers
-   scope, method, evidence readers, outputs, and how the pass revises
+   scope, method, the investigations it runs, outputs, and how the pass revises
    the roadmap. Submit it to the owner for ratification.
 
 The session is complete when the owner has ratified that document and
@@ -69,9 +69,10 @@ The orchestrator's assessment, given to the owner on 2026-10-30:
 - **The hardening block** has real architecture at its core: the "one
   truth" rule (`CONTEXT.md` §2), a single supervision path for every
   program the engine starts, and the rules for which credential opens
-  which door. But it was run as a deadline race of task-sized changes.
-  When its own adversarial pass found the core breaking its principle,
-  the response was a list of patches.
+  which door. But it was built in a rush of small, separately briefed changes
+  to meet the show date. When a review that set out to break the merged
+  core found it breaking its own principle, the response was a list of
+  patches.
 - **The truth sweep** is patch-shaped by charter: "fix every place the
   panel shows something false", with the score, transaction and
   session screens left out (`docs/plans/ROADMAP.md` §4, Block 3).
@@ -122,9 +123,9 @@ session confirms or changes it.
   panel's music section are identical to July on the new engine, but
   the path between them has changed, so the defect is expected there,
   not shown. It needs a live reproduction on the test rig.
-- **A doc that disagrees with the code:** root `CLAUDE.md` says no
-  service keeps its own connection flag; `musicService.js:73` and
-  `:231` still do.
+- **Code that breaks its own stated rule:** root `CLAUDE.md` says no
+  service should keep its own connection flag, yet `musicService.js:73`
+  and `:231` do; `CLAUDE.md` now records the exception.
 - **The doctrine:** `CONTEXT.md` §2 (one truth, three loops), §4
   (dormant vs fault, alarm integrity, status with verbs, self-heal,
   supervisor, service domain), §5 (endpoints vs stack, preflight,
@@ -147,7 +148,7 @@ session confirms or changes it.
    track running programs, the TV, and the running video and music
    programs.
 5. **One question, several code paths, several answers.** This is the
-   pattern our own adversarial pass found.
+   pattern our own break-it review of the dormancy core found.
 6. **Lifecycle ownership.** After a system reset, the display reads
    down until a later launch, exit or manual check reports it; no step
    of the reset re-checks it.
@@ -160,14 +161,17 @@ session confirms or changes it.
    `2026-09-04-recharter-audit-corpus.md` and
    `2026-09-04-recharter-audit-dependencies.md`.
 2. What does the pass produce? Options include a target architecture,
-   interface changes, decision records in `docs/adr/` (not created
-   yet), and a revised block sequence.
-3. Method: which parts of the system get an evidence reader?
-   Candidates are the backend services and their adapters, event and
-   state delivery, the GM scanner's state, the scoreboard and the
-   player scanners, the config tool, and the test environment. Size
-   every fleet: a two-lens red team with one refuter per finding cost
-   about six million subagent tokens. Commit findings as they land.
+   interface changes, short written records of each design decision
+   (their folder, `docs/adr/`, does not exist yet), and a revised block sequence.
+3. Method: which parts of the system get their own investigation?
+   Candidates are the backend services and the code that talks to
+   outside programs, how events and state reach the screens, the GM
+   scanner's state, the scoreboard and the player scanners, the config
+   tool, and the test environment. Keep each batch of helper agents
+   small: one review that used two attacking reviewers and a checker for
+   every finding consumed about six million tokens of helper work, and
+   three at once hit the session's usage limit. Commit findings as they
+   land.
 4. What happens to the paused Block 2 work? The merged dormancy core
    and harness minimum stand. Which of the on-hold briefs survive the
    redesign?
@@ -175,7 +179,7 @@ session confirms or changes it.
    screens hold the worst defects?
 6. How do lessons from future fixes on blue flow into the engine, as a
    standing step?
-7. Green can take its home hardware test any time; the guide is ready.
-   When does the owner want that test, and should the three small green
+7. Green can take its home hardware pass any time; the guide is ready.
+   When does the owner want that pass, and should the three small green
    follow-ups ship before it? Until they do, a correct green logs a
    false "WirePlumber rule missing" warning at every boot.
