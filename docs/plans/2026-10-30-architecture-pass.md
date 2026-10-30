@@ -2,8 +2,8 @@
 
 **Status: draft for the owner's ratification, 2026-10-30.** This
 document records the owner's decisions from the pass's definition
-session (`docs/plans/CURRENT-STATE.md` §0, decisions 1 to 14, rounds 1
-to 5 on 2026-10-30) and the evidence they rest on. It makes no new
+session (`docs/plans/CURRENT-STATE.md` §0, decisions 1 to 15, rounds 1
+to 6 on 2026-10-30) and the evidence they rest on. It makes no new
 decision. Anything new found while writing it went back to the owner
 as a question first (decision 14). Section 11 maps every section to
 its decisions.
@@ -115,21 +115,22 @@ Every decision is made in a question round with the evidence in view,
 and written into its document at once. The documents record decisions;
 they are never where a decision is first made. Ratification is a skim
 with no new decisions (decision 14; `docs/agents/process.md` §5, last
-bullet). The steps run in this order (decision 12):
+bullet). The steps run in this order (decisions 12 and 15):
 
 | Step | The work | What the owner sees | What the owner decides | What gets written |
 |---|---|---|---|---|
-| 1. Cause analysis | One small workflow over every blue fix, every finding blue left unfixed, and every finding in the evidence files: readers grouped by cause, a merge, a refute-by-default check. For each finding: the problem area, the design cause, every other place with that cause, the design choice that removes it, the proving test (decision 8) | A short list of causes, each with the fixes and findings behind it | Whether the list is right: anything missing or wrongly grouped | The cause analysis |
+| 1. Cause analysis | One small workflow over every blue fix, every finding blue left unfixed, and every finding in the evidence files: readers split by source (blue's records, the backend, the GM scanner, the other clients and tests), then a merge that groups every finding by cause, then a refute-by-default check. For each finding: the problem area, the design cause, every other place with that cause, the design choice that removes it, the proving test (decision 8) | A short list of causes, each with the fixes and findings behind it | Whether the list is right: anything missing or wrongly grouped | The cause analysis |
 | 2. Test rig | Rebuild the rung-1 rig from its recipe (`docs/plans/2026-09-12-container-baseline.md` §7) and reproduce the findings nobody has run: the GM panel falling behind live music, the ended game returning after a restart, the reset that leaves music out, the tablet that still refuses a deleted token. Phase 2's proof tests run on this rig too | A report of what the rig reproduced | Nothing; these are facts | Live-proof marks in the cause analysis |
 | 3. Design | Rule by rule, with the skills `codebase-design` and `improve-codebase-architecture`. For the hard rules, two or three competing designs written side by side; for example: keeping claimed tokens correct when a tablet scans offline, getting a service's health and state to the panel together, and keeping tests and preview engines off the live machine. A throwaway prototype where the code's behaviour is uncertain; prototypes never merge. Every rule says how it serves hot-apply, the preview engine, capture and phones | One page per rule: the designs side by side, before-and-after diagrams, a recommendation. Pages are published for the owner to open, never left as temporary files | Which design | The rule and its proof test; its contract proposals; a decision record if it is hard to reverse; new terms in `CONTEXT.md` |
-| 4. Review | An adversarial review of the draft rules and roadmap: two reviewers with different angles, a checker for each finding, one fleet at a time. A September review of this shape cost about six million helper tokens (`docs/agents/process.md` §2, rule 7 amendment) | Only the findings that would change a decision | Each such finding, as a question | Corrections to the record |
-| 5. Roadmap | Phase 2's areas in build order | The proposed order, with the dependency behind each step | The order | The new roadmap |
+| 4. Build order | Phase 2's areas drafted in a proposed build order, with the dependency behind each step | Nothing yet; it comes to the owner in step 6 | Nothing yet | The draft roadmap |
+| 5. Review | An adversarial review of the rules and the proposed build order: two reviewers with different angles, a checker for each finding, one fleet at a time. A September review of this shape cost about six million helper tokens (`docs/agents/process.md` §2, rule 7 amendment) | Nothing yet; its findings come to the owner in step 6 | Nothing yet | Nothing yet |
+| 6. Question round | One round with the review's findings that would change a decision, and the build order | Only those findings, and the proposed order with the dependency behind each step | Each finding; the order | Corrections to the record; the new roadmap |
 | Ratification | Assemble the five documents | The five documents, already matching the decisions | Ratify | The state page names phase 2's first area |
 
 This flow carries the September re-charter's elements (decision 2).
 The evidence is the nine files in §8, plus steps 1 and 2. The draft
 with numbered questions is the design pages of step 3 and the numbered
-question rounds that settle them. The adversarial review is step 4.
+question rounds that settle them. The adversarial review is step 5.
 The grill rounds are the question rounds throughout. Ratification
 closes it.
 
@@ -222,7 +223,9 @@ the r4 text survives in git history, as r3's did.
   architecture pass rules on them (hardening plan ruling 34, an
   orchestrator ruling); their recovered review findings are evidence.
   The merged pieces (the equipment families, the dormancy core, the
-  harness minimum): see question 15, pending.
+  harness minimum) stay in the engine. Phase 2 changes them only where
+  a rule requires, and their standing review findings feed the cause
+  analysis like every other finding (decision 15).
 - **Block 3, the truth sweep.** Its charter is retired. Its purpose
   moves into phase 2 and covers every screen. Its census and its five
   recorded desync bugs are evidence (decision 6).
@@ -282,7 +285,7 @@ for that.
 1. Green's three follow-ups, as one small task from their brief
    (`docs/plans/briefs/2026-09-13-green-followups.md`), alongside the
    pass (decision 4).
-2. Phase 1, step 1: the cause analysis (decision 12). Step 2, the
+2. Phase 1, step 1: the cause analysis (decisions 12 and 15). Step 2, the
    rig, follows it.
 
 ## 11. Decision index
@@ -292,10 +295,10 @@ for that.
 | 1. What the pass is | 1, 3, 7, 8 |
 | 2. Scope | 1, 9, 12 |
 | 3. The nine questions | 1, 5, 9, 11 |
-| 4. Phase 1 | 2, 7, 8, 10, 12, 13, 14 |
+| 4. Phase 1 | 2, 7, 8, 10, 12, 13, 14, 15 |
 | 5. Phase 2 | 6, 7 |
 | 6. How blue's fixes are used | 8 |
-| 7. How the pass revises the roadmap | 2, 4, 6, 7, 10 |
+| 7. How the pass revises the roadmap | 2, 4, 6, 7, 10, 15 |
 | 8. Evidence | the owner's condition in decision 1 (stated in §1) |
 | 9. Records | 14 |
 | 10. First steps | 4, 12 |

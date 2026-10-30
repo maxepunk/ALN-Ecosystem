@@ -11,7 +11,7 @@ before acting.
   defines the whole-engine architecture pass. Its brief:
   `docs/plans/briefs/2026-10-30-architecture-pass-kickoff.md`. Nothing
   is built before that session ends. In progress since 2026-10-30;
-  rounds 1 to 5 are answered. Working log (git-ignored):
+  rounds 1 to 6 are answered. Working log (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
 - **Decisions so far (owner, 2026-10-30):**
   1. The architecture pass is the next unit. The paused hardening
@@ -123,11 +123,21 @@ before acting.
       (Decisions 10, 12 and 14 were completed on 2026-10-30 from the
       approved question text, after a record check found the first
       summaries too short.)
-  - Next: the pass's program document,
-    `docs/plans/2026-10-30-architecture-pass.md` (draft built only
-    from decisions 1 to 14 and the evidence; a record check by a
-    separate reviewer, run `wf_b18b5df5-3f9`, then the owner's
-    ratification).
+  15. Three corrections from the record check (round 6). (a)
+      Phase 1's order: cause analysis, test rig, design, a proposed
+      build order, the review of the rules and the order, one
+      question round with the review's findings and the order,
+      ratification. (b) The merged hardening pieces (the equipment
+      families, the dormancy core, the harness minimum) stay; phase 2
+      changes them only where a rule requires, and their standing
+      findings feed the cause analysis. (c) The cause analysis's
+      readers are split by source (blue's records, the backend, the
+      GM scanner, the other clients and tests); a merge groups every
+      finding by cause; then the skeptical check. (Amends decisions
+      12 and 14 where they differ.)
+  - Next: the program document, `docs/plans/2026-10-30-architecture-pass.md`,
+    final draft from decisions 1 to 15; a second record check; then
+    the owner's ratification (a skim).
 - **The branch.** This program's records live on the branch
   `claude/nice-curie-hescfv`, with three draft pull requests:
   ALN-Ecosystem #35, ALNScanner #17 and ALN-TokenData #8. `main` is
