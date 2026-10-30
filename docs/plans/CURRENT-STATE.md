@@ -73,16 +73,13 @@ before acting.
   from the next session. The owner added a plugin-install line to the
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
-- **Live state:** no worktrees, no test rig. Two read-only workflows
-  started 2026-10-30 to give the planning session a real map of the
-  engine and the roadmap (the owner's condition, decision 1): run
-  `wf_7bc41460-e87` (direction and roadmap documents) and run
-  `wf_dfeaf164-afd` (the engine as built: four readers, a merge, a
-  check), plus run `wf_3f365994-ba6` (everything each component sends
-  to the backend, added after the owner asked whether the readers
-  cover how components talk to the backend). Each reader writes one file in `docs/plans/architecture-pass/`
-  (`2026-10-30-map-*.md`); commit what lands. The last code merge,
-  `209916b`, passed CI (run 303).
+- **Live state:** nothing running, no worktrees, no test rig. Three
+  read-only mapping runs finished on 2026-10-30 (`wf_7bc41460-e87`,
+  `wf_dfeaf164-afd`, `wf_3f365994-ba6`; about 4.2 million helper
+  tokens). Their nine files are the pass's evidence, all committed in
+  `docs/plans/architecture-pass/`: start with
+  `2026-10-30-map-runtime-state.md` §0 (corrections) and §1. The last
+  code merge, `209916b`, passed CI (run 303).
 
 ## 1. The goal (owner, 2026-10-30)
 
