@@ -54,6 +54,9 @@ test-results/
 # Environment variables
 .env
 
+# Python virtual environment (the venv route in scripts/requirements.txt)
+.venv/
+
 # Python cache files
 __pycache__/
 *.pyc

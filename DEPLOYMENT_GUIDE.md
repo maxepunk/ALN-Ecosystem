@@ -1303,6 +1303,9 @@ Or, if a virtual environment is preferred:
 python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements.txt
 ```
 
+On that route, run every script with `.venv/bin/python3`, the runbook's
+commands included. Plain `python3` fails with `ModuleNotFoundError`.
+
 `requests` and Pillow are required; `dotenv` is optional and
 `jsonschema` is a soft dependency that turns the schema check on.
 `scripts/generate_asset_manifest.py` needs none of them — it imports
