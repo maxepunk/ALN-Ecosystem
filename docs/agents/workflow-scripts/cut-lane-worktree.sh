@@ -18,6 +18,9 @@ git -C "$WT" submodule update --init --recursive aln-memory-scanner
 git -C "$WT" submodule update --init arduino-cyd-player-scanner
 ln -s "$ROOT/backend/node_modules" "$WT/backend/node_modules"
 ln -s "$ROOT/ALNScanner/node_modules" "$WT/ALNScanner/node_modules"
+# The symlinks are not directories, so .gitignore's "node_modules/" misses them; exclude them locally.
+EX="$(git rev-parse --git-common-dir)/info/exclude"
+grep -qx 'backend/node_modules' "$EX" || printf '%s\n' backend/node_modules ALNScanner/node_modules >> "$EX"
 if [ "$WITH_SCANNER" = "scanner" ]; then
   git -C "$WT/ALNScanner" checkout -q -b "$BR"
 fi

@@ -28,8 +28,8 @@ Status words: present / gone / changed / not-checkable. File:line cites are the 
 | D-10 | A phone that played last week still says "revisited" for a token in tonight's game. | CT 1.5 row 6, CT 1.6; RS R59, RS 3.2, RS 5; RC 63 | `alnMemoryScanner` saved on every scan and never cleared (`aln-memory-scanner/js/app.js:195-215,448-451`); no session word anywhere in `js/` (grep). Present. | Web player scanner: seen set | D-c5 | 6,5 | no | Scan a token, end the game, start a new game, scan the same token on the same phone. It must show as new for the new game. |
 | D-11 | Offline, the 101st queued scan silently pushes the oldest out, on both player devices. | CT concl 9, CT 1.2, CT 1.3; RS R12 | Web `shift()` at the cap (`orchestratorIntegration.js:169-173`); ESP32 `removeUploadedEntries(1)` at `MAX_QUEUE_SIZE=100` (`OrchestratorService.h:263-265,1243-1247`, `config.h:64`). Present. | Player scanners: offline queue | D-c10 | 5,6 | no | Queue 101 scans while the engine is down, then reconnect: all 101 must reach the engine, or the player must be told one was dropped. |
 | D-12 | One failed batch is dropped by the web scanner on any 4xx but kept forever by the ESP32, which also queues every reply it does not recognise (including a 429 from the rate limiter); the same scan has two fates. | CT concl 9; IN c11, IN Q7; RS 5 ("Has this player scan been recorded"); RC 123 | Web: `status >= 400 && < 500` drops (`orchestratorIntegration.js:333-356`); ESP32: remove only on 200 (`OrchestratorService.h:541-545`), unknown replies `RETRY_QUEUE` (`services/ScanResponse.h:70-75`). Present. | Player scanners: scan reply meaning | D-c10 | 5 | yes (force a 429) | Make the engine answer one batch with 429; both devices must retry it and the scans must end up stored. Today the web scanner drops them. |
-| D-13 | A batch uploaded while no game exists is answered "processed" but nothing is stored, and both player devices delete the batch. | IN c11; RS R9, RS 3.2 | `scanRoutes.js` batch branch logs "no active session — entry not persisted" and still acks (read in `routes/scanRoutes.js` batch loop); web deletes on 200 (`orchestratorIntegration.js:296-322`), ESP32 on 200 (`OrchestratorService.h:541-545`). Present. | Scan route / player queues | D-c10 | 6,5 | no | With scans queued offline and no game, reconnect: the engine must refuse the batch (device keeps it) or store it; today it answers processed and the scans vanish. |
-| D-14 | A scan stamped 1970 by an ESP32 before its clock syncs is stored if sent live but silently lost if it waited in the queue. | IN c11, IN Q6 | Live route accepts any ISO date; batch rejects before 2020 (`scanRoutes.js:171-180,262-280`, `MIN_VALID_SCAN_TIME_MS`); ESP32 stamps `1970-01-01T..` before SNTP (`Application.h:661-669`); batch comes back `failed` yet HTTP 200 so the device deletes it. Present. | Scan route / ESP32 clock | D-c10 | 5 | no | Send the same 1970-stamped scan live and in a batch; both must end the same way (both stored with the receive time, or both refused visibly). |
+| D-13 | A batch uploaded while no game exists is answered "processed" but nothing is stored, and both player devices delete the batch. | IN c11; RS R9, RS 3.2 | batch branch logs "no active session — entry not persisted" and still acks (`routes/scanRoutes.js:317-352`); web deletes on 200 (`orchestratorIntegration.js:296-322`), ESP32 on 200 (`OrchestratorService.h:541-545`). Present. | Scan route / player queues | D-c10 | 6,5 | no | With scans queued offline and no game, reconnect: the engine must refuse the batch (device keeps it) or store it; today it answers processed and the scans vanish. |
+| D-14 | A scan stamped 1970 by an ESP32 before its clock syncs is stored if sent live but silently lost if it waited in the queue. | IN c11, IN Q6 | Live route accepts any ISO date; batch rejects before 2020 (`scanRoutes.js:176-178,262-280`, `MIN_VALID_SCAN_TIME_MS`); ESP32 stamps `1970-01-01T..` before SNTP (`Application.h:661-669`); batch comes back `failed` yet HTTP 200 so the device deletes it. Present. | Scan route / ESP32 clock | D-c10 | 5 | no | Send the same 1970-stamped scan live and in a batch; both must end the same way (both stored with the receive time, or both refused visibly). |
 | D-15 | A batch retried after an engine restart is stored a second time, because the "already processed" memory lives in RAM for an hour. | RS R12, RS 3.2 | `processedBatches` Map and hourly sweep (`scanRoutes.js:183-196`). Present. | Scan route idempotency | D-c10 | 6 | yes (restart in the rig) | Send batch X, restart the engine, send X again: the scans must appear once. |
 | D-16 | After the engine dies, the ESP32 keeps saying "connected" for about 100 s and the web scanner for up to about 15 s, so a player scan during the gap shows a normal screen. | CT 1.6, CT 1.5 row 9; RS R54, RS 3.1; RC 42, RC 121 (corrected form) | ESP32 health check sits inside `httpWithRetry` (6 tries, 5 s each, backoff 1+2+4+8+16 s) (`OrchestratorService.h:341-356,1020-1050,1293-1310`); web 10 s poll with 5 s timeout (`orchestratorIntegration.js:463-471`). Present. | Player scanners: reachable flag | D-c6 | 8,5 | yes (kill the engine, time the screens) | Kill the engine; each player scanner must show offline within one poll interval (10 s). |
 | D-17 | During an outage with no game, a player gets a normal "recorded" screen; the same scan online gets "NO SESSION". | CT 1.6 (last row); RS 5; RS R1 | ESP32 queued-offline path shows normal (`Application.h:689-730`), online 409 shows NO SESSION (`ScanResponse.h:51-75`); web shows the body error only online (`orchestratorIntegration.js:98-101,152-158`). Present. | Player scanners: does a session exist | D-c5 | 5,7 | no | Scan while the engine is unreachable and no game exists; the screen must say the scan is unconfirmed, not recorded. |
@@ -164,7 +164,7 @@ Status words: present / gone / changed / not-checkable. File:line cites are the 
 
 **Design cause.** A game starting, ending, being reset, or the engine restarting is never announced as a boundary. The TV infers one from a new session id, the web scanner has no game link at all, the engine's restore reloads an ended record, and listener order at reset differs from boot, so a snapshot after a reset can carry pre-reset data.
 
-**Findings behind it:** D-10, D-13 (no-game acks), D-30, D-31.
+**Findings behind it:** D-30, D-31. (D-10 and D-13 are boundary symptoms too; they sit under D-c5 and D-c10, their own design causes.)
 
 **Other places.** Search: `grep -rn "handleSessionBoundary\|resetForNewSession\|session:update" backend/public ALNScanner/src aln-memory-scanner/js` plus reading `sessionService.js` and `systemReset.js`.
 - `backend/public/scoreboard.html:1473-1486,1687-1730`: the id-change boundary; a null session or a restart under the same id is no boundary.
@@ -268,7 +268,7 @@ Status words: present / gone / changed / not-checkable. File:line cites are the 
 
 **Other places.** Search: `grep -rnE "status\(200\)|status\(409\)|processed" backend/src/routes backend/src/app.js`.
 - `backend/src/app.js:152-168`: an unparseable body returns 200 "so ESP32 scanners clear their queue" (the engine tuned to one client).
-- `backend/src/routes/scanRoutes.js:171-180` against `:262-280`: the timestamp rule differs by route.
+- `backend/src/routes/scanRoutes.js:176-178` against `:262-280`: the timestamp rule differs by route.
 - `ALNScanner/src/network/networkedQueueManager.js:100-111`: the GM scanner leaves a failed submit queued for retry (a third reply policy).
 - `aln-memory-scanner/js/orchestratorIntegration.js:133-166` and `arduino-cyd-player-scanner/ALNScanner_v5/services/ScanResponse.h:51-75`.
 
@@ -341,7 +341,15 @@ Sources and sections read (counts count findings that cite the section; a findin
 
 Per-source totals and per-section counts are in the lines below, computed from the table's source cells.
 
-COUNTS_PLACEHOLDER
+Counts (findings whose source cell cites the source; one finding can cite several; computed by script over the 88 rows):
+- `map-clients-tests.md`: 64 findings. By part: Conclusions about 29, §1.0 5, §1.1 5, §1.5 2, §1.6 2, §2 3, §3.3 1, §4.1 2, §4.2 5, §4.3 1, §4.4 2, §4.6 1, §6 7. §1.2, §1.3, §3.1, §3.2, §4.5 and §5 support rows through the Conclusions and yield no row of their own beyond those counted; §7 and §8 none (see table above).
+- `map-runtime-state.md`: 38 findings. §0 3, rows R1, R4, R9, R12, R13, R15, R17, R21, R31, R34, R49, R52, R54, R59 (14 rows), §3.2 1, §4.3 1, §5 3, §7 9, §8 1.
+- `map-runtime-state-check.md`: 15 findings cite it (corrections or confirmations applied to D-01, D-16, D-31, D-03, D-04, D-09, D-10, D-30, D-53, D-54).
+- `map-inbound.md`: 14 findings. Conclusions 8, 9, 10, 11 (7 mentions), §4 5, §6 Q6, Q7, Q10, §1c (P6) 1.
+- `recovered-review-findings.md`: 13 findings. §2 3 (D-28, D-81, D-82), §4 1 (D-80), §5 1 (D-29), Appendix 8 (D-59, D-62, D-72, D-75, D-76, D-77, D-78, D-79). §1 and §3: 0.
+- `block3-truth-sweep-census.md`: 6 findings. §9 5 (D-83 to D-86, D-88), §10 1 (D-87).
+
+Total distinct findings: 88 (D-01 to D-88).
 
 Other checks:
 - Every local cause lists its search command and the places read.
