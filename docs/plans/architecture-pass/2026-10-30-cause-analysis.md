@@ -8,7 +8,7 @@
 - **Also used:** `docs/plans/2026-10-30-architecture-pass.md` sections 3 (the nine questions), 4.1 (step 1) and 6 (how blue's fixes are used); `CONTEXT.md` sections 2, 4b and 7 for the words one truth, verdict, runtime state, authority, copy, delivery path, architecture pass; `2026-10-30-map-direction.md` sections 2 and 3 for the planned capabilities (cited as "direction §N, line L").
 - **What comes next:** the owner's confirmation of section 1 (step 1 ends), then the rig (step 2) runs section 4.
 
-**How to read a cause.** Each cause names a design choice that lets a family of faults happen; it is never a fault restated. "Questions" are the nine of the program document's section 3: 1 who decides each fact (the authority); 2 does a service's state travel with its health; 3 how the engine reads the programs it drives; 4 can anything other than the live engine touch the live show; 5 does one question get one answer; 6 what each fact and copy does at a boundary; 7 does each component receive what its role needs; 8 how a copy may be updated and whether a screen can tell its age; 9 is the reconnect snapshot built like the live update. "none" means no question's rule would remove the cause: a gap in the nine, to put to the owner. Status words in the tables are the readers': present, changed, gone, not verified, not-checkable.
+**How to read a cause.** Each cause names a design choice that lets a family of faults happen; it is never a fault restated. "Questions" are the nine of the program document's section 3: 1 who decides each fact (the authority); 2 does a service's state travel with its health; 3 how the engine reads the programs it drives; 4 can anything other than the live engine touch the live show; 5 does one question get one answer; 6 what each fact and copy does at a boundary; 7 does each component receive what its role needs; 8 how a copy may be updated and whether a screen can tell its age; 9 is the reconnect snapshot built like the live update. "none" means no question's rule would remove the cause: a gap in the nine, to put to the owner. Status words in the tables are the readers', with one the check added: present, changed, gone, latent (the code holds the fault but no path a game takes reaches it today), not verified, not-checkable.
 
 **Duplicates.** The same fault seen by two readers is one row carrying both ids (for example A-05 / C-04). Section 5 lists every id exactly once.
 
@@ -631,19 +631,19 @@ Fields per cause: place in the order and why; the statement; the findings (id, w
 - (c) Clients stop holding pack files: each fetches the active pack from the engine on every start and treats its copy as disposable; the nested submodule files are removed (clients D-c3 (b)).
 - (d) Each editable file gets a declared apply rule (live, reset, restart) in one table that both the tool and the README read, and the tool shows "pending until X" (clients D-c11 (a)); or a single apply verb on the engine (hot-apply) re-activates the pack, re-reads the files and returns the new identity (clients D-c11 (b)).
 
-**Candidate proving tests.** Edit one token's rating on disk with no restart: `GET /api/tokens`, `GET /api/pack/files/tokens.json` and the points a scan awards all agree, and the file's sha1 equals the manifest's (B-07 / D-04). Publish a changed rating through the tool with the engine running: within a bounded time scoring, the token endpoints, the scoreboard and every tablet use it, or the tool says a restart is needed (B-28 / D-38). Connect a tablet with a different pack hash: the GM is shown a visible mismatch or the tablet is refused (B-20 / C-08). With `PACK_PATH` unset, the web scanner's token file and the active pack's `tokens.json` have equal hashes (D-05). Swap a pack mid-game and delete a transaction: scores equal what the original rules awarded, or the swap is refused during a game (B-29).
+**Candidate proving tests.** Edit one token's rating on disk with no restart: `GET /api/tokens`, `GET /api/pack/files/tokens.json` and the points a scan awards all agree, and the file's sha1 equals the manifest's (B-07 / D-04). Publish a changed rating through the tool with the engine running: within a bounded time scoring, the token endpoints, the scoreboard and every tablet use it, or the tool says a restart is needed (B-28 / D-38). Connect a tablet with a different pack hash: the GM is shown a visible mismatch or the tablet is refused (B-20 / C-08). With `PACK_PATH` unset, the web scanner's token file and the active pack's `tokens.json` have equal hashes (D-05). Swap a pack mid-game and delete a transaction: scores equal what the original rules awarded, or the swap is refused during a game (B-29; in this tree a swap needs a restart, since a pack is activated once per process, so the test swaps across a restart with the game record kept).
 
 **Questions:** 6, 5, 8.
 
-**Live-proof marks.** Yes: A-45, B-07 / D-04, B-20 / C-08 (C-08 half; D-18 no), B-28 / D-38 (B-28 half), B-29, D-03, D-07, D-08, D-40 / B-44 (B-44 half), D-05 / A-94 (A-94 half). No: B-88, D-02, D-06, D-39, D-41, D-44.
+**Live-proof marks.** Yes: A-45, B-07 / D-04, B-20 / C-08 (C-08 half; D-18 no), B-28 / D-38 (B-28 half), B-29, D-03, D-08, D-40 / B-44 (B-44 half), D-05 / A-94 (A-94 half). No: B-88, D-02, D-06, D-39, D-41.
 
 **Planned capabilities it blocks or burdens.** Hot-apply, "FOUR named steps" whose third must name "every boot-copy consumer", a list no document holds in one place and that grows with Block 2 (direction §3.4, lines 182, 188; §3.1, line 144). The design loop, "edit, publish, hot-apply, play" (direction §3.5, line 199). The preview engine's own hash (direction §3.5, line 198). Self-heal's "stale scanner pack" (direction §2, C11, line 89). Deploy, where "the pack side has hot-apply and the profile side does not" and the pass must say which (direction §3.6, line 206). Hardware-scanner parity, where ESP32 pack files "ride the asset-manifest sync" (direction §3.1, line 143). The three identities the designer must see: the live tree, the draft, the running orchestrator's activated hash (direction §3.4, line 185).
 
-### C13. The engine does not know who is connected: identity and role come from a word the client says or a default, so every socket gets everything and reads need no login
+### C13. The engine does not know who is connected: a client's word or a route's default decides whether a credential is asked for at all and what the station is called, so every socket gets everything and reads need no login
 
-**Place 13 of 16.** At a show on a closed kit network it is mostly latent (a wrong device type in a list, a duplicate station name); it blocks phones, remote displays and any hidden-information game, where who receives what is the game.
+**Place 13 of 16.** At a show on a closed kit network it is mostly latent (a wrong device type in a list, a duplicate station name, a reload refused after lost Wi-Fi); it blocks phones, remote displays and any hidden-information game, where who receives what is the game.
 
-**Statement.** Who may connect, ask or receive is decided by a self-declared word (`deviceType`, an id prefix such as `SCOREBOARD_`) or by a route's default, and by separate checks at each socket event and route; no event or route declares its audience. So a socket with no credential can request the whole state, the HTTP state and session endpoints answer anyone on the kit network, the TV joins the GM room and receives every transaction and every service domain, displays get no device record, two tablets can pick the same station name from a public list, and the planned per-display credential would let a display wear a GM station's name.
+**Statement.** Whether a credential is asked for at all, and what a station is called, are decided by a self-declared word (`deviceType`, an id prefix such as `SCOREBOARD_`, a typed station name) or by a route's default. Once a socket offers a credential, its tier and functions come from the verified token: transactions check the tier, commands check verified functions, displays are told apart by verified tier. But the checks are separate at each socket event and route and no event or route declares its audience. So a socket that says it is not a GM station can request the whole state with no credential, the HTTP state and session endpoints answer anyone on the kit network, the TV joins the GM room and receives every transaction and every service domain, displays get no device record, two tablets can pick the same station name from a public list, a station is known only by the name it types, so it cannot replace its own stale socket after lost Wi-Fi, and the planned per-display credential would let a display wear a GM station's name.
 
 **Findings.**
 
@@ -657,14 +657,14 @@ Fields per cause: place in the order and why; the statement; the findings (id, w
 | B-82 | Planned: the identify path would read `device.type`, null for every display socket, and throw on each scoreboard connect. | backend: [RV] §2 (doctrine-C-1) | `backend/src/websocket/gmAuth.js:55-66,195-199` | not built: not-checkable |
 | B-83 | Planned: the end-to-end helper cannot verify an observe credential minted in its own process, because the engine under test keeps credentials in another process's memory. | backend: [RV] §2 (tree-C2, doctrine-C-3) | `backend/src/middleware/auth.js:13-14` | not-checkable (test side in C16's D-81) |
 | B-66 | Scan submit checks the operator tier, commands check named functions, the scoreboard exemption keys on an id prefix; the three differ and will diverge when restricted tokens exist. | backend: [IN] §6 Q11, §4 | `backend/src/websocket/adminEvents.js:165`; `services/commandExecutor.js:152-163`; `socketServer.js:85` | present (latent) |
-| B-70 / C-19 | Two stations that read the free-name list before either connects pick the same name; the second is refused at connect; with no game the collision check is skipped entirely. The tablet chooses a fact the backend decides. | backend: [IN] Concl. 17, Q8. GM: GMM §2.1, §4; RSM R55; INB concl 17, Q8 | `backend/src/websocket/socketServer.js:85-104`; `ALNScanner/src/ui/connectionWizard.js:203-226`; refusal `orchestratorClient.js:77-86` | present |
-| B-71 / D-32 | The ESP32 is recorded in the device list as a player scanner, because its health poll sends no type; its scan bodies say `esp32`. | backend: [IN] §4. clients: IN 4 | `backend/src/routes/healthRoutes.js:50-60`; `arduino-cyd-player-scanner/ALNScanner_v5/services/OrchestratorService.h:346` | present |
-| D-33 | Every player health poll adds or refreshes a device and saves the game; nothing removes a device, so the list and counters only grow. | clients: RS R13, 3.2 | `backend/src/routes/healthRoutes.js:73-93`; `removeDevice` defined (`sessionService.js:679`, `sessionRegistry.js:119`) with no caller | present |
-| D-34 | The ESP32 does not check the engine's certificate at all. | clients: CT 1.0; IN 4 | `arduino-cyd-player-scanner/ALNScanner_v5/services/OrchestratorService.h:714,945,979` (`setInsecure()`) | present |
+| B-70 / C-19 | Two stations that read the free-name list before either connects pick the same name; the second is refused at connect; with no game the collision check is skipped entirely. The tablet chooses a fact the backend decides. | backend: [IN] Concl. 17, Q8. GM: GMM §2.1, §4; RSM R55; INB concl 17, Q8 | `backend/src/websocket/socketServer.js:85-104` (skipped with no game, `:89`); `ALNScanner/src/ui/connectionWizard.js:203-226`; refusal `orchestratorClient.js:77-86` | present |
+| B-24 / C-59 | A GM tablet that reloads without closing its old socket (after lost Wi-Fi or a sleep) is refused with a station-name collision until the server's ping timeout notices the dead socket, up to a 25-second ping interval plus a 60-second wait: a station is known by the name it types and the server allows one live socket per name, so a station cannot replace its own stale socket. A clean reload closes the socket and the server frees the name at once. (The restart half has no visible effect: after a restart every device is already "disconnected" in memory, and the name check reads memory.) | backend: [G] §6; [IN] §4, Q8; [RS] §5. GM: RSM R55; INB R7 | `backend/src/websocket/socketServer.js:82-104`; `backend/src/config/index.js:76-77`; `backend/src/server.js:117-119` → `backend/src/websocket/deviceTracking.js:15-26`; `sessionService.js:128-140`; client wait `ALNScanner/src/network/orchestratorClient.js:77-86` | present (after an unclean reload; the worst-case delay not-checkable without a rig) |
+| B-71 / D-32 | The ESP32 is recorded in the device list as a player scanner, because its health poll sends no type; its scan bodies say `esp32`. A typed poll would not help: `/health` accepts only "player" and refuses any other type. | backend: [IN] §4. clients: IN 4 | `backend/src/routes/healthRoutes.js:54,64-71`; `arduino-cyd-player-scanner/ALNScanner_v5/services/OrchestratorService.h:344` | present |
+| D-33 | Every player health poll adds or refreshes a device and saves the game; nothing removes a device, so the list only grows (its counters half is C11's B-10). | clients: RS R13, 3.2 | `backend/src/routes/healthRoutes.js:73-93`; `removeDevice` defined (`sessionService.js:679`, `sessionRegistry.js:119`) with no caller | present |
 | D-45 | The config tool's static pages and the sound and video preview mounts need no login; on a loopback bind it runs on the public default password and secret. | clients: CT 2 | `config-tool/server.js:22,76-77,129-135`; `lib/toolAuth.js:31-32,100-109` | present |
 
 **Other places with the same cause** (merged from backend B-c7, clients D-c8 and D-c9, GM C-c10):
-- `backend/src/websocket/broadcasts.js:75,120,166,223,464,604` and `backend/src/websocket/deviceHelpers.js:32`: eight emits to every socket, authenticated or not (the `transaction:new` fallback at `:223` too).
+- `backend/src/websocket/broadcasts.js:75,120,166,223,464,604` and `backend/src/websocket/deviceHelpers.js:32`: seven emits to every socket, authenticated or not (the `transaction:new` fallback at `:223` among them).
 - `backend/src/server.js:123`; `backend/src/routes/healthRoutes.js:50-76`: the handshake and the poll both trust the client's word for type.
 - `backend/src/routes/resourceRoutes.js:53-65`: `/api/tokens` returns the whole token file to anyone.
 - `aln-memory-scanner/js/orchestratorIntegration.js:20-29,426`: `PLAYER_<ms>` made on the device; `/health` with a device id registers it.
@@ -677,11 +677,11 @@ Fields per cause: place in the order and why; the statement; the findings (id, w
 - (c) The engine issues the identity (id, role) with the credential; sockets and HTTP callers present it; the registry lists only issued identities (clients D-c9 (a)); or keep client-chosen ids but record the role from the verified credential only, never from a name or a default (clients D-c9 (b)).
 - (d) A read tier per route: public (health, pack), station (state, session, tokens), with the station reads taking the same token the socket uses (GM C-c10 (1)); or move station naming and the session check onto the socket handshake so the HTTP reads can close (GM C-c10 (2)).
 
-**Candidate proving tests.** Open a socket with no token and a deviceType of "scanner"; send `sync:request`: refused, no state arrives (B-04). Call `GET /api/state` with no token on the kit network: refused, or only what a player needs (B-27 / D-27). Connect as a TV: the set of event names it receives equals what its role needs (scores, evidence, clock, display mode, page navigation), and only exposed-evidence entries and totals are in its connect payload (D-25, D-26). Open two scoreboard pages: the device list shows two displays (B-90 / D-29). Connect two tablets at once under the same name with no game: one is refused (B-70 / C-19). One ESP32 poll: the device list entry says esp32 (B-71 / D-32). Request the scoreboard page with `?deviceId=GM_001`: the connected display is never recorded or disconnected as GM_001 (B-81).
+**Candidate proving tests.** Open a socket with no token and a deviceType of "scanner"; send `sync:request`: refused, no state arrives (B-04). Call `GET /api/state` with no token on the kit network: refused, or only what a player needs (B-27 / D-27). Connect as a TV: the set of event names it receives equals what its role needs (scores, evidence, clock, display mode, page navigation), and only exposed-evidence entries and totals are in its connect payload (D-25, D-26). Open two scoreboard pages: the device list shows two displays (B-90 / D-29). Connect two tablets at once under the same name with no game: one is refused (B-70 / C-19). Drop a tablet's network, or kill its browser without a close, then reload it mid-game: it reconnects under its own station name within five seconds (B-24 / C-59; a clean reload passes today, since the close frees the name at once). One ESP32 poll: the device list entry says esp32 (B-71 / D-32). Request the scoreboard page with `?deviceId=GM_001`: the connected display is never recorded or disconnected as GM_001 (B-81; this passes today, because the credential is minted for "SCOREBOARD" whatever the URL says and displays get no device record; it guards the planned per-display mint, not built).
 
 **Questions:** 7, 1.
 
-**Live-proof marks.** Yes: B-70 / C-19. No: B-04 / B-27 / D-27 / C-20, B-05, B-26 / D-28 / B-81, B-66, B-71 / D-32, B-82, B-83, B-89 / D-25 / D-26, B-90 / D-29, D-33, D-34, D-45.
+**Live-proof marks.** Yes: B-24 / C-59, B-70 / C-19. No: B-04 / B-27 / D-27 / C-20, B-05, B-26 / D-28 / B-81, B-66, B-71 / D-32, B-82, B-83, B-89 / D-25 / D-26, B-90 / D-29, D-33, D-45.
 
 **Planned capabilities it blocks or burdens.** Credentials on every connection: "Every live connection must present a credential", with the handshake `deviceType` retired (direction §2, C12, line 90; §3.3, line 177). Auth tiers and the observe token (direction §2, C13, line 91). Players' phones, with device-tier tokens and session-tier identity, and observe tokens "minted per page serve into a capped store" (direction §2, C35, line 113; §3.9, line 237). The second game, where surfaces must receive projections "scoped to their granted functions" (direction §3.9, line 232). Remote displays, the `display.remote` family and its preflight count (direction §2, C39, line 117). Photo capture, where the engine "has no binary upload path at all" and one must be designed under the privacy defaults (direction §3.8, line 224).
 
@@ -699,10 +699,16 @@ Fields per cause: place in the order and why; the statement; the findings (id, w
 | A-07 / C-15 | Game Activity shows "Unknown, no stars, $0" for any token a GM claimed that no player scanned first: the builder reads token fields off the `{token, matchedId}` wrapper; the sibling caller unwraps. | blue: REV:49,100; PLAN:66-79; S-540a096; TRI:48. GM: GMM concl 12 | `ALNScanner/src/core/gameActivityBuilder.js:55-64`; `core/tokenManager.js:284,296`; correct caller `unifiedDataManager.js:313-316` | present |
 | A-23 | Team Details token cards show a blank RFID in networked mode (`rfid` versus `tokenId`). | blue: REV:72 | `ALNScanner/src/ui/renderers/GameOpsRenderer.js:352`; `backend/src/websocket/syncHelpers.js:63-81` | present |
 | A-63 | Standing-cue conditions on a video's token never match ("video completed" carries the item itself, the evaluator looks one level down), so a "restore after video" cue fires after the wrong videos (blue's W9 P0.2 follow-on). | blue: PLAN:273-277,303; P-e73c4383 | `backend/src/services/cue/standingEvaluator.js:28-29`; emit `videoQueueService.js:479` | present |
+| A-62 | A skipped video's position is never sent, so the cue engine anchors later steps at the full length and fires the remaining steps at once: the reader waits for a `skipped` field no producer sets (the same mechanism as A-63), although the queue knows the position because it polls it. | blue: PLAN:200; P-e73c4383; TRI:70 | `backend/src/services/videoQueueService.js:353-401` (position polled), `:479` emits the queue item only; `timelineRuntime.js:473-475` waits for `data.skipped`, which nothing sends | present |
+| A-66 | The cue engine's video correlation is inert (`capturedVideoTokenId` stays null): it reads `tokenId` off the video event while the pack's video entries carry `videoFile`, a name join kept by hand on each side. Its post-video block checks use a dead arrow function (a one-off slip, a plain fix). Its third part, a queued file's duration being 0 until play, is C3's and is listed there. | blue: PLAN:201,203,229 | `backend/src/services/cue/timelineRuntime.js:125,233-234` (reads `entry.payload?.tokenId`), `:465` (an arrow function used as a condition); `ALN-TokenData/cues.json:114-117,187-190` | present |
+| A-26 | When the backend answers "queued" the optimistic success screen is never corrected. The path cannot be reached in production: the backend answers "queued" only while an offline flag is set, and nothing outside tests sets it (B-11's half-built path). | blue: REV:75 | `ALNScanner/src/app/domains/gameOps.js:327-331`; `backend/src/websocket/adminEvents.js:203-224`; `backend/src/services/offlineQueueService.js:12-15,206-208` | latent (a half-built path no production code reaches) |
 | A-09 / A-69 | Audio routing dropdowns can never match the configured route because the backend reports aliases ("hdmi", "bluetooth") while the options are real device names; streams with no explicit route are omitted, so the display cannot show the effective sink for all three streams (blue's W5 and W10 FA). | blue: REV:51,104; PLAN:112-120 (W5), 285, 332-336 (FA F1); P-08af30ea, P-2badc7d5; TRI:65,66 | `backend/src/services/audioRoutingService.js:45-49,310-316` | present |
 | A-28 / A-41 / C-12 | The video Playing/Paused/Idle badge never renders and `#orchestrator-status` is looked up but never defined: neither element is in the page; the queued-video list is hidden inline and nothing un-hides it; the networked storage's command methods have no networked caller; the team registry's score fields are never read; `showGroupCompletionNotification` has no caller. | blue: REV:77,90,61; S-19beb7c; TRI:53. GM: GMM concl 10, §3.1, §3.5; RSM §8 miss 6; CEN §7; INB concl 3 | `ALNScanner/src/ui/renderers/VideoRenderer.js:17`; `admin/MonitoringDisplay.js:402`; `ALNScanner/index.html:407`; `core/storage/NetworkedStorage.js:51,137-155`; `ui/uiManager.js:411` | present |
 | A-15 | The list of queued videos is never visible; only the count updates. | blue: REV:61; S-19beb7c; TRI:53 | `ALNScanner/index.html:407` hides it inline; no renderer clears the style | present |
-| A-40 / A-42 / A-39 / C-14 | `game-state:updated` is forwarded and listened for but never sent; `offline:queue:processed` is declared on both ends and consumed by nothing; `cue:completed` is subscribed but has no handler, so a finished cue shows no notice; three of the 22 subscribed messages have no handler (`batch:ack` is the third). | blue: REV:88,89,91. GM: GMM concl 11, §3.1; RSM §4.3, §8 miss 6; CHK §4.3; INB concl 9(d) | `ALNScanner/src/main.js:164`; `core/unifiedDataManager.js:161-163`; `network/orchestratorClient.js:26-49` (`:40,46`); `backend/src/websocket/broadcasts.js:98`; no case in `messageRouters.js` or `MonitoringDisplay.js:216-258` | present |
+| A-40 / A-42 / A-39 / C-14 | `game-state:updated` is forwarded and listened for but never sent; `offline:queue:processed` is declared on both ends and consumed by nothing (the engine sends it only from the offline queue, which never fires in production, B-11); `cue:completed` is subscribed but has no handler, so a finished cue shows no notice; three of the 22 subscribed messages have no handler (`batch:ack` is the third). | blue: REV:88,89,91. GM: GMM concl 11, §3.1; RSM §4.3, §8 miss 6; CHK §4.3; INB concl 9(d) | `ALNScanner/src/main.js:164`; `core/unifiedDataManager.js:161-163`; `network/orchestratorClient.js:26-49` (`:40,41,46`); `backend/src/websocket/broadcasts.js:336-346`; no handler outside the list in `ALNScanner/src`, no case in `messageRouters.js` or `MonitoringDisplay.js:216-258` | present |
+| B-68 | The `reconnection` flag in the snapshot is always false: a contract field that nothing feeds (the GM client opens a new socket each time and the backend has no connection-state recovery) and no client reads. | backend: [IN] Concl. 15 | `backend/src/websocket/gmAuth.js:155`; no `connectionStateRecovery` in `backend/src`; `backend/contracts/asyncapi.yaml:884`; no reader of `reconnection` in `ALNScanner/src`, `backend/public` or `aln-memory-scanner/js` | present |
+| C-27 | After a reconnect the storage class still points at the dead socket (a new socket is built each time; the reference was copied once). Nothing in networked mode uses it: every storage method that touches the socket is called only inside a standalone branch, networked scans go through the queue manager's own live socket, and nothing reads `dataManager.isReady()`. The same unwired networked command path as A-28 / A-41 / C-12. | GM: GMM §2.1, §6 step 11; RSM R54; INB concl 15 | `ALNScanner/src/app/app.js:541-542`; `network/orchestratorClient.js:88`; `core/storage/NetworkedStorage.js:40-42`; callers only under `isStandalone()`: `gameOps.js:494,556,600`, `gameAdmin.js:35,119,186`; networked scan `gameOps.js:337-346` | present (no effect during a game) |
+| D-07 | A pack with more than about 142 tokens (50,000 bytes of token file) is refused by the ESP32 at boot; the old list stays and only the serial log says so: a size limit kept on the device that no pack check knows about (the silent refusal is C10's pattern). | clients: CT concl 7 | `arduino-cyd-player-scanner/ALNScanner_v5/config.h:90`; `services/TokenService.h:223-228` | present |
 | A-31 | `AdminController.resume()` has no caller (a console warning per reconnect). | blue: REV:80 | `ALNScanner/src/app/adminController.js:109-120` | present |
 | C-13 | The "pause admin" hook calls `pause` and `resume` on modules that define neither (`pauseSession`, `pauseVideo`); on reconnect `initialize` logs "Already initialized" and does nothing; `MonitoringDisplay.resume` (which re-requests the snapshot) has no caller. The hooks suggest panels are paused and resumed; they are not. | GM: GMM §6 steps 10-11, Appendix A; RSM §8 miss 6 | `ALNScanner/src/app/adminController.js:98-121`; `network/networkedSession.js:183-187`; `admin/SessionManager.js:56,64`; `admin/VideoController.js:36`; `admin/MonitoringDisplay.js:391-394` | present (its boundary half is C4) |
 | A-47 / B-06 | Names declared in one place and unused or missing elsewhere: `gm:identified` is emitted but not in the contract or the client list; `batch:ack` cannot reach a GM; backend actions `transaction:create`, `music:seek`, `video:seek` have no screen; the contract test does not scan `teamRegistry.js` or the raw `system:reset` emit. | blue: REV:125. backend: [G] Concl. 9; [CK]; [RS] §0 | `backend/src/websocket/gmAuth.js:188`; `backend/contracts/asyncapi.yaml:295` (prose only); `ALNScanner/src/network/orchestratorClient.js:41`; `backend/src/services/commandExecutor.js:367,542` | present |
@@ -726,6 +732,8 @@ Fields per cause: place in the order and why; the statement; the findings (id, w
 - `backend/src/services/cue/timelineRuntime.js:357` reads both shapes of the video event; `standingEvaluator.js:28-29` reads one.
 - `backend/src/services/dormancyService.js:50-69`, `commandExecutor.js:1013-1059`, `heldItemsStore.js:180-209`, `transactionService.js:550`, `models/session.js:48-49`, `config/index.js:133`: each defined, no caller; `backend/src/services/offlineQueueService.js:12-14`: its own header says the path is unreachable.
 - `backend/contracts/asyncapi.yaml:2068-2078`: `batch:ack` with the wrong sender named (its delivery fault is C7's B-16 / D-35).
+- `ALNScanner/src/services/StateValidationService.js:90-96,182,185` against `ALNScanner/src/app/sessionModeManager.js:107`: the "stale state" clean-up removes two browser keys nothing writes and leaves the real one (`gameSessionMode`), a key name kept by hand on two sides (the wrong-key half of C4's C-16).
+- `docs/preflight-checklist.md:14-17,624,719,779,809-811` against `backend/src/services/preflightService.js`: the checklist calls itself the hardware-proven gate's instrument, yet has no venue-profile row (its "profile" lines mean Home Assistant, `pactl` and A2DP profiles), so a missing profile (C10's B-72) is not among its checks; the checklist and the evaluator are two hand-kept lists nothing compares (the checklist part of §3's B-92).
 
 **Candidate design choices (candidate, not decided).**
 - (a) A start-up and test-time check that every looked-up element id, every listened event and every subscribed message has exactly one definition, and that a missing one throws (GM C-c4 (1); blue A-c13).
@@ -733,19 +741,19 @@ Fields per cause: place in the order and why; the statement; the findings (id, w
 - (c) Write the shape of each message and object in the contracts and check producers and consumers against it (blue A-c4 (a)); every builder's output, push-time builders included, validated against its contract schema in one test (backend B-c13 (A)); or generate the contract's payload schemas from the builders (backend B-c13 (B)).
 - (d) Delete or wire each half-built capability, and check that every contract action has a handler and a sender (backend B-c14 (A)); or keep them in a ledger with the day each leaves, as the shims do (backend B-c14 (B)).
 
-**Candidate proving tests.** A check fails for any event with no sender or no listener, and for any element id the code looks up that the page and its templates lack (C-12). Networked: give a team a score and a GM adjustment; Team Details shows the backend base, bonus, total and the adjustment list (A-03 / C-06). A standing cue "after video unless token X" does not fire after video X (A-63). List every event name the backend emits and every name in the contract's server-to-client list: the two sets are equal (B-06). The contract test validates the scanner's real scan message with additional properties disallowed (C-54). A contract test walks every mounted route and fails on any not in OpenAPI (D-36). Every documented GM capability has a screen action and a backend case; a check lists any name present on one side only (C-53).
+**Candidate proving tests.** A check fails for any event with no sender or no listener, and for any element id the code looks up that the page and its templates lack (C-12). Networked: give a team a score and a GM adjustment; Team Details shows the backend base, bonus, total and the adjustment list (A-03 / C-06). A standing cue "after video unless token X" does not fire after video X (A-63). List every event name the backend emits and every name in the contract's server-to-client list: the two sets are equal (B-06). The contract test validates the scanner's real scan message with additional properties disallowed (C-54). A contract test walks every mounted route and fails on any not in OpenAPI (D-36). Every documented GM capability has a screen action and a backend case; a check lists any name present on one side only (C-53). Skip a 30-second video at 12 seconds inside a compound cue: later steps are measured from 12 seconds (A-62). A video completion for another video does not finish this cue (A-66). Serve a 60,000-byte `/api/tokens` body to an ESP32: the device shows the sync failure and the engine lists the device as behind (D-07).
 
 **Questions:** 5 is nearest; the check itself is none of the nine.
 
-**Live-proof marks.** Yes: A-09 / A-69 (needs a real sink), A-63, D-24. No: all others.
+**Live-proof marks.** Yes: A-09 / A-69 (needs a real sink), A-62, A-63, D-07, D-24. No: all others (A-26 latent).
 
 **Planned capabilities it blocks or burdens.** Capture, which touches "the event ingress list where an unregistered event silently never arrives; the game-session model and its validation schema (which today silently strips undeclared fields); ... and three contracts" (direction §3.8, line 223). Hot-apply's `pack:applied`, which "goes to AsyncAPI first" (direction §3.4, line 186). Credentials, which retire the handshake `deviceType` the scanner still sends (direction §2, C12, line 90). The truth sweep's 22 accepted event types and the rule that new backend events "MUST be added to this list or they silently won't arrive" (direction §3.7, lines 212-213).
 
-### C15. The deployed game is several separately versioned checkouts, a built folder, hand-copied media and hand-run steps, and nothing checks that they agree
+### C15. The deployed game is several separately versioned checkouts, a built folder, hand-copied media, hand-run steps, a host whose program names and install commands are fixed to one OS release, and a certificate pinned nowhere, and nothing checks that they agree
 
 **Place 15 of 16.** It bites between shows, at deploy and rollback time, not during one; but blue hit every item here and a bad rollback would reach the next show.
 
-**Statement.** The game on the show machine is a parent checkout, four submodules on `main` with `update = merge`, a scanner build folder that a `pm2 restart` never rebuilds, media copied by hand into directories kept out of git, a WirePlumber rule in a host file, and unversioned push-guard hooks. Each part is moved by its own hand-run step and nothing compares them afterwards, so a rollback half-applies, a scanner serves the pre-rollback code, a token line incompatible with the engine can be pulled, and a sync can leave media pointing at nothing.
+**Statement.** The game on the show machine is a parent checkout, four submodules on `main` with `update = merge`, a scanner build folder that a `pm2 restart` never rebuilds, media copied by hand into directories kept out of git, a WirePlumber rule that the tree's own documents give in the wrong form, unversioned push-guard hooks, program names and install commands written for one OS release (the kiosk browser's default name, the health script's `cvlc`, the player scanner's bare `pip install`), and a self-signed certificate the ESP32 cannot check because it is pinned and distributed nowhere. Each part is moved by its own hand-run step and nothing compares them afterwards (the one exception: activation refuses a pack whose declared schema version the engine does not read; nothing compares submodule pins, the built scanner, media on disk, host rules, hooks or program names), so a rollback half-applies, a scanner serves the pre-rollback code, a token line incompatible with the engine can be pulled, a sync can leave media pointing at nothing, and a correctly built new machine logs a warning on every boot.
 
 **Findings.**
 
@@ -753,49 +761,57 @@ Fields per cause: place in the order and why; the statement; the findings (id, w
 |---|---|---|---|---|
 | A-90 | Token data on blue's line and the development line are incompatible in both directions (tokens v2); the documented sync steps would push or pull the wrong branch and break both. | blue: P-5ed1be93; REC:DEPLOYMENT_GUIDE.md, SUBMODULE_MANAGEMENT.md, scripts/README.md, CLAUDE.md | `backend/package.json:71-78` `npm run sync*` still push or follow `main`; `.gitmodules` tracks `main` | changed (the tree is the v2 line) |
 | A-91 | Rolling back with `git submodule update --force` does not move a submodule backward under `update = merge`; the rollback silently half-applies. | blue: REC:DEPLOYMENT_GUIDE.md; P-5ed1be93, P-f0beee86 | `.gitmodules` sets `update = merge` for all four submodules | present |
-| A-92 | `pm2 restart` skips the build step, so the GM scanner (a symlink to an uncommitted `dist/`) keeps serving the pre-rollback code. | blue: REC:DEPLOYMENT_GUIDE.md; P-f0beee86 | `backend/public/gm-scanner -> ../../ALNScanner/dist`; `backend/package.json:8-9` (build only in `prestart`); `DEPLOYMENT_GUIDE.md:2797` | present |
-| A-93 | The scanner build installs dependencies only when `node_modules` is missing, so a rollback across changed dependencies fails or builds wrong. | blue: REC:DEPLOYMENT_GUIDE.md | `backend/scripts/build-scanner.sh` | present |
-| A-95 | The token sync cannot carry media (videos, audio, hand-made images); they must be copied by hand first or tokens point at nothing. | blue: REC:DEPLOYMENT_GUIDE.md ("0. Media first") | `CONTEXT.md` section 0 ("Asset channel"); `backend/public/videos` | present |
-| A-96 | The safeguards against pushing to the wrong branch live in unversioned git hooks that must be reinstalled after every clone; the "2026-07" in the branch name suggests a date, not a moving line. | blue: REC:DEPLOYMENT_GUIDE.md, SUBMODULE_MANAGEMENT.md; P-5ed1be93 | `scripts/install-production-push-guard.sh` is on blue's branch only | not-checkable |
+| A-92 | `pm2 restart` skips the build step, so the GM scanner (a symlink to an uncommitted `dist/`) keeps serving the pre-rollback code. | blue: REC:DEPLOYMENT_GUIDE.md; P-f0beee86 | `backend/public/gm-scanner -> ../../ALNScanner/dist`; `backend/package.json:8-9` (build only in `prestart`); `DEPLOYMENT_GUIDE.md:2797` at `12baf920` (2790 at HEAD) | present |
+| A-93 | The scanner build installs dependencies only when `node_modules` is missing, so a rollback across changed dependencies fails or builds wrong. | blue: REC:DEPLOYMENT_GUIDE.md | `backend/scripts/build-scanner.sh:24-29` | present |
+| A-95 | The token sync cannot carry media (videos, audio, hand-made images); they must be copied by hand first or tokens point at nothing. | blue: REC:DEPLOYMENT_GUIDE.md ("0. Media first") | `CONTEXT.md:55` ("Asset channel"); `.gitignore:10` (`backend/public/videos/*.mp4`) | present |
+| A-96 | The safeguards against pushing to the wrong branch live in unversioned git hooks that must be reinstalled after every clone; the "2026-07" in the branch name suggests a date, not a moving line. The installer exists only on blue's branch; the current tree has neither an installer nor any check for the hook. | blue: REC:DEPLOYMENT_GUIDE.md, SUBMODULE_MANAGEMENT.md; P-5ed1be93 | `git show origin/production-2026-07:scripts/install-production-push-guard.sh` exists; no such file under `scripts/` in the tree | present |
 | A-97 | 48 media files with no token were left in place after the sync (report-only), and 20 body or image changes and 14 scoring changes went out in one data commit. | blue: P-7a1b9167, S-56fbff8 | the sync keeps pruning report-only (root `CLAUDE.md`, "Notion Sync Scripts") | not-checkable without the Notion sync |
-| A-88 | The home-network rule that lets a Bluetooth speaker connect named the wrong local role, so a speaker connected with no audio profile; fixed in a host file outside the repository. | blue: PLAN:283 | host file `/etc/wireplumber/...`; no copy of the rule in the tree (searched `bluez5.roles`) | not-checkable |
+| A-88 | The home-network rule that lets a Bluetooth speaker connect named the wrong local role, so a speaker connected with no audio profile; blue fixed it in a host file outside the repository. The tree does carry the rule, in its wrong form: two documents give `bluez5.roles = [ a2dp_sink ]`, the role blue found wrong (a speaker needs `a2dp_source`), and the deployable folder holds only the VLC rule, so a machine built from the tree's documents gets the wrong role. | blue: PLAN:283 | `docs/ARCHIVE/2026-02-to-05-completed-plans/2026-02-09-environment-control-phase0.md:229`; `docs/proposals/environment-control-phase0-prd.md:166`; `docs/wireplumber/` (two VLC files only) | present |
+| X-03 | A machine set up from the tree's own documents pairs a speaker that connects with no audio profile, because those documents carry the Bluetooth role blue found wrong, and no deployable copy of the right rule exists. The same fact as A-88's correction, recorded by the check as a fault of the tree rather than of a host file. Found by the check; not swept by a reader (check 1, M3). | check 1, §2 M3 | as A-88 | present |
+| D-34 | The ESP32 does not check the engine's certificate at all: the device cannot tell the engine from an impostor, because the kit's self-signed certificate is pinned and distributed nowhere (the kit network, DNS and certificate capability). | clients: CT 1.0; IN 4 | `arduino-cyd-player-scanner/ALNScanner_v5/services/OrchestratorService.h:714,945,979` (`setInsecure()`) | present |
+| B-98 | The boot check that looks for the WirePlumber rule read one path, so a correctly built new machine logged "rule missing" on every boot. Fixed at HEAD for that check (green's follow-up, program document section 7, decision 4), but not a one-off: the engine fixes the names of outside programs to one OS release elsewhere too (the kiosk browser defaults to `chromium-browser`, the older OS's name; the health script looks for the `cvlc` wrapper), and nothing checks those names against the machine. | backend: [RM] §4.10; brief `2026-09-13-green-followups.md` | `backend/src/services/audioRoutingService.js:617-630` at `12baf920` (one path); HEAD `:617-635` reads either the 0.5 `.conf` or the 0.4 `.lua` (commits `403cb179`, `6fdc0083`, merge `089dd527`); `backend/src/utils/displayDriver.js:164`; `backend/CLAUDE.md` Display Control section (Trixie must set `CHROMIUM_BIN`); `backend/scripts/check-health.sh:51` | changed (the named check fixed at HEAD; the shared cause present) |
+| B-100 | The Python requirements file told the owner to run a pip command the new operating system refuses. Fixed at HEAD for `scripts/requirements.txt` (green's follow-up, decision 4); the same bare `pip install` instruction remains, untouched, in the player scanner's setup script and README. Same cause as B-98. | backend: [RM] §4.10; green follow-ups brief | `scripts/requirements.txt:1-4` (HEAD; commits `ad1855c7`, `fd0340de`); `aln-memory-scanner/scripts/setup.sh:168`; `aln-memory-scanner/README.md:48`; `aln-memory-scanner/PLAYTEST_QUICKSTART.md:27` | changed (the named file fixed at HEAD; the shared cause present) |
 
-**Other places with the same cause** (from blue A-c11):
+**Other places with the same cause** (from blue A-c11, and the check):
 - `.gitmodules`: four submodules with `update = merge`, branch `main`.
 - `backend/package.json:8,71-78`; `backend/public/gm-scanner -> ../../ALNScanner/dist`, `player-scanner -> ../../aln-memory-scanner`.
-- `DEPLOYMENT_GUIDE.md:2797`: `pm2 restart all`.
+- `DEPLOYMENT_GUIDE.md:2797` (2790 at HEAD): `pm2 restart all`.
+- `backend/src/services/packService.js:38-45,725-726,759-760`: the one comparison that exists, the pack schema version refused at activation.
+- `backend/src/utils/displayDriver.js:164`, `backend/scripts/check-health.sh:51`, `aln-memory-scanner/scripts/setup.sh:168`: program names and install commands fixed to one OS release (B-98, B-100).
 
 **Candidate design choices (candidate, not decided).**
 - (a) A boot check that compares pack hash, scanner build id and submodule pins and reports the disagreement (the engine already reports pack identity), and one deploy command that performs the steps (blue A-c11).
-- No competing candidate was proposed; the readers' material is one sheet's.
+- No competing candidate was proposed; the readers' material is one sheet's. The check adds the host's program names, install commands and the kit certificate to what the deploy command and the boot check must cover.
 
-**Candidate proving tests.** A rollback restores every checkout and a status check lists any that did not move (A-91). After a restart the page shows the build id of the checked-out source (A-92). The build compares the lock file to what is installed (A-93). The pre-show check lists every pack media file missing on disk (A-95). A fresh clone refuses a wrong-branch push without any manual install (A-96).
+**Candidate proving tests.** A rollback restores every checkout and a status check lists any that did not move (A-91). After a restart the page shows the build id of the checked-out source (A-92). The build compares the lock file to what is installed (A-93). The pre-show check lists every pack media file missing on disk (A-95; the gate never checks venue files, and `validateCommand` has no caller, B-35). A fresh clone refuses a wrong-branch push without any manual install (A-96). A clean machine built from the deployment guide pairs a speaker and plays through it (A-88 / X-03). On a machine with the WirePlumber rule at the new path, or with the new browser name, boot logs no warning and the kiosk launches (B-98). The install line works on the new OS image, in every file that gives one (B-100). Point a device at an HTTPS server with a wrong certificate: it refuses (D-34).
 
 **Questions:** none (8 nearest, for the identity each part should report). A gap in the nine to put to the owner.
 
-**Live-proof marks.** Yes: A-88, A-91, A-92, A-95, A-97. No: A-90, A-93, A-96.
+**Live-proof marks.** Yes: A-88 / X-03, A-91, A-92, A-95, A-97. No: A-90, A-93, A-96, B-98, B-100, D-34.
 
 **Planned capabilities it blocks or burdens.** The Deploy stage, "the handoff chain made visible: pack, tech rider, bindings, a system ready to Run" (direction §3.6, line 205; §2, C22, line 100). The media bundle and asset channel (direction §2, C40, line 118). Seams for more kits and the steady-state rule "engine updates only between events; pack updates any time" (direction §2, C42, line 120; §3.10, line 245). The blue/green cutover's physical rollback (direction §2, C44, line 122). Open-sourcing's "stranger-can-stand-it-up" (direction §2, C47, line 125). The kit network, DNS and certificate (direction §2, C43, line 121).
 
-### C16. A green test run does not show the real path works: fakes drift from the real classes, skips and vacuous checks pass silently, and coverage follows files rather than the path from authority to screen
+### C16. Fakes are written by hand with no check against the real classes, skips and absence-of-error checks pass silently, and coverage is counted per file rather than per path from authority to screen, so a green test run does not show the real path works
 
 **Place 16 of 16.** It never shows at the show; it is why the other fifteen reached one.
 
-**Statement.** The unit tests build simplified fakes of the engine's objects (a facade with a `backendScores` field it does not have, a lookup that returns a flat token), so they stay green while the screens are wrong; end-to-end steps that find no element or that check only for the absence of an error pass vacuously; whole suites skip when the kit does not match and no one is told; CI never runs several suites; and no test follows one fact from its authority to a screen, nor compares a screen to a baseline image. A green run therefore proves the pieces each behave as their author imagined, not that the game works.
+**Statement.** The unit tests build hand-written fakes of the engine's objects with no check against the real classes (a facade with a `backendScores` field it does not have, a lookup that returns a flat token), so they stay green while the screens are wrong; end-to-end steps that find no element or that check only for the absence of an error pass vacuously; whole suites skip when the kit does not match and no one is told; one flow depends on the state the previous one left; every test engine runs under a flag that changes what Reset System does, so no layer runs the reset the show runs; CI never runs several suites; and no test follows one fact from its authority to a screen, nor compares a screen to a baseline image. A green run therefore proves the pieces each behave as their author imagined, not that the game works.
 
 **Findings.**
 
 | Ids | What happens during a game | Source | Code now | Status |
 |---|---|---|---|---|
 | A-51 | Unit-test fakes drifted from the real classes (a fake facade with `backendScores`; a fake `findToken` returning a flat token), so the tests stayed green while the screens were wrong (C14's A-03, A-07). | blue: REV:45,49; PLAN:66-79 | `ALNScanner/tests/unit/ui/uiManager.test.js:32,490`; `tests/unit/ui/xssEscaping.test.js:29,80,147`; `tests/unit/core/gameActivityBuilder.test.js:3-10`; `tests/app/app.test.js:57` | present |
-| A-52 | Backend broadcast wiring (ducking and routing) is switched off in the unit and contract layers, so those tests cannot prove the real wiring. | blue: PLAN:102, 47-49 | `backend/src/websocket/broadcasts.js:376-386`; `backend/jest.config.base.js:30-36` | present |
-| A-83 | Test steps silently did nothing because the page-object card selector `.token-card` never matches Team Details cards (`.token-detail-card`), so flow 30's delete step had been skipping. | blue: P-75df9ddd | `backend/tests/e2e/helpers/page-objects/GMScannerPage.js:83,1623,1633`; the class at `ALNScanner/src/ui/renderers/GameOpsRenderer.js:341` | present |
-| A-85 | Tests that check for the absence of an error pass vacuously (blue changed the scan check to require the positive title). | blue: P-75df9ddd | `GMScannerPage.js` `expectScanAccepted` not re-read | not verified |
-| A-84 | Integration tests expected route aliases and passed only on a bench with no speakers; a "no error" check looked at the wrong element. | blue: P-2badc7d5, P-75df9ddd | the integration file not re-read; the alias form is still what the backend reports (C14's A-09) | not verified |
+| A-52 | Backend broadcast wiring (ducking and routing) is switched off in the unit and contract layers, so those tests cannot prove the real wiring. | blue: PLAN:102, 47-49 | `backend/src/websocket/broadcasts.js:376-386`; the switch at `backend/jest.config.base.js:42-44` (`:33-44` with its comment) | present |
+| A-83 | Test steps silently did nothing because the page-object card selector `.token-card` never matches Team Details cards (`.token-detail-card`), so flow 30's delete step had been skipping. | blue: P-75df9ddd | `backend/tests/e2e/helpers/page-objects/GMScannerPage.js:83,1623,1633`; the class at `ALNScanner/src/ui/renderers/GameOpsRenderer.js:341`; flow 30 skips silently at `30-full-game-session-multi-device.test.js:807-819` | present |
+| A-85 | Tests that check for the absence of an error pass vacuously; blue changed the scan check to require the positive "Transaction Complete" title. That helper (`expectScanAccepted`) is blue's addition and does not exist here; this tree's `waitForResult()` accepts any result screen. | blue: P-75df9ddd | `backend/tests/e2e/helpers/page-objects/GMScannerPage.js:342-343`; blue commit `75df9ddd` | present at the helper level |
+| A-84 | Integration tests expected route aliases and passed only on a bench with no speakers; a "no error" check looked at the wrong element. Blue's failure arose after blue's W5 made routes concrete device names; this tree still reports aliases, so an alias-expecting test passes everywhere. It becomes a hazard when C14's A-09 is fixed. | blue: P-2badc7d5, P-75df9ddd | `backend/src/services/audioRoutingService.js:45-49,310-316` (`12baf920`); blue commit `2badc7d5`; the integration file itself not re-read | latent (a hazard once A-09 is fixed) |
+| A-80 | One end-to-end test rescans a video token seconds after the previous test started it, gets the deliberate "video already playing", fails once and passes on retry: a test-isolation fault inside one flow, which blue fixed in the test. | blue: PLAN:391 (W10 CLOSED, "Fix in the test"); P-1c1adfcd | `backend/tests/e2e/flows/21-player-scanner-networked-scanning.test.js:368` | present |
+| X-04 | No test layer runs the Reset System the show runs. The cross-service listener registry tracks and removes listeners only when `NODE_ENV` is `test`, and the unit, contract, integration and end-to-end engines all run with that value. Under test the reset removes cue forwarding and adds it back once. In production it removes nothing, so video, clock, sound and cue-completion forwarding run twice (C5's B-03) and music cue forwarding survives (C5's B-01). A green reset test can catch neither. Found by the check; not swept by a reader (check 1, M4). | check 1, §2 M4 | `backend/src/websocket/listenerRegistry.js:13,24,44-47`; the end-to-end engine runs `NODE_ENV=test` (`broadcasts.js:381-383`); `systemReset.js:80,168-180` | present |
 | A-82 | The final full end-to-end run skipped 62 tests (hardware, degraded services, group completion), and the shipped pack has no group with two or more tokens, so group-completion scoring has no end-to-end test on real content. | blue: PLAN:387-393; REC:backend/tests/e2e/README.md | `ALN-TokenData/game.json` `groups` holds one group of one token; the gate code not re-read | present |
 | A-81 | A capability check taken right after start stuck on "no video player" for the whole run, so video steps skipped. | blue: P-1fc9c589 | the harness still spawns its own player (C8's A-49); `backend/tests/e2e/helpers/capabilities.js` not re-read | present as harness state |
 | A-86 | Two scanner unit tests depend on the machine's time zone (blue ran them with `TZ=UTC`). | blue: PLAN:154 | no `TZ` pinned in `ALNScanner/package.json` or `jest.config.js`; which two tests not verified | present |
-| D-47 | Parent CI never runs Tier H, the config-tool Playwright smoke, the GM scanner's Playwright, `test:build` or `test:docker`; each submodule's own workflow runs only in its own repository. | clients: CT concl 14, 3.1, 3.3 | `.github/workflows/test.yml` job list; `config-tool/.github/workflows/test.yml` | present |
+| D-47 | Parent CI never runs Tier H, the config-tool Playwright smoke, the GM scanner's Playwright, `test:build` or `test:docker`; each submodule's own workflow runs only in its own repository, and the config tool is a plain folder of the parent repository, not a submodule, so GitHub never runs its workflow from this repository at all. | clients: CT concl 14, 3.1, 3.3 | `.github/workflows/test.yml:19-306` (at `12baf920`) job list; `config-tool/.github/workflows/test.yml`; `git ls-tree HEAD config-tool` (a tree), no entry in `.gitmodules` | present |
 | D-83 / C-51 | The GM scanner's "complete restore" test proves nine of ten domain guards fire; the `sound` domain's restore guard is never exercised. | clients: CE 9. GM: CEN §9, §11 | `ALNScanner/tests/unit/network/networkedSession.test.js:1061`; guard at `src/network/messageRouters.js:136` | present |
 | D-84 | `getState.test.js` says it covers every service but has no music case; the contract test for service state calls `musicService.getState()`, not the `buildMusicState` the live push uses, so it never checks `playlists` (the test half of B-97). | clients: CE 9 | `backend/tests/unit/services/getState.test.js`; `tests/contract/websocket/service-domain-state.test.js:29-31` | present |
 | D-85 | The snapshot router has no test of its own; it is exercised only through `NetworkedSession`. | clients: CE 9 | no `messageRouters.test.js` in `ALNScanner/tests/unit/network` | present |
@@ -808,8 +824,7 @@ Fields per cause: place in the order and why; the statement; the findings (id, w
 | D-81 | Credentials-lane test hazards: the E2E helper talks to a separate server process and cannot mint an observe token in-process; two `adminEvents.test.js` cases go red under the planned door; the fail-closed case needs its own file (the test side of C13's B-83). | clients: RV 2 | `backend/tests/e2e/helpers/gm-command.js:9,20`; the door not in the tree | not-checkable (planned work) |
 
 **Other places with the same cause** (merged from blue A-c10, clients D-c12):
-- `backend/tests/e2e/helpers/page-objects/GMScannerPage.js:1071-1075`: the other `.token-card` sites.
-- `backend/jest.config.base.js:30-36`: the audio wires off in the unit layers (shared with C8).
+- `backend/jest.config.base.js:42-44`: the audio wires off in the unit layers (shared with C8).
 - The clients reader's script over four `package.json` files found one missing test path (D-48, in C14 as a hand-kept name).
 
 **Candidate design choices (candidate, not decided).**
@@ -817,38 +832,43 @@ Fields per cause: place in the order and why; the statement; the findings (id, w
 - (b) One proof test per delivery path (authority to screen) run on the rig for all ten domains, listed in a manifest that CI checks against the scripts and jobs (clients D-c12 (a)).
 - (c) Generate the README tables, contract usage text and CI claims from the code or the tests that prove them, and fail CI when they drift (clients D-c12 (b)).
 
-**Candidate proving tests.** A test lists every method of the real data-manager class and fails if a fake used in tests lacks one (A-51). The delete-from-Team-Details step fails if no card is found (A-83). A pack with a completable group exists and a group-completion test runs, not skipped (A-82). A manifest of every test command fails CI when a command is neither run by a job nor marked manual (D-47). A snapshot carrying `sound` puts it in the store; the test asserts all ten domains (D-83 / C-51). A baseline image per screen state is stored and a changed screen fails the run (D-87). The rig audit asserts each of the ten domains moves after its real program changes (D-88).
+**Candidate proving tests.** A test compares every fake used in tests with the real class and fails on a member the real class lacks (such as `backendScores` on the facade) or a different return shape (such as a flat `findToken`), as well as on a missing method (A-51; "fails if a fake lacks a method" alone checks the opposite direction). The delete-from-Team-Details step fails if no card is found (A-83). On the production pack a group-completion test runs, not skipped (A-82; the toy pack already has two completable groups, so the test as written can pass today on the toy leg). A manifest of every test command fails CI when a command is neither run by a job nor marked manual (D-47). The restore test names all ten domains, `sound` included (D-83 / C-51; the engine half passes today, since the router already restores `sound`, so this proves a test gap, not an engine fault). A baseline image per screen state is stored and a changed screen fails the run (D-87). The rig audit asserts each of the ten domains moves after its real program changes (D-88). Flow 21 starts from an idle video queue and passes on the first try (A-80). A test layer runs Reset System with the listener registry behaving as in production, and the B-03 and B-01 tests fail on it today (X-04).
 
 **Questions:** none (9 nearest for the restore and shape tests). A gap in the nine to put to the owner.
 
-**Live-proof marks.** Yes: A-81, A-82, A-84, A-86, D-62, D-79, D-88. No: A-51, A-52, A-83, A-85, C-50 / D-82, D-47, D-80, D-81, D-83 / C-51, D-84, D-85, D-87.
+**Live-proof marks.** Yes: A-80, A-81, A-82, A-86, D-62, D-79, D-88. No: A-51, A-52, A-83, A-84, A-85, C-50 / D-82, D-47, D-80, D-81, D-83 / C-51, D-84, D-85, D-87, X-04.
 
 **Planned capabilities it blocks or burdens.** The test environment: the rung-1 rig (lost with the container), the rule that tests "skip LOUDLY with recorded reasons, never silently", and the harness minimum (direction §3.11, lines 251-254). Screen baselines and screen-capture tests (direction §2, C29, line 107). The truth sweep's purpose, now phase 2's, of proving with rig tests and captures that every screen tells the truth (direction §2, C28, line 106). The Block 6 close's dual-pack run (direction §2, C51, line 129). Simulation and preview profiles, which the harness must honour over the machine (direction §2, C21, line 99).
 
 ## 3. Set aside, with reasons
 
-Sixteen findings need no rule. Each still goes into phase 2 where its reason says so (a plain fix), or is closed.
+Twenty-one findings need no rule. Each still goes into phase 2 where its reason says so (a plain fix), goes to the owner as a question, or is closed.
 
 | Id | Finding, in short | Reason set aside |
 |---|---|---|
-| A-44 | Report table cells were not escaped (a team name with a pipe split a row). | Gone from the current tree: `ALNScanner/src/core/sessionReportGenerator.js:424-433` `_cell()` escapes every table sink. Keep blue's regression test. |
-| B-96 | The health word set lacked "dormant" and the contract listed a dead "degraded". | Gone: `backend/contracts/asyncapi.yaml:2694` now says `healthy \| down \| dormant`; built in the dormancy core and pinned by the contract. |
+| A-44 | Report table cells were not escaped (a team name with a pipe split a row). | Gone from the current tree: `ALNScanner/src/core/sessionReportGenerator.js:426-431` `_cell()` escapes every table sink (`:178,238,330`). Blue's regression test is in the tree (`ALNScanner/tests/unit/core/sessionReportGenerator.test.js:338-346`). |
+| B-96 | The health word set lacked "dormant" and the contract listed a dead "degraded". | Gone: every health status list in both contracts reads `healthy, down, dormant` (`backend/contracts/asyncapi.yaml:745,2694-2700`; `backend/contracts/openapi.yaml:2026`); built in the dormancy core and pinned by the contract. |
 | C-52 | The health panel compared the status word to "healthy" in three places, so a third word would have drawn red. | Gone for the tablet: `ALNScanner/src/ui/renderers/HealthRenderer.js:73-80,109-116,141,194` draw `dormant` grey with its door wording. The literal-comparison pattern it exemplified is listed under C11's other places. |
-| D-77 | Harness-minimum review items F1 to F4 and an over-broad test header. | Gone: F1 verified at `backend/src/utils/logger.js:165-177`; F2 to F4 and the header recorded fixed in `490c83f`. |
-| D-86 | The health renderer had no case for a third health word. | Gone: `HealthRenderer.test.js` now covers `dormant` (22 mentions). |
-| B-98 | The WirePlumber boot check tests one path, so a correct new machine logs "rule missing" on every boot. | Green's follow-up, shipping as one small task alongside the pass (program document section 7, decision 4). A plain fix in flight at `backend/src/services/audioRoutingService.js:617-630`. |
-| B-99 | The environment template lacks the two bus variables the deployment guide tells the owner to set. | Green's follow-up (decision 4). A plain fix in flight (`backend/.env.example`). |
-| B-100 | The Python requirements file names a pip command the new operating system refuses. | Green's follow-up (decision 4). A plain fix in flight (`scripts/requirements.txt:2`). |
-| B-80 | `service:check` looks the service up in a plain object, so a service named "constructor" answers healthy. | A one-off input slip (`backend/src/services/commandExecutor.js:916`) that a plain fix removes (`Object.hasOwn` or a Map); no other place shares it. Phase 2 plain fix. |
-| D-19 | The "works with no internet" kit loads the QR library from the internet. | A one-off (`aln-memory-scanner/index.html:138`, the only external script tag the clients reader's search found); vendoring the library removes it. Phase 2 plain fix. |
-| C-45 | The sound domain has no renderer class; an inline handler writes the panel. | A code-structure note with no symptom during a game (`ALNScanner/src/admin/MonitoringDisplay.js:119-131`); a plain refactor, not a design cause. Its untested restore is C16's D-83 / C-51. |
-| D-42 | The config tool has no Rehearse, Run, Review or Deploy function. | Not a fault: a planned capability not yet built (the Deploy stage, direction §2, C22, line 100). |
-| B-84 | Briefs for the paused pieces carry instructions that contradict the tree or the tests. | Outside the engine: planning documents. The backend reader marks it "not an engine fault". A records check (the brief-dispatch check the reader proposes) is process, not an engine rule. |
-| B-92 | Plan and doc statements about the preflight are wrong (stations, profile axis, DNS value, merge order). | Outside the engine: planning documents, as B-84. |
-| B-97 | `backend/CLAUDE.md:522` names `cueEngine.standingCues`, a key the code never had; the music contract test calls `getState()` instead of the push builder. | The doc line is outside the engine; the test half is in C16 as D-84. |
-| C-17 | The GM scanner's documents and comments describe behaviour the code lacks (Phase 1H, console recipes, `refreshAllDisplays`, the StateStore API, the restore line numbers, a router comment, the contract notes on `/api/tokens` and batches). | Outside the engine: documents and comments. Its two contract items (who fetches `/api/tokens`, who uploads batches) are in C14 as B-67 / D-36. |
+| D-77 | Harness-minimum review items F1 to F4 and an over-broad test header. | Gone: F1 verified at `backend/src/utils/logger.js:181-187` (`:176-187` with its comment); F2 to F4, the header and H1 recorded fixed in `490c83fb`. |
+| D-86 | The health renderer had no case for a third health word. | Gone: `ALNScanner/tests/unit/ui/renderers/HealthRenderer.test.js` now covers `dormant` (22 lines mention it). |
+| A-58 | A routing snapshot built during the push delay could silently drop a broadcast (the builder assumed an array). | Gone in this tree: the one caller already passes `this._sinkCache \|\| []` (`backend/src/services/audioRoutingService.js:319` at `12baf920`), and the cache only ever holds null or the parser's array (`:72,187,216,232`; `backend/src/services/audio/pactlClient.js` `parseSinkList` returns `[]` or an array). The undefined value came from blue's own `this._lastGoodSinks` (blue commit `2badc7d5`). |
+| B-99 | The environment template lacked the two bus variables the deployment guide tells the owner to set. | Green's follow-up (program document section 7, decision 4). Landed at HEAD (`089dd527`): `git show 12baf920:backend/.env.example` has neither variable, HEAD lines 176-180 have both. |
+| B-80 | `service:check` looks the service up in a plain object, so a service named "constructor" answers healthy. | A plain fix (`Object.hasOwn` or a Map), but not a one-off: the same lookup, keyed by a client- or tag-supplied string in a plain object so that a key such as `constructor` reads a prototype member, occurs in at least three other places (X-02). The fix must cover every such lookup: `backend/src/services/commandExecutor.js:916`; the claim registry keyed by the station id, `backend/src/models/session.js:381-386,406-411` and `backend/src/services/transactionService.js:696-713`; the tablet's token lookup, `ALNScanner/src/core/tokenManager.js:282`; the web scanner's token lookup, `aln-memory-scanner/js/app.js:399`. Phase 2 plain fix. |
+| X-02 | A GM station named `constructor` or `__proto__` gets a prototype member where its claimed-token list should be, which breaks its sync and its claims; on the tablet and the web scanner, a tag or QR code whose text is `constructor` counts as a known token. B-80's slip in three more places. Found by the check; not swept by a reader (check 1, M2). | Set aside as a plain fix with B-80, which now covers these places (`backend/src/models/session.js:66,381-386,406-411`; `backend/src/services/transactionService.js:696-713`; `ALNScanner/src/core/tokenManager.js:282`; `aln-memory-scanner/js/app.js:399`). |
+| D-19 | The "works with no internet" kit loads the QR library from the internet. | A one-off (`aln-memory-scanner/index.html:138`, the only script any kit page loads from the internet; the TV now loads Socket.IO from the engine, `backend/public/scoreboard.html:735-737`); vendoring the library removes it. Phase 2 plain fix. |
+| D-57 | The E2E certificate helper switches certificate checking off for the whole test process. | It weakens certificate checks inside the test process only; it touches nothing on the machine or the live show (`backend/tests/e2e/setup/ssl-cert-helper.js:231,257`; the clients sheet's path `helpers/` was wrong). A plain fix: scope the helper to the one agent that needs it. |
+| D-23 | The TV receives two full snapshots on every connect (the automatic one and the one it asks for), and the GM panel's constructor sends a second `sync:request` on top of the server's automatic snapshot. | No game-visible fault: two equal snapshots replace the same state twice (`backend/src/websocket/gmAuth.js:177-182`; `backend/public/scoreboard.html:1585-1591`; `ALNScanner/src/admin/MonitoringDisplay.js:44`). If the owner keeps it, it is C14's, since each side keeps the connect handshake by hand. |
+| A-35 | Standalone mode shows a permanent red "Disconnected" pill; clicking it opens the wizard, which saves a token and rewrites the device id before failing. | A one-off mode slip in the header, a plain fix: the header starts as a red "Disconnected" link to the wizard (`ALNScanner/index.html:58-61`) and only the connection manager repaints it (`ALNScanner/src/network/connectionManager.js:373-394`), which standalone never creates. No fact the engine decides is involved. The wizard's side effects remain not verified. |
+| B-91 | The kiosk driver runs external commands through its own wrapper, so a change to how programs are run must be made twice. | No game symptom: a second exec wrapper (`backend/src/utils/displayDriver.js:80-87,165-184`) is a maintenance note, set aside on the same ground as C-45, and a plain refactor best done with C3's B-58. |
+| B-08 | A rejected or duplicate GM scan is told to the sending scanner and recorded nowhere else, so the session has no record the attempt happened. | A question for the owner, not a cause: the reply is typed and correct (`backend/src/websocket/adminEvents.js:292`; `backend/src/services/transactionService.js:179-190,212-223` return before the claim). What is missing is a record of refused attempts, and whether the game record should hold them is a product choice none of the sixteen causes decides. The backend reader's own test offers "or the contract must say attempts are not recorded". |
+| C-45 | The sound domain has no renderer class; an inline handler writes the panel. | A code-structure note with no symptom during a game (`ALNScanner/src/admin/MonitoringDisplay.js:118-131`; its element exists, `ALNScanner/index.html:467`); a plain refactor, not a design cause. Its untested restore is C16's D-83 / C-51. |
+| D-42 | The config tool has no Rehearse, Run, Review or Deploy function. | Not a fault: planned capabilities not yet built (Rehearse is direction §2, C20, line 98; Deploy is C22, line 100). |
+| B-84 | Briefs for the paused pieces carry instructions that contradict the tree or the tests. | Outside the engine: planning documents. The backend reader marks it "not an engine fault". A records check (the brief-dispatch check the reader proposes) is process, not an engine rule. Its profile-check fixture and credentials-test items are the same faults C16 keeps as D-80 and D-81. |
+| B-92 | Plan and doc statements about the preflight are wrong (stations in the manifest, the profile axis of the checklist, the DNS value, the merge order). | Three of its four parts are planning statements, outside the engine and not-checkable, as B-84. The fourth is not: `docs/preflight-checklist.md` calls itself the hardware-proven gate's instrument and has no venue-profile row, so a missing profile (C10's B-72) is not among its checks; that part is listed under C14's other places (the checklist and the evaluator are two hand-kept lists nothing compares). |
+| B-97 | `backend/CLAUDE.md:522` names `cueEngine.standingCues`, a key the code never had; the music contract test calls `getState()` instead of the push builder. | The doc line is outside the engine (`git show 12baf920:backend/CLAUDE.md` line 522; `standingCues` absent from `backend/src`); the test half is in C16 as D-84 (`backend/tests/contract/websocket/service-domain-state.test.js:30`). |
+| C-17 | The GM scanner's documents and comments describe behaviour the code lacks (Phase 1H, console recipes, `refreshAllDisplays`, the StateStore API, the restore line numbers, a router comment, the contract notes on `/api/tokens` and batches). | Outside the engine: documents and comments (`ALNScanner/CLAUDE.md:742` against `MonitoringDisplay.js:374-378`). Its two contract items (who fetches `/api/tokens`, who uploads batches) are in C14 as B-67 / D-36. |
 
-Note for the owner. B-84, B-92, B-97 and C-17 share C14's mechanism (two hand-kept sides, no check) but their faults are in records, not in the engine. If the owner wants a rule for documents too, they join C14; the readers (backend B-c13, GM C-c11) proposed a machine check of named files, lines, keys and events in the test run.
+Note for the owner. B-84, B-92, B-97 and C-17 share C14's mechanism (two hand-kept sides, no check) but their faults are in records, not in the engine. If the owner wants a rule for documents too, they join C14; the readers (backend B-c13, GM C-c11) proposed a machine check of named files, lines, keys and events in the test run. B-08 is the one entry that asks the owner a product question rather than naming a fix.
 
 ## 4. Marked for live proof
 
@@ -858,76 +878,68 @@ What step 2's rig must reproduce. The first four are the reproductions the progr
 
 | Ids | Cause | What to do | What we expect to see today |
 |---|---|---|---|
-| A-12 / B-33 / C-43, with A-72, A-73, A-74 | C2 | Play music from the GM panel; kill or stop MPD while the panel is open; then restart MPD. | The panel keeps its "playing" look and the progress bar keeps moving after the kill; the health row goes red alone; the music panel does not change until another music event or a reload; controls stay dead until the 15-second sweep. The rule's test: panel and health row change in one update; controls return within about ten seconds with no reload. |
+| A-12 / B-33 / C-43 (C2), with A-72 and A-73 (C3) and A-74 (C10) | C2, C3, C10 | Play music from the GM panel; kill or stop MPD while the panel is open; then restart MPD. | The panel keeps its "playing" look and the progress bar keeps moving after the kill (the tablet ticks it on its own timer); the health row goes red alone; the music panel does not change until another music event or a reload; the engine's own picture still says "playing" with the last track; the greyed card carries no offline line; controls stay dead until the 15-second sweep, although the supervisor restarted MPD after 5 s. The rule's test: panel and health row change in one update; the engine's picture resets when MPD exits; controls return within about ten seconds with no reload. |
 | B-61 / D-31 | C4 | End a game; restart the engine; scan a player token; fetch `GET /api/session`. | The ended game is current again, the scan is accepted into it, and the session endpoint answers 200. The rule's test: "no game" and 404. |
-| B-01 | C5 | Play music; press Reset System; create and start a new game; start a playlist from the GM panel; fire a cue that triggers on a music event. | The music panel does not show the new track and the music cue does not fire until the engine restarts. |
-| A-05 / C-04 | C1 | Claim a token on tablet A; delete its transaction from either tablet; rescan the token on tablet B with no reload; reload B and rescan. | B refuses the token as "already scanned" both times. The rule's test: accepted both times. |
+| B-01 | C5 | Play music; press Reset System; create and start a new game; start a playlist from the GM panel; fire a cue that triggers on a music event. | The music panel does not show the new track until the engine restarts. The music cue does fire: in production the reset removes no listeners, so boot's music-to-cue forwarding survives (it stops only under test, C16's X-04). |
+| A-05 / C-04 | C1 | Claim a token on tablet A; delete its transaction from either tablet; rescan the token on tablet B with no reload; reload B and rescan. | B refuses the token as "already scanned" before the reload. After the reload B accepts it, because the reload empties B's list and refills it from the backend's (the same path that wipes B's offline queue, C4's C-05). The rule's test: accepted both times, with no reload needed. |
 
 ### 4.2 The other marks, by cause
 
 | Ids | Cause | What to do | What we expect to see today |
 |---|---|---|---|
-| A-06 / C-30 | C1 | Disconnect tablet B; Reset All Scores from tablet A; reconnect B; rescan a token claimed before the reset. | B refuses it; the reconnect snapshot only added to B's list. |
+| A-06 / C-30 | C1 | Drop tablet B's connection without reloading it; Reset All Scores from tablet A; reconnect B; rescan a token claimed before the reset. | B refuses it; the reconnect snapshot keeps the session id, so there is no boundary and the union keeps B's stale claims. (A tablet that was off reloads on return and rebuilds from the backend's empty list, so it accepts; do not use that case.) |
 | A-24 / C-29 | C1 | Tablet A claims a token; reload tablet B; scan the same token on B. | B shows the green success screen, then the duplicate verdict arrives; the rule's test refuses up front naming Team A. |
 | A-19 / A-59 | C1 | Drag the music slider while a video starts (ducking fires); then change the speaker list mid-drag. | The thumb snaps back under the finger; after the sink-list change the slider ignores later pushes. |
 | A-20 | C1 | Open the admin panel while the scene list is empty; then load scenes. | The lighting tiles stay blank. |
 | A-25 | C1 | Add a team mid-game from another tablet; open Session Details on a tablet. | Session Details "Teams" keeps the last full snapshot's value. |
-| A-29 | C1 | Open the Admin tab before cues load; then load them. | Verify whether both grids fill (the reader could not settle the empty-snapshot case from code). |
 | A-33 | C1 | Go into overtime; pause and resume. | The overtime banner disappears at the first redraw. |
-| B-13 | C1 | Two teams, groups completed on both; delete a transaction that changes the other team's bonus. | The other team's score on every tablet is stale until the next snapshot. |
-| B-25 | C1 | Complete a group; delete one of its tokens' transactions. | Every tablet keeps showing the group complete. |
 | C-31 | C1 | Submit a scan the backend answers with a general error (not a verdict). | The token stays locked on the tablet; the GM is not told why. |
 | A-11 | C2 | Start the engine with Home Assistant down; start Home Assistant; later stop it mid-show. | The lighting panel stays "unavailable", then shows dead tiles after the stop; only a reload corrects it. |
-| A-17 / B-56 | C2 | Change Music volume on tablet 1, then with `pactl` outside the engine. | Tablet 2's slider does not move in either case. |
+| A-17 | C2 | Change a per-stream volume on the audio panel of tablet 1 (not the Music panel's own slider, which already reaches other tablets). | Tablet 2's slider does not move. |
 | A-68 | C3 | Play a video and time the engine's "started" against the TV. | "Started" arrives late (up to the end of the video in the slow signal order); the rule's test wants it within half a second every time. |
 | A-61 | C3 | Start a video and make the cached player state report "stopped" while the TV still plays (drop one state signal). | After two polls the queue completes the video: display mode flips, ducking restores, waiting cues fire. |
-| A-48 | C3 | Fire a compound cue whose video is 2 seconds long. | The cue never completes and stays on screen until stopped by hand. |
-| A-62 | C3 | Skip a 30-second video at 12 seconds inside a compound cue. | The remaining steps fire at once, anchored at the full length. |
-| A-67 | C3 | Pause the game clock during a cue's post-video steps. | The cue waits with no sign why. |
-| A-65 / B-48 | C3 | Restart VLC without the engine noticing; separately, kill VLC while another MPRIS player emits signals. | The new instance's signals are dropped; the VLC row stays healthy on the stranger's signals. |
+| X-01 | C3 | Drop one VLC state signal so the engine's record is wrong; wait for the 15-second health probe. | The probe corrects the engine's record, but the video panel and the queue's wait for "playing" do not move until the next real signal. |
+| A-48 | C3 | Fire a compound cue whose video is 2 seconds long. | The cue never completes and stays on screen until stopped by hand (whenever completion precedes the first 1-second progress tick). |
+| A-65 / B-48 | C3 | Restart VLC without the engine noticing; separately, kill VLC while another MPRIS player emits signals (inside the 3-second respawn window, or with the respawn stopped). | The new instance's signals are dropped; the VLC row stays healthy on the stranger's signals. |
 | A-54 / B-47 | C3 | Start with Home Assistant down, then bring it up; add a scene in Home Assistant while the engine runs. | Scenes do not appear without a GM refresh command or a restart. |
-| A-55 / B-43 / B-93 | C3 | Reconnect MPD while a track plays; separately, play a playlist, restart the engine, open the panel. | The panel shows "stopped, volume 70, no track" until the next MPD event or command. |
-| A-56 | C3 | Change the music stream's volume with a system tool. | The panel slider does not follow. |
+| A-55 / B-43 / B-93 | C3 | Reconnect MPD while a track plays; separately, play a playlist, restart the engine, open the panel. | The panel shows "stopped, volume 70, no track" until the next MPD event or command; after the restart the real player is paused on the restored track, not playing. |
+| A-56 / B-56 | C3 | Change the music stream's volume with a system tool (`pactl`) outside the engine. | No tablet's slider follows; the engine never hears the change. |
 | A-57 | C3 | Plug a speaker in while the panel is open. | The speaker list briefly shows empty. |
 | A-70 | C3 | Route music to the Bluetooth speaker; start a track. | The track plays from the default sink, not the speaker. |
 | A-71 / B-94 | C3 | Move the Video slider with nothing playing; move the music slider with music stopped. | An error toast ("No active sink-input found"; MPD "all outputs disabled"). |
 | B-38 | C3 | With the kiosk window missing, press Show Scoreboard. | The reply says success and the mode switches. |
-| B-45 | C3 | Start a video so music ducks; clear the queue while it plays. | Music stays ducked. |
 | B-46 | C3 | Power the Bluetooth adapter on after boot; pair a speaker; press Check Now on Bluetooth. | The panel does not list the speaker; Check Now does not change the row. |
-| B-49 | C3 | Make MPD fail five times at start. | The supervisor gives up silently; the Music row keeps its last word. |
+| B-49 | C3 | Kill the `pactl subscribe` child five times (not MPD, whose exits already turn its row red). | The supervisor gives up silently; the Audio row stays "healthy, PipeWire reachable" while sink events stop. |
 | B-58 | C3 | Minimise the kiosk window by hand; ask for the scoreboard. | The engine believes it is visible; nothing is raised and nothing says so. |
 | A-01 / C-39 | C4 | End a game; reconnect a tablet; open the wall scoreboard page. | The tablet loses history, scans, session panel and Download Report; the wall scoreboard goes blank. |
 | B-17 / C-38 | C4 | Fire a once-only cue in game one; end it; create and start game two by the plain flow; trigger the cue again. | It does not fire. |
-| B-18 | C4 | Force the clock start to throw during Start Game. | The session is active with a stopped clock. |
-| B-24 / C-59 | C4 | Reload a GM tablet during a live game. | It can be refused with a station-name collision for up to about 85 seconds. |
+| A-67 | C4 | Pause the game clock during a cue's post-video steps. | The cue waits with no sign why. |
 | B-32 | C4 | Restart the engine with tablets and the scoreboard connected. | Every tablet must log in again; the scoreboard does not come back by itself. |
 | B-41 | C4 | Hold a cue because the TV is down; end the game; start a new one. | The held cue is still there. |
 | B-42 | C4 | End the game while a compound cue runs; start a new game. | The panel's active cues still show it. |
 | B-54 | C4 | Start a long sound; stop the engine. | A `pw-play` process remains. |
+| B-55 | C4 | Play a video; press Reset System. | VLC keeps playing while the video queue says idle and the track stays empty; the GM is told nothing (the re-read play state speaks on an event nothing hears for VLC, X-01). |
 | C-05 | C4 | Scan with the tablet offline; reload it; reconnect. | The queued scan is wiped before it is sent. |
 | C-16 | C4 | Backend up, no session; reload a connected tablet. | The tablet drops networked mode and shows the wizard. |
+| C-36 | C4 | Run a system reset with tablets connected. | Tablets keep last game's numbers and claim locks until the new session's id arrives. |
 | C-40 | C4 | Start a new game session. | The device list and service panels still show the old game's state. |
 | A-53 / B-02 / C-37 / D-30 | C5 | Scan three tokens; Reset System; create and start; scan two; Reset All Scores. | GM history and TV evidence show the three old transactions again. |
 | B-03 | C5 | Reset System; play one video that has a cue on video start. | The cue fires twice. |
-| B-55 | C5 | Play a video; press Reset System. | VLC keeps playing while the panel says stopped. |
-| C-36 | C5 | Run a system reset with tablets connected. | Tablets keep last game's numbers and claim locks until the new session's id arrives. |
-| A-30 / C-46 | C6 | Rebuild the admin panel while the clock runs. | The clock shows `--:--` until the next changed push. |
+| A-30 / C-46 | C6 | Rebuild the admin panel while the clock is paused or stopped (with the clock running the push differs from the stored value and the test passes today). | The clock shows `--:--` until the next changed push. |
 | C-23 | C6 | Disconnect a device; request a snapshot from another tablet. | The list shows the disconnected device as connected (or alternates with the next message). |
-| B-09 | C7 | Make the session save fail once; scan a token. | The scanner hears "accepted"; no tablet ever receives the transaction. |
+| B-09 | C7 | Make the session save fail once; scan a token. | The scanner hears "accepted"; live tablets miss the transaction until the next snapshot, and a restart before a later save loses it. |
 | B-21 / D-15 | C7 | Send batch X; restart the engine; send X again. | The player-scan count rises twice. |
 | B-64 / C-32 | C7 | Submit a scan with a mode the pack lacks. | A generic error; the scan replays on every snapshot with a toast each time. |
 | B-69 / C-35 | C7 | Reset with Bluetooth and Home Assistant slow to answer (about 8 seconds). | The GM sees a failure; the follow-on "create session" is skipped. |
 | C-34 | C7 | Issue a command whose state change arrives late. | A success toast with an old screen, or the reverse. |
 | D-12 | C7 | Make the engine answer one batch with 429. | The web scanner drops the batch; the ESP32 retries it. |
-| A-75 / D-64 / B-63 / D-52 | C8 | Start a live engine; run the backend unit suite (or write a decoy process's pid into `/tmp/aln-pm-vlc-dbus-monitor.pid` with `dbus-monitor` in its command line). | The live video player (or the decoy) is dead afterwards. |
+| A-75 / D-64 / B-63 / D-52 | C8 | Start a live engine; run the backend unit suite (or write a decoy process's pid into `/tmp/aln-pm-vlc-dbus-monitor.pid` with `dbus-monitor` in its command line). | The live engine's VLC signal monitor (or the decoy) is dead afterwards and the live process files hold the mocked pid. The live video player itself survives in this tree, because the reaper matches only `cvlc` (A-64); it would die again once A-64 alone is fixed (X-07). |
 | D-72, D-73, D-74 | C8 | Start a second engine on the same host while the first runs; launch its kiosk; start its music. | The first engine's `pactl subscribe` child and kiosk browser are killed; both engines share one MPD. |
 | A-64 / D-70 | C8 | SIGKILL the engine with VLC running; restart it. | A second full-screen player appears; the orphan is never reaped. |
-| A-49 / D-71 | C8 | Start the test engine. | Two video player processes exist. |
 | D-56 | C8 | SIGKILL a Tier L worker. | The `cvlc` it started remains. |
 | A-76 / D-53 / D-68 | C8 | Run the contract suite; list processes afterwards. | `dbus-monitor` and `pactl subscribe` children remain; `pactl set-card-profile` ran on the host. |
 | A-77 | C8 | Write a test that leaves a child process running. | It passes. |
 | A-79 / D-54 / D-69 | C8 | Run the integration suite with a display attached (or `DISPLAY` at a recording server); run `docker-lifecycle`. | A browser window opens on the display; the Home Assistant container is started and stopped. |
-| A-80 | C8 | Run flow 21 right after a test that started a video. | It fails once with "video already playing", then passes on retry. |
 | A-87 | C8 | Run the full suites on a machine with a live engine. | The live engine is touched (see the rows above). |
 | B-101 | C8 | Run the contract suite; list stray processes and timers afterwards. | Children and an un-`unref`'d timer remain. |
 | D-43 | C8 | Run the config tool's smoke test with a marker server on port 3000. | The marker receives the fixture password. |
@@ -938,26 +950,26 @@ What step 2's rig must reproduce. The first four are the reproductions the progr
 | D-58 | C8 | With a live engine whose command line lacks `node src/server.js`, run `up.sh` then `down.sh`. | The live engine's pid and MPD files are deleted and its children ended. |
 | D-65 / D-66 | C8 | Run the unit suite twice in parallel; run three E2E workers and kill one worker's engine. | They share pid files; the other workers' children are affected. |
 | D-76 | C8 | Plant a symlink at the slot data path and run. | Session clearing follows the symlink. |
-| A-26 | C9 | Scan while the backend reports "queued". | The screen says "complete". |
 | A-34 | C9 | On one tablet, scan a token claimed by Team A for Team B. | The message is the generic "This token has been used", not "claimed by Team A". |
-| A-35 | C9 | Open standalone mode; click the connection pill. | A permanent red "Disconnected" pill; clicking opens the wizard, which saves a token and rewrites the device id before failing (not verified from code). |
 | C-07 | C9 | Scan a token the backend will refuse (stale pack or paused game). | "Transaction Complete!" with locally computed points, then a toast. |
 | C-58 | C9 | Scan a token the backend's pack lacks but the tablet's loose match finds. | The tablet shows success; the backend refuses. |
-| A-16 / C-03 | C10 | With a service down, press Check Now; separately, cut the tablet's connection for a minute. | No sign anything happened (no check time, no message); every live panel keeps its numbers with no stale mark and the dot waits for a snapshot. |
+| A-16 / C-03 | C10 | With a service down, press Check Now; separately, cut the tablet's connection for a minute. | No sign anything happened (no check time, no message); every live panel keeps its numbers with no stale mark; the header indicator turns "disconnected" only once socket.io notices the silent drop. |
+| A-74 | C10 | With the panel open, stop MPD. | The music card goes grey with no offline line; the GM can miss it. |
 | A-98 | C10 | Run the engine with no display attached. | The video health row says healthy; the player reports "playing" with no picture. |
-| A-99 | C10 | With all services healthy, look for Check Now. | The dashboard collapses to one line; Check Now is drawn only for down services. |
 | A-100 | C10 | Take every light offline behind a running Home Assistant; connect a speaker with no sound sink. | Lighting and Bluetooth both read healthy. |
 | B-72 / C-48 | C10 | Start the engine with a mistyped profile path; open the tablet's health panel. | Six services grey "not installed"; the panel reads calm green "3/9, 6 not installed". |
 | C-22 | C10 | Set the tablet's clock ten minutes off. | The game clock and held durations disagree with the engine's. |
 | D-16 | C10 | Kill the engine; time each player scanner's screen. | The ESP32 says connected for about 100 seconds, the web scanner for up to about 15. |
 | D-21 | C10 | Connect a TV in a game with no events for 6 minutes. | The TV tears down and rebuilds its connection. |
 | B-15 | C11 | Queue a player scan offline; replay it during a game with a cue that fires on a player scan. | The cue fires. |
+| B-18 | C11 | Force the clock start to throw during Start Game. | The session is active with a stopped clock. |
 | B-36 / B-37 | C11 | Boot with a profile that has no TV; list the engine's child processes; separately, boot with the lighting token empty and the profile saying lighting is installed. | VLC and the kiosk still run; the lighting row stays "Not yet checked" forever. |
-| B-39 | C11 | Pause a video; trigger processing of the next queued video. | The paused video is replaced. |
-| B-40 | C11 | Hold one cue and two videos with VLC down; bring VLC up; press Release All. | Release stops at the first held video VLC refuses. |
+| B-39 | C11 | Pause a video; have a player scan a video token; then release a held video. | The player is told the video was triggered while it waits behind the paused one; the release plays the next video over the paused one. (A plain scan does not replace it: adding to the queue runs it only when nothing is current.) |
+| B-40 | C11 | Hold two videos with VLC down; press Release All while VLC is still down. | The first release throws and the loop stops; the second video is neither released nor named. (With VLC up every held video releases, so that case passes today.) |
+| B-45 | C11 | Start a video so music ducks; clear the queue while it plays. | Music stays ducked. |
 | B-75 | C11 | Kill the hidden kiosk. | The row never recovers by itself; Show Scoreboard is refused by the health gate. |
 | C-24 | C11 | Two GMs add the same new team at once. | The second gets an error although the team now exists. |
-| C-25 | C11 | Reload a tablet mid-game; have another GM pause the game. | Scans are blocked as "disconnected" after the reload while the backend is active. |
+| C-25 | C11 | Reload a tablet mid-game and scan in the window before the first snapshot arrives; separately, lose that snapshot. | Scans are blocked as "disconnected" while the backend is active. (Once the snapshot lands, which is with the connection, scans are allowed, so "as soon as the connection is up" passes today.) |
 | A-45 | C12 | Change the pack's multiplier during a session; download the report. | Verify whether the breakdown and the amount disagree (not verified from code). |
 | A-94 | C12 | Update a token; ask every consumer for its pack hash. | Verify whether the three copies can disagree (not verified from code). |
 | B-07 / D-04 | C12 | Edit one token's rating on disk, no restart; fetch `/api/pack/manifest`, `/api/pack/files/tokens.json`, `/api/tokens`; scan the token. | The file's sha1 differs from the manifest's; the endpoints serve the new value; the scan scores the old. |
@@ -966,20 +978,22 @@ What step 2's rig must reproduce. The first four are the reproductions the progr
 | B-29 | C12 | Swap a pack mid-game; delete a transaction. | Bonuses are recomputed from the new catalog. |
 | D-40 / B-44 | C12 | Edit the fallback route in `routing.json`; unplug the primary sink. | Audio does not move to the fallback. |
 | D-03 | C12 | Change the evidence-mode list in `game.json` on disk, no restart; reload the TV. | The TV shows evidence by the new list while the engine scores by the old. |
-| D-07 | C12 | Serve a 60,000-byte `/api/tokens` body to an ESP32. | The device refuses it; only the serial log says so. |
 | D-08 | C12 | Change the pack tokens; try to refresh an ESP32 without reboot; cut power during a token sync. | No refresh without reboot; the next boot has no usable token file. |
 | B-70 / C-19 | C13 | Start two tablets at the same moment with no game. | Both pick the same station name; nothing refuses either (or the second is refused at connect once a game exists). |
+| B-24 / C-59 | C13 | Drop a GM tablet's network, or kill its browser without a close, then reload it mid-game. | It is refused with a station-name collision until the server's ping timeout notices the dead socket, up to about 85 seconds. (A clean reload is accepted at once.) |
 | A-09 / A-69 | C14 | Route music to Bluetooth; open a second tablet cold. | The music dropdown cannot show the speaker (aliases vs device names); streams with no explicit route show "Unknown sink". |
+| A-62 | C14 | Skip a 30-second video at 12 seconds inside a compound cue. | The remaining steps fire at once, anchored at the full length. |
 | A-63 | C14 | Author a standing cue "after video unless token X"; play video X. | It fires after video X. |
+| D-07 | C14 | Serve a 60,000-byte `/api/tokens` body to an ESP32. | The device refuses it; only the serial log says so. |
 | D-24 | C14 | With the real socket.io-client, drop and restore the TV's link. | The `reconnect` handler never runs; `connect` covers recovery. |
-| A-88 | C15 | Build a clean machine from the deployment guide; pair a speaker. | The speaker connects with no audio profile unless the host rule is added by hand. |
+| A-88 / X-03 | C15 | Build a clean machine from the tree's own documents; pair a speaker. | The speaker connects with no audio profile: the documents give the wrong role (`a2dp_sink`), and no deployable copy of the right rule exists. |
 | A-91 | C15 | Roll back with `git submodule update --force`. | Submodules do not move backward. |
 | A-92 | C15 | Roll back and `pm2 restart`; read the GM scanner page's build id. | The pre-rollback build is served. |
 | A-95 | C15 | Sync tokens whose media is not yet copied. | Tokens point at nothing; no check lists the missing files. |
 | A-97 | C15 | Run the Notion sync on a tree with orphan media. | Orphans are reported only; scoring changes ride the same commit as body changes. |
+| A-80 | C16 | Run flow 21 right after a test that started a video. | It fails once with "video already playing", then passes on retry. |
 | A-81 | C16 | Start the E2E run and watch the capability probe. | "No video player" for the whole run; video steps skip. |
 | A-82 | C16 | Run the full E2E suite on the shipped pack. | About 62 tests skip; no group-completion test runs on real content. |
-| A-84 | C16 | Run the routing integration tests on a kit with real sinks. | They fail or pass for the wrong reason (alias expectations). |
 | A-86 | C16 | Run the scanner unit suite under a non-UTC time zone. | Two tests fail. |
 | D-62 | C16 | Restart the dev container; start the suite. | The suite does not notice the rig's daemons are gone. |
 | D-79 | C16 | Run the harness-minimum reproduction on a box with MPD. | The MPD residue assertion cannot fail. |
@@ -987,90 +1001,279 @@ What step 2's rig must reproduce. The first four are the reproductions the progr
 
 ## 5. Coverage: every finding id and where it went
 
-Each id appears exactly once below. "§3" means set aside (section 3). Causes are C1 to C16 as numbered in sections 1 and 2.
+Each id appears exactly once below, placed as the check left it. "§3" means set aside (section 3). Causes are C1 to C16 as numbered in sections 1 and 2.
 
 ### 5.1 Blue's records (A-01 to A-102)
 
 A-01→C4, A-02→C9, A-03→C14, A-04→C14, A-05→C1, A-06→C1, A-07→C14, A-08→C11, A-09→C14, A-10→C10,
 A-11→C2, A-12→C2, A-13→C9, A-14→C9, A-15→C14, A-16→C10, A-17→C2, A-18→C11, A-19→C1, A-20→C1,
-A-21→C1, A-22→C6, A-23→C14, A-24→C1, A-25→C1, A-26→C9, A-27→C11, A-28→C14, A-29→C1, A-30→C6,
-A-31→C14, A-32→C6, A-33→C1, A-34→C9, A-35→C9, A-36→C9, A-37→C9, A-38→C11, A-39→C14, A-40→C14,
+A-21→C1, A-22→C6, A-23→C14, A-24→C1, A-25→C1, A-26→C14, A-27→C11, A-28→C14, A-29→C1, A-30→C6,
+A-31→C14, A-32→C6, A-33→C1, A-34→C9, A-35→§3, A-36→C9, A-37→C9, A-38→C11, A-39→C14, A-40→C14,
 A-41→C14, A-42→C14, A-43→C11, A-44→§3, A-45→C12, A-46→C11, A-47→C14, A-48→C3, A-49→C8, A-50→C1,
-A-51→C16, A-52→C16, A-53→C5, A-54→C3, A-55→C3, A-56→C3, A-57→C3, A-58→C10, A-59→C1, A-60→C10,
-A-61→C3, A-62→C3, A-63→C14, A-64→C8, A-65→C3, A-66→C3, A-67→C3, A-68→C3, A-69→C14, A-70→C3,
-A-71→C3, A-72→C2, A-73→C2, A-74→C2, A-75→C8, A-76→C8, A-77→C8, A-78→C8, A-79→C8, A-80→C8,
+A-51→C16, A-52→C16, A-53→C5, A-54→C3, A-55→C3, A-56→C3, A-57→C3, A-58→§3, A-59→C1, A-60→C10,
+A-61→C3, A-62→C14, A-63→C14, A-64→C8, A-65→C3, A-66→C14, A-67→C4, A-68→C3, A-69→C14, A-70→C3,
+A-71→C3, A-72→C3, A-73→C3, A-74→C10, A-75→C8, A-76→C8, A-77→C8, A-78→C8, A-79→C8, A-80→C16,
 A-81→C16, A-82→C16, A-83→C16, A-84→C16, A-85→C16, A-86→C16, A-87→C8, A-88→C15, A-89→C10, A-90→C15,
 A-91→C15, A-92→C15, A-93→C15, A-94→C12, A-95→C15, A-96→C15, A-97→C15, A-98→C10, A-99→C10, A-100→C10,
 A-101→C10, A-102→C2.
 
-Count: 102. By destination: C1 11, C2 7, C3 13, C4 1, C5 1, C6 3, C8 9, C9 8, C10 9, C11 6, C12 2, C14 15, C15 8, C16 8, §3 1.
+Count: 102. By destination: C1 11, C2 4, C3 12, C4 2, C5 1, C6 3, C8 8, C9 6, C10 9, C11 6, C12 2, C14 18, C15 8, C16 9, §3 3.
 
 ### 5.2 The backend (B-01 to B-101)
 
-B-01→C5, B-02→C5, B-03→C5, B-04→C13, B-05→C13, B-06→C14, B-07→C12, B-08→C7, B-09→C7, B-10→C11,
-B-11→C14, B-12→C14, B-13→C1, B-14→C14, B-15→C11, B-16→C7, B-17→C4, B-18→C4, B-19→C1, B-20→C12,
-B-21→C7, B-22→C7, B-23→C11, B-24→C4, B-25→C1, B-26→C13, B-27→C13, B-28→C12, B-29→C12, B-30→C6,
-B-31→C6, B-32→C4, B-33→C2, B-34→C2, B-35→C14, B-36→C11, B-37→C11, B-38→C3, B-39→C11, B-40→C11,
-B-41→C4, B-42→C4, B-43→C3, B-44→C12, B-45→C3, B-46→C3, B-47→C3, B-48→C3, B-49→C3, B-50→C14,
-B-51→C4, B-52→C11, B-53→C5, B-54→C4, B-55→C5, B-56→C2, B-57→C7, B-58→C3, B-59→C11, B-60→C1,
-B-61→C4, B-62→C9, B-63→C8, B-64→C7, B-65→C7, B-66→C13, B-67→C14, B-68→C6, B-69→C7, B-70→C13,
-B-71→C13, B-72→C10, B-73→C11, B-74→C11, B-75→C11, B-76→C10, B-77→C11, B-78→C11, B-79→C11, B-80→§3,
+B-01→C5, B-02→C5, B-03→C5, B-04→C13, B-05→C13, B-06→C14, B-07→C12, B-08→§3, B-09→C7, B-10→C11,
+B-11→C14, B-12→C14, B-13→C1, B-14→C14, B-15→C11, B-16→C7, B-17→C4, B-18→C11, B-19→C1, B-20→C12,
+B-21→C7, B-22→C7, B-23→C11, B-24→C13, B-25→C1, B-26→C13, B-27→C13, B-28→C12, B-29→C12, B-30→C6,
+B-31→C6, B-32→C4, B-33→C2, B-34→C11, B-35→C14, B-36→C11, B-37→C11, B-38→C3, B-39→C11, B-40→C11,
+B-41→C4, B-42→C4, B-43→C3, B-44→C12, B-45→C11, B-46→C3, B-47→C3, B-48→C3, B-49→C3, B-50→C14,
+B-51→C4, B-52→C11, B-53→C5, B-54→C4, B-55→C4, B-56→C3, B-57→C7, B-58→C3, B-59→C11, B-60→C11,
+B-61→C4, B-62→C9, B-63→C8, B-64→C7, B-65→C7, B-66→C13, B-67→C14, B-68→C14, B-69→C7, B-70→C13,
+B-71→C13, B-72→C10, B-73→C11, B-74→C11, B-75→C11, B-76→C10, B-77→C11, B-78→C3, B-79→C11, B-80→§3,
 B-81→C13, B-82→C13, B-83→C13, B-84→§3, B-85→C4, B-86→C10, B-87→C3, B-88→C12, B-89→C13, B-90→C13,
-B-91→C3, B-92→§3, B-93→C3, B-94→C3, B-95→C6, B-96→§3, B-97→§3, B-98→§3, B-99→§3, B-100→§3,
+B-91→§3, B-92→§3, B-93→C3, B-94→C3, B-95→C6, B-96→§3, B-97→§3, B-98→C15, B-99→§3, B-100→C15,
 B-101→C8.
 
-Count: 101. By destination: C1 4, C2 3, C3 12, C4 10, C5 5, C6 4, C7 9, C8 2, C9 1, C10 3, C11 15, C12 6, C13 12, C14 7, §3 8.
+Count: 101. By destination: C1 3, C2 1, C3 12, C4 9, C5 4, C6 3, C7 8, C8 2, C9 1, C10 3, C11 18, C12 6, C13 13, C14 8, C15 2, §3 8.
 
 ### 5.3 The GM scanner (C-01 to C-59)
 
 C-01→C1, C-02→C6, C-03→C10, C-04→C1, C-05→C4, C-06→C14, C-07→C9, C-08→C12, C-09→C9, C-10→C9,
 C-11→C9, C-12→C14, C-13→C14, C-14→C14, C-15→C14, C-16→C4, C-17→§3, C-18→C4, C-19→C13, C-20→C13,
-C-21→C11, C-22→C10, C-23→C6, C-24→C11, C-25→C11, C-26→C11, C-27→C4, C-28→C11, C-29→C1, C-30→C1,
-C-31→C1, C-32→C7, C-33→C7, C-34→C7, C-35→C7, C-36→C5, C-37→C5, C-38→C4, C-39→C4, C-40→C4,
+C-21→C11, C-22→C10, C-23→C6, C-24→C11, C-25→C11, C-26→C11, C-27→C14, C-28→C11, C-29→C1, C-30→C1,
+C-31→C1, C-32→C7, C-33→C7, C-34→C7, C-35→C7, C-36→C4, C-37→C5, C-38→C4, C-39→C4, C-40→C4,
 C-41→C4, C-42→C9, C-43→C2, C-44→C6, C-45→§3, C-46→C6, C-47→C10, C-48→C10, C-49→C4, C-50→C16,
-C-51→C16, C-52→§3, C-53→C14, C-54→C14, C-55→C7, C-56→C9, C-57→C9, C-58→C9, C-59→C4.
+C-51→C16, C-52→§3, C-53→C14, C-54→C14, C-55→C7, C-56→C9, C-57→C9, C-58→C9, C-59→C13.
 
-Count: 59. By destination: C1 5, C2 1, C4 10, C5 2, C6 4, C7 5, C9 8, C10 4, C11 5, C12 1, C13 2, C14 7, C16 2, §3 3.
+Count: 59. By destination: C1 5, C2 1, C4 9, C5 1, C6 4, C7 5, C9 8, C10 4, C11 5, C12 1, C13 3, C14 8, C16 2, §3 3.
 
 ### 5.4 The other clients and the tests (D-01 to D-88)
 
-D-01→C6, D-02→C12, D-03→C12, D-04→C12, D-05→C12, D-06→C12, D-07→C12, D-08→C12, D-09→C9, D-10→C9,
-D-11→C7, D-12→C7, D-13→C7, D-14→C7, D-15→C7, D-16→C10, D-17→C9, D-18→C12, D-19→§3, D-20→C14,
-D-21→C10, D-22→C10, D-23→C6, D-24→C14, D-25→C13, D-26→C13, D-27→C13, D-28→C13, D-29→C13, D-30→C5,
-D-31→C4, D-32→C13, D-33→C13, D-34→C13, D-35→C7, D-36→C14, D-37→C14, D-38→C12, D-39→C12, D-40→C12,
-D-41→C12, D-42→§3, D-43→C8, D-44→C12, D-45→C13, D-46→C8, D-47→C16, D-48→C14, D-49→C8, D-50→C8,
-D-51→C8, D-52→C8, D-53→C8, D-54→C8, D-55→C8, D-56→C8, D-57→C8, D-58→C8, D-59→C8, D-60→C8,
+D-01→C6, D-02→C12, D-03→C12, D-04→C12, D-05→C12, D-06→C12, D-07→C14, D-08→C12, D-09→C9, D-10→C9,
+D-11→C10, D-12→C7, D-13→C7, D-14→C7, D-15→C7, D-16→C10, D-17→C9, D-18→C12, D-19→§3, D-20→C14,
+D-21→C10, D-22→C10, D-23→§3, D-24→C14, D-25→C13, D-26→C13, D-27→C13, D-28→C13, D-29→C13, D-30→C5,
+D-31→C4, D-32→C13, D-33→C13, D-34→C15, D-35→C7, D-36→C14, D-37→C14, D-38→C12, D-39→C12, D-40→C12,
+D-41→C12, D-42→§3, D-43→C8, D-44→C4, D-45→C13, D-46→C8, D-47→C16, D-48→C14, D-49→C8, D-50→C8,
+D-51→C8, D-52→C8, D-53→C8, D-54→C8, D-55→C8, D-56→C8, D-57→§3, D-58→C8, D-59→C8, D-60→C8,
 D-61→C8, D-62→C16, D-63→C8, D-64→C8, D-65→C8, D-66→C8, D-67→C8, D-68→C8, D-69→C8, D-70→C8,
 D-71→C8, D-72→C8, D-73→C8, D-74→C8, D-75→C8, D-76→C8, D-77→§3, D-78→C14, D-79→C16, D-80→C16,
 D-81→C16, D-82→C16, D-83→C16, D-84→C16, D-85→C16, D-86→§3, D-87→C16, D-88→C16.
 
-Count: 88. By destination: C4 1, C5 1, C6 2, C7 6, C8 29, C9 3, C10 3, C12 13, C13 9, C14 6, C16 11, §3 4.
+Count: 88. By destination: C4 2, C5 1, C6 1, C7 5, C8 28, C9 3, C10 4, C12 11, C13 8, C14 7, C15 1, C16 11, §3 6.
 
-### 5.5 Totals
+### 5.5 The check (X-01 to X-07; found by the check, not swept by a reader)
 
-| Destination | Blue | Backend | GM scanner | Clients and tests | Total |
-|---|---|---|---|---|---|
-| C1 copies | 11 | 4 | 5 | 0 | 20 |
-| C2 health and state | 7 | 3 | 1 | 0 | 11 |
-| C3 outside programs | 13 | 12 | 0 | 0 | 25 |
-| C4 boundaries | 1 | 10 | 10 | 1 | 22 |
-| C5 boot and reset | 1 | 5 | 2 | 1 | 9 |
-| C6 snapshot and live | 3 | 4 | 4 | 2 | 13 |
-| C7 replies | 0 | 9 | 5 | 6 | 20 |
-| C8 the machine | 9 | 2 | 0 | 29 | 40 |
-| C9 the client decides | 8 | 1 | 8 | 3 | 20 |
-| C10 unknown shown as normal | 9 | 3 | 4 | 3 | 19 |
-| C11 several answerers | 6 | 15 | 5 | 0 | 26 |
-| C12 the pack and edited files | 2 | 6 | 1 | 13 | 22 |
-| C13 identity and audience | 0 | 12 | 2 | 9 | 23 |
-| C14 loose joins | 15 | 7 | 7 | 6 | 35 |
-| C15 deployment | 8 | 0 | 0 | 0 | 8 |
-| C16 tests | 8 | 0 | 2 | 11 | 21 |
-| §3 set aside | 1 | 8 | 3 | 4 | 16 |
-| **Total** | **102** | **101** | **59** | **88** | **350** |
+X-01→C3, X-02→§3, X-03→C15, X-04→C16, X-05→C8, X-06→C8, X-07→C8.
 
-Readers' local causes and where each went (so the owner can see the joins and the splits): blue A-c1→C1; A-c2→C6; A-c3→C2 (A-54, A-55, A-70 moved to C3 as service-side re-reads); A-c4 split: the wrong-field half (A-07, A-09, A-23, A-63, A-69) and the facade reads (A-03, A-04) →C14, the several-answers half (A-08, A-18, A-27, A-38, A-43) →C11; A-c5→C3; A-c6→C8; A-c7 split: A-01→C4, A-53→C5; A-c8→C9 (A-45 moved to C12 as a mid-session pack change); A-c9→C10 (A-16 kept; A-46 moved to C11 with A-38); A-c10→C16; A-c11→C15 (A-94 moved to C12); A-c12→C3; A-c13→C14. Backend B-c1→C6; B-c2 split: health-and-state rows (B-33, B-56) →C2, delivery-by-wired-event rows (B-13, B-19, B-25, B-60) →C1, reply-and-record rows (B-08, B-57) →C7, partial-result rows (B-76) →C10; B-c3→C5 (B-69 moved to C7 as a fixed-wait reply); B-c4→C4; B-c5→C3; B-c6 split: →C11 for the backend's gates and counters-like answers (B-15, B-36, B-37, B-39, B-40, B-52, B-59, B-73, B-74, B-75, B-77, B-78, B-79), B-18→C4 (the start boundary), B-34→C2, B-62→C9 (the device decides the team), B-71→C13 (identity), B-72 and B-86→C10 (a failure shown as normal), B-96→§3; B-c7→C13 (B-80→§3); B-c8→C12; B-c9 split: B-63, B-101→C8, B-98 to B-100→§3; B-c10 split: B-10, B-23→C11, B-05→C13, B-51→C4; B-c11→C7; B-c12→C7; B-c13 split: B-06, B-50, B-67→C14, B-84, B-92, B-97→§3; B-c14→C14. GM C-c1→C1; C-c2 split: C-01→C1, C-02, C-23, C-46→C6, C-03, C-22→C10, C-37→C5; C-c3→C11 (C-06 moved to C14 as the facade read); C-c4→C14; C-c5→C9 (C-19 moved to C13 as station identity; C-41 moved to C4 as a restart rule); C-c6→C4 (C-08→C12, C-13→C14, C-36→C5); C-c7→C7; C-c8 split: C-43→C2, C-47, C-48→C10; C-c9 split: C-23, C-44→C6, C-45→§3, C-51→C16; C-c10→C13; C-c11 split: C-17→§3, C-50→C16; C-c12 split: C-42→C9, C-52→§3. Clients D-c1→C8; D-c2→C8 (D-62→C16); D-c3→C12; D-c4→C4 and C5 (D-31→C4, D-30→C5); D-c5→C9; D-c6→C10; D-c7 split: D-01, D-23→C6, D-84→C16; D-c8→C13; D-c9 split: D-28, D-29, D-32, D-33, D-34→C13, D-35→C7; D-c10→C7; D-c11→C12 (D-42→§3); D-c12 split: D-24, D-36, D-37, D-48, D-78→C14, the rest →C16 (D-77, D-86→§3); D-c13 split: D-19→§3, D-20→C14.
+Count: 7. By destination: C3 1, C8 3, C15 1, C16 1, §3 1. Sources: check 1 §2 (M1 → X-01, M2 → X-02, M3 → X-03, M4 → X-04); check 2 "Missed faults" (M-1 → X-05, M-2 → X-06, M-3 → X-07).
 
-## 6. Corrections from the refute-by-default check
+### 5.6 Totals
 
-Reserved. The check runs after this draft and writes its corrections here: for each corrected claim, the claim as written, what the check found, and the section it changes. Until then this section is empty by design.
+| Destination | Blue | Backend | GM scanner | Clients and tests | The check | Total |
+|---|---|---|---|---|---|---|
+| C1 copies | 11 | 3 | 5 | 0 | 0 | 19 |
+| C2 health and state | 4 | 1 | 1 | 0 | 0 | 6 |
+| C3 outside programs | 12 | 12 | 0 | 0 | 1 | 25 |
+| C4 boundaries | 2 | 9 | 9 | 2 | 0 | 22 |
+| C5 boot and reset | 1 | 4 | 1 | 1 | 0 | 7 |
+| C6 snapshot and live | 3 | 3 | 4 | 1 | 0 | 11 |
+| C7 replies | 0 | 8 | 5 | 5 | 0 | 18 |
+| C8 the machine | 8 | 2 | 0 | 28 | 3 | 41 |
+| C9 the client decides | 6 | 1 | 8 | 3 | 0 | 18 |
+| C10 unknown shown as normal | 9 | 3 | 4 | 4 | 0 | 20 |
+| C11 several answerers | 6 | 18 | 5 | 0 | 0 | 29 |
+| C12 the pack and edited files | 2 | 6 | 1 | 11 | 0 | 20 |
+| C13 identity and audience | 0 | 13 | 3 | 8 | 0 | 24 |
+| C14 loose joins | 18 | 8 | 8 | 7 | 0 | 41 |
+| C15 deployment | 8 | 2 | 0 | 1 | 1 | 12 |
+| C16 tests | 9 | 0 | 2 | 11 | 1 | 23 |
+| §3 set aside | 3 | 8 | 3 | 6 | 1 | 21 |
+| **Total** | **102** | **101** | **59** | **88** | **7** | **357** |
+
+Readers' local causes and where each went (so the owner can see the joins and the splits; the check's moves are folded in): blue A-c1→C1; A-c2→C6; A-c3→C2 (A-54, A-55, A-70 moved to C3 as service-side re-reads; the check moved A-72 and A-73 to C3 too, as a picture never reset or re-read, and B-56's sound-server half with them); A-c4 split: the wrong-field half (A-07, A-09, A-23, A-63, A-69) and the facade reads (A-03, A-04) →C14, the several-answers half (A-08, A-18, A-27, A-38, A-43) →C11; A-c5→C3; A-c6→C8 (the check moved A-80 to C16 as a test-isolation fault); A-c7 split: A-01→C4, A-53→C5; A-c8→C9 (A-45 moved to C12 as a mid-session pack change; the check moved A-26 to C14 as a half-built path and set A-35 aside as a one-off); A-c9→C10 (A-16 kept; A-46 moved to C11 with A-38; the check set A-58 aside as gone and moved A-74 here from C2); A-c10→C16; A-c11→C15 (A-94 moved to C12); A-c12 split by the check: A-48→C3, A-62 and A-66→C14 (fields no producer sets), A-67→C4 (a boundary rule); A-c13→C14. Backend B-c1→C6 (the check moved B-68 to C14 as a contract field nothing feeds); B-c2 split: health-and-state rows (B-33) →C2, B-56→C3 with A-56, delivery-by-wired-event rows (B-13, B-19, B-25) →C1, B-60→C11 (two stores, no join), reply-and-record rows (B-57) →C7, B-08→§3 (a question for the owner), partial-result rows (B-76) →C10; B-c3→C5 (B-69 moved to C7 as a fixed-wait reply; the check moved B-55 to C4 as a boundary rule); B-c4→C4 (the check moved B-24 to C13 as a station known only by its typed name); B-c5→C3 (the check moved B-45 to C11 as an eighth answerer, and set B-91 aside with no game symptom); B-c6 split: →C11 for the backend's gates and counters-like answers (B-15, B-18, B-34, B-36, B-37, B-39, B-40, B-52, B-59, B-73, B-74, B-75, B-77, B-79), B-78→C3 (the kiosk's own watcher), B-62→C9 (the device decides the team), B-71→C13 (identity), B-72 and B-86→C10 (a failure shown as normal), B-96→§3; B-c7→C13 (B-80→§3, with X-02); B-c8→C12; B-c9 split: B-63, B-101→C8, B-98 and B-100→C15 (names fixed to one OS release, the check), B-99→§3; B-c10 split: B-10, B-23→C11, B-05→C13, B-51→C4; B-c11→C7; B-c12→C7; B-c13 split: B-06, B-50, B-67→C14, B-84, B-92, B-97→§3; B-c14→C14. GM C-c1→C1; C-c2 split: C-01→C1, C-02, C-23, C-46→C6, C-03, C-22→C10, C-37→C5; C-c3→C11 (C-06 moved to C14 as the facade read); C-c4→C14; C-c5→C9 (C-19 moved to C13 as station identity; C-41 moved to C4 as a restart rule); C-c6→C4 (C-08→C12, C-13→C14, C-36 kept in C4 by the check, C-27→C14 and C-59→C13 by the check); C-c7→C7; C-c8 split: C-43→C2, C-47, C-48→C10; C-c9 split: C-23, C-44→C6, C-45→§3, C-51→C16; C-c10→C13; C-c11 split: C-17→§3, C-50→C16; C-c12 split: C-42→C9, C-52→§3. Clients D-c1→C8; D-c2→C8 (D-62→C16; the check set D-57 aside); D-c3→C12 (the check moved D-07 to C14 as a device-side limit no pack check knows); D-c4→C4 and C5 (D-31→C4, D-30→C5); D-c5→C9; D-c6→C10; D-c7 split: D-01→C6, D-23→§3 (the check), D-84→C16; D-c8→C13; D-c9 split: D-28, D-29, D-32, D-33→C13, D-34→C15 (the check), D-35→C7; D-c10→C7 (the check moved D-11 to C10 as a loss shown as normal); D-c11→C12 (D-42→§3; the check moved D-44 to C4 as a credential lifetime); D-c12 split: D-24, D-36, D-37, D-48, D-78→C14, the rest →C16 (D-77, D-86→§3); D-c13 split: D-19→§3, D-20→C14.
+
+## 6. Corrections from the check
+
+One line per change, naming the check row it came from. Check 1 rows carry ids (`C1-1`, `S-5`, `M1`); check 2 rows are named by cause and target. Where a check corrected a line number by a line or two, the citation is updated in place and not listed here.
+
+**Header and section 1.**
+- Status line, tree note and id count updated (check 1 header; check 2 header): HEAD `367a948a`, `audioRoutingService.js` offset, green's follow-ups landed; 357 ids.
+- C1 summary: "a reload does not help" and "a tablet that was offline ... comes back with the old claims" replaced by the connected-tablet and lost-connection forms (C1-1, C1-3); B-13 marked latent (C1-10); count 20 → 19 (B-60 to C11, C1-16).
+- C2 summary and heading: the hand-written push list named as the second mechanism (check 2, C2 statement); A-72, A-73 to C3, A-74 to C10, B-34 to C11, B-56 to C3 (check 2, C2 rows A-72, A-73, A-74, B-34, A-17 / B-56, claim 2); count 11 → 6.
+- C3 summary and heading: "never re-read" narrowed to "re-read only in part", writes added (C3-37, C3-16, C3-21); B-45 removed (C3-12), X-01 added (M1); count stays 25 after A-62, A-66 to C14 (C3-6, C3-8), A-67 to C4 (C3-10), B-91 to §3 (C3-27), A-72, A-73, B-56, B-78 arriving.
+- C4 summary and heading: the boundary list gains the socket reconnect (check 2, C4 statement); B-55 and C-36 named (C5-7, C5-9); count stays 22 after B-24 / C-59 to C13 and B-18 to C11 (check 2, C4 rows B-24 / C-59, B-18, claim 2), C-27 to C14 (check 2, C4 row C-27, claim 2), A-67, B-55, C-36, D-44 arriving.
+- C5 summary: "music cues are dead" removed, "cue-completion" added to the doubled events (C5-1, C5-4, C5-15); count 9 → 7.
+- C6 summary: count 13 → 11 (B-68 to C14, D-23 to §3; check 2, C6 rows B-68, D-23, claim 2).
+- C7 summary: count 20 → 18 (B-08 to §3, C7-9; D-11 to C10, C7-15).
+- C8 summary: the 2026-09-15 kill placed on blue's tree, this tree's reach stated, X-05 to X-07 named, A-49 / D-71 marked gone in blue's form (check 2, C8 rows A-75 and A-49, claim 1; M-1 to M-3); count 40 → 41 (D-57 to §3, A-80 to C16; check 2, C8 rows D-57, A-80, claim 2).
+- C9 summary: "which the engine discards" added to the player-team example (C9-17); count 20 → 18 (A-26 to C14, C9-4; A-35 to §3, C9-12).
+- C10 heading and summary rewritten to lead with the design choices (check 2, C10 statement); A-74 named; count 19 → 20 (A-58 to §3, check 2, C10 row A-58; A-74 and D-11 arriving).
+- C11 summary: B-39's symptom corrected (C11-1), B-45 named (C3-12); count 26 → 29 (B-60, B-45, B-34, B-18 arriving; B-78 to C3, C11-11).
+- C12 summary: count 22 → 20 (D-07 to C14, D-44 to C4; check 2, C12 rows D-07, D-44, claim 2).
+- C13 heading and summary: role from a verified credential once offered (C13-22); B-24 / C-59 named; count 23 → 24 (D-34 to C15, C13-14).
+- C14 summary: A-62, A-66 named; count 35 → 41.
+- C15 heading and summary: program names, install commands and the certificate added (check 2, set-aside rows B-98, B-100; C13-14); A-88 and X-03 named (C15-9, M3); count 8 → 12.
+- C16 heading and summary rewritten to lead with the design choices (check 2, C16 statement); X-04 named (M4); count 21 → 23.
+
+**C1 (check 1).**
+- A-05 / C-04: the reload clause replaced by the reload path and its tie to C-05 (C1-1); status "present (on a connected tablet; a reload clears it)".
+- A-06 / C-30: "off or disconnected" narrowed to "lost its connection without reloading"; a tablet that was off is gone (C1-3).
+- A-24 / C-29: the reload empties others' claims too (C1-5).
+- C-31: the paused-game clause removed; the mark stays only on a generic `error` or a timeout (C1-6).
+- A-50: warning lines `:79-80,454-457` (C1-8).
+- A-25 / C-01: Session Details reads fields `session:update` never carries (C1-9).
+- B-13: marked latent; no delete changes another team's score today (C1-10); live-proof yes → no; its section 4 row removed; its test now asserts the message (C1-35).
+- B-25: the delete half removed; the x1 half kept (C1-13); live-proof yes → no; its section 4 row removed.
+- B-60: moved to C11 (C1-15, C1-16).
+- A-19 / A-59, A-20: the check's lines added (C1-17, C1-18).
+- A-29: status settled from code, Quick Fire gone and Standing Cues present (C1-19); live-proof yes → no; its section 4 row removed.
+- Other places: `LocalStorage.js` removed (to C11, C1-24); `teamRegistry.js` and `MonitoringDisplay.js` cross-referenced to C-24 and C-23 (C1-25, C1-26); `aln-memory-scanner/js/app.js` removed (C9 lists it, C1-28); the two outbound queues removed (C7's D-12, C10's D-11; C1-29).
+- Tests: A-05's second half marked as passing today (C1-33); B-13's test replaced (C1-35); A-50's test marked a regression guard (C1-37).
+
+**C2 (check 2).**
+- A-11, A-12 / B-33 / C-43: the check's notes and lines added (rows A-11, A-12, claim 1).
+- A-72, A-73 moved to C3 with the check's reading (rows A-72, A-73, claims 1 and 2).
+- A-74 moved to C10 (row A-74, claim 2).
+- B-34 moved to C11; "setting the flag pushes nothing" kept as a C2 other place (row B-34, claim 2).
+- A-17 / B-56 split: A-17 kept in C2 as the hand-written push list's fault, B-56 to C3 with A-56 (row A-17 / B-56, claim 2).
+- Other places: `broadcasts.js:376-413` removed (refuted), `HealthRenderer.js:73-86` removed (C10's B-72), `MonitoringDisplay.js:296-308` removed (refuted); the cue-engine and clock entry carries "no game-visible fault" (other-place rows).
+- Tests: the volume test names the per-stream slider (test row "change Music volume"); the push-list test becomes a `getState()` before-and-after check (test row "a service event no push list covers").
+- Live-proof: A-72, A-73, A-74 leave with their findings; B-34 and B-56 leave.
+
+**C3 (check 1, with check 2's arrivals).**
+- A-48: progress line `:394` (C3-4); test marked timing-dependent (C3-40).
+- A-62 moved to C14 (C3-6); A-66 moved to C14, its arrow function set aside as a plain fix, its duration part kept as a C3 other place (C3-8); A-67 moved to C4 (C3-10); B-45 moved to C11 (C3-12).
+- A-55 / B-43 / B-93: the restart scenario corrected to a paused, loaded player (C3-13); test expects a paused track (C3-43).
+- B-94 / A-71: A-71 described as an ordering slip in a design that already stores the wanted volume; both marked as writes (C3-15, C3-16).
+- A-54 / B-47, A-57, A-70, B-46, B-49: the check's lines and notes added (C3-17, C3-19, C3-21, C3-22, C3-45).
+- B-91 set aside (C3-27).
+- Other places: `displayDriver.js:104` removed (C3-32); `lightingService.js:100-106` removed (C11's B-37, C3-34); `soundService.js:42-51` moved to C10 (C3-35); `pactl` note added (C3-30).
+- Statement: "nothing re-reads" corrected, writes added (C3-37).
+- Tests: B-48 test notes the respawn window (C3-44); B-49's MPD test replaced by `pactl subscribe` (C3-45).
+- X-01 added from M1.
+- B-78 arrives from C11 (C11-11); A-72, A-73, B-56 arrive from C2 (check 2).
+
+**C4 (check 2, with check 1's arrivals).**
+- Statement: the socket reconnect added to the boundaries (C4 statement row).
+- B-61 / D-31: the restore's skipped clock and cue engine noted (row B-61, claim 1).
+- B-24 / C-59: the restart half dropped, the unclean-reload form kept, moved to C13 (row B-24, claims 1 and 2); its test re-aimed (test row "reload a GM tablet").
+- B-18 moved to C11 (row B-18, claim 2).
+- B-42: "never times out" marked not verified (row B-42).
+- C-16: the wrong-key half sent to C14's other places (row C-16, claim 2).
+- C-27: no effect during a game; moved to C14 (row C-27, claims 1 and 2).
+- Other places: `musicService.js` flag also clears on reset (row `musicService.js:433-440`); `heldItemsStore` note on `releaseAll`/`discardAll` (row `heldItemsStore.js`); the web scanner's "no word session" corrected (row `aln-memory-scanner/js/app.js`); `systemReset.js:228-241` added for the missing end-of-reset snapshot, with the activation rule noted (C5-12).
+- A-67 arrives from C3 (C3-10); B-55 arrives from C5 with its corrected reading (C5-6, C5-7); C-36 arrives from C5 (C5-9); D-44 arrives from C12 (check 2, C12 row D-44, claim 2).
+
+**C5 (check 1).**
+- B-01: the cue half holds only under test (C5-1); test note (C5-16); section 4.1 row corrected.
+- A-53 / B-02 / C-37 / D-30, B-03, B-53: the check's lines and notes added (C5-3, C5-4, C5-5).
+- B-55 moved to C4 (C5-6, C5-7); C-36 moved to C4 (C5-8, C5-9).
+- Other place `systemReset.js:228-241` removed here (the activation rule, not a fault; the missing snapshot is C4's, C5-12).
+- Statement: "music is never rebuilt" narrowed to the panel's push (C5-15).
+
+**C6 (check 2).**
+- B-68 moved to C14 (row B-68, claim 2); D-23 set aside (row D-23, claim 2).
+- C-23: "never cleared at a boundary" narrowed to game end and the tablet's own disconnect (row C-23).
+- Other places: `healthRoutes.js` versus `syncHelpers.js` removed (one builder, refuted); `MonitoringDisplay.js:194-199` removed (no game-visible fault, with D-23).
+- Test: the panel rebuild runs with the clock paused or stopped (test row "rebuild the panel").
+
+**C7 (check 1).**
+- B-65 / C-33: match line `:44` (C7-2).
+- B-09: "no tablet ever receives the transaction" corrected (C7-6); its test and section 4 row corrected.
+- B-08 set aside as a question for the owner (C7-9).
+- D-11 moved to C10 (C7-15); D-12's lines updated (C7-13).
+
+**C8 (check 2).**
+- A-75 / D-64 / B-63 / D-52: this tree's reach stated, the live-player kill placed on blue's tree (row A-75, claim 1); its test and section 4 row re-aimed (test row "unit suite").
+- A-49 / D-71: status gone in blue's form (row A-49, claim 1); live-proof yes → no; its section 4 row removed.
+- A-76 / D-53 / D-68: eight suites (row A-76).
+- D-57: the path corrected, then set aside (row D-57, claims 1 and 2).
+- A-80 moved to C16 (row A-80, claim 2).
+- B-101: weak fit noted (row B-101).
+- Other places: `vlcMprisService.js:94-100` only logs (other-place row); `check-health.sh` both answers wrong (other-place row; M-1, M-2).
+- Test: the process-killing-helper test marked as a guard that passes today (test row "no arguments").
+- X-05, X-06, X-07 added from M-1, M-2, M-3.
+
+**C9 (check 1).**
+- Statement: player scanners send a team the engine discards (C9-30).
+- C-07: the paused and ended cases corrected (C9-1).
+- A-26: latent, moved to C14 (C9-3, C9-4); live-proof yes → no; its section 4 row removed.
+- A-35: the pill half verified, set aside as a one-off (C9-11, C9-12); its section 4 row removed.
+- A-13 / C-42, A-37, C-57: the check's notes added (C9-7, C9-10, C9-16).
+- D-09 / B-62: the engine discards the team; the Game Activity and report clause removed (C9-17); test re-aimed at the request (C9-34).
+- D-10: "no session word in `js/`" replaced (check 2, C4 other-place row).
+- D-17: the web scanner's screen corrected (C9-20).
+- Other place: `gameOps.js:259` → `:253-257` (C9-23).
+- Test: C-56's inputs named (C9-36).
+
+**C10 (check 2, with check 1's arrivals).**
+- Heading and statement lead with the design choices (C10 statement row).
+- A-16 / C-03: "the dot" replaced by the header indicator and the missing element (row A-16, claim 1); its tests re-aimed (test rows "check now", "cut the tablet's connection").
+- A-58: gone, set aside (row A-58, claims 1 and 2).
+- A-99: verified from code (row A-99); live-proof yes → no; its section 4 row removed.
+- A-101, D-16: the check's lines (rows A-101, D-16).
+- Other places: `preflightService.js:83` replaced by the resolver's lines (other-place row); `soundService.js:42-51` arrives from C3 (C3-35); `check-health.sh:44` cross-referenced (M-2).
+- Test: the mixed cue test uses a standing cue (test row "mixed cue").
+- A-74 arrives from C2 (check 2, C2 row A-74); D-11 arrives from C7 (C7-15).
+
+**C11 (check 1, with check 2's arrivals).**
+- Statement: the arriving answerers named.
+- B-39: the scan path does not replace a paused video; the two real faults stated (C11-1); its test and section 4 row corrected.
+- B-40: Release All's effect stated (C11-3); its test and section 4 row re-aimed to VLC still down (C11-37).
+- B-59: nine services (C11-5).
+- B-78 moved to C3 (C11-11).
+- Other places: call-site count note (C11-29); `LocalStorage.js` arrives from C1 (C1-24).
+- Tests: C-25's test re-aimed to the window before the snapshot (C11-41); A-08's test needs the toy or parity pack (C11-43).
+- B-60 arrives from C1 (C1-16); B-45 arrives from C3 (C3-12); B-34 arrives from C2 and B-18 from C4 (check 2, rows B-34 and B-18, claim 2).
+
+**C12 (check 2).**
+- B-07 / D-04: the engine's one warning noted (row B-07).
+- B-28 / D-38: the tool citations corrected to the publish route (row B-28, claim 1).
+- D-07 moved to C14 (row D-07, claim 2); D-44 moved to C4 (row D-44, claim 2).
+- D-08, B-88: the check's notes (rows D-08, B-88).
+- Test: the mid-game swap needs a restart in this tree (test row "swap a pack").
+
+**C13 (check 1, with check 2's arrival).**
+- Statement: role from a verified credential once offered (C13-22).
+- B-71 / D-32: `/health` refuses other types (C13-10).
+- D-34 moved to C15 (C13-14).
+- Other places: seven emits, not eight (C13-16).
+- Test: B-81's test passes today and guards the planned mint (C13-29).
+- B-24 / C-59 arrives from C4 (check 2, C4 row B-24, claim 2).
+
+**C14 (check 2, with check 1's arrivals).**
+- A-40 / A-42 / A-39 / C-14: `offline:queue:processed` is sent at `broadcasts.js:346`, never in production (row A-40, claim 1).
+- Other places: C-16's wrong-key half (check 2, C4 row C-16); the preflight checklist (check 2, set-aside row B-92).
+- A-62 and A-66 arrive from C3 (C3-6, C3-8); A-26 arrives from C9 (C9-4); B-68 arrives from C6 and C-27 from C4 and D-07 from C12 (check 2, rows B-68, C-27, D-07, claim 2).
+
+**C15 (check 1, with check 2's arrivals).**
+- A-96: checkable and present (C15-6).
+- A-88: the tree carries the wrong role; present (C15-9); its section 4 row corrected.
+- A-92, A-93, A-95: the check's lines (C15-3, C15-4, C15-5).
+- Statement: the pack's schema check is the one comparison (C15-14).
+- D-34 arrives from C13 (C13-14); B-98 and B-100 arrive from §3 as one shared cause (check 2, set-aside rows B-98, B-100); X-03 added from M3.
+
+**C16 (check 2, with check 1's arrival).**
+- Heading and statement lead with the design choices (C16 statement row).
+- A-52: the switch at `:42-44` (row A-52).
+- A-85: present at the helper level (row A-85, claim 1).
+- A-84: latent, a hazard once A-09 is fixed (row A-84, claim 1); live-proof yes → no; its section 4 row removed.
+- A-83: flow 30's skip line (row A-83).
+- D-47: the config tool is a plain folder (row D-47, claim 1).
+- Other place `GMScannerPage.js:1071-1075` removed (refuted).
+- Tests: fakes checked for extra members and return shapes (test row "fakes match"); the completable-group test names the production pack (test row "a completable group"); the `sound` restore test proves a test gap only (test row "snapshot restores sound").
+- A-80 arrives from C8 (check 2, C8 row A-80, claim 2); X-04 added from M4.
+
+**Section 3 (both checks).**
+- A-44, D-77: lines corrected (S-1; check 2 row D-77).
+- B-96: both contracts cited (check 2 row B-96).
+- B-99: landed at HEAD (S-4).
+- B-80: not a one-off; the plain fix covers every such lookup (S-5); X-02 added beside it (M2).
+- B-84: cross-referenced to D-80 and D-81 (S-7).
+- B-98, B-100 moved to C15 (check 2 rows B-98, B-100).
+- D-42: Rehearse's row named (check 2 row D-42).
+- B-92: the checklist part sent to C14's other places (check 2 row B-92).
+- New entries: A-58 (check 2, C10 row A-58), B-08 (C7-9), A-35 (C9-12), B-91 (C3-27), D-23 (check 2, C6 row D-23), D-57 (check 2, C8 row D-57), X-02 (M2).
+
+**Section 4.** The 4.1 rows for A-12, B-01 and A-05 / C-04 carry the corrected expectations; 4.2 rows removed for B-13, B-25, A-29, A-49 / D-71, A-26, A-35, A-99, A-84 (their marks are now "no"); rows re-aimed for A-06 / C-30, A-17, A-48, A-65 / B-48, A-55 / B-43 / B-93, A-56 / B-56, B-49, B-55, A-30 / C-46, B-09, A-75, A-16 / C-03, B-39, B-40, C-25, B-24 / C-59, A-88 / X-03; rows moved with their findings (A-62, D-07 to C14; A-67, B-55, C-36 to C4; B-45, B-18 to C11; B-24 / C-59 to C13; A-80 to C16); rows added for X-01 and A-74.
+
+**Section 5.** Every move above applied; the X block added (5.5); the totals recomputed (5.6); the joins note folds the check's moves in.
