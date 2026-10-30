@@ -4,6 +4,29 @@ Read this first after any compaction or restart. Nothing else is
 required reading: the pointers at the bottom say what to open and when.
 Check every claim of a summary against git and this page before acting.
 
+## 0. Resume here (2026-10-30, after a seven-week pause)
+
+- The session stopped on 2026-09-13 at about 01:40 UTC, at the usage
+  limit, and the container was reclaimed during the pause. Lost with
+  it: everything never pushed. That is the dormancy-core fixes' local
+  commits (their brief is committed), the scratch working record with
+  its fact sheets and review reports, and the test rig. Intact: this
+  branch at `b2968a9` and draft PRs #35, #17, #8, untouched since.
+- Owner, 2026-10-30: blue ran the September and October shows with no
+  major breaks. Minor issues remain; for example, the GM panel does not
+  keep up with live music playback without a refresh. Green has not
+  been started. No date matters: the game keeps running on blue until
+  the new engine is ready to swap in on green.
+- Blue's maintenance line is `production-2026-07` in four repositories:
+  the July system plus fixes made 2026-09-12 to 2026-09-18 and the
+  2026-09-18 token sync. §3 rule 3 below names `blue-2026-07-tokens`;
+  that branch was never used.
+- The production fixes were checked against the new engine in
+  `docs/plans/2026-10-30-production-fixes-triage.md`: nearly all are
+  still needed, and several belong inside planned work.
+- §1, §4, §5 and §6 below describe the plan as of 2026-09-13. They stay
+  stale until the plan is re-cut with the owner.
+
 ## 1. The goal this week (owner, 2026-09-11, recorded 2026-09-12)
 
 Green runs the show on Friday 2026-09-18; blue is the fallback. This
