@@ -69,10 +69,12 @@ before acting.
      share a cause become one design decision.
   9. The seventh question (round 3): "does each component receive
      what its role needs, and no more?", starting from the settled
-     roles: player scanners (web and ESP32, the same functions) show
-     token content and report scans, with no scoring and no live feed;
-     the GM scanner is the command center; the scoreboards show the
-     public results.
+     roles, which stay as designed (root `CLAUDE.md`, "How the Game
+     Works"; `ROADMAP.md` §2.5): player scanners (web and ESP32, the
+     same functions) show token content and report scans, with no
+     scoring and no live feed; the GM scanner is the command center;
+     the scoreboards show the public results: team scores and exposed
+     evidence.
   10. Phase 1 hands over five documents (round 4): the rules, one per
       question, each with a plain-words proof test (what to do, what
       must happen); the cause analysis (decision 8); contract
@@ -85,8 +87,9 @@ before acting.
   11. Two more questions (round 4): 8, "how may a copy be updated,
       and can a screen tell how old it is?"; 9, "is each fact's
       reconnect snapshot built the same way as its live update?".
-      Phase 1 designs questions 1, 6, 8 and 9 together as one rule
-      for live state.
+      Each question gets its own rule and test; phase 1 designs
+      questions 1, 6, 8 and 9 together, because between them they
+      make one rule for live state.
   12. Phase 1's method (round 4), in order: (1) the cause analysis,
       one small workflow (readers grouped by cause, a merge, a
       skeptical check); (2) the rung-1 rig rebuilt from its recipe and
@@ -106,7 +109,8 @@ before acting.
       each decision; ratification.
   13. Phase 1 ends at ratification, once every question has a rule
       and proof test, every finding and blue fix is assigned or set
-      aside with a reason, every rule serves the planned capabilities,
+      aside with a reason, every rule says how it serves the planned
+      capabilities,
       the review's blocking findings are resolved, and the rig
       reproduces each finding marked for live proof (round 4).
   14. Phase 1 runs as a flow in which every decision is made in a
@@ -134,7 +138,9 @@ before acting.
       readers are split by source (blue's records, the backend, the
       GM scanner, the other clients and tests); a merge groups every
       finding by cause; then the skeptical check. (Amends decisions
-      12 and 14 where they differ.)
+      12 and 14 where they differ.) Decisions 9, 11 and 13 were then
+      completed from the approved question text after a second record
+      check.
   - Next: the program document, `docs/plans/2026-10-30-architecture-pass.md`,
     final draft from decisions 1 to 15; a second record check; then
     the owner's ratification (a skim).
