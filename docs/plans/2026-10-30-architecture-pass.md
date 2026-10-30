@@ -1,12 +1,11 @@
 # The architecture pass: program document
 
-**Status: draft for the owner's ratification, 2026-10-30.** This
+**Status: ratified by the owner, 2026-10-30 (decision 16).** This
 document records the owner's decisions from the pass's definition
-session (`docs/plans/CURRENT-STATE.md` §0, decisions 1 to 15, rounds 1
-to 6 on 2026-10-30) and the evidence they rest on. It makes no new
-decision. Anything new found while writing it went back to the owner
-as a question first (decision 14). Section 11 maps every section to
-its decisions.
+session (Appendix A, decisions 1 to 16, rounds 1 to 7 on 2026-10-30)
+and the evidence they rest on. It makes no new decision. Anything new
+found while writing it went back to the owner as a question first
+(decision 14). Section 11 maps every section to its decisions.
 
 **In one paragraph.** The pass decides shared rules for runtime state,
 the facts a running game changes (decisions 7 and 11). The kickoff
@@ -296,6 +295,7 @@ for that.
 
 | Section | Records decisions |
 |---|---|
+| Status line | 16 |
 | 1. What the pass is | 1, 3, 7 |
 | 2. Scope | 1, 5, 9, 12 |
 | 3. The nine questions | 1, 5, 9, 11 |
@@ -309,3 +309,142 @@ for that.
 
 Decision 3 (the runtime-state terms) is used throughout and lives in
 `CONTEXT.md` §4b.
+
+## Appendix A. The decision record
+
+The definition session's decisions, moved here word for word from the
+state page (`docs/plans/CURRENT-STATE.md` §0) when the owner ratified
+this document; decision 16 records the ratification. The rounds are
+the session's question rounds, all on 2026-10-30. Phase 1's decisions
+go on the state page as they are made (§9).
+
+1. The architecture pass is the next unit. The paused hardening
+   pieces and the truth sweep wait for its answers. Its central
+   question: who decides each fact the GM sees (the authority,
+   `CONTEXT.md` §4b). It must also answer five more: does a
+   service's state travel with its health; how does the engine read
+   the programs it drives; can a test touch the live show; does one
+   question get one answer; who re-checks after a reset. The owner's
+   condition with the yes: the orchestrator must understand the
+   engine being built and the roadmap being adjusted, starting with
+   how the truth sweep differs from the pass.
+2. The pass is a roadmap revision, run the way the September
+   re-charter ran: evidence, a draft with numbered questions, an
+   adversarial review, grill rounds, ratification. The
+   `CONTEXT.md` entry for "architecture pass" waits until its
+   difference from the truth sweep is settled.
+3. Four terms are in `CONTEXT.md` §4b: runtime state, authority,
+   copy, delivery path. An outside program can be an authority (VLC
+   decides what is playing; confirmed in round 2). "Verdicts" names
+   what one truth checks (§1).
+4. Green's three follow-ups ship as one small task as soon as this
+   planning session ends (round 2; the brief's hold line says so).
+5. The question set (round 2). Question 4 becomes "can anything
+   other than the live engine touch the live show?" (tests today, the
+   preview engine later). Question 6 becomes "what does each fact and
+   each copy do at a boundary?" (a game starting or ending, a system
+   reset, a restart, a pack change while running). A seventh question
+   asks what each component receives; the owner ruled that it must
+   start from the settled roles of the player scanners (web and ESP32
+   mirror each other), the GM scanner and the scoreboards. Its
+   wording is open in round 3.
+6. The truth sweep's charter is retired (round 2). Its purpose,
+   proving with rig tests and screen captures that every screen tells
+   the truth, moves into the build work the pass plans and covers
+   every screen. Its census and five recorded desync bugs become
+   evidence for the pass. `ROADMAP.md` §3, §4 and §10.1 and
+   `CONTEXT.md` §7 carry notes.
+7. The pass is one program in two phases (round 3, option c).
+   Phase 1 decides the shared rules for the whole engine together,
+   with throwaway prototypes allowed, and ends with the new roadmap.
+   Phase 2 changes the engine to follow the rules, one area at a
+   time, as the first work in that roadmap, before capture, preview
+   and phones; it takes the show-ready gate's second condition
+   (`ROADMAP.md` §3 note). Each area gets its detailed design just
+   before it is built and starts with its proof test failing on
+   today's engine. The remaining hardening pieces and the sweep's
+   purpose are rebuilt inside phase 2. The pass ends when every
+   rule's test passes on the rig. `CONTEXT.md` §7 has the
+   "architecture pass" entry.
+8. Blue's fixes and unfixed findings are evidence (round 3; the
+   owner's meaning of the brief's question 6). For each: the problem
+   area, the design cause, every other place with that cause, the
+   design choice that removes it, and the proving test. Fixes that
+   share a cause become one design decision.
+9. The seventh question (round 3): "does each component receive
+   what its role needs, and no more?", starting from the settled
+   roles, which stay as designed (root `CLAUDE.md`, "How the Game
+   Works"; `ROADMAP.md` §2.5): player scanners (web and ESP32, the
+   same functions) show token content and report scans, with no
+   scoring and no live feed; the GM scanner is the command center;
+   the scoreboards show the public results: team scores and exposed
+   evidence.
+10. Phase 1 hands over five documents (round 4): the rules, one per
+    question, each with a plain-words proof test (what to do, what
+    must happen); the cause analysis (decision 8); contract
+    proposals, drafted for the two contract files before code;
+    decision records, one short note per hard-to-reverse choice, in
+    a new `docs/adr/`; the new roadmap with phase 2's areas in build
+    order, the remaining hardening pieces and the sweep's purpose
+    placed inside them, the show-ready gate restated and the later
+    blocks after phase 2.
+11. Two more questions (round 4): 8, "how may a copy be updated,
+    and can a screen tell how old it is?"; 9, "is each fact's
+    reconnect snapshot built the same way as its live update?".
+    Each question gets its own rule and test; phase 1 designs
+    questions 1, 6, 8 and 9 together, because between them they
+    make one rule for live state.
+12. Phase 1's method (round 4), in order: (1) the cause analysis,
+    one small workflow (readers grouped by cause, a merge, a
+    skeptical check); (2) the rung-1 rig rebuilt from its recipe and
+    used to reproduce the unrun findings (the music panel lag, the
+    ended game returning after a restart, the reset without music,
+    the refused deleted token); phase 2's proof tests run on it too;
+    (3) design rule by rule with `codebase-design` (vocabulary,
+    "design it twice") and `improve-codebase-architecture` (a visual
+    report per design choice with before-and-after diagrams,
+    published as a page), both confirmed for this pass: for the hard
+    rules two or three competing designs side by side, a throwaway
+    prototype where the code's behaviour is uncertain, never merged,
+    and every rule saying how it serves hot-apply, the preview
+    engine, capture and phones; (4) an adversarial review of the
+    draft rules and roadmap: two reviewers with different angles, a
+    checker per finding, one fleet at a time; (5) grill rounds on
+    each decision; ratification.
+13. Phase 1 ends at ratification, once every question has a rule
+    and proof test, every finding and blue fix is assigned or set
+    aside with a reason, every rule says how it serves the planned
+    capabilities,
+    the review's blocking findings are resolved, and the rig
+    reproduces each finding marked for live proof (round 4).
+14. Phase 1 runs as a flow in which every decision is made in a
+    question round with the evidence in view, and written into its
+    document at once; ratification is a skim with no new decisions
+    (round 5). The approved flow: step 1, the owner confirms the
+    cause list; step 2, facts only; step 3, one page per rule (the
+    designs side by side, before-and-after diagrams, a
+    recommendation) and the owner picks; step 4, only the review
+    findings that would change a decision come back, as questions;
+    step 5, the owner decides phase 2's build order; at ratification
+    the state page names phase 2's first area. The rule stands for
+    every unit: `docs/agents/process.md` §5, last bullet.
+    (Decisions 10, 12 and 14 were completed on 2026-10-30 from the
+    approved question text, after a record check found the first
+    summaries too short.)
+15. Three corrections from the record check (round 6). (a)
+    Phase 1's order: cause analysis, test rig, design, a proposed
+    build order, the review of the rules and the order, one
+    question round with the review's findings and the order,
+    ratification. (b) The merged hardening pieces (the equipment
+    families, the dormancy core, the harness minimum) stay; phase 2
+    changes them only where a rule requires, and their standing
+    findings feed the cause analysis. (c) The cause analysis's
+    readers are split by source (blue's records, the backend, the
+    GM scanner, the other clients and tests); a merge groups every
+    finding by cause; then the skeptical check. (Amends decisions
+    12 and 14 where they differ.) Decisions 9, 11 and 13 were then
+    completed from the approved question text after a second record
+    check.
+16. The owner ratified this program document (round 7,
+    2026-10-30). The definition session closed; the architecture pass
+    became the current unit, phase 1 first.

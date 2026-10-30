@@ -10,7 +10,7 @@ Characters the transcript stored HTML-escaped are restored.
 **How to read it.** These findings were made against the designated
 branch at `209916b` with ALNScanner at `e83723c`, on 2026-09-12 and
 -13. They are evidence for the whole-engine architecture pass
-(`docs/plans/CURRENT-STATE.md` §0), not a work queue. Line numbers
+(`docs/plans/2026-10-30-architecture-pass.md` §8), not a work queue. Line numbers
 belong to that tree. Where a finding was cut off, the record says so.
 Paths into `/tmp/claude-0/…`, `/root/.claude/…`, `.superpowers/…`,
 `.worktrees/…` and the session scratchpad name files that no longer

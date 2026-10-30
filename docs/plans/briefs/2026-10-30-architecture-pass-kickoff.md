@@ -1,5 +1,9 @@
 # Kickoff brief: the whole-engine architecture pass (planning session)
 
+> DONE 2026-10-30: the owner ratified the program document,
+> `docs/plans/2026-10-30-architecture-pass.md`. The architecture pass
+> is the current unit; this brief is history.
+
 Written 2026-10-30 for the next session's orchestrator. Your first job
 is a planning session with the owner, the "definition session" a unit
 gets before its design opens (`docs/plans/ROADMAP.md` §10.3). Nothing

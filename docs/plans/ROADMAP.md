@@ -198,8 +198,8 @@ choice. Gate (ratified, Q5): (1) hardware-proven; (2) the hardening
 block and the truth sweep landed *(superseded 2026-10-30, owner: the
 sweep's charter is retired, the hardening pieces are rebuilt inside
 the architecture pass, and the pass's phase 2 takes this slot; the
-pass's roadmap revision restates the condition; `CURRENT-STATE.md`
-§0)*; (3) one full venue rehearsal done
+pass's roadmap revision restates the condition; decision record:
+`2026-10-30-architecture-pass.md`, Appendix A)*; (3) one full venue rehearsal done
 (§6, Stage C — an off-day machine swap, already defined as a full
 cutover rehearsal including the swap back); (4) the owner has
 reviewed the visible-change list (Appendix B) as the GM. On the
@@ -334,8 +334,8 @@ preview block. Verified: nothing here touches the authoring tool.
 rig tests and screen captures that every screen tells the truth,
 moves into the build work the architecture pass plans, and it covers
 every screen, the scoring, transaction and session screens included;
-`CURRENT-STATE.md` §0. The text below is the 2026-09-05 charter, kept
-as history.)*
+decision record: `2026-10-30-architecture-pass.md`, Appendix A. The
+text below is the 2026-09-05 charter, kept as history.)*
 (New unit: the scanner state-truth sweep.) Audit every path from
 engine event to what the admin panel shows, and fix every place the
 panel shows something false; each fix gets a test on the rig. Scope
@@ -647,9 +647,10 @@ retirement note so the archive stays readable.
 ## 10. Sequencing, calendar, method
 
 ### 10.1 The committed order
-*Under revision 2026-10-30 (owner): the architecture pass is the next
-unit, and the paused Block 2 pieces and Block 3 wait for it
-(`CURRENT-STATE.md` §0). The order below is r4's.*
+*Under revision 2026-10-30 (owner): the architecture pass is the
+current unit. Its phase 2 rebuilds the paused Block 2 pieces and Block
+3's purpose, and its phase 1 ends with revision r5 of this order
+(`2026-10-30-architecture-pass.md` §7). The order below is r4's.*
 Block 1 (unlock: train review + walk, docs repair, home hardware
 pass) → Block 2 (hardening) → Block 3 (truth sweep) → Blocks 4/5
 ordered once the capture block is priced (Q3) → Block 6

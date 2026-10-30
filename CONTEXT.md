@@ -380,7 +380,7 @@ you intend.
 ## 4b. Runtime state
 
 Settled 2026-10-30 at the architecture pass's definition session
-(decision record: `docs/plans/CURRENT-STATE.md` §0). These words name
+(decision record: `docs/plans/2026-10-30-architecture-pass.md`, Appendix A). These words name
 the facts a running game changes and where those facts live. They
 decide nothing about how the engine should hold them; that is the
 architecture pass's question.
@@ -676,7 +676,7 @@ the GM scanner, and a game's own post-show tooling)
   the engine's architecture and interfaces. Phase 1 decides the shared
   rules and revises the roadmap. Phase 2 changes the engine to follow
   them, each rule proven by a test. (Owner-ratified wording,
-  2026-10-30; decision record: `docs/plans/CURRENT-STATE.md` §0.)
+  2026-10-30; decision record: `docs/plans/2026-10-30-architecture-pass.md`, Appendix A.)
 - **Truth sweep.** The roadmap's Block 3 as chartered on 2026-09-05:
   audit the routes by which service status reaches the GM's admin
   panel, and fix each false display with a rig test per fix. The
@@ -685,7 +685,7 @@ the GM scanner, and a game's own post-show tooling)
   purpose, proving with rig tests and screen captures that every
   screen tells the truth, moves into the build work the architecture
   pass plans, and it covers every screen (decision record:
-  `docs/plans/CURRENT-STATE.md` §0).
+  `docs/plans/2026-10-30-architecture-pass.md`, Appendix A).
 - **Retired code names.** Track letters (Track A–E), stage codes
   (BS/CS/PS numbers, B0–B12, C1–C4, E-numbers, O-numbers), and slice
   numbers are historical (owner-ruled 2026-09-04). Forward-looking

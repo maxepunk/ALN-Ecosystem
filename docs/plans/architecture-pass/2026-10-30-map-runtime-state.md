@@ -301,7 +301,7 @@ What a second engine, or a test run, can touch on the live machine today (client
 
 ## 8. The six questions
 
-The questions are those of `docs/plans/CURRENT-STATE.md` §0, decisions 1 and 5. Each is restated in plain words first, because two of them did not land in the owner's reading; then the evidence from this map; then what the map shows that the six questions do not ask.
+The questions are those of the definition session's decisions 1 and 5 (now `docs/plans/2026-10-30-architecture-pass.md`, Appendix A). Each is restated in plain words first, because two of them did not land in the owner's reading; then the evidence from this map; then what the map shows that the six questions do not ask.
 
 **Q1. Who decides each fact the GM sees (the authority)?** In plain words: for every number or light on the GM's screen, is there exactly one place that decides it, and does the screen show that place's answer?
 

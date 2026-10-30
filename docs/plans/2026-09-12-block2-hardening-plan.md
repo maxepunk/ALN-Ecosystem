@@ -1,8 +1,9 @@
 # The hardening block (Block 2 in the roadmap) — re-open plan and task record
 
 **PAUSED 2026-10-30 (owner): the remaining pieces wait for the whole-engine
-architecture pass, which re-cuts them; see `CURRENT-STATE.md` §0 and §9
-below.** Earlier status: **RED-TEAMED (three lenses, 99 findings, every one ruled in
+architecture pass, whose phase 2 rebuilds them; green's three follow-ups
+ship now as one small task. See `2026-10-30-architecture-pass.md` §7
+and §9 below.** Earlier status: **RED-TEAMED (three lenses, 99 findings, every one ruled in
 `2026-09-12-block2-redteam-adjudication.md`); awaiting the owner's
 "before any code" decision (2026-09-12).** Governs CS.2–CS.5 of the
 ratified C2+C3 design. Spec (binding authority):
