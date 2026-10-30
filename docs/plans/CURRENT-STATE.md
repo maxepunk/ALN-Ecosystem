@@ -20,11 +20,13 @@ before acting.
      one re-reviewed fix wave; the merged tree passed the full backend
      suite (151 files, 3127 tests), the coverage check and lint
      (hardening plan §9).
-  2. Phase 1, step 1, the cause analysis: one small workflow (readers
-     split by source, a merge that groups every finding by cause, a
-     refute-by-default check), written into
-     `docs/plans/architecture-pass/`. The owner then confirms the
-     cause list. Step 2, the test rig, follows.
+  2. Phase 1, step 1, the cause analysis: written and checked,
+     waiting for the owner's confirmation (round 8, questions 17 to
+     21). `docs/plans/architecture-pass/2026-10-30-cause-analysis.md`:
+     sixteen causes over 357 findings, 21 set aside with reasons; its
+     section 1 is the short list. The four reader sheets and the two
+     check files sit beside it. Step 2, the test rig, follows the
+     owner's answers.
 - **Phase 1's decisions** go here as the owner makes them, then into
   phase 1's documents (`docs/agents/process.md` §5). None yet.
 - **The branch.** This program's records live on the branch
@@ -42,14 +44,10 @@ before acting.
   from the next session. The owner added a plugin-install line to the
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
-- **Live state** (2026-10-30, 11:20Z; the container restarted at about
-  10:20Z, nothing lost). Running: the cause analysis, workflow
-  `wf_5b8300fe-cb6` (script
-  `docs/agents/workflow-scripts/cause-analysis.js`), resumed after the
-  restart from its run id. Its four reader sheets and the merge into
-  `2026-10-30-cause-analysis.md` are committed; the two-part check
-  (`2026-10-30-cause-analysis-check-1.md` and `-2.md`) and the fold
-  follow. No worktrees. No test rig. Three read-only mapping runs finished earlier
+- **Live state** (2026-10-30, 12:20Z): nothing running, no worktrees,
+  no test rig. The cause-analysis workflow `wf_5b8300fe-cb6` finished
+  (8 agents, about 3.6 million helper tokens; script
+  `docs/agents/workflow-scripts/cause-analysis.js`). Three read-only mapping runs finished earlier
   on 2026-10-30 (`wf_7bc41460-e87`, `wf_dfeaf164-afd`,
   `wf_3f365994-ba6`; about 4.2 million helper tokens). Their nine
   files are the pass's evidence, all committed in
