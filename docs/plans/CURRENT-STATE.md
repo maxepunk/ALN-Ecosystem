@@ -58,7 +58,9 @@ before acting.
   engine and the roadmap (the owner's condition, decision 1): run
   `wf_7bc41460-e87` (direction and roadmap documents) and run
   `wf_dfeaf164-afd` (the engine as built: four readers, a merge, a
-  check). Each reader writes one file in `docs/plans/architecture-pass/`
+  check), plus run `wf_3f365994-ba6` (everything each component sends
+  to the backend, added after the owner asked whether the readers
+  cover how components talk to the backend). Each reader writes one file in `docs/plans/architecture-pass/`
   (`2026-10-30-map-*.md`); commit what lands. The last code merge,
   `209916b`, passed CI (run 303).
 
