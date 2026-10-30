@@ -263,6 +263,9 @@ Or use a virtual environment:
 python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements.txt
 ```
 
+On that route, run the scripts with `.venv/bin/python3`. Plain `python3`
+cannot see the virtual environment and raises this same error.
+
 See `../DEPLOYMENT_GUIDE.md` → "Token sync on the machine
 (operations)".
 

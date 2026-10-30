@@ -323,12 +323,13 @@ The full key reference below is authoritative against
 `backend/src/config/index.js` (the engine's single env intake) plus
 the four service-direct reads (`VLC_HW_ACCEL`, `FEATURE_IDLE_LOOP`,
 `DISCOVERY_UDP_PORT`, `ENABLE_MUSIC_PLAYBACK`). Verified 2026-09-05;
-re-checked against `backend/.env.example` 2026-09-13 — all 40 keys in
+re-checked against `backend/.env.example` 2026-10-30. All 42 keys in
 the template have an entry below.
 
-Two keys the machine needs are NOT in the template and must be
-written by hand: `DBUS_SESSION_BUS_ADDRESS` and `XDG_RUNTIME_DIR`.
-They have their own subsection under "Display / Kiosk".
+Two keys the machine needs, `DBUS_SESSION_BUS_ADDRESS` and
+`XDG_RUNTIME_DIR`, sit in the template commented out
+(`backend/.env.example:179-180`). Set them by hand. They have their own
+subsection under "Display / Kiosk".
 
 #### Environment Variables Explained
 
@@ -486,10 +487,11 @@ VLC is controlled via **D-Bus MPRIS** (`org.mpris.MediaPlayer2.vlc`) — there i
     at `backend/src/services/vlcMprisService.js:143`.
   - Default: `true`
 
-##### Session bus and runtime directory (not in the template — write them by hand)
+##### Session bus and runtime directory (commented out in the template, set them by hand)
 
-Neither key is in `backend/.env.example`, and the engine sets neither
-of its own: a grep of `backend/src` for either name finds nothing.
+The template carries both keys, commented out
+(`backend/.env.example:179-180`), and you set them by hand. The engine
+sets neither: a grep of `backend/src` for either name finds nothing.
 Every `pactl`, `dbus-send` and `dbus-monitor` call the orchestrator
 makes inherits them from the process environment, and PM2 freezes that
 environment at the first `npm start`. Getting them wrong is the
@@ -506,7 +508,7 @@ procedure and the shape rule.
 
 - **XDG_RUNTIME_DIR** (`/run/user/<uid>`)
   - How `pactl` reaches PipeWire's PulseAudio socket
-    (`backend/src/services/audioRoutingService.js:158`, `:215`, `:948`).
+    (`backend/src/services/audioRoutingService.js:158`, `:215`, `:953`).
   - Default: unset — inherited from the shell, or absent.
 
 **The rule that makes these two lines work.** `dotenv.config()`
@@ -1288,8 +1290,8 @@ this section rather than repeating it.
 
 On Debian 13 / Raspberry Pi OS Trixie, `pip install` into the system
 interpreter exits with `externally-managed-environment` (PEP 668).
-`scripts/requirements.txt` still says `pip install -r`; on this
-machine that command fails.
+`scripts/requirements.txt` now gives the apt line for its three
+packages and names the virtual-environment alternative.
 
 ```bash
 sudo apt install -y python3-requests python3-pil python3-dotenv python3-jsonschema
@@ -1300,6 +1302,9 @@ Or, if a virtual environment is preferred:
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r scripts/requirements.txt
 ```
+
+On that route, run every script with `.venv/bin/python3`, the runbook's
+commands included. Plain `python3` fails with `ModuleNotFoundError`.
 
 `requests` and Pillow are required; `dotenv` is optional and
 `jsonschema` is a soft dependency that turns the schema check on.
@@ -1944,22 +1949,10 @@ the full rationale.
 **WirePlumber 0.5 does not read Lua configuration at all.** Debian 13
 ships 0.5.8, and drop-ins are now SPA-JSON `.conf` files in
 `wireplumber.conf.d/`. A Lua file in `main.lua.d/` is silently
-ignored — and the orchestrator's own boot check
-(`backend/src/services/audioRoutingService.js:618`) only tests that
-the old Lua path exists, so **copying blue's `.lua` file onto green
-silences the warning and changes nothing.** Write the `.conf`.
-
-> **Expect the orchestrator to log `WirePlumber rule missing` on
-> every boot anyway, and do NOT act on it.** The boot check
-> (`backend/src/services/audioRoutingService.js:617-630`) still tests
-> only the old Lua path, so on a correctly built Trixie machine that
-> warning is a **false alarm**. Its own text points at "DEPLOYMENT_GUIDE.md
-> Step 5" — this section's old number, now step 6 — and the obedient response, writing
-> the `.lua` file, is exactly what the never-copy list forbids: it
-> silences the warning and protects nothing. The `pw-dump` check below
-> is the truth about whether the rule is live. The orchestrator fix
-> (teach the check the `.conf` path) is queued as a separate task;
-> this paragraph goes away when it merges.
+ignored. The orchestrator's own boot check
+(`backend/src/services/audioRoutingService.js:619-635`) now accepts
+either file, so **copying blue's `.lua` file onto green still silences
+the warning and protects nothing.** Write the `.conf`.
 
 Create the directory first. No package ships `/etc/wireplumber/` —
 WirePlumber's own configuration lives in `/usr/share/wireplumber/`,
