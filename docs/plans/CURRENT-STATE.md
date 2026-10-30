@@ -104,8 +104,11 @@ before acting.
       document at once; ratification is a skim with no new decisions
       (round 5). The rule now stands for every unit:
       `docs/agents/process.md` §5, last bullet.
-  - Next: the pass's program document, built only from decisions 1
-    to 14 and the evidence, sent to the owner for ratification.
+  - Next: the pass's program document,
+    `docs/plans/2026-10-30-architecture-pass.md` (draft built only
+    from decisions 1 to 14 and the evidence; a record check by a
+    separate reviewer, run `wf_b18b5df5-3f9`, then the owner's
+    ratification).
 - **The branch.** This program's records live on the branch
   `claude/nice-curie-hescfv`, with three draft pull requests:
   ALN-Ecosystem #35, ALNScanner #17 and ALN-TokenData #8. `main` is
