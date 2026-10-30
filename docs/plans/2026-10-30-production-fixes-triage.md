@@ -13,6 +13,11 @@ ALNScanner at `e83723c`. For each fix it asks one question: is the
 defect still there, already gone, or does planned work change where the
 fix belongs?
 
+**How to use this record (owner, 2026-10-30).** It is evidence for the
+whole-engine architecture pass, not a queue of ports. The aim is to
+remove the classes of defect these fixes treat, through the engine's
+architecture and interfaces.
+
 **Method.** Each defect's code path was read on the new engine; the
 evidence column cites it. "Identical to July" means the file has the
 same content as the rollback tag `blue-2026-07`, so the new engine runs

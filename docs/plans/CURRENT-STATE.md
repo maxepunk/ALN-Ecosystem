@@ -24,6 +24,11 @@ Check every claim of a summary against git and this page before acting.
 - The production fixes were checked against the new engine in
   `docs/plans/2026-10-30-production-fixes-triage.md`: nearly all are
   still needed, and several belong inside planned work.
+- Owner, 2026-10-30, on direction: lessons from blue go into the new
+  engine's architecture and interfaces, never into patches on blue or
+  one-for-one ports. An architecture analysis pass covers the whole
+  engine. No session data from blue is coming. The order of the
+  hardening block before the truth sweep is under review.
 - §1, §4, §5 and §6 below describe the plan as of 2026-09-13. They stay
   stale until the plan is re-cut with the owner.
 
