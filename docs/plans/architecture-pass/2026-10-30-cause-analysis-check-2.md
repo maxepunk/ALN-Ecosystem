@@ -253,7 +253,7 @@ Phase 1, step 1 of the architecture pass: the check over part of `2026-10-30-cau
 | A-63 | 1, 2 | holds | | `backend/src/services/cue/standingEvaluator.js:29`; `videoQueueService.js:479`; `backend/src/services/cue/timelineRuntime.js:357` |
 | A-09 / A-69 | 1, 2 | holds | | `audioRoutingService.js:45-49`, `:310-316` (`12baf920`) |
 | A-28 / A-41 / C-12 | 1, 2 | holds | The team registry's score fields were not re-checked. | `ALNScanner/src/ui/renderers/VideoRenderer.js:17`; `MonitoringDisplay.js:402`; neither id in `ALNScanner/index.html`; `NetworkedStorage.js:51`, `:137-155` (callers only in standalone branches, see C-27); `ALNScanner/src/ui/uiManager.js:411` (no caller) |
-| A-15 | 1, 2 | holds | | `ALNScanner/index.html:406`; nothing in `ALNScanner/src` names `video-queue-container` |
+| A-15 | 1, 2 | holds | | `ALNScanner/index.html:407`; nothing in `ALNScanner/src` names `video-queue-container` |
 | A-40 / A-42 / A-39 / C-14 | 1 | corrected | Claim holds, one citation does not. `broadcasts.js:98` is the snapshot sent after a game is created; the engine sends `offline:queue:processed` at `:346`, and in production it never fires (B-11). | `broadcasts.js:336-346`; `main.js:164`; `unifiedDataManager.js:161`; `orchestratorClient.js:40`, `:41`, `:46`; no handler outside the list in `ALNScanner/src` |
 | A-40 / A-42 / A-39 / C-14 | 2 | holds | | |
 | A-31 | 1, 2 | holds | | `ALNScanner/src/app/adminController.js:109-122` (no outside caller) |
@@ -295,12 +295,12 @@ Phase 1, step 1 of the architecture pass: the check over part of `2026-10-30-cau
 | A-83 | 1, 2 | holds | | `backend/tests/e2e/helpers/page-objects/GMScannerPage.js:83`, `:1623`, `:1633`; `GameOpsRenderer.js:341`; flow 30 skips silently, `30-full-game-session-multi-device.test.js:807-819` |
 | A-85 | 1 | corrected | `expectScanAccepted` is blue's addition and does not exist here. This tree's `waitForResult()` accepts any result screen, which supports the finding, so "not verified" can become "present at the helper level". | blue commit `75df9ddd`; `GMScannerPage.js:342-343` |
 | A-85 | 2 | holds | | |
-| A-84 | 1 | corrected | Not a present fault. Blue's failure arose after blue's W5 made routes concrete device names; this tree still reports aliases, so an alias-expecting test passes everywhere. It becomes a hazard when A-09 is fixed. | `audioRoutingService.js:45-49`, `:310-316` (`12baf920`); blue commit `2badc7d5` message |
+| A-84 | 1 | corrected | Not a present fault. Blue's failure arose after blue's W5 made routes concrete device names; this tree still reports aliases, so an alias-expecting test passes everywhere (the integration file itself was not read). It becomes a hazard when A-09 is fixed. | `audioRoutingService.js:45-49`, `:310-316` (`12baf920`); blue commit `2badc7d5` message |
 | A-84 | 2 | holds | | |
 | A-82 | 1, 2 | holds | | `ALN-TokenData/game.json` `groups`: one group, multiplier 1, one token |
 | A-81 | 1, 2 | holds | | `backend/tests/e2e/helpers/capabilities.js:26` (per-orchestrator cache), `:151` |
 | A-86 | 1, 2 | holds | | no `TZ` in `ALNScanner/package.json` or `ALNScanner/jest.config.js` |
-| D-47 | 1 | corrected | Detail: `config-tool` is a plain folder of the parent repository, not a submodule, so `config-tool/.github/workflows/test.yml` never runs anywhere. The rest holds. | `git ls-tree HEAD config-tool` (a tree); no entry in `.gitmodules`; `.github/workflows/test.yml:19-306` |
+| D-47 | 1 | corrected | Detail: `config-tool` is a plain folder of the parent repository, not a submodule, so GitHub never runs `config-tool/.github/workflows/test.yml` from this repository. The rest holds. | `git ls-tree HEAD config-tool` (a tree); no entry in `.gitmodules`; `.github/workflows/test.yml:19-306` |
 | D-47 | 2 | holds | | |
 | D-83 / C-51 | 1, 2 | holds | | `ALNScanner/tests/unit/network/networkedSession.test.js:1061` (nine `replace` calls); `messageRouters.js:136` |
 | D-84 | 1, 2 | holds | | `backend/tests/unit/services/getState.test.js` (no music block); `backend/tests/contract/websocket/service-domain-state.test.js:29` |
@@ -331,9 +331,9 @@ Phase 1, step 1 of the architecture pass: the check over part of `2026-10-30-cau
 | D-77 | S | holds | Gone. Minor: F1's code is at `logger.js:181-187`; the cited `:165-177` is its neighbour and comment. | commit `490c83fb` (F1 to F4 and H1); `backend/src/utils/logger.js:176-187` |
 | B-98 | S | corrected | Two changes. Status: at `12baf920` the check reads one path, but at HEAD the fix has landed and reads either the 0.5 `.conf` or the 0.4 `.lua`. Reason: it is not a one-off. The engine fixes the names of outside programs to one OS release in other places too: the kiosk browser defaults to `chromium-browser`, the older OS's name, and the health script looks for the `cvlc` wrapper. Nothing checks those names against the machine. That is C15's family (the deployed game assumes one machine and nothing checks it agrees) or a new cause. | `audioRoutingService.js:617-630` (`12baf920`); commits `403cb179`, `6fdc0083`, merge `089dd527`; HEAD `audioRoutingService.js:617-635`; `displayDriver.js:164`; `backend/CLAUDE.md` Display Control section (Trixie must set `CHROMIUM_BIN`); `check-health.sh:51`; program document §7 (`docs/plans/2026-10-30-architecture-pass.md:240-246`) |
 | B-100 | S | corrected | Fixed at HEAD for `scripts/requirements.txt`. The same bare `pip install` instruction remains, untouched by the follow-up, in the player scanner's setup script and README. Same cause as B-98. | `scripts/requirements.txt:1-4` (HEAD; commits `ad1855c7`, `fd0340de`); `aln-memory-scanner/scripts/setup.sh:168`; `aln-memory-scanner/README.md:48`; `aln-memory-scanner/PLAYTEST_QUICKSTART.md:27` |
-| D-19 | S | holds | A one-off. The only script loaded from the internet by any kit page; the TV now loads Socket.IO from the engine. | `aln-memory-scanner/index.html:137`; `scoreboard.html:735-737`; no absolute `src`/`href` in `backend/public/scoreboard.html`, `ALNScanner/index.html`, `config-tool/public/*.html` |
+| D-19 | S | holds | A one-off. The only script loaded from the internet by any kit page; the TV now loads Socket.IO from the engine. | `aln-memory-scanner/index.html:138`; `scoreboard.html:735-737`; no absolute `src`/`href` in `backend/public/scoreboard.html`, `ALNScanner/index.html`, `config-tool/public/*.html` |
 | D-42 | S | holds | Not a fault: planned work. Minor: Rehearse is row C20 at direction line 98; the reason cites only Deploy. | `2026-10-30-map-direction.md:98`, `:100` |
-| B-92 | S | corrected | Holds for three of its four parts (stations in the manifest, the DNS value, the merge order: planning statements, not-checkable). It fails for the checklist. `docs/preflight-checklist.md` is not a planning record; it calls itself the hardware-proven gate's instrument. It has no venue-profile row (its "profile" lines mean Home Assistant, `pactl` and A2DP profiles), so a machine with a missing profile (B-72) passes it. That part joins C14: the checklist and the evaluator are two hand-kept lists, and nothing checks they agree. | `docs/preflight-checklist.md:15-18`, `:624`, `:719`, `:779`, `:809-811`; `2026-10-30-causes-backend.md:124` |
+| B-92 | S | corrected | Holds for three of its four parts (stations in the manifest, the DNS value, the merge order: planning statements, not-checkable). It fails for the checklist. `docs/preflight-checklist.md` is not a planning record; it calls itself the hardware-proven gate's instrument. It has no venue-profile row (its "profile" lines mean Home Assistant, `pactl` and A2DP profiles), so nothing in it checks that the venue profile loaded, and a missing profile (B-72) is not among its checks. That part joins C14: the checklist and the evaluator are two hand-kept lists, and nothing checks they agree. | `docs/preflight-checklist.md:14-17`, `:624`, `:719`, `:779`, `:809-811`; `2026-10-30-causes-backend.md:124` |
 | C-17 | S | holds | Outside the engine. Its two contract items sit in C14's B-67 / D-36 row. | `ALNScanner/CLAUDE.md:742` vs `MonitoringDisplay.js:374-378`; `2026-10-30-cause-analysis.md:733` |
 
 ## Missed faults
@@ -348,4 +348,24 @@ Faults met while checking that no sheet records.
 
 ## Counts
 
-Claims checked: 285 (each "1, 2" row counts as two). Holds 238, refuted 6, corrected 41, missed 3. The refuted and corrected rows are the changes for section 6 of the cause analysis.
+Claims checked: 397 in 283 rows (each "1, 2" row counts as two). Holds 346, refuted 6, corrected 45; missed faults 3.
+
+| Section | Holds | Corrected | Refuted |
+|---|---|---|---|
+| C2 | 22 | 8 | 2 |
+| C4 | 41 | 9 | 0 |
+| C6 | 31 | 4 | 1 |
+| C8 | 65 | 6 | 1 |
+| C10 | 41 | 4 | 1 |
+| C12 | 41 | 3 | 0 |
+| C14 | 59 | 1 | 0 |
+| C16 | 41 | 7 | 1 |
+| Set aside | 5 | 3 | 0 |
+
+What changes most, in plain words:
+
+- **C2 is narrower than written.** Of its findings, only the lighting and music panels that never hear an outage (A-11, A-12 / B-33 / C-43) come from health and state travelling apart; A-102 comes from the hand-written push lists the statement also names. MPD's stale "playing" (A-72) and the 20-second wait after an MPD crash (A-73) are C3's: the engine's picture of MPD is not reset or re-read. The greyed card with no offline line (A-74) is C10's. The music service's private flag (B-34) is mostly C11's. The volume finding (A-17 / B-56) splits between C2's hand-written push lists and C3's A-56.
+- **Four proving tests would pass on today's engine as written.** They are the Music volume test (C2), the reload test (C4), the panel-rebuild test (C6) and the unit-suite test (C8). Each row says how to aim it so it fails today.
+- **One live hazard is mis-described.** In this tree a unit run on the show box cannot kill the live video player, because of A-64's name mismatch. It can kill the live engine's VLC signal monitor and overwrite the live process files. Fixing A-64 alone would bring back blue's 2026-09-15 kill (missed M-3).
+- **Two findings have no effect today.** A-58 is gone; C-27's stale socket is never used in networked mode.
+- **Green's three follow-ups have landed on the branch since `12baf920`.** B-98 and B-100 are fixed at HEAD, but the cause they share (names and commands fixed to one OS release) remains elsewhere: the kiosk's default browser name, the health script's `cvlc`, the player scanner's `pip` lines. The refuted and corrected rows are the changes for section 6 of the cause analysis.
