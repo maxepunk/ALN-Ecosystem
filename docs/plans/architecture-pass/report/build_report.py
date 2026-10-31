@@ -57,10 +57,19 @@ PARTS = [
 e = html.escape
 
 
+OUTSIDE_NINE = {'C14', 'C15', 'C16'}  # the analysis: no question of the nine covers these
+
+
 def chips(card):
     out = [f'<span class="chip">{card["findings"]} findings</span>']
     q = card.get('questions') or []
-    out.append(f'<span class="chip">{"Questions " + ", ".join(map(str, q)) if q else "No question covers it"}</span>')
+    if card['id'] in OUTSIDE_NINE:
+        text = 'No question covers it' + (f' (nearest: {q[0]})' if q else '')
+    elif len(q) == 1:
+        text = f'Question {q[0]}'
+    else:
+        text = 'Questions ' + ', '.join(map(str, q))
+    out.append(f'<span class="chip">{text}</span>')
     if card.get('blueFixes'):
         out.append(f'<span class="chip">Blue fixed: {e(", ".join(card["blueFixes"]))}</span>')
     if card.get('seenLive'):

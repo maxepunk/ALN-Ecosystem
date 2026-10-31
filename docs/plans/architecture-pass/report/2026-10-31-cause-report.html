@@ -1,0 +1,1164 @@
+<title>ALN Cause Analysis</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap">
+<style>
+/* Layout: one reading column; each card pairs a "today" diagram with a candidate one, side by side when wide, stacked when narrow. */
+:root {
+  --bg: #f4f6f5; --surface: #ffffff; --fg: #17201e; --muted: #5b6965; --line: #d5dddb;
+  --accent: #0f766e; --fault: #c2261f; --chip: #e7eeec; --chip-live: #fbe9e7;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-label: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #101614; --surface: #17201e; --fg: #e6ecea; --muted: #9babA6; --line: #2a3633;
+  --accent: #4db6aa; --fault: #ff6f61; --chip: #22302c; --chip-live: #3a2220; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #101614; --surface: #17201e; --fg: #e6ecea; --muted: #9babA6; --line: #2a3633;
+  --accent: #4db6aa; --fault: #ff6f61; --chip: #22302c; --chip-live: #3a2220; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 40px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 24px; font-weight: 600; }
+h3 { font-size: 19px; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--accent); }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eyebrow, .tag, figcaption, .grid th span { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--muted); }
+.muted { color: var(--muted); }
+.lead { font-size: 18px; max-width: 68ch; }
+header.top { display: grid; gap: 14px; }
+.decide { border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--surface); border-radius: 6px; padding: 18px 20px; display: grid; gap: 10px; }
+.decide p { max-width: 72ch; }
+.howto { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.howto > div { display: grid; gap: 8px; align-content: start; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: 14px; }
+.sw { display: inline-block; width: 22px; height: 14px; border-radius: 3px; border: 3px solid var(--fault); vertical-align: -2px; margin-right: 6px; }
+.sw.owner { border-color: var(--accent); }
+dl.terms { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 15px; }
+dl.terms dt { font-weight: 600; }
+dl.terms dd { margin: 0; color: var(--muted); }
+.toc { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.grid th, .grid td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: middle; }
+.grid thead th { white-space: normal; vertical-align: bottom; min-width: 64px; }
+.grid tbody th { font-weight: 400; min-width: 220px; }
+.grid tbody th a { font-family: var(--font-mono); font-weight: 500; text-decoration: none; margin-right: 4px; }
+.grid td.dot { color: var(--accent); text-align: center; font-size: 15px; }
+.family { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+.intro { max-width: 72ch; color: var(--muted); font-size: 17px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; scroll-margin-top: 16px; }
+.wrap > *, .family > *, .card > * { min-width: 0; }
+.card-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: baseline; }
+.cid { font-family: var(--font-mono); font-weight: 500; font-size: 15px; color: var(--accent); }
+.chips { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--font-label); font-size: 13px; background: var(--chip); border-radius: 999px; padding: 2px 10px; }
+.chip.live { background: var(--chip-live); color: var(--fault); }
+.story { display: grid; gap: 10px; max-width: 76ch; }
+.story .tag, .design .tag, .live-note .tag { display: block; margin-bottom: 2px; }
+.diagrams { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+figure.dia { margin: 0; border: 1px solid var(--line); border-radius: 6px; padding: 12px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+figure.dia.after { border-style: dashed; }
+.scroll { overflow-x: auto; min-width: 0; }
+pre.mermaid { margin: 0; background: transparent; font-size: 13px; text-align: center; }
+.after-note { font-size: 14px; color: var(--muted); }
+.design { font-size: 15px; max-width: 80ch; border-top: 1px solid var(--line); padding-top: 14px; }
+details summary { cursor: pointer; font-size: 15px; color: var(--accent); }
+details[open] summary { margin-bottom: 10px; }
+.examples { margin: 0 0 12px; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; }
+.ids { font-family: var(--font-mono); font-size: 13px; color: var(--muted); margin-right: 4px; }
+.mods { display: flex; flex-wrap: wrap; gap: 6px; }
+.mods code { font-family: var(--font-mono); font-size: 12.5px; background: var(--chip); border-radius: 4px; padding: 2px 6px; overflow-wrap: anywhere; }
+.aside th, .aside td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.aside th { font-weight: 600; min-width: 9em; }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+.questions { display: grid; gap: 20px; }
+.q { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 18px 20px; display: grid; gap: 10px; }
+.q ol { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+.q .rec { font-weight: 500; }
+footer { font-size: 14px; color: var(--muted); display: grid; gap: 6px; }
+footer code { font-family: var(--font-mono); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Architecture pass · phase 1, step 1 · checked draft, 2026-10-31</p>
+  <h1>Sixteen causes behind the engine's faults</h1>
+  <p class="lead">Every fix blue made in September, every finding blue left open, and every fault the engine maps turned up: 357 findings in all. 336 of them group under sixteen design choices that let them happen, and the other 21 need no rule. Fix a cause and you fix its whole family, including the faults nobody has hit yet.</p>
+</header>
+
+<section class="decide" aria-labelledby="deciding">
+  <h2 id="deciding">What you are deciding</h2>
+  <p><strong>Question 17.</strong> Is this the right list? Look for a fault you have seen at a show that no card explains, or two cards that are really one problem.</p>
+  <p><strong>Question 18.</strong> The last three causes, C14 to C16, fall outside the pass's nine questions. Should the pass take them on? The options are <a href="#your-questions">at the end</a>.</p>
+</section>
+
+<section class="howto" aria-label="How to read a card">
+  <div>
+    <h2>How to read a card</h2>
+    <p><span class="tag">At a show</span> is a moment a GM or a player would see. <span class="tag">Why it happens</span> is the design reason behind it.</p>
+    <p>Two diagrams sit side by side. <strong>Today</strong> shows how the fault happens now. <strong>Candidate, not decided</strong> shows one way the design could remove it. Nothing on the right is decided: step 3 puts competing designs in front of you.</p>
+    <div class="legend"><span><span class="sw"></span>where it goes wrong</span><span><span class="sw owner"></span>the one place that would own the fact</span></div>
+  </div>
+  <div>
+    <h2>The design words</h2>
+    <p>Each card ends with the reason restated in the vocabulary step 3 uses.</p>
+    <dl class="terms">
+      <dt>Module</dt><dd>Any part with an inside and an outside, from one function to the whole backend.</dd>
+      <dt>Interface</dt><dd>Everything another part must know to use it.</dd>
+      <dt>Seam</dt><dd>Where one part meets another, and where behaviour can be swapped.</dd>
+      <dt>Deep, shallow</dt><dd>A deep module does a lot behind a small interface. A shallow one makes its callers know almost as much as it does.</dd>
+      <dt>Locality</dt><dd>A fix in one place fixes it everywhere.</dd>
+      <dt>Leverage</dt><dd>One module serving many callers.</dd>
+    </dl>
+  </div>
+</section>
+
+<section aria-labelledby="where">
+  <h2 id="where">Where each cause lives</h2>
+  <p class="intro" style="margin:8px 0 14px">A dot means the cause's findings sit in that part of the engine. Rows are in order of how much each cause affects a show night, most first.</p>
+  <div class="tablewrap"><table class="grid"><thead><tr><th scope="col">Cause</th><th scope="col"><span>GM tablets</span></th><th scope="col"><span>Scoreboards</span></th><th scope="col"><span>Player scanners</span></th><th scope="col"><span>Game state</span></th><th scope="col"><span>Show control</span></th><th scope="col"><span>Pack, config tool</span></th><th scope="col"><span>Tests</span></th><th scope="col"><span>Deployment</span></th><th scope="col"><span>Contracts</span></th></tr></thead><tbody><tr><th scope="row"><a href="#c1">C1</a> Each tablet keeps its own list of claimed tokens</th><td class="dot" aria-label="yes">●</td><td class="dot" aria-label="yes">●</td><td></td><td class="dot" aria-label="yes">●</td><td></td><td></td><td></td><td></td><td></td></tr><tr><th scope="row"><a href="#c2">C2</a> Service health and service state travel on separate paths</th><td class="dot" aria-label="yes">●</td><td></td><td></td><td class="dot" aria-label="yes">●</td><td class="dot" aria-label="yes">●</td><td></td><td></td><td></td><td></td></tr><tr><th scope="row"><a href="#c3">C3</a> Engine trusts its stale picture of outside programs</th><td></td><td></td><td></td><td></td><td class="dot" aria-label="yes">●</td><td></td><td></td><td></td><td></td></tr><tr><th scope="row"><a href="#c4">C4</a> Nothing says what a game boundary clears or keeps</th><td class="dot" aria-label="yes">●</td><td class="dot" aria-label="yes">●</td><td></td><td class="dot" aria-label="yes">●</td><td class="dot" aria-label="yes">●</td><td></td><td></td><td></td><td></td></tr><tr><th scope="row"><a href="#c5">C5</a> Boot and Reset System wire the engine differently</th><td></td><td></td><td></td><td class="dot" aria-label="yes">●</td><td></td><td></td><td></td><td></td><td></td></tr><tr><th scope="row"><a href="#c6">C6</a> Reconnect snapshot and live update are built apart</th><td class="dot" aria-label="yes">●</td><td></td><td></td><td class="dot" aria-label="yes">●</td><td></td><td></td><td></td><td></td><td></td></tr><tr><th scope="row"><a href="#c7">C7</a> A reply never says which request, final or stored</th><td class="dot" aria-label="yes">●</td><td></td><td class="dot" aria-label="yes">●</td><td class="dot" aria-label="yes">●</td><td></td><td></td><td></td><td></td><td></td></tr><tr><th scope="row"><a href="#c8">C8</a> Engine and tests both assume they own the machine</th><td></td><td></td><td></td><td></td><td class="dot" aria-label="yes">●</td><td></td><td class="dot" aria-label="yes">●</td><td></td><td></td></tr><tr><th scope="row"><a href="#c9">C9</a> Tablets and phones decide facts the engine owns</th><td class="dot" aria-label="yes">●</td><td></td><td class="dot" aria-label="yes">●</td><td class="dot" aria-label="yes">●</td><td></td><td></td><td></td><td></td><td></td></tr><tr><th scope="row"><a href="#c10">C10</a> Screens show a normal value when nothing is known</th><td class="dot" aria-label="yes">●</td><td class="dot" aria-label="yes">●</td><td></td><td class="dot" aria-label="yes">●</td><td class="dot" aria-label="yes">●</td><td></td><td></td><td></td><td></td></tr><tr><th scope="row"><a href="#c11">C11</a> Several places answer the same question, each differently</th><td class="dot" aria-label="yes">●</td><td></td><td></td><td class="dot" aria-label="yes">●</td><td class="dot" aria-label="yes">●</td><td></td><td></td><td></td><td></td></tr><tr><th scope="row"><a href="#c12">C12</a> Pack edits reach each part of the kit differently</th><td class="dot" aria-label="yes">●</td><td></td><td></td><td class="dot" aria-label="yes">●</td><td></td><td class="dot" aria-label="yes">●</td><td></td><td></td><td></td></tr><tr><th scope="row"><a href="#c13">C13</a> The engine does not know who is connected</th><td class="dot" aria-label="yes">●</td><td class="dot" aria-label="yes">●</td><td></td><td class="dot" aria-label="yes">●</td><td></td><td></td><td></td><td></td><td></td></tr><tr><th scope="row"><a href="#c14">C14</a> Names joining two places are kept by hand</th><td class="dot" aria-label="yes">●</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td class="dot" aria-label="yes">●</td></tr><tr><th scope="row"><a href="#c15">C15</a> The deployed game is many parts nothing compares</th><td></td><td></td><td class="dot" aria-label="yes">●</td><td></td><td></td><td class="dot" aria-label="yes">●</td><td></td><td class="dot" aria-label="yes">●</td><td></td></tr><tr><th scope="row"><a href="#c16">C16</a> A green test run proves nothing about the show</th><td></td><td></td><td></td><td class="dot" aria-label="yes">●</td><td></td><td></td><td class="dot" aria-label="yes">●</td><td></td><td></td></tr></tbody></table></div>
+</section>
+
+<section aria-labelledby="families">
+  <h2 id="families">Seven families</h2>
+  <ol class="toc" style="margin-top:10px"><li><a href="#screens">Screens keep their own versions of the game</a> <span class="muted">C1 C6 C7 C9 C10</span></li><li><a href="#services">The engine&#x27;s picture of the programs it drives</a> <span class="muted">C2 C3</span></li><li><a href="#moments">Moments when everything changes at once</a> <span class="muted">C4 C5 C12</span></li><li><a href="#machine">The show machine is shared</a> <span class="muted">C8</span></li><li><a href="#answers">One question, several answers</a> <span class="muted">C11</span></li><li><a href="#audience">Who is connected, and what each one receives</a> <span class="muted">C13</span></li><li><a href="#checks">Checks that do not exist (no question covers these)</a> <span class="muted">C14 C15 C16</span></li></ol>
+</section>
+
+<section class="family" id="screens"><h2>Screens keep their own versions of the game</h2><p class="intro">The engine decides the game: who claimed which token, each team&#x27;s score, whether a game is running. Every screen also keeps its own version of those facts and updates it by its own rules. These five causes are how the screens&#x27; versions drift from the engine&#x27;s. Your decision 11 already puts the questions that cover them (1, 6, 8 and 9) into one rule for live state.</p>
+<article class="card" id="c1">
+  <header class="card-head">
+    <span class="cid">C1</span>
+    <h3>Each tablet keeps its own list of claimed tokens</h3>
+    <div class="chips"><span class="chip">19 findings</span><span class="chip">Questions 1, 8</span><span class="chip">Blue fixed: W1</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> A GM deletes a transaction. The engine frees the token, but every tablet that stays connected keeps refusing it as already scanned until someone reloads. A tablet that drops its connection during Reset All Scores comes back still holding the old claims, and refuses tokens the engine has cleared.</p>
+    <p><span class="tag">Why it happens</span> The engine decides which tokens are claimed, but each tablet holds a copy that only grows: added on scan, merged on reconnect, removed only when a scan fails. The engine&#x27;s own messages also skip facts changed by another path, such as a team created by a scan.</p>
+    
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  eng[&quot;Engine&lt;br/&gt;decides claims&quot;]
+  del[&quot;Delete message&lt;br/&gt;transaction id, one team row&quot;]
+  snap[&quot;Reconnect snapshot&lt;br/&gt;this tablet&#x27;s claims only&quot;]
+  tabA[&quot;Tablet A&lt;br/&gt;own claimed list&quot;]
+  tabB[&quot;Tablet B&lt;br/&gt;own claimed list&quot;]
+  gm[&quot;GM rescan&lt;br/&gt;refused as already scanned&quot;]
+  eng --&gt;|&quot;frees the token&quot;| del
+  del --&gt;|&quot;removes transaction, keeps claim&quot;| tabA
+  del --&gt;|&quot;removes transaction, keeps claim&quot;| tabB
+  eng --&gt;|&quot;on reconnect&quot;| snap
+  snap --&gt;|&quot;union, never removes&quot;| tabB
+  tabB --&gt;|&quot;stale claim&quot;| gm
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class del,snap,tabA,tabB fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  eng[&quot;Engine&lt;br/&gt;decides claims&quot;]
+  msg[&quot;Claim list message&lt;br/&gt;whole list on any change&quot;]
+  apply[&quot;One apply function&lt;br/&gt;replaces the copy&quot;]
+  tabA[&quot;Tablet A&lt;br/&gt;engine list plus own pending&quot;]
+  tabB[&quot;Tablet B&lt;br/&gt;engine list plus own pending&quot;]
+  gm[&quot;GM rescan&lt;br/&gt;accepted&quot;]
+  eng --&gt;|&quot;delete, reset, reconnect&quot;| msg
+  msg --&gt;|&quot;same path every time&quot;| apply
+  apply --&gt;|&quot;replace&quot;| tabA
+  apply --&gt;|&quot;replace&quot;| tabB
+  tabB --&gt;|&quot;freed token&quot;| gm
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class eng owner;</pre></div>
+      <p class="after-note">Candidate (a): tablets hold the engine&#x27;s claim list plus their own unconfirmed scans, replaced by one function. Competing: (b) version per fact; (c) no tablet list; (d) one write rule; (e) per-domain change pushes.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> The engine&#x27;s transaction service should own the claimed-token fact; tablets should hold only its copy. Today the tablet&#x27;s networked storage module updates its copy through one hand-wired handler per message, so the seam leaks: any path without a handler leaves the copy stale. No locality.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">A-05 / C-04</span> GM deletes a transaction; every connected tablet keeps refusing the token as already scanned until it reloads.</li><li><span class="ids">A-06 / C-30</span> A tablet that dropped its connection during Reset All Scores reconnects with its stale claims and refuses cleared tokens.</li><li><span class="ids">A-24 / C-29</span> After a reload a tablet knows only its own claims; a rescan of another station&#x27;s token shows success, then rejection.</li><li><span class="ids">B-13</span> A delete recomputes every team&#x27;s score but the message carries one team&#x27;s row; latent today.</li><li><span class="ids">B-19</span> A scan for a team nobody added creates the team silently; no team message reaches any tablet.</li><li><span class="ids">A-25 / C-01</span> Session Details freezes Teams and GM Stations at the last full snapshot, because one message merges and one replaces.</li></ul>
+    <div class="mods"><code>backend/src/services/transactionService.js</code><code>backend/src/websocket/broadcasts.js</code><code>ALNScanner/src/network/messageRouters.js</code><code>ALNScanner/src/core/storage/NetworkedStorage.js</code><code>ALNScanner/src/core/unifiedDataManager.js</code><code>backend/public/scoreboard.html</code></div>
+  </details>
+</article>
+<article class="card" id="c6">
+  <header class="card-head">
+    <span class="cid">C6</span>
+    <h3>Reconnect snapshot and live update are built apart</h3>
+    <div class="chips"><span class="chip">11 findings</span><span class="chip">Questions 9, 8</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> A GM reloads a tablet mid-game. The History badge stays hidden until the next scan, and a rebuilt admin panel can show the clock as --:-- until the next change. The device list flips between everyone ever and connected only, depending on which message came last.</p>
+    <p><span class="tag">Why it happens</span> For each fact the engine has one builder for the connect snapshot and another for the live message, and six places send the snapshot with hand-picked arguments. The tablet applies each by a different rule, and the restore path fires none of the events screens listen for.</p>
+    
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  fact[&quot;Engine fact&lt;br/&gt;clock, session, devices&quot;]
+  snapB[&quot;Snapshot builder&lt;br/&gt;six hand-assembled senders&quot;]
+  liveB[&quot;Live message builder&lt;br/&gt;separate code per fact&quot;]
+  replace[&quot;Tablet: replace&lt;br/&gt;drops absent keys&quot;]
+  merge[&quot;Tablet: merge&lt;br/&gt;skips equal pushes&quot;]
+  adapter[&quot;Five adapters&lt;br/&gt;reshape before drawing&quot;]
+  hist[&quot;History restore&lt;br/&gt;fires no event&quot;]
+  screen[&quot;Screen&lt;br/&gt;stale or blank&quot;]
+  fact --&gt;|&quot;on connect&quot;| snapB
+  fact --&gt;|&quot;on change&quot;| liveB
+  snapB --&gt;|&quot;one shape&quot;| replace
+  liveB --&gt;|&quot;another shape&quot;| merge
+  snapB --&gt;|&quot;transaction list&quot;| hist
+  replace --&gt;|&quot;reshaped&quot;| adapter
+  merge --&gt;|&quot;reshaped&quot;| adapter
+  adapter --&gt;|&quot;unnamed fields dropped&quot;| screen
+  hist -.-&gt;|&quot;badge never told&quot;| screen
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class snapB,liveB,adapter,hist fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  fact[&quot;Engine fact&lt;br/&gt;clock, session, devices&quot;]
+  desc[&quot;One describe per fact&lt;br/&gt;serves snapshot and push&quot;]
+  snap[&quot;Snapshot&lt;br/&gt;list of descriptions&quot;]
+  live[&quot;Live message&lt;br/&gt;one description&quot;]
+  apply[&quot;Tablet: one apply&lt;br/&gt;same shape, fires events&quot;]
+  screen[&quot;Screen&lt;br/&gt;drawn from the fact&quot;]
+  fact --&gt;|&quot;owns&quot;| desc
+  desc --&gt;|&quot;on connect&quot;| snap
+  desc --&gt;|&quot;on change&quot;| live
+  snap --&gt;|&quot;same shape&quot;| apply
+  live --&gt;|&quot;same shape&quot;| apply
+  apply --&gt;|&quot;same event either way&quot;| screen
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class desc owner;</pre></div>
+      <p class="after-note">Candidate: one description per fact serves snapshot and live push; the tablet applies both with one function. Competing: live updates become whole-value signals in the snapshot&#x27;s shape; one unreshaped domain object per fact.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> Each fact&#x27;s engine module should own one description of itself, serving snapshot and live push alike. The snapshot builder is shallow: its interface is a hand-passed list of every module, and five tablet adapters reshape its output, so the seam leaks both ways.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">A-22</span> After a reload the History badge stays hidden until the next scan; the restore path fires no event.</li><li><span class="ids">A-30 / C-46</span> After a panel rebuild the first state push can be skipped and the clock shows --:--.</li><li><span class="ids">C-23</span> The device list alternates between everyone ever and connected only, depending on which message came last.</li><li><span class="ids">B-31</span> Six places send the full snapshot and disagree on which devices to include and which extra keys to add.</li><li><span class="ids">A-32 / C-44</span> Snapshot and live shapes differ for clock and cues; five adapters reshape them, and the clock adapter drops unnamed fields.</li><li><span class="ids">D-01</span> A TV reloaded during a video shows its last overlay state, because the snapshot&#x27;s display status is never read.</li></ul>
+    <div class="mods"><code>backend/src/websocket/syncHelpers.js</code><code>backend/src/websocket/broadcasts.js</code><code>backend/src/websocket/gmAuth.js</code><code>ALNScanner/src/network/messageRouters.js</code><code>ALNScanner/src/core/stateStore.js</code><code>ALNScanner/src/admin/MonitoringDisplay.js</code></div>
+  </details>
+</article>
+<article class="card" id="c7">
+  <header class="card-head">
+    <span class="cid">C7</span>
+    <h3>A reply never says which request, final or stored</h3>
+    <div class="chips"><span class="chip">18 findings</span><span class="chip">Questions 1, 8</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> Player devices upload their queued scans while no game exists. The engine answers processed, stores nothing, and both devices delete the scans. A GM&#x27;s scan that can never succeed comes back as a generic error, so the tablet replays it at every reconnect with a toast each time. A slow Reset System reports failure and the new game is skipped.</p>
+    <p><span class="tag">Why it happens</span> The engine answers before or without the write that makes the fact true, calls an unstored batch processed, returns some failures as a typed result and others as a generic error, and acknowledges commands by action name alone. Each device then decides for itself what a reply means.</p>
+    
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  dev[&quot;Player device&lt;br/&gt;queued scans&quot;]
+  tab[&quot;Tablet&lt;br/&gt;GM scan or command&quot;]
+  eng[&quot;Engine&lt;br/&gt;replies before the write&quot;]
+  ok[&quot;200 processed&lt;br/&gt;batch stored nowhere&quot;]
+  err[&quot;Generic error&lt;br/&gt;no request id, not final&quot;]
+  ack[&quot;Command ack&lt;br/&gt;action name only&quot;]
+  devRule[&quot;Device rule&lt;br/&gt;200 means delete&quot;]
+  tabRule[&quot;Tablet rule&lt;br/&gt;error retries, 5s fails&quot;]
+  dev --&gt;|&quot;batch, no game&quot;| eng
+  tab --&gt;|&quot;scan, command&quot;| eng
+  eng --&gt;|&quot;no game&quot;| ok
+  ok --&gt;|&quot;deletes the scans&quot;| devRule
+  eng --&gt;|&quot;permanent scan failure&quot;| err
+  err --&gt;|&quot;replays every snapshot&quot;| tabRule
+  eng --&gt;|&quot;slow reset&quot;| ack
+  ack --&gt;|&quot;after the 5s timeout&quot;| tabRule
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class ok,err,ack,devRule,tabRule fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  dev[&quot;Player device&lt;br/&gt;queued scans&quot;]
+  tab[&quot;Tablet&lt;br/&gt;GM scan or command&quot;]
+  eng[&quot;Engine&quot;]
+  commit[&quot;One commit&lt;br/&gt;save first, then reply&quot;]
+  reply[&quot;Typed reply&lt;br/&gt;request id, final, stored&quot;]
+  devRule[&quot;Device rule&lt;br/&gt;delete only if stored&quot;]
+  tabRule[&quot;Tablet rule&lt;br/&gt;final means stop&quot;]
+  dev --&gt;|&quot;batch&quot;| eng
+  tab --&gt;|&quot;scan, command&quot;| eng
+  eng --&gt;|&quot;every write&quot;| commit
+  commit --&gt;|&quot;after the save&quot;| reply
+  reply --&gt;|&quot;stored or refused&quot;| devRule
+  reply --&gt;|&quot;matched by request id&quot;| tabRule
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class commit owner;</pre></div>
+      <p class="after-note">Candidate (a): replies carry request id and final flag; scan outcomes typed; one commit saves before replying. Competing: (b) per-item batch results; (c) status endpoint by client id; (d) intent log; (e) serialised same-action sends.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> One commit module in the engine should own each request&#x27;s outcome: which request, final or not, stored or not. That interface is split between typed results, generic errors and action-name acks, so the seam leaks and three clients each keep their own reply rule.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">B-64 / C-32</span> Scan failures like no session or queue full come back as a generic error; the tablet replays them on every snapshot.</li><li><span class="ids">B-22 / D-13 / D-14</span> A batch arriving with no game is answered processed but stored nowhere; both player devices delete it.</li><li><span class="ids">B-21 / D-15</span> A batch retried after an engine restart is stored twice; processed batches are remembered in memory for an hour.</li><li><span class="ids">B-69 / C-35</span> A system reset slower than the tablet&#x27;s five-second wait reports failure, and the follow-on create session is skipped.</li><li><span class="ids">B-65 / C-33</span> A command ack carries only action, success and message, so two presses of one action resolve on the first reply.</li><li><span class="ids">D-12</span> One failed batch is dropped by the web scanner on any 4xx but kept forever by the ESP32.</li></ul>
+    <div class="mods"><code>backend/src/websocket/adminEvents.js</code><code>backend/src/routes/scanRoutes.js</code><code>ALNScanner/src/network/networkedQueueManager.js</code><code>ALNScanner/src/admin/utils/CommandSender.js</code><code>aln-memory-scanner/js/orchestratorIntegration.js</code><code>arduino-cyd-player-scanner/ALNScanner_v5/services/ScanResponse.h</code></div>
+  </details>
+</article>
+<article class="card" id="c9">
+  <header class="card-head">
+    <span class="cid">C9</span>
+    <h3>Tablets and phones decide facts the engine owns</h3>
+    <div class="chips"><span class="chip">18 findings</span><span class="chip">Questions 1, 5</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> A GM scans a token; the result screen says Transaction Complete with points the tablet worked out itself, before the engine has answered. The engine may refuse, and the correction arrives as a small toast. In standalone mode the tablet is the only judge, and its rules have gaps: a scan into a paused game shows complete and records nothing. A phone says revisited for last week&#x27;s token.</p>
+    <p><span class="tag">Why it happens</span> The engine is the authority for scoring, claims and the scan gate, but the tablet carries its own copy of those rules, kept in step by hand and by comment, and the player devices pick their own team and their own new-or-seen. Each device shows its own verdict first.</p>
+    
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  gm[&quot;GM scans token&quot;]
+  tab[&quot;Tablet&lt;br/&gt;own copy of rules&quot;]
+  screen[&quot;Result screen&lt;br/&gt;Transaction Complete&quot;]
+  eng[&quot;Engine&lt;br/&gt;game rules, the authority&quot;]
+  toast[&quot;Toast&lt;br/&gt;corrects later&quot;]
+  local[&quot;Standalone store&lt;br/&gt;paused checked, ended not&quot;]
+  phone[&quot;Player phone&lt;br/&gt;own team, own seen list&quot;]
+  gm --&gt;|&quot;scan&quot;| tab
+  tab --&gt;|&quot;points, gate, match&quot;| screen
+  tab --&gt;|&quot;submit, networked&quot;| eng
+  eng -.-&gt;|&quot;refused&quot;| toast
+  tab --&gt;|&quot;standalone&quot;| local
+  phone --&gt;|&quot;team engine discards&quot;| eng
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class tab,screen,local,phone fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  gm[&quot;GM scans token&quot;]
+  tab[&quot;Tablet&lt;br/&gt;shows verdict only&quot;]
+  screen[&quot;Result screen&lt;br/&gt;pending, then verdict&quot;]
+  eng[&quot;Engine&lt;br/&gt;game rules, the authority&quot;]
+  rules[&quot;Shared rules module&lt;br/&gt;loaded by both&quot;]
+  local[&quot;Standalone store&lt;br/&gt;uses shared rules&quot;]
+  phone[&quot;Player phone&lt;br/&gt;own team, own seen list&quot;]
+  gm --&gt;|&quot;scan&quot;| tab
+  tab --&gt;|&quot;submit, networked&quot;| eng
+  eng --&gt;|&quot;verdict with points&quot;| screen
+  rules --&gt;|&quot;loaded&quot;| eng
+  rules --&gt;|&quot;loaded&quot;| local
+  tab --&gt;|&quot;standalone&quot;| local
+  phone -.-&gt;|&quot;unchanged by this candidate&quot;| eng
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class eng owner;</pre></div>
+      <p class="after-note">Candidate (a): networked shows the engine&#x27;s verdict only, pending first; standalone uses a rules module the engine also loads. Competing: (b) one shared rules package; (c) devices only display; (d) players send no team.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> The engine&#x27;s game-rules module should own scoring, group completion and duplicate rules behind one interface both sides load. Today the tablet holds a second implementation kept in step by comment, so the seam leaks verdicts: a rule change lands in two places, with no locality.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">C-07</span> Result screen says Transaction Complete with tablet-computed points before the engine answers; the engine may refuse.</li><li><span class="ids">A-02 / C-09</span> Standalone: a scan into a paused game shows complete, records nothing and uses up the token; an ended game still accepts.</li><li><span class="ids">A-34</span> A duplicate scan on the same tablet never names the team that claimed it; the local guard fires first.</li><li><span class="ids">D-09 / B-62</span> Every player scan carries a team no game declared; the engine discards it and only logs it.</li><li><span class="ids">D-10</span> A phone that played last week still says revisited for a token in tonight&#x27;s game.</li><li><span class="ids">C-58</span> The tablet matches token ids loosely, the engine exactly; the tablet shows success and the engine refuses.</li></ul>
+    <div class="mods"><code>backend/src/gameRules/scoring.js</code><code>backend/src/gameRules/duplicatePolicy.js</code><code>backend/src/websocket/adminEvents.js</code><code>ALNScanner/src/app/domains/gameOps.js</code><code>ALNScanner/src/core/storage/LocalStorage.js</code><code>aln-memory-scanner/js/app.js</code></div>
+  </details>
+</article>
+<article class="card" id="c10">
+  <header class="card-head">
+    <span class="cid">C10</span>
+    <h3>Screens show a normal value when nothing is known</h3>
+    <div class="chips"><span class="chip">20 findings</span><span class="chip">Questions 8, 2</span><span class="chip live">Seen live</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> The venue profile fails to load; six services turn not installed, no video plays, no light cue fires, and the panel reads a calm green 3 of 9. The GM presses Check Now on a down service and nothing visibly happens. The engine dies; the TV keeps counting down. The music card goes grey with no offline line, and nobody at the venue notices.</p>
+    <p><span class="tag">Why it happens</span> No fact on the wire says whether it is known, unknown, stale or partial. Snapshot builders catch errors and send plausible defaults, a missing profile reads as no equipment, healthy means a program answered, and the check times that exist are never shown. The screen draws a normal value.</p>
+    <p class="live-note"><span class="tag">Seen live</span> A greyed music card with no offline line went unnoticed at the venue.</p>
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  prof[&quot;Venue profile&lt;br/&gt;fails to load&quot;]
+  dorm[&quot;Dormancy service&lt;br/&gt;reads no equipment&quot;]
+  reg[&quot;Health registry&lt;br/&gt;emits on change only&quot;]
+  snap[&quot;Snapshot builders&lt;br/&gt;catch error, send default&quot;]
+  push[&quot;Push to tablets&lt;br/&gt;no age, no unknown&quot;]
+  panel[&quot;Health panel&lt;br/&gt;calm green 3 of 9&quot;]
+  tv[&quot;TV clock&lt;br/&gt;keeps counting&quot;]
+  prof --&gt;|&quot;missing or invalid&quot;| dorm
+  dorm --&gt;|&quot;six not installed&quot;| reg
+  reg --&gt;|&quot;check time never shown&quot;| push
+  snap --&gt;|&quot;clock stopped, route hdmi&quot;| push
+  push --&gt;|&quot;drawn as normal&quot;| panel
+  push -.-&gt;|&quot;engine gone, no signal&quot;| tv
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class dorm,snap,push,panel,tv fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  prof[&quot;Venue profile&lt;br/&gt;fails to load&quot;]
+  dorm[&quot;Dormancy service&lt;br/&gt;reports profile failed&quot;]
+  reg[&quot;Health registry&lt;br/&gt;known, unknown, stale&quot;]
+  snap[&quot;Snapshot builders&lt;br/&gt;send unknown, not default&quot;]
+  push[&quot;Push to tablets&lt;br/&gt;time observed, status&quot;]
+  panel[&quot;Health panel&lt;br/&gt;red profile row&quot;]
+  tv[&quot;TV clock&lt;br/&gt;drawn unconfirmed&quot;]
+  prof --&gt;|&quot;missing or invalid&quot;| dorm
+  dorm --&gt;|&quot;profile failed&quot;| reg
+  reg --&gt;|&quot;usable or not, time&quot;| push
+  snap --&gt;|&quot;unknown, not default&quot;| push
+  push --&gt;|&quot;drawn as unknown&quot;| panel
+  push --&gt;|&quot;stale past limit&quot;| tv
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class reg owner;</pre></div>
+      <p class="after-note">Candidate (a): every pushed fact carries when it was observed and known, unknown or stale; screens draw unknown differently. Competing: (b) a heartbeat as the only staleness signal; (c) one record per service.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> The health registry should own whether each service fact is known, unknown or stale, and when it was seen. Today the pushed facts&#x27; interface carries neither, so snapshot builders turn errors into defaults and the seam leaks: a failure crosses as a normal value.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">B-72 / C-48</span> A missing or wrong venue profile makes six services read not installed; the panel shows calm green with no sign.</li><li><span class="ids">A-16 / C-03</span> Check Now on a down service gives no sign anything happened; no check time is ever shown.</li><li><span class="ids">D-22</span> If the TV loses the engine while the clock runs, it keeps counting down with no mark.</li><li><span class="ids">B-76 / C-47</span> A cue with commands on a dormant service skips them quietly and reports a clean finish.</li><li><span class="ids">A-74</span> The music panel gives no clear sign MPD is down; a greyed card went unnoticed at the venue.</li><li><span class="ids">D-11</span> Offline, the 101st queued scan silently pushes the oldest out on both player devices.</li></ul>
+    <div class="mods"><code>backend/src/services/serviceHealthRegistry.js</code><code>backend/src/websocket/syncHelpers.js</code><code>backend/src/websocket/environmentHelpers.js</code><code>backend/src/services/dormancyService.js</code><code>ALNScanner/src/ui/renderers/HealthRenderer.js</code><code>backend/public/scoreboard.html</code></div>
+  </details>
+</article></section><section class="family" id="services"><h2>The engine&#x27;s picture of the programs it drives</h2><p class="intro">The engine drives VLC, MPD music, the audio system and Home Assistant lights, and shows their state on the GM panel. These two causes are how that picture goes stale or wrong.</p>
+<article class="card" id="c2">
+  <header class="card-head">
+    <span class="cid">C2</span>
+    <h3>Service health and service state travel on separate paths</h3>
+    <div class="chips"><span class="chip">6 findings</span><span class="chip">Questions 2, 9</span><span class="chip">Blue fixed: W4, W6</span><span class="chip live">Seen live</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> If Home Assistant or MPD is down when the engine starts, the lighting and music panels stay disabled all night. If MPD dies mid-show, the health row turns red alone while the music card keeps its playing look and the progress bar keeps moving. A volume change on one tablet&#x27;s audio panel never reaches the other tablets&#x27; sliders.</p>
+    <p><span class="tag">Why it happens</span> Each venue service keeps two facts: its health in a central registry and its own state in its own record. The engine pushes the health row when health changes, and pushes a service&#x27;s state only on a hand-written list of that service&#x27;s events. An outage is on no list.</p>
+    <p class="live-note"><span class="tag">Seen live</span> The owner reports the GM panel falling behind live music on blue&#x27;s line until a refresh.</p>
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  mpd[&quot;MPD&lt;br/&gt;dies mid-show&quot;]
+  mus[&quot;Music service&lt;br/&gt;own state record&quot;]
+  reg[&quot;Health registry&lt;br/&gt;one row per service&quot;]
+  healthPush[&quot;Health row push&lt;br/&gt;on health change&quot;]
+  lists[&quot;Push lists&lt;br/&gt;hand-written per service&quot;]
+  statePush[&quot;Music state push&lt;br/&gt;on music events only&quot;]
+  panel[&quot;GM panel&lt;br/&gt;music card plus health row&quot;]
+  mpd --&gt;|&quot;exit&quot;| mus
+  mus --&gt;|&quot;reports down&quot;| reg
+  reg --&gt;|&quot;health changed&quot;| healthPush
+  healthPush --&gt;|&quot;red row&quot;| panel
+  mus -.-&gt;|&quot;no music event&quot;| lists
+  lists -.-&gt;|&quot;no push&quot;| statePush
+  statePush -.-&gt;|&quot;card keeps playing look&quot;| panel
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class lists,statePush fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  mpd[&quot;MPD&lt;br/&gt;dies mid-show&quot;]
+  mus[&quot;Music service&lt;br/&gt;one record: health and state&quot;]
+  push[&quot;One push&lt;br/&gt;whole record on any change&quot;]
+  panel[&quot;GM panel&lt;br/&gt;card and row change together&quot;]
+  mpd --&gt;|&quot;exit&quot;| mus
+  mus --&gt;|&quot;health or state changed&quot;| push
+  push --&gt;|&quot;same update&quot;| panel
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class mus owner;</pre></div>
+      <p class="after-note">Candidate (a): one record per service carrying health and state, pushed whole when either changes. Competing: (b) derive the push table from the registry; (c) the tablet joins the two records on read.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> Each service module should own one record carrying health and state. Today the seam leaks: the broadcast module re-implements each service&#x27;s change set as a per-domain event list, so the interface callers must know is the full event list, and locality is lost.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">A-11</span> Lighting panel stays unavailable all night if Home Assistant was down at engine start; nothing re-sends its state.</li><li><span class="ids">A-12 / B-33 / C-43</span> Music panel stays disabled if MPD was down at connect; the progress bar keeps moving after MPD dies.</li><li><span class="ids">A-17</span> A per-stream volume change on one tablet never reaches other tablets&#x27; sliders; the audio push list names no volume event.</li><li><span class="ids">A-102</span> Audio and lighting pushes rest on hand-listed events, so a missing event means a stale panel.</li></ul>
+    <div class="mods"><code>backend/src/websocket/broadcasts.js</code><code>backend/src/services/serviceHealthRegistry.js</code><code>backend/src/services/musicService.js</code><code>backend/src/services/lightingService.js</code><code>backend/src/services/audioRoutingService.js</code><code>ALNScanner/src/admin/MonitoringDisplay.js</code></div>
+  </details>
+</article>
+<article class="card" id="c3">
+  <header class="card-head">
+    <span class="cid">C3</span>
+    <h3>Engine trusts its stale picture of outside programs</h3>
+    <div class="chips"><span class="chip">25 findings</span><span class="chip">Questions 3, 5</span><span class="chip">Blue fixed: W9 P0.1, W10 P1, W10 FB, W10 F3</span><span class="chip live">Seen live</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> A video stayed stopped for about 28 seconds because the parser held each player message until the next one arrived. A false video finished can fire two seconds in, flipping the display back and restoring music. When MPD dies the engine still says playing and the controls stay dead until the next 15-second sweep. A cue with a 2-second video never completes.</p>
+    <p><span class="tag">Why it happens</span> The engine learns what VLC, MPD and the other programs are doing by parsing their text or event streams into a cached copy that starts from a default and carries no age. Re-reads are partial, and the video queue, cue timelines and health rows treat the copy as the program.</p>
+    <p class="live-note"><span class="tag">Seen live</span> Blue&#x27;s worst live incident, the video that stayed stopped about 28 seconds, happened on the show machine.</p>
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  vlc[&quot;VLC&lt;br/&gt;plays the video&quot;]
+  mon[&quot;Signal monitor&lt;br/&gt;text stream&quot;]
+  parser[&quot;Parser&lt;br/&gt;holds message until next header&quot;]
+  pic[&quot;Cached picture&lt;br/&gt;state, no age&quot;]
+  probe[&quot;15-second probe&lt;br/&gt;re-reads play state only&quot;]
+  queue[&quot;Video queue&lt;br/&gt;two stopped polls end video&quot;]
+  cue[&quot;Cue timeline&lt;br/&gt;waits for a progress tick&quot;]
+  panel[&quot;GM panel&lt;br/&gt;video stays stopped&quot;]
+  vlc --&gt;|&quot;Playing signal&quot;| mon
+  mon --&gt;|&quot;lines&quot;| parser
+  parser -.-&gt;|&quot;late by one message&quot;| pic
+  probe --&gt;|&quot;corrects quietly&quot;| pic
+  probe -.-&gt;|&quot;announcement nobody hears&quot;| panel
+  pic --&gt;|&quot;stale stopped&quot;| queue
+  queue --&gt;|&quot;false finished&quot;| cue
+  pic --&gt;|&quot;stale&quot;| panel
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class parser,pic,queue fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  vlc[&quot;VLC&lt;br/&gt;plays the video&quot;]
+  reader[&quot;VLC reader&lt;br/&gt;stream plus periodic re-read&quot;]
+  pic[&quot;Cached picture&lt;br/&gt;carries last-read time&quot;]
+  queue[&quot;Video queue&lt;br/&gt;reads picture with age&quot;]
+  cue[&quot;Cue timeline&lt;br/&gt;reads picture with age&quot;]
+  panel[&quot;GM panel&lt;br/&gt;hears every correction&quot;]
+  vlc --&gt;|&quot;signals&quot;| reader
+  reader --&gt;|&quot;re-read on timer&quot;| vlc
+  reader --&gt;|&quot;one path, every change&quot;| pic
+  pic --&gt;|&quot;fresh state&quot;| queue
+  pic --&gt;|&quot;fresh state&quot;| cue
+  pic --&gt;|&quot;fresh state&quot;| panel
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class reader owner;</pre></div>
+      <p class="after-note">Candidate (a): one reader per program behind a common interface, with a periodic re-read the stream cannot switch off. Competing: (b) client libraries, (c) read time on every copy, (d) cue timeline from player position.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> A reader module per outside program should own the engine&#x27;s picture of it, behind one interface: read, stream, resync, last-read time. Today the seam leaks: the video queue, cue timeline and health rows read each service&#x27;s ageless cache directly, so locality is lost.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">A-68</span> Video stayed stopped about 28 seconds: the parser holds each message until the next header arrives.</li><li><span class="ids">A-61</span> A false video finished can fire two seconds in; display flips back, ducking restores, cues told video ended.</li><li><span class="ids">A-72</span> When MPD dies the engine&#x27;s picture still says playing with the last track; only the health row goes out.</li><li><span class="ids">A-73</span> After an MPD crash the controls stay dead up to 20 seconds; the supervisor&#x27;s restart is ignored.</li><li><span class="ids">A-48</span> A cue whose video ends before its first progress tick never completes and stays on screen.</li><li><span class="ids">X-01</span> The 15-second probe corrects the VLC picture but announces it on an event nothing hears for VLC.</li></ul>
+    <div class="mods"><code>backend/src/utils/dbusSignalParser.js</code><code>backend/src/services/mprisPlayerBase.js</code><code>backend/src/services/videoQueueService.js</code><code>backend/src/services/musicService.js</code><code>backend/src/services/serviceHealthRegistry.js</code><code>backend/src/services/cue/timelineRuntime.js</code></div>
+  </details>
+</article></section><section class="family" id="moments"><h2>Moments when everything changes at once</h2><p class="intro">A game starting or ending, Reset System, the engine restarting and a new pack being published each change many facts at once. Nothing in the engine says what each fact should do at those moments, so each one handles whatever its author remembered.</p>
+<article class="card" id="c4">
+  <header class="card-head">
+    <span class="cid">C4</span>
+    <h3>Nothing says what a game boundary clears or keeps</h3>
+    <div class="chips"><span class="chip">22 findings</span><span class="chip">Question 6</span><span class="chip">Blue fixed: W8</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> The GM ends the game and restarts the engine; the ended game comes back as the current one and player scans keep landing in it. When the game ends, a tablet that reconnects loses its history and the wall scoreboard goes blank. A once-only cue spent in game one stays spent in game two.</p>
+    <p><span class="tag">Why it happens</span> Game start, end, reset, engine restart, tablet reload and reconnect each have their own code in each component. No table says, per fact and copy, whether a boundary clears, keeps or re-fetches it, and no message announces a boundary; screens infer one from a changed session id.</p>
+    
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  endg[&quot;Game end&lt;br/&gt;saves ended record, nulls session&quot;]
+  restart[&quot;Engine restart&lt;br/&gt;reloads last record&quot;]
+  cur[&quot;Current game&lt;br/&gt;the ended game again&quot;]
+  scans[&quot;Player scans&lt;br/&gt;accepted&quot;]
+  cues[&quot;Cue engine&lt;br/&gt;spent cues kept&quot;]
+  reset[&quot;System reset&lt;br/&gt;only clearer, no message&quot;]
+  tab[&quot;Tablet&lt;br/&gt;infers boundary from id&quot;]
+  endg --&gt;|&quot;status not checked&quot;| restart
+  restart --&gt;|&quot;makes current&quot;| cur
+  cur --&gt;|&quot;session exists&quot;| scans
+  endg -.-&gt;|&quot;never touches&quot;| cues
+  reset --&gt;|&quot;clears&quot;| cues
+  reset -.-&gt;|&quot;no snapshot sent&quot;| tab
+  endg --&gt;|&quot;null session&quot;| tab
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class restart,cur,cues,tab fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  tbl[&quot;Boundary table&lt;br/&gt;per fact: clear, keep, re-fetch&quot;]
+  endg[&quot;Game end&quot;]
+  restart[&quot;Engine restart&quot;]
+  reset[&quot;System reset&quot;]
+  msg[&quot;Boundary message&lt;br/&gt;to every client&quot;]
+  tab[&quot;Tablet&lt;br/&gt;one boundary handler&quot;]
+  cues[&quot;Cue engine&lt;br/&gt;spent cues cleared at end&quot;]
+  scans[&quot;Player scans&lt;br/&gt;refused, no game&quot;]
+  endg --&gt;|&quot;iterates&quot;| tbl
+  restart --&gt;|&quot;iterates&quot;| tbl
+  reset --&gt;|&quot;iterates&quot;| tbl
+  tbl --&gt;|&quot;applies lifetime&quot;| cues
+  tbl --&gt;|&quot;ended stays ended&quot;| scans
+  tbl --&gt;|&quot;announces&quot;| msg
+  msg --&gt;|&quot;applies&quot;| tab
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class tbl owner;</pre></div>
+      <p class="after-note">Candidate: one table of each fact&#x27;s authority and lifetime, iterated at every boundary, plus one boundary message. Competing: new game runs the reset path; full snapshot per boundary; a game epoch; keep the ended game.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> A boundary-table module should own each fact&#x27;s lifetime at a game boundary: clear, keep or re-fetch. No such interface exists, so the session, cue-engine, reset and tablet modules each encode their own cases; the seam leaks and one boundary change has no locality.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">B-61 / D-31</span> An ended game comes back after an engine restart as the current game, and player scans keep landing in it.</li><li><span class="ids">A-01 / C-39</span> After the GM ends the game, a reconnecting tablet loses history, scans and Download Report; the wall scoreboard goes blank.</li><li><span class="ids">B-17 / C-38</span> A once-only cue spent in one game stays spent in the next unless the GM ran a system reset between.</li><li><span class="ids">C-05</span> After a reload the tablet wipes the offline scans it just restored, reading the first message as a new game.</li><li><span class="ids">B-55</span> A system reset empties the engine&#x27;s video queue to idle while VLC plays on, and the GM is told nothing.</li><li><span class="ids">C-36</span> A system reset sends no tablet a fresh snapshot; tablets keep the old game&#x27;s data until a new session id arrives.</li></ul>
+    <div class="mods"><code>backend/src/services/sessionService.js</code><code>backend/src/services/systemReset.js</code><code>backend/src/services/cueEngineService.js</code><code>backend/src/routes/scanRoutes.js</code><code>ALNScanner/src/network/networkedSession.js</code><code>backend/public/scoreboard.html</code></div>
+  </details>
+</article>
+<article class="card" id="c5">
+  <header class="card-head">
+    <span class="cid">C5</span>
+    <h3>Boot and Reset System wire the engine differently</h3>
+    <div class="chips"><span class="chip">7 findings</span><span class="chip">Question 6</span><span class="chip live">Seen live</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> The GM presses Reset System to recover mid-show. The music panel goes dead until someone restarts the engine. Later, Reset All Scores sends every tablet and the TV the old transaction list, so cleared evidence comes back on the wall. The cue engine now hears each video and clock event twice, and the Display row stays red until Check Now.</p>
+    <p><span class="tag">Why it happens</span> Starting the engine and rebuilding it after a reset are two separate hand-written lists. Boot wires the storage listeners first, then the broadcasts, with one set of services; the reset wires them the other way round with a shorter set, and adds some listeners a second time.</p>
+    <p class="live-note"><span class="tag">Seen live</span> The red Display row after a reset was reproduced in-process by the review.</p>
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  boot[&quot;Engine start&lt;br/&gt;one service list&quot;]
+  reset[&quot;Reset System&lt;br/&gt;shorter list, no music&quot;]
+  persist[&quot;Storage listeners&lt;br/&gt;clear transactions&quot;]
+  bcast[&quot;Broadcasts&lt;br/&gt;build snapshot&quot;]
+  cues[&quot;Cue forwarding&quot;]
+  music[&quot;Music panel push&quot;]
+  boot --&gt;|&quot;1st&quot;| persist
+  boot --&gt;|&quot;2nd&quot;| bcast
+  boot --&gt;|&quot;once&quot;| cues
+  boot --&gt;|&quot;wires&quot;| music
+  reset --&gt;|&quot;1st&quot;| bcast
+  reset --&gt;|&quot;2nd&quot;| persist
+  reset --&gt;|&quot;again&quot;| cues
+  reset -.-&gt;|&quot;never&quot;| music
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class reset,bcast,cues fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  boot[&quot;Engine start&quot;]
+  reset[&quot;Reset System&lt;br/&gt;teardown first&quot;]
+  asm[&quot;Engine assembly&lt;br/&gt;one list, one order&quot;]
+  persist[&quot;Storage listeners&lt;br/&gt;clear transactions&quot;]
+  bcast[&quot;Broadcasts&lt;br/&gt;build snapshot&quot;]
+  cues[&quot;Cue forwarding&quot;]
+  music[&quot;Music panel push&quot;]
+  boot --&gt;|&quot;calls&quot;| asm
+  reset --&gt;|&quot;calls after teardown&quot;| asm
+  asm --&gt;|&quot;1st&quot;| persist
+  asm --&gt;|&quot;2nd&quot;| bcast
+  asm --&gt;|&quot;once&quot;| cues
+  asm --&gt;|&quot;wires&quot;| music
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class asm owner;</pre></div>
+      <p class="after-note">Candidate (a): one engine-assembly routine shared by boot and reset. Competing: (b) a registry that knows each service&#x27;s start, stop and listeners; (c) components register start, end and reset handlers in a declared order.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> An engine-assembly module should own which services exist, their listeners and the order they are wired. Today boot and reset each implement that by hand, so every caller knows every service and the ordering rule: the seam leaks and a change has no locality.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">B-01</span> After Reset System the music panel stops updating until the engine restarts; the reset is called without the music service.</li><li><span class="ids">A-53 / B-02 / C-37 / D-30</span> After a reset, Reset All Scores sends every tablet and the TV the old transaction list; cleared evidence comes back.</li><li><span class="ids">B-03</span> After one reset the cue engine hears video, clock, sound and cue-completion events twice; a cue could fire twice.</li><li><span class="ids">B-53</span> After a reset the Display row stays red though the kiosk is alive; Show Scoreboard is refused until Check Now.</li></ul>
+    <div class="mods"><code>backend/src/app.js</code><code>backend/src/server.js</code><code>backend/src/services/systemReset.js</code><code>backend/src/websocket/adminEvents.js</code><code>backend/src/websocket/broadcasts.js</code><code>backend/src/websocket/listenerRegistry.js</code></div>
+  </details>
+</article>
+<article class="card" id="c12">
+  <header class="card-head">
+    <span class="cid">C12</span>
+    <h3>Pack edits reach each part of the kit differently</h3>
+    <div class="chips"><span class="chip">20 findings</span><span class="chip">Questions 6, 5, 8</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> A designer publishes a pack change and does not restart. The TV shows evidence by the new rules while the engine scores by the old. The file the engine serves no longer matches the hash in its own manifest, so a scanner that checks rejects it. A tablet running a different pack is only written to the log; nothing tells the GM. The publish tells the running engine nothing.</p>
+    <p><span class="tag">Why it happens</span> The engine freezes one pack at start, yet its file endpoints serve whatever is on disk and its token endpoint re-reads every call. The TV, tablet and hardware scanner each load it at their own moment and keep it; the phone reads its own copy. No message says it changed.</p>
+    
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  tool[&quot;Config tool&lt;br/&gt;publishes pack&quot;]
+  disk[&quot;Pack on disk&lt;br/&gt;new bytes&quot;]
+  frozen[&quot;Engine rules&lt;br/&gt;frozen at start&quot;]
+  files[&quot;File endpoint&lt;br/&gt;serves disk bytes&quot;]
+  tokens[&quot;Token endpoint&lt;br/&gt;re-reads every call&quot;]
+  tv[&quot;TV&lt;br/&gt;loads at page open&quot;]
+  tab[&quot;Tablet&lt;br/&gt;loads at app start&quot;]
+  tool --&gt;|&quot;writes&quot;| disk
+  tool -.-&gt;|&quot;no message&quot;| frozen
+  disk --&gt;|&quot;read once at start&quot;| frozen
+  disk --&gt;|&quot;live bytes&quot;| files
+  disk --&gt;|&quot;re-read each call&quot;| tokens
+  files --&gt;|&quot;new rules&quot;| tv
+  files --&gt;|&quot;manifest old, bytes new&quot;| tab
+  tab -.-&gt;|&quot;pack mismatch, log only&quot;| frozen
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class frozen,files,tokens,tv,tab fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  tool[&quot;Config tool&lt;br/&gt;publishes pack&quot;]
+  disk[&quot;Pack on disk&lt;br/&gt;new bytes&quot;]
+  view[&quot;Pack view&lt;br/&gt;one version, frozen copy&quot;]
+  files[&quot;File endpoint&lt;br/&gt;serves the frozen copy&quot;]
+  tokens[&quot;Token endpoint&lt;br/&gt;reads the view&quot;]
+  tv[&quot;TV&lt;br/&gt;told pack changed&quot;]
+  tab[&quot;Tablet&lt;br/&gt;compares hash, shows behind&quot;]
+  tool --&gt;|&quot;writes&quot;| disk
+  disk --&gt;|&quot;swap makes new view&quot;| view
+  view --&gt;|&quot;frozen bytes&quot;| files
+  view --&gt;|&quot;one version&quot;| tokens
+  view --&gt;|&quot;pack changed event&quot;| tv
+  view --&gt;|&quot;pack in every snapshot&quot;| tab
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class view owner;</pre></div>
+      <p class="after-note">Candidate (a): one versioned pack view; a swap makes a new view and one pack-changed event; files served from frozen copy. Competing: (b) restart-only packs; (c) clients keep no pack files; (d) per-file apply rules.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> The pack service should own one versioned pack view. Its interface leaks the disk: it checks a path against the frozen inventory, then serves live bytes, and the token service re-reads the file around it, so frozen and live state cross the seam. No locality.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">B-07 / D-04</span> After a pack edit with no restart, endpoints serve new bytes while the engine scores from the old pack; hash mismatches.</li><li><span class="ids">B-28 / D-38</span> Publishing a pack from the config tool tells the running engine nothing; the edit shows only after a restart.</li><li><span class="ids">B-20 / C-08 / D-18</span> A tablet or scanner on a different pack than the engine is only logged; nothing tells the device or GM.</li><li><span class="ids">D-03</span> Before a restart the TV shows evidence by the new rules while the engine scores by the old.</li><li><span class="ids">D-08</span> A new pack reaches a hardware scanner only after a reboot; tokens cannot be re-synced by command.</li><li><span class="ids">D-41</span> A password changed in the tool&#x27;s env editor works at once on the tool, only after restart on the engine.</li></ul>
+    <div class="mods"><code>backend/src/services/packService.js</code><code>backend/src/routes/packRoutes.js</code><code>backend/src/routes/resourceRoutes.js</code><code>backend/src/websocket/socketServer.js</code><code>ALNScanner/src/core/packLoader.js</code><code>config-tool/lib/publish.js</code></div>
+  </details>
+</article></section><section class="family" id="machine"><h2>The show machine is shared</h2><p class="intro">The live engine, the tests, and later the preview engine all use the same machine: the same process files, the same TV, the same audio.</p>
+<article class="card" id="c8">
+  <header class="card-head">
+    <span class="cid">C8</span>
+    <h3>Engine and tests both assume they own the machine</h3>
+    <div class="chips"><span class="chip">41 findings</span><span class="chip">Question 4</span><span class="chip">Blue fixed: W9 P0.3, W10 P2, W10 P3, W10 P4, W10 C1</span><span class="chip live">Seen live</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> On 2026-09-15 a unit test killed the live show&#x27;s video player on blue&#x27;s tree. In this tree the same run kills the live engine&#x27;s VLC signal monitor and overwrites its process files. A killed engine leaves a full-screen player behind. Twenty-one test suites open a browser on the show TV. The operator&#x27;s health script says VLC not found while the player runs.</p>
+    <p><span class="tag">Why it happens</span> The engine names and ends its helper programs by fixed file names and by command-line patterns over the whole machine, written as the only engine on the box. The test layers adopt whatever display, sound server and Bluetooth exist; that a layer is safe is claimed in comments, never checked.</p>
+    <p class="live-note"><span class="tag">Seen live</span> A unit test killed the live video player on 2026-09-15; a kill guard logged the show box out on 2026-09-18.</p>
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  live[&quot;Live engine&lt;br/&gt;runs the show&quot;]
+  pids[&quot;Fixed process files&lt;br/&gt;shared by every engine&quot;]
+  vlc[&quot;Live VLC&lt;br/&gt;on the show TV&quot;]
+  mon[&quot;Live signal monitor&quot;]
+  test[&quot;Unit test run&lt;br/&gt;builds a real supervisor&quot;]
+  reaper[&quot;Leftover reaper&lt;br/&gt;kills the pid on file&quot;]
+  suites[&quot;Integration suites&lt;br/&gt;real display, real sound&quot;]
+  kiosk[&quot;Show TV browser&quot;]
+  live --&gt;|&quot;writes pids&quot;| pids
+  live --&gt;|&quot;starts&quot;| vlc
+  live --&gt;|&quot;starts&quot;| mon
+  test --&gt;|&quot;runs&quot;| reaper
+  pids --&gt;|&quot;live pids&quot;| reaper
+  reaper --&gt;|&quot;kills&quot;| mon
+  reaper -.-&gt;|&quot;kills after the name fix&quot;| vlc
+  test --&gt;|&quot;overwrites&quot;| pids
+  suites --&gt;|&quot;open browser on&quot;| kiosk
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class pids,reaper,suites fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  ident[&quot;Runtime identity&lt;br/&gt;one run directory and prefix&quot;]
+  live[&quot;Live engine&lt;br/&gt;live prefix&quot;]
+  test[&quot;Unit test run&lt;br/&gt;test prefix&quot;]
+  livePids[&quot;Live process files&lt;br/&gt;under the live prefix&quot;]
+  testPids[&quot;Test process files&lt;br/&gt;under the test prefix&quot;]
+  vlc[&quot;Live VLC&lt;br/&gt;on the show TV&quot;]
+  mon[&quot;Live signal monitor&quot;]
+  reaper[&quot;Reaper&lt;br/&gt;kills only own children&quot;]
+  ident --&gt;|&quot;names&quot;| live
+  ident --&gt;|&quot;names&quot;| test
+  live --&gt;|&quot;writes pids&quot;| livePids
+  test --&gt;|&quot;writes pids&quot;| testPids
+  live --&gt;|&quot;starts&quot;| vlc
+  live --&gt;|&quot;starts&quot;| mon
+  test --&gt;|&quot;runs&quot;| reaper
+  reaper -.-&gt;|&quot;never reaches&quot;| mon
+  reaper -.-&gt;|&quot;never reaches&quot;| vlc
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class ident owner;</pre></div>
+      <p class="after-note">Candidate (a): every engine instance takes a run directory and name prefix from one place; machine-wide kill patterns go. Competing: (b) outside supervisor, (c) throwaway container for tests, (d) per-layer capability lists, (e) singleton lock.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> A runtime-identity module should own which processes, files and windows belong to this engine instance. Today no such seam exists: each service module hard-codes a shared process file, and the kiosk and sound-server modules kill by machine-wide pattern, so identity has no locality.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">A-75 / D-64 / B-63 / D-52</span> A unit test killed the live video player on blue&#x27;s tree; here it kills the signal monitor and overwrites process files.</li><li><span class="ids">A-64 / D-70</span> Leftover cleanup looks for cvlc but the process is vlc, so a killed engine leaves a full-screen player.</li><li><span class="ids">A-79 / D-54 / D-69</span> Twenty-one suites start a real full-screen browser on the show TV pointed at the live port.</li><li><span class="ids">D-72</span> Starting any engine kills every pactl subscribe process of the user, including the live engine&#x27;s sink monitor.</li><li><span class="ids">X-05</span> The health script says VLC not found while the player runs, because it looks for cvlc.</li><li><span class="ids">X-07</span> Fixing the reaper&#x27;s name alone brings blue&#x27;s unit-test kill back; the per-run process folder must land first.</li></ul>
+    <div class="mods"><code>backend/src/utils/processMonitor.js</code><code>backend/src/services/vlcMprisService.js</code><code>backend/src/services/musicService.js</code><code>backend/src/utils/displayDriver.js</code><code>backend/src/services/audioRoutingService.js</code><code>backend/tests/unit/services/vlcMprisService.test.js</code></div>
+  </details>
+</article></section><section class="family" id="answers"><h2>One question, several answers</h2><p class="intro">Inside one part of the engine, the same question is answered in several places, each by its own rule, so the answers can disagree.</p>
+<article class="card" id="c11">
+  <header class="card-head">
+    <span class="cid">C11</span>
+    <h3>Several places answer the same question, each differently</h3>
+    <div class="chips"><span class="chip">29 findings</span><span class="chip">Question 5</span><span class="chip">Blue fixed: W3, W5, W6</span><span class="chip live">Seen live</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> Is a video playing has seven answers. A paused video counts as free, so a player is told their video was triggered while it waits, and releasing a held video plays over the paused one. Release All can stop at the first refused video. Music stays ducked after the queue is cleared. The downloaded report&#x27;s two totals disagree.</p>
+    <p><span class="tag">Why it happens</span> Questions such as is a video playing, which teams exist and may the GM scan now are answered by several functions or stored values, each with its own rule and write path, so they disagree at the edges. No rule says which answerer every reader must use.</p>
+    <p class="live-note"><span class="tag">Seen live</span> The display&#x27;s false healthy Check Now was reproduced in-process by the recovered review.</p>
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  vlc[&quot;VLC&lt;br/&gt;video paused&quot;]
+  cur[&quot;Queue current item&lt;br/&gt;paused is not playing&quot;]
+  accept[&quot;Can accept a video&lt;br/&gt;reads paused as free&quot;]
+  run[&quot;Queue run&lt;br/&gt;plays next over paused&quot;]
+  duck[&quot;Ducking&lt;br/&gt;own count of playing videos&quot;]
+  clear[&quot;Clear queue&lt;br/&gt;sends no completed&quot;]
+  player[&quot;Player scanner&lt;br/&gt;told video triggered&quot;]
+  music[&quot;Music&lt;br/&gt;stays ducked&quot;]
+  vlc --&gt;|&quot;paused&quot;| cur
+  cur --&gt;|&quot;not playing&quot;| accept
+  accept --&gt;|&quot;available&quot;| player
+  cur --&gt;|&quot;not playing&quot;| run
+  run --&gt;|&quot;next video over paused&quot;| vlc
+  clear -.-&gt;|&quot;no event&quot;| duck
+  duck --&gt;|&quot;still counts one&quot;| music
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class cur,accept,run,duck fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  vlc[&quot;VLC&lt;br/&gt;video paused&quot;]
+  res[&quot;Video playing resolver&lt;br/&gt;one verdict with reason&quot;]
+  accept[&quot;Can accept a video&quot;]
+  run[&quot;Queue run&quot;]
+  duck[&quot;Ducking&quot;]
+  clear[&quot;Clear queue&quot;]
+  player[&quot;Player scanner&lt;br/&gt;told to wait&quot;]
+  music[&quot;Music&lt;br/&gt;restored&quot;]
+  vlc --&gt;|&quot;paused&quot;| res
+  res --&gt;|&quot;busy, paused&quot;| accept
+  accept --&gt;|&quot;wait&quot;| player
+  res --&gt;|&quot;busy, paused&quot;| run
+  clear --&gt;|&quot;asks&quot;| res
+  res --&gt;|&quot;nothing playing&quot;| duck
+  duck --&gt;|&quot;restore&quot;| music
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class res owner;</pre></div>
+      <p class="after-note">Candidate (a): one resolver per question, called by every reader, returns verdict, reason and door. Competing: (b) status record per service; (c) counts derived on read; (d) shared phase words; (e) one accessor per fact.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> One resolver module per question should own the verdict behind a one-call interface. Today there is no such seam: the queue, the command gate and the ducking count each implement &#x27;is a video playing&#x27; by their own rule, so that knowledge has no locality.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">B-39</span> Is a video playing has seven answers; a paused video counts as not playing for four of them.</li><li><span class="ids">B-40</span> Held cues and held videos live in two stores; Release All can stop at the first refused video.</li><li><span class="ids">B-45</span> Ducking keeps its own count of playing videos; music stays ducked after the queue is cleared.</li><li><span class="ids">C-25</span> The GM&#x27;s permission to scan is read from a local copy; after a reload it blocks scans in an active game.</li><li><span class="ids">C-24</span> Which teams exist has several answers; a second GM adding the same name gets an error though the team exists.</li><li><span class="ids">A-08</span> The downloaded report has two different final totals per team: the timeline leaves out group bonuses, the standings include them.</li></ul>
+    <div class="mods"><code>backend/src/services/videoQueueService.js</code><code>backend/src/services/commandExecutor.js</code><code>backend/src/services/cueEngineService.js</code><code>backend/src/websocket/broadcasts.js</code><code>backend/src/services/musicService.js</code><code>ALNScanner/src/app/domains/gameOps.js</code></div>
+  </details>
+</article></section><section class="family" id="audience"><h2>Who is connected, and what each one receives</h2><p class="intro">The engine sends everything to every connection and asks few of them who they are.</p>
+<article class="card" id="c13">
+  <header class="card-head">
+    <span class="cid">C13</span>
+    <h3>The engine does not know who is connected</h3>
+    <div class="chips"><span class="chip">24 findings</span><span class="chip">Questions 7, 1</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> A tablet loses Wi-Fi and reloads; the engine still holds its old socket under the same station name and refuses the new one for up to about 85 seconds. Two tablets started together pick the same station name from an open list. The TV joins the GM room, receives every transaction and all ten service domains, and filters on its own side.</p>
+    <p><span class="tag">Why it happens</span> Whether a credential is asked for, and what a station is called, comes from a word the device sends or a route&#x27;s default. Every socket event and route checks separately; none says who its audience is, so every socket gets everything and reads need no login.</p>
+    
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  tab[&quot;GM tablet&lt;br/&gt;types its name&quot;]
+  tv[&quot;TV page&lt;br/&gt;claims to be a GM&quot;]
+  any[&quot;Any device&lt;br/&gt;says it is not GM&quot;]
+  hs[&quot;Handshake&lt;br/&gt;token asked only of GM&quot;]
+  http[&quot;State route&lt;br/&gt;no login asked&quot;]
+  room[&quot;GM room&lt;br/&gt;one audience for all&quot;]
+  all[&quot;Every transaction&lt;br/&gt;all ten domains&quot;]
+  whole[&quot;Whole game state&lt;br/&gt;on request&quot;]
+  tab --&gt;|&quot;reads free names&quot;| http
+  tab --&gt;|&quot;name plus token&quot;| hs
+  tv --&gt;|&quot;token minted per serve&quot;| hs
+  any --&gt;|&quot;no token&quot;| hs
+  hs --&gt;|&quot;every token holder joins&quot;| room
+  room --&gt;|&quot;same snapshot, same pushes&quot;| all
+  hs --&gt;|&quot;answers any sync request&quot;| whole
+  http --&gt;|&quot;answers anyone&quot;| any
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class hs,http,room fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  tab[&quot;GM tablet&lt;br/&gt;presents credential&quot;]
+  tv[&quot;TV page&lt;br/&gt;presents credential&quot;]
+  any[&quot;Any device&lt;br/&gt;no credential&quot;]
+  hs[&quot;Handshake&lt;br/&gt;verified tier every socket&quot;]
+  roles[&quot;Role table&lt;br/&gt;events and keys per role&quot;]
+  http[&quot;State route&lt;br/&gt;checks a function&quot;]
+  gmroom[&quot;GM audience&lt;br/&gt;transactions, domains&quot;]
+  tvroom[&quot;Display audience&lt;br/&gt;scores, evidence, clock&quot;]
+  tab --&gt;|&quot;tier gm&quot;| hs
+  tv --&gt;|&quot;tier display&quot;| hs
+  hs -.-&gt;|&quot;refused&quot;| any
+  hs --&gt;|&quot;role&quot;| roles
+  roles --&gt;|&quot;sends to audience&quot;| gmroom
+  roles --&gt;|&quot;sends to audience&quot;| tvroom
+  roles --&gt;|&quot;function per route&quot;| http
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class roles owner;</pre></div>
+      <p class="after-note">Candidate (a): an audience table per event and route, every send through that table, a verified tier at every handshake. Competing: (b) split public and operator surfaces; (c) engine-issued identities; (d) read tiers per route.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> A role-table module should own who each connection is and what it may receive. Today the handshake seam leaks: it trusts a self-declared word, and each route and socket event checks on its own, so access rules have no locality.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">B-04 / B-27 / D-27 / C-20</span> Anyone on the kit network fetches the whole game state; a socket claiming not to be a GM gets it too.</li><li><span class="ids">B-89 / D-25 / D-26</span> The TV sits in the GM room, receives every transaction and all ten service domains, and filters on its own side.</li><li><span class="ids">B-70 / C-19</span> Two tablets reading the open name list before connecting pick the same station name; the second is refused.</li><li><span class="ids">B-24 / C-59</span> A tablet that reloads after losing Wi-Fi cannot replace its own stale socket for up to about 85 seconds.</li><li><span class="ids">B-71 / D-32</span> An ESP32 is listed as a web player scanner because its health poll sends no type.</li><li><span class="ids">B-90 / D-29</span> Displays get no device record and share one id, so the engine cannot count connected TVs.</li></ul>
+    <div class="mods"><code>backend/src/websocket/socketServer.js</code><code>backend/src/websocket/gmAuth.js</code><code>backend/src/websocket/syncHelpers.js</code><code>backend/src/routes/healthRoutes.js</code><code>backend/public/scoreboard.html</code><code>ALNScanner/src/ui/connectionWizard.js</code></div>
+  </details>
+</article></section><section class="family" id="checks"><h2>Checks that do not exist (no question covers these)</h2><p class="intro">Each of these three is a missing check: that two parts agree on the names and shapes they share, that the deployed pieces match, that a passing test proves the real path. None of the nine questions covers them. Question 18 asks whether the pass should take them on.</p>
+<article class="card" id="c14">
+  <header class="card-head">
+    <span class="cid">C14</span>
+    <h3>Names joining two places are kept by hand</h3>
+    <div class="chips"><span class="chip">41 findings</span><span class="chip">No question covers it (nearest: 5)</span><span class="chip">Blue fixed: W2, W5</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> A GM opens Team Details: the score box is wrong, GM adjustments never appear, completed groups read In Progress with a $0 bonus, while the scoreboard screen on the same tablet shows the real total. Game Activity shows Unknown, no stars, $0 for a token no player scanned first. The video Playing badge never appears, because its element was never in the page.</p>
+    <p><span class="tag">Why it happens</span> A screen reads a property the object lacks; a renderer looks up an element the page never had; a module listens for an event nothing sends; the contract lists events nobody emits. Each name is written on both sides, and a wrong side yields nothing instead of an error.</p>
+    
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  td[&quot;Team Details screen&lt;br/&gt;wrong score&quot;]
+  fac[&quot;Data facade&lt;br/&gt;no backendScores field&quot;]
+  strat[&quot;Networked storage&lt;br/&gt;holds backendScores&quot;]
+  vr[&quot;Video renderer&lt;br/&gt;looks up badge id&quot;]
+  page[&quot;GM page&lt;br/&gt;no badge element&quot;]
+  lis[&quot;Tablet listener&lt;br/&gt;waits for state event&quot;]
+  eng[&quot;Engine&lt;br/&gt;never sends it&quot;]
+  td --&gt;|&quot;reads field, gets undefined&quot;| fac
+  fac -.-&gt;|&quot;field never delegated&quot;| strat
+  vr --&gt;|&quot;finds nothing, no error&quot;| page
+  eng -.-&gt;|&quot;no sender&quot;| lis
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class td,vr,lis fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  check[&quot;Join check&lt;br/&gt;at start-up and in tests&quot;]
+  vr[&quot;Video renderer&lt;br/&gt;looks up badge id&quot;]
+  page[&quot;GM page&lt;br/&gt;element ids&quot;]
+  lis[&quot;Tablet listener&lt;br/&gt;waits for state event&quot;]
+  eng[&quot;Engine&lt;br/&gt;event senders&quot;]
+  td[&quot;Team Details screen&quot;]
+  fac[&quot;Data facade&lt;br/&gt;no backendScores field&quot;]
+  vr --&gt;|&quot;id it looks up&quot;| check
+  check --&gt;|&quot;must exist&quot;| page
+  lis --&gt;|&quot;event it hears&quot;| check
+  check --&gt;|&quot;must have a sender&quot;| eng
+  check -.-&gt;|&quot;throws on a miss&quot;| vr
+  td -.-&gt;|&quot;field read, needs candidate b&quot;| fac
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class check owner;</pre></div>
+      <p class="after-note">Candidate (a): a check at start-up and in tests that every looked-up id, listened event and subscribed message has one definition. Competing: (b) typed facade interfaces; (c) checked shapes; (d) wire or delete half-built paths.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> A join-check module should own every name two modules share, so a missing side fails at load. Today the facade-strategy seam leaks: Team Details reads a field only the strategy adapter holds, the facade never exposes it, and the miss is silent.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">A-03 / A-04 / C-06</span> Team Details reads a field the facade lacks and a method no strategy defines; wrong score, groups always In Progress.</li><li><span class="ids">A-07 / C-15</span> Game Activity reads token fields off the lookup&#x27;s wrapper, so a GM-claimed token shows Unknown, no stars, $0.</li><li><span class="ids">A-28</span> The video Playing, Paused, Idle badge never renders: its element was never in the page.</li><li><span class="ids">A-62, A-66</span> The cue timeline waits for a skipped field nothing sends and correlates videos by a field the pack lacks.</li><li><span class="ids">B-06, B-50, B-67</span> The contract lists events nobody sends, misses ones the engine emits, and disagrees with itself on the music push.</li></ul>
+    <div class="mods"><code>ALNScanner/src/ui/renderers/GameOpsRenderer.js</code><code>ALNScanner/src/core/unifiedDataManager.js</code><code>ALNScanner/src/core/storage/NetworkedStorage.js</code><code>ALNScanner/src/core/gameActivityBuilder.js</code><code>ALNScanner/src/network/orchestratorClient.js</code><code>backend/contracts/asyncapi.yaml</code></div>
+  </details>
+</article>
+<article class="card" id="c15">
+  <header class="card-head">
+    <span class="cid">C15</span>
+    <h3>The deployed game is many parts nothing compares</h3>
+    <div class="chips"><span class="chip">12 findings</span><span class="chip">No question covers it</span><span class="chip live">Seen live</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> Between shows, a rollback moves the parent checkout but no submodule backwards, and pm2 restart keeps serving the pre-rollback scanner build, so a bad rollback reaches the next show. A machine built from the tree&#x27;s own documents pairs a speaker that connects with no audio profile, because the documents carry the wrong Bluetooth role.</p>
+    <p><span class="tag">Why it happens</span> The show machine is a parent checkout, four submodules on main, a scanner build folder, hand-copied media, host rules, hooks and program names fixed to one OS release. Each part moves by its own hand-run step and nothing compares them afterwards, so a half-applied change goes unnoticed.</p>
+    <p class="live-note"><span class="tag">Seen live</span> Blue hit a half-applied rollback, a pre-rollback scanner build after pm2 restart, and a speaker with no audio profile.</p>
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  roll[&quot;Rollback&lt;br/&gt;check out older commit&quot;]
+  parent[&quot;Parent checkout&lt;br/&gt;moves back&quot;]
+  subs[&quot;Four submodules&lt;br/&gt;merge setting, stay forward&quot;]
+  pm2[&quot;pm2 restart&lt;br/&gt;no build step&quot;]
+  dist[&quot;Scanner build folder&lt;br/&gt;pre-rollback code&quot;]
+  serve[&quot;Engine serves&lt;br/&gt;scanner symlink&quot;]
+  media[&quot;Media on disk&lt;br/&gt;copied by hand&quot;]
+  roll --&gt;|&quot;moves&quot;| parent
+  roll -.-&gt;|&quot;does not move&quot;| subs
+  roll --&gt;|&quot;then&quot;| pm2
+  pm2 -.-&gt;|&quot;skips build&quot;| dist
+  dist --&gt;|&quot;served as is&quot;| serve
+  media -.-&gt;|&quot;tokens may point at nothing&quot;| serve
+  parent -.-&gt;|&quot;nothing compares the parts&quot;| subs
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class subs,dist fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  deploy[&quot;One deploy command&lt;br/&gt;performs every step&quot;]
+  parent[&quot;Parent checkout&quot;]
+  subs[&quot;Four submodules&lt;br/&gt;pinned&quot;]
+  dist[&quot;Scanner build folder&lt;br/&gt;rebuilt&quot;]
+  media[&quot;Media on disk&quot;]
+  boot[&quot;Boot check&lt;br/&gt;compares pack, build, pins&quot;]
+  report[&quot;Disagreement reported&lt;br/&gt;before the show&quot;]
+  deploy --&gt;|&quot;moves&quot;| parent
+  deploy --&gt;|&quot;moves&quot;| subs
+  deploy --&gt;|&quot;builds&quot;| dist
+  deploy --&gt;|&quot;copies&quot;| media
+  parent --&gt;|&quot;pins&quot;| boot
+  subs --&gt;|&quot;pins&quot;| boot
+  dist --&gt;|&quot;build id&quot;| boot
+  boot --&gt;|&quot;any mismatch&quot;| report
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class boot owner;</pre></div>
+      <p class="after-note">Candidate (a): one deploy command performs every step, and a boot check compares pack hash, scanner build id and submodule pins. No competing candidate; the check adds host program names and the kit certificate.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> A deploy-check module should own what is installed: pack hash, scanner build id, submodule pins, behind one boot-time interface. Today no module owns it: each part is moved by its own hand-run step, so the seam between source and running machine leaks unchecked.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">A-91</span> Rolling back with git submodule update --force moves no submodule backwards under the merge setting.</li><li><span class="ids">A-92</span> pm2 restart skips the build, so the GM scanner keeps serving the pre-rollback code.</li><li><span class="ids">A-88 / X-03</span> The tree&#x27;s own documents give the Bluetooth role blue found wrong, so a new machine pairs a silent speaker.</li><li><span class="ids">A-95</span> The token sync cannot carry media; copied by hand first, or tokens point at nothing.</li><li><span class="ids">B-98, B-100</span> Program names and install commands are fixed to one OS release; a new machine logs warnings or refuses pip.</li><li><span class="ids">D-34</span> The ESP32 checks no certificate at all, because the kit&#x27;s self-signed certificate is pinned and distributed nowhere.</li></ul>
+    <div class="mods"><code>.gitmodules</code><code>backend/package.json</code><code>backend/scripts/build-scanner.sh</code><code>DEPLOYMENT_GUIDE.md</code><code>backend/src/services/packService.js</code><code>arduino-cyd-player-scanner/ALNScanner_v5/services/OrchestratorService.h</code></div>
+  </details>
+</article>
+<article class="card" id="c16">
+  <header class="card-head">
+    <span class="cid">C16</span>
+    <h3>A green test run proves nothing about the show</h3>
+    <div class="chips"><span class="chip">23 findings</span><span class="chip">No question covers it</span><span class="chip live">Seen live</span></div>
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> Nothing shows at the show; this is why the other fifteen reached one. Unit tests stayed green while Team Details showed the wrong score, because their fake facade had the field the real one lacks. A delete step in an end-to-end flow had been silently skipping on a selector that never matched. Blue&#x27;s last full run skipped 62 tests, and group completion has no test on real content.</p>
+    <p><span class="tag">Why it happens</span> Fakes are written by hand with nothing comparing them to the real classes. Steps that find no element, or check only that no error appeared, pass. Every test engine runs under a flag that changes what Reset System does, so no layer runs the reset the show runs.</p>
+    <p class="live-note"><span class="tag">Seen live</span> Blue&#x27;s last full run skipped 62 tests; a delete step had been skipping silently in blue&#x27;s end-to-end runs.</p>
+  </div>
+  <div class="diagrams">
+    <figure class="dia before">
+      <figcaption>Today</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  real[&quot;Real facade&lt;br/&gt;no backendScores field&quot;]
+  fake[&quot;Hand-written fake&lt;br/&gt;has backendScores&quot;]
+  unit[&quot;Unit test&lt;br/&gt;green&quot;]
+  screen[&quot;Team Details screen&lt;br/&gt;wrong score&quot;]
+  sel[&quot;Page object selector&lt;br/&gt;never matches&quot;]
+  e2e[&quot;End-to-end flow&lt;br/&gt;delete step skips, green&quot;]
+  flag[&quot;Test flag on every engine&lt;br/&gt;reset removes listeners&quot;]
+  prod[&quot;Show machine&lt;br/&gt;reset removes nothing&quot;]
+  fake --&gt;|&quot;stands in for&quot;| real
+  unit --&gt;|&quot;tests against&quot;| fake
+  unit -.-&gt;|&quot;nothing compares&quot;| real
+  real --&gt;|&quot;renders&quot;| screen
+  sel --&gt;|&quot;finds no card, no failure&quot;| e2e
+  flag -.-&gt;|&quot;never tested as run&quot;| prod
+  classDef fault stroke:#dc2626,stroke-width:3px;
+  class fake,sel,flag fault;</pre></div>
+    </figure>
+    <figure class="dia after">
+      <figcaption>Candidate, not decided</figcaption>
+      <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
+flowchart TD
+  real[&quot;Real facade&lt;br/&gt;declared surface&quot;]
+  fake[&quot;Fake built from surface&lt;br/&gt;same fields and methods&quot;]
+  cmp[&quot;Shape check&lt;br/&gt;fails on a missing member&quot;]
+  unit[&quot;Unit test&lt;br/&gt;red when shapes disagree&quot;]
+  sel[&quot;Page object selector&lt;br/&gt;finds no card&quot;]
+  e2e[&quot;End-to-end flow&lt;br/&gt;delete step skips&quot;]
+  skips[&quot;Skip list&lt;br/&gt;printed every run&quot;]
+  real --&gt;|&quot;surface&quot;| cmp
+  fake --&gt;|&quot;surface&quot;| cmp
+  cmp --&gt;|&quot;result&quot;| unit
+  sel --&gt;|&quot;skipped step&quot;| e2e
+  e2e --&gt;|&quot;named, not silent&quot;| skips
+  classDef owner stroke:#0f766e,stroke-width:3px;
+  class real owner;</pre></div>
+      <p class="after-note">Candidate (a): fakes built from the real class surface, checked for missing members; skips printed as a list. Competing: (b) one proof test per delivery path on the rig; (c) docs generated from tests.</p>
+    </figure>
+  </div>
+  <p class="design"><span class="tag">In design terms</span> A test&#x27;s fake is an adapter, so the real class should own its shape and the fake must satisfy that interface. Today each fake is hand-written and checked against nothing; the seam leaks, and no test crosses one path from authority to screen.</p>
+  <details>
+    <summary>The findings behind it, and the code they live in</summary>
+    <ul class="examples"><li><span class="ids">A-51</span> Unit-test fakes drifted from the real classes, so tests stayed green while Team Details and Game Activity were wrong.</li><li><span class="ids">A-83</span> A page-object selector never matched the Team Details cards, so a delete step had been silently skipping.</li><li><span class="ids">A-82</span> Blue&#x27;s last full run skipped 62 tests; group completion has no end-to-end test on real content.</li><li><span class="ids">X-04</span> The listener registry removes listeners only under the test flag, so no layer runs the Reset System the show runs.</li><li><span class="ids">D-87</span> Not one screen image is checked in either end-to-end suite; no baseline exists to compare against.</li><li><span class="ids">D-47</span> Parent CI never runs several suites; the config tool&#x27;s own workflow never runs from this repository.</li></ul>
+    <div class="mods"><code>ALNScanner/tests/unit/ui/uiManager.test.js</code><code>ALNScanner/tests/unit/core/gameActivityBuilder.test.js</code><code>backend/tests/e2e/helpers/page-objects/GMScannerPage.js</code><code>backend/src/websocket/listenerRegistry.js</code><code>backend/jest.config.base.js</code><code>.github/workflows/test.yml</code></div>
+  </details>
+</article></section>
+
+<section aria-labelledby="aside">
+  <h2 id="aside">Set aside, 21 findings</h2>
+  <p class="intro" style="margin:8px 0 14px">These need no rule. Each still has a home.</p>
+  <div class="tablewrap"><table class="aside"><tbody><tr><th scope="row">Already fixed in this tree</th><td class="num">7</td><td>Report cells escaped; the health word &quot;dormant&quot; in both contracts and on the tablet; the harness-minimum review items; a routing snapshot guard; the environment template&#x27;s bus variables (green&#x27;s follow-ups).</td></tr><tr><th scope="row">Plain fixes for phase 2</th><td class="num">5</td><td>A name like &quot;constructor&quot; read as a real key in plain-object lookups; the web scanner loading its QR library from the internet; a test helper that switches certificate checks off; standalone mode&#x27;s red &quot;Disconnected&quot; pill.</td></tr><tr><th scope="row">Code-structure notes, no game symptom</th><td class="num">2</td><td>A second wrapper for running programs in the kiosk driver; the sound panel written inline instead of by its own renderer.</td></tr><tr><th scope="row">No fault</th><td class="num">2</td><td>Two equal snapshots sent on connect; planned config-tool functions not built yet.</td></tr><tr><th scope="row">A question for you</th><td class="num">1</td><td>A rejected or duplicate GM scan is recorded nowhere. This became question 19.</td></tr><tr><th scope="row">Documents</th><td class="num">4</td><td>Plans, briefs and two CLAUDE.md files that disagree with the code. Decision 20: documents are fixed as we go.</td></tr></tbody></table></div>
+</section>
+
+<section class="questions" id="your-questions" aria-labelledby="qhead">
+  <h2 id="qhead">Your questions</h2>
+  <div class="q">
+    <h3>17. Is this the right list?</h3>
+    <p>Two things would change it: a fault you have seen at a show that no card explains, or two cards that are really the same problem. If you see neither, the list stands and step 2 can start.</p>
+  </div>
+  <div class="q">
+    <h3>18. Should the pass take on C14, C15 and C16?</h3>
+    <ol type="a">
+      <li>Add three questions, 10 to 12, so each of these causes gets a rule and a proof test like the other nine.</li>
+      <li>Add C14 and C16 as questions. C15 goes to the pre-show check that phase 2 rebuilds anyway, which would check the deployed pieces before a show.</li>
+      <li>Keep nine questions. All three become working method for phase 2 instead of rules.</li>
+    </ol>
+    <p class="rec">Recommendation: a. The pass ends when every rule's test passes on the rig, and C16 is the risk that those tests pass without proving the real path, so it needs a rule of its own. C15 is the one that bites on a show night: a rollback that quietly keeps serving the new scanner build.</p>
+  </div>
+  <p class="muted">Questions 19 and 21 are in the chat. Question 20 is decided: no rule for documents, and documents are fixed as we go.</p>
+</section>
+
+<footer>
+  <p>Built from <code>docs/plans/architecture-pass/2026-10-30-cause-analysis.md</code>, its four reader sheets and its two check files. The check held 632 claims, corrected 78, struck 34 and found 7 new faults. The cards were drawn from that analysis on 2026-10-31 and checked against the code.</p>
+</footer>
+</div>

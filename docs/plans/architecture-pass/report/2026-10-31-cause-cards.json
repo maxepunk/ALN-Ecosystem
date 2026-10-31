@@ -1,0 +1,911 @@
+{
+  "cards": [
+    {
+      "id": "C1",
+      "title": "Each tablet keeps its own list of claimed tokens",
+      "atAShow": "A GM deletes a transaction. The engine frees the token, but every tablet that stays connected keeps refusing it as already scanned until someone reloads. A tablet that drops its connection during Reset All Scores comes back still holding the old claims, and refuses tokens the engine has cleared.",
+      "whyItHappens": "The engine decides which tokens are claimed, but each tablet holds a copy that only grows: added on scan, merged on reconnect, removed only when a scan fails. The engine's own messages also skip facts changed by another path, such as a team created by a scan.",
+      "designTerms": "The engine's transaction service should own the claimed-token fact; tablets should hold only its copy. Today the tablet's networked storage module updates its copy through one hand-wired handler per message, so the seam leaks: any path without a handler leaves the copy stale. No locality.",
+      "modules": [
+        "backend/src/services/transactionService.js",
+        "backend/src/websocket/broadcasts.js",
+        "ALNScanner/src/network/messageRouters.js",
+        "ALNScanner/src/core/storage/NetworkedStorage.js",
+        "ALNScanner/src/core/unifiedDataManager.js",
+        "backend/public/scoreboard.html"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  eng[\"Engine<br/>decides claims\"]\n  del[\"Delete message<br/>transaction id, one team row\"]\n  snap[\"Reconnect snapshot<br/>this tablet's claims only\"]\n  tabA[\"Tablet A<br/>own claimed list\"]\n  tabB[\"Tablet B<br/>own claimed list\"]\n  gm[\"GM rescan<br/>refused as already scanned\"]\n  eng -->|\"frees the token\"| del\n  del -->|\"removes transaction, keeps claim\"| tabA\n  del -->|\"removes transaction, keeps claim\"| tabB\n  eng -->|\"on reconnect\"| snap\n  snap -->|\"union, never removes\"| tabB\n  tabB -->|\"stale claim\"| gm\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class del,snap,tabA,tabB fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  eng[\"Engine<br/>decides claims\"]\n  msg[\"Claim list message<br/>whole list on any change\"]\n  apply[\"One apply function<br/>replaces the copy\"]\n  tabA[\"Tablet A<br/>engine list plus own pending\"]\n  tabB[\"Tablet B<br/>engine list plus own pending\"]\n  gm[\"GM rescan<br/>accepted\"]\n  eng -->|\"delete, reset, reconnect\"| msg\n  msg -->|\"same path every time\"| apply\n  apply -->|\"replace\"| tabA\n  apply -->|\"replace\"| tabB\n  tabB -->|\"freed token\"| gm\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eng owner;",
+        "note": "Candidate (a): tablets hold the engine's claim list plus their own unconfirmed scans, replaced by one function. Competing: (b) version per fact; (c) no tablet list; (d) one write rule; (e) per-domain change pushes."
+      },
+      "examples": [
+        {
+          "ids": "A-05 / C-04",
+          "text": "GM deletes a transaction; every connected tablet keeps refusing the token as already scanned until it reloads."
+        },
+        {
+          "ids": "A-06 / C-30",
+          "text": "A tablet that dropped its connection during Reset All Scores reconnects with its stale claims and refuses cleared tokens."
+        },
+        {
+          "ids": "A-24 / C-29",
+          "text": "After a reload a tablet knows only its own claims; a rescan of another station's token shows success, then rejection."
+        },
+        {
+          "ids": "B-13",
+          "text": "A delete recomputes every team's score but the message carries one team's row; latent today."
+        },
+        {
+          "ids": "B-19",
+          "text": "A scan for a team nobody added creates the team silently; no team message reaches any tablet."
+        },
+        {
+          "ids": "A-25 / C-01",
+          "text": "Session Details freezes Teams and GM Stations at the last full snapshot, because one message merges and one replaces."
+        }
+      ],
+      "blueFixes": [
+        "W1"
+      ],
+      "questions": [
+        1,
+        8
+      ],
+      "findings": 19,
+      "seenLive": ""
+    },
+    {
+      "id": "C2",
+      "title": "Service health and service state travel on separate paths",
+      "atAShow": "If Home Assistant or MPD is down when the engine starts, the lighting and music panels stay disabled all night. If MPD dies mid-show, the health row turns red alone while the music card keeps its playing look and the progress bar keeps moving. A volume change on one tablet's audio panel never reaches the other tablets' sliders.",
+      "whyItHappens": "Each venue service keeps two facts: its health in a central registry and its own state in its own record. The engine pushes the health row when health changes, and pushes a service's state only on a hand-written list of that service's events. An outage is on no list.",
+      "designTerms": "Each service module should own one record carrying health and state. Today the seam leaks: the broadcast module re-implements each service's change set as a per-domain event list, so the interface callers must know is the full event list, and locality is lost.",
+      "modules": [
+        "backend/src/websocket/broadcasts.js",
+        "backend/src/services/serviceHealthRegistry.js",
+        "backend/src/services/musicService.js",
+        "backend/src/services/lightingService.js",
+        "backend/src/services/audioRoutingService.js",
+        "ALNScanner/src/admin/MonitoringDisplay.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  mpd[\"MPD<br/>dies mid-show\"]\n  mus[\"Music service<br/>own state record\"]\n  reg[\"Health registry<br/>one row per service\"]\n  healthPush[\"Health row push<br/>on health change\"]\n  lists[\"Push lists<br/>hand-written per service\"]\n  statePush[\"Music state push<br/>on music events only\"]\n  panel[\"GM panel<br/>music card plus health row\"]\n  mpd -->|\"exit\"| mus\n  mus -->|\"reports down\"| reg\n  reg -->|\"health changed\"| healthPush\n  healthPush -->|\"red row\"| panel\n  mus -.->|\"no music event\"| lists\n  lists -.->|\"no push\"| statePush\n  statePush -.->|\"card keeps playing look\"| panel\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class lists,statePush fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  mpd[\"MPD<br/>dies mid-show\"]\n  mus[\"Music service<br/>one record: health and state\"]\n  push[\"One push<br/>whole record on any change\"]\n  panel[\"GM panel<br/>card and row change together\"]\n  mpd -->|\"exit\"| mus\n  mus -->|\"health or state changed\"| push\n  push -->|\"same update\"| panel\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class mus owner;",
+        "note": "Candidate (a): one record per service carrying health and state, pushed whole when either changes. Competing: (b) derive the push table from the registry; (c) the tablet joins the two records on read."
+      },
+      "examples": [
+        {
+          "ids": "A-11",
+          "text": "Lighting panel stays unavailable all night if Home Assistant was down at engine start; nothing re-sends its state."
+        },
+        {
+          "ids": "A-12 / B-33 / C-43",
+          "text": "Music panel stays disabled if MPD was down at connect; the progress bar keeps moving after MPD dies."
+        },
+        {
+          "ids": "A-17",
+          "text": "A per-stream volume change on one tablet never reaches other tablets' sliders; the audio push list names no volume event."
+        },
+        {
+          "ids": "A-102",
+          "text": "Audio and lighting pushes rest on hand-listed events, so a missing event means a stale panel."
+        }
+      ],
+      "blueFixes": [
+        "W4",
+        "W6"
+      ],
+      "questions": [
+        2,
+        9
+      ],
+      "findings": 6,
+      "seenLive": "The owner reports the GM panel falling behind live music on blue's line until a refresh."
+    },
+    {
+      "id": "C3",
+      "title": "Engine trusts its stale picture of outside programs",
+      "atAShow": "A video stayed stopped for about 28 seconds because the parser held each player message until the next one arrived. A false video finished can fire two seconds in, flipping the display back and restoring music. When MPD dies the engine still says playing and the controls stay dead until the next 15-second sweep. A cue with a 2-second video never completes.",
+      "whyItHappens": "The engine learns what VLC, MPD and the other programs are doing by parsing their text or event streams into a cached copy that starts from a default and carries no age. Re-reads are partial, and the video queue, cue timelines and health rows treat the copy as the program.",
+      "designTerms": "A reader module per outside program should own the engine's picture of it, behind one interface: read, stream, resync, last-read time. Today the seam leaks: the video queue, cue timeline and health rows read each service's ageless cache directly, so locality is lost.",
+      "modules": [
+        "backend/src/utils/dbusSignalParser.js",
+        "backend/src/services/mprisPlayerBase.js",
+        "backend/src/services/videoQueueService.js",
+        "backend/src/services/musicService.js",
+        "backend/src/services/serviceHealthRegistry.js",
+        "backend/src/services/cue/timelineRuntime.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>plays the video\"]\n  mon[\"Signal monitor<br/>text stream\"]\n  parser[\"Parser<br/>holds message until next header\"]\n  pic[\"Cached picture<br/>state, no age\"]\n  probe[\"15-second probe<br/>re-reads play state only\"]\n  queue[\"Video queue<br/>two stopped polls end video\"]\n  cue[\"Cue timeline<br/>waits for a progress tick\"]\n  panel[\"GM panel<br/>video stays stopped\"]\n  vlc -->|\"Playing signal\"| mon\n  mon -->|\"lines\"| parser\n  parser -.->|\"late by one message\"| pic\n  probe -->|\"corrects quietly\"| pic\n  probe -.->|\"announcement nobody hears\"| panel\n  pic -->|\"stale stopped\"| queue\n  queue -->|\"false finished\"| cue\n  pic -->|\"stale\"| panel\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class parser,pic,queue fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>plays the video\"]\n  reader[\"VLC reader<br/>stream plus periodic re-read\"]\n  pic[\"Cached picture<br/>carries last-read time\"]\n  queue[\"Video queue<br/>reads picture with age\"]\n  cue[\"Cue timeline<br/>reads picture with age\"]\n  panel[\"GM panel<br/>hears every correction\"]\n  vlc -->|\"signals\"| reader\n  reader -->|\"re-read on timer\"| vlc\n  reader -->|\"one path, every change\"| pic\n  pic -->|\"fresh state\"| queue\n  pic -->|\"fresh state\"| cue\n  pic -->|\"fresh state\"| panel\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class reader owner;",
+        "note": "Candidate (a): one reader per program behind a common interface, with a periodic re-read the stream cannot switch off. Competing: (b) client libraries, (c) read time on every copy, (d) cue timeline from player position."
+      },
+      "examples": [
+        {
+          "ids": "A-68",
+          "text": "Video stayed stopped about 28 seconds: the parser holds each message until the next header arrives."
+        },
+        {
+          "ids": "A-61",
+          "text": "A false video finished can fire two seconds in; display flips back, ducking restores, cues told video ended."
+        },
+        {
+          "ids": "A-72",
+          "text": "When MPD dies the engine's picture still says playing with the last track; only the health row goes out."
+        },
+        {
+          "ids": "A-73",
+          "text": "After an MPD crash the controls stay dead up to 20 seconds; the supervisor's restart is ignored."
+        },
+        {
+          "ids": "A-48",
+          "text": "A cue whose video ends before its first progress tick never completes and stays on screen."
+        },
+        {
+          "ids": "X-01",
+          "text": "The 15-second probe corrects the VLC picture but announces it on an event nothing hears for VLC."
+        }
+      ],
+      "blueFixes": [
+        "W9 P0.1",
+        "W10 P1",
+        "W10 FB",
+        "W10 F3"
+      ],
+      "questions": [
+        3,
+        5
+      ],
+      "findings": 25,
+      "seenLive": "Blue's worst live incident, the video that stayed stopped about 28 seconds, happened on the show machine."
+    },
+    {
+      "id": "C4",
+      "title": "Nothing says what a game boundary clears or keeps",
+      "atAShow": "The GM ends the game and restarts the engine; the ended game comes back as the current one and player scans keep landing in it. When the game ends, a tablet that reconnects loses its history and the wall scoreboard goes blank. A once-only cue spent in game one stays spent in game two.",
+      "whyItHappens": "Game start, end, reset, engine restart, tablet reload and reconnect each have their own code in each component. No table says, per fact and copy, whether a boundary clears, keeps or re-fetches it, and no message announces a boundary; screens infer one from a changed session id.",
+      "designTerms": "A boundary-table module should own each fact's lifetime at a game boundary: clear, keep or re-fetch. No such interface exists, so the session, cue-engine, reset and tablet modules each encode their own cases; the seam leaks and one boundary change has no locality.",
+      "modules": [
+        "backend/src/services/sessionService.js",
+        "backend/src/services/systemReset.js",
+        "backend/src/services/cueEngineService.js",
+        "backend/src/routes/scanRoutes.js",
+        "ALNScanner/src/network/networkedSession.js",
+        "backend/public/scoreboard.html"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  endg[\"Game end<br/>saves ended record, nulls session\"]\n  restart[\"Engine restart<br/>reloads last record\"]\n  cur[\"Current game<br/>the ended game again\"]\n  scans[\"Player scans<br/>accepted\"]\n  cues[\"Cue engine<br/>spent cues kept\"]\n  reset[\"System reset<br/>only clearer, no message\"]\n  tab[\"Tablet<br/>infers boundary from id\"]\n  endg -->|\"status not checked\"| restart\n  restart -->|\"makes current\"| cur\n  cur -->|\"session exists\"| scans\n  endg -.->|\"never touches\"| cues\n  reset -->|\"clears\"| cues\n  reset -.->|\"no snapshot sent\"| tab\n  endg -->|\"null session\"| tab\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class restart,cur,cues,tab fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  tbl[\"Boundary table<br/>per fact: clear, keep, re-fetch\"]\n  endg[\"Game end\"]\n  restart[\"Engine restart\"]\n  reset[\"System reset\"]\n  msg[\"Boundary message<br/>to every client\"]\n  tab[\"Tablet<br/>one boundary handler\"]\n  cues[\"Cue engine<br/>spent cues cleared at end\"]\n  scans[\"Player scans<br/>refused, no game\"]\n  endg -->|\"iterates\"| tbl\n  restart -->|\"iterates\"| tbl\n  reset -->|\"iterates\"| tbl\n  tbl -->|\"applies lifetime\"| cues\n  tbl -->|\"ended stays ended\"| scans\n  tbl -->|\"announces\"| msg\n  msg -->|\"applies\"| tab\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class tbl owner;",
+        "note": "Candidate: one table of each fact's authority and lifetime, iterated at every boundary, plus one boundary message. Competing: new game runs the reset path; full snapshot per boundary; a game epoch; keep the ended game."
+      },
+      "examples": [
+        {
+          "ids": "B-61 / D-31",
+          "text": "An ended game comes back after an engine restart as the current game, and player scans keep landing in it."
+        },
+        {
+          "ids": "A-01 / C-39",
+          "text": "After the GM ends the game, a reconnecting tablet loses history, scans and Download Report; the wall scoreboard goes blank."
+        },
+        {
+          "ids": "B-17 / C-38",
+          "text": "A once-only cue spent in one game stays spent in the next unless the GM ran a system reset between."
+        },
+        {
+          "ids": "C-05",
+          "text": "After a reload the tablet wipes the offline scans it just restored, reading the first message as a new game."
+        },
+        {
+          "ids": "B-55",
+          "text": "A system reset empties the engine's video queue to idle while VLC plays on, and the GM is told nothing."
+        },
+        {
+          "ids": "C-36",
+          "text": "A system reset sends no tablet a fresh snapshot; tablets keep the old game's data until a new session id arrives."
+        }
+      ],
+      "blueFixes": [
+        "W8"
+      ],
+      "questions": [
+        6
+      ],
+      "findings": 22,
+      "seenLive": ""
+    },
+    {
+      "id": "C5",
+      "title": "Boot and Reset System wire the engine differently",
+      "atAShow": "The GM presses Reset System to recover mid-show. The music panel goes dead until someone restarts the engine. Later, Reset All Scores sends every tablet and the TV the old transaction list, so cleared evidence comes back on the wall. The cue engine now hears each video and clock event twice, and the Display row stays red until Check Now.",
+      "whyItHappens": "Starting the engine and rebuilding it after a reset are two separate hand-written lists. Boot wires the storage listeners first, then the broadcasts, with one set of services; the reset wires them the other way round with a shorter set, and adds some listeners a second time.",
+      "designTerms": "An engine-assembly module should own which services exist, their listeners and the order they are wired. Today boot and reset each implement that by hand, so every caller knows every service and the ordering rule: the seam leaks and a change has no locality.",
+      "modules": [
+        "backend/src/app.js",
+        "backend/src/server.js",
+        "backend/src/services/systemReset.js",
+        "backend/src/websocket/adminEvents.js",
+        "backend/src/websocket/broadcasts.js",
+        "backend/src/websocket/listenerRegistry.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart TD\n  boot[\"Engine start<br/>one service list\"]\n  reset[\"Reset System<br/>shorter list, no music\"]\n  persist[\"Storage listeners<br/>clear transactions\"]\n  bcast[\"Broadcasts<br/>build snapshot\"]\n  cues[\"Cue forwarding\"]\n  music[\"Music panel push\"]\n  boot -->|\"1st\"| persist\n  boot -->|\"2nd\"| bcast\n  boot -->|\"once\"| cues\n  boot -->|\"wires\"| music\n  reset -->|\"1st\"| bcast\n  reset -->|\"2nd\"| persist\n  reset -->|\"again\"| cues\n  reset -.->|\"never\"| music\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class reset,bcast,cues fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart TD\n  boot[\"Engine start\"]\n  reset[\"Reset System<br/>teardown first\"]\n  asm[\"Engine assembly<br/>one list, one order\"]\n  persist[\"Storage listeners<br/>clear transactions\"]\n  bcast[\"Broadcasts<br/>build snapshot\"]\n  cues[\"Cue forwarding\"]\n  music[\"Music panel push\"]\n  boot -->|\"calls\"| asm\n  reset -->|\"calls after teardown\"| asm\n  asm -->|\"1st\"| persist\n  asm -->|\"2nd\"| bcast\n  asm -->|\"once\"| cues\n  asm -->|\"wires\"| music\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class asm owner;",
+        "note": "Candidate (a): one engine-assembly routine shared by boot and reset. Competing: (b) a registry that knows each service's start, stop and listeners; (c) components register start, end and reset handlers in a declared order."
+      },
+      "examples": [
+        {
+          "ids": "B-01",
+          "text": "After Reset System the music panel stops updating until the engine restarts; the reset is called without the music service."
+        },
+        {
+          "ids": "A-53 / B-02 / C-37 / D-30",
+          "text": "After a reset, Reset All Scores sends every tablet and the TV the old transaction list; cleared evidence comes back."
+        },
+        {
+          "ids": "B-03",
+          "text": "After one reset the cue engine hears video, clock, sound and cue-completion events twice; a cue could fire twice."
+        },
+        {
+          "ids": "B-53",
+          "text": "After a reset the Display row stays red though the kiosk is alive; Show Scoreboard is refused until Check Now."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [
+        6
+      ],
+      "findings": 7,
+      "seenLive": "The red Display row after a reset was reproduced in-process by the review."
+    },
+    {
+      "id": "C6",
+      "title": "Reconnect snapshot and live update are built apart",
+      "atAShow": "A GM reloads a tablet mid-game. The History badge stays hidden until the next scan, and a rebuilt admin panel can show the clock as --:-- until the next change. The device list flips between everyone ever and connected only, depending on which message came last.",
+      "whyItHappens": "For each fact the engine has one builder for the connect snapshot and another for the live message, and six places send the snapshot with hand-picked arguments. The tablet applies each by a different rule, and the restore path fires none of the events screens listen for.",
+      "designTerms": "Each fact's engine module should own one description of itself, serving snapshot and live push alike. The snapshot builder is shallow: its interface is a hand-passed list of every module, and five tablet adapters reshape its output, so the seam leaks both ways.",
+      "modules": [
+        "backend/src/websocket/syncHelpers.js",
+        "backend/src/websocket/broadcasts.js",
+        "backend/src/websocket/gmAuth.js",
+        "ALNScanner/src/network/messageRouters.js",
+        "ALNScanner/src/core/stateStore.js",
+        "ALNScanner/src/admin/MonitoringDisplay.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  fact[\"Engine fact<br/>clock, session, devices\"]\n  snapB[\"Snapshot builder<br/>six hand-assembled senders\"]\n  liveB[\"Live message builder<br/>separate code per fact\"]\n  replace[\"Tablet: replace<br/>drops absent keys\"]\n  merge[\"Tablet: merge<br/>skips equal pushes\"]\n  adapter[\"Five adapters<br/>reshape before drawing\"]\n  hist[\"History restore<br/>fires no event\"]\n  screen[\"Screen<br/>stale or blank\"]\n  fact -->|\"on connect\"| snapB\n  fact -->|\"on change\"| liveB\n  snapB -->|\"one shape\"| replace\n  liveB -->|\"another shape\"| merge\n  snapB -->|\"transaction list\"| hist\n  replace -->|\"reshaped\"| adapter\n  merge -->|\"reshaped\"| adapter\n  adapter -->|\"unnamed fields dropped\"| screen\n  hist -.->|\"badge never told\"| screen\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class snapB,liveB,adapter,hist fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  fact[\"Engine fact<br/>clock, session, devices\"]\n  desc[\"One describe per fact<br/>serves snapshot and push\"]\n  snap[\"Snapshot<br/>list of descriptions\"]\n  live[\"Live message<br/>one description\"]\n  apply[\"Tablet: one apply<br/>same shape, fires events\"]\n  screen[\"Screen<br/>drawn from the fact\"]\n  fact -->|\"owns\"| desc\n  desc -->|\"on connect\"| snap\n  desc -->|\"on change\"| live\n  snap -->|\"same shape\"| apply\n  live -->|\"same shape\"| apply\n  apply -->|\"same event either way\"| screen\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class desc owner;",
+        "note": "Candidate: one description per fact serves snapshot and live push; the tablet applies both with one function. Competing: live updates become whole-value signals in the snapshot's shape; one unreshaped domain object per fact."
+      },
+      "examples": [
+        {
+          "ids": "A-22",
+          "text": "After a reload the History badge stays hidden until the next scan; the restore path fires no event."
+        },
+        {
+          "ids": "A-30 / C-46",
+          "text": "After a panel rebuild the first state push can be skipped and the clock shows --:--."
+        },
+        {
+          "ids": "C-23",
+          "text": "The device list alternates between everyone ever and connected only, depending on which message came last."
+        },
+        {
+          "ids": "B-31",
+          "text": "Six places send the full snapshot and disagree on which devices to include and which extra keys to add."
+        },
+        {
+          "ids": "A-32 / C-44",
+          "text": "Snapshot and live shapes differ for clock and cues; five adapters reshape them, and the clock adapter drops unnamed fields."
+        },
+        {
+          "ids": "D-01",
+          "text": "A TV reloaded during a video shows its last overlay state, because the snapshot's display status is never read."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [
+        9,
+        8
+      ],
+      "findings": 11,
+      "seenLive": ""
+    },
+    {
+      "id": "C7",
+      "title": "A reply never says which request, final or stored",
+      "atAShow": "Player devices upload their queued scans while no game exists. The engine answers processed, stores nothing, and both devices delete the scans. A GM's scan that can never succeed comes back as a generic error, so the tablet replays it at every reconnect with a toast each time. A slow Reset System reports failure and the new game is skipped.",
+      "whyItHappens": "The engine answers before or without the write that makes the fact true, calls an unstored batch processed, returns some failures as a typed result and others as a generic error, and acknowledges commands by action name alone. Each device then decides for itself what a reply means.",
+      "designTerms": "One commit module in the engine should own each request's outcome: which request, final or not, stored or not. That interface is split between typed results, generic errors and action-name acks, so the seam leaks and three clients each keep their own reply rule.",
+      "modules": [
+        "backend/src/websocket/adminEvents.js",
+        "backend/src/routes/scanRoutes.js",
+        "ALNScanner/src/network/networkedQueueManager.js",
+        "ALNScanner/src/admin/utils/CommandSender.js",
+        "aln-memory-scanner/js/orchestratorIntegration.js",
+        "arduino-cyd-player-scanner/ALNScanner_v5/services/ScanResponse.h"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  dev[\"Player device<br/>queued scans\"]\n  tab[\"Tablet<br/>GM scan or command\"]\n  eng[\"Engine<br/>replies before the write\"]\n  ok[\"200 processed<br/>batch stored nowhere\"]\n  err[\"Generic error<br/>no request id, not final\"]\n  ack[\"Command ack<br/>action name only\"]\n  devRule[\"Device rule<br/>200 means delete\"]\n  tabRule[\"Tablet rule<br/>error retries, 5s fails\"]\n  dev -->|\"batch, no game\"| eng\n  tab -->|\"scan, command\"| eng\n  eng -->|\"no game\"| ok\n  ok -->|\"deletes the scans\"| devRule\n  eng -->|\"permanent scan failure\"| err\n  err -->|\"replays every snapshot\"| tabRule\n  eng -->|\"slow reset\"| ack\n  ack -->|\"after the 5s timeout\"| tabRule\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class ok,err,ack,devRule,tabRule fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  dev[\"Player device<br/>queued scans\"]\n  tab[\"Tablet<br/>GM scan or command\"]\n  eng[\"Engine\"]\n  commit[\"One commit<br/>save first, then reply\"]\n  reply[\"Typed reply<br/>request id, final, stored\"]\n  devRule[\"Device rule<br/>delete only if stored\"]\n  tabRule[\"Tablet rule<br/>final means stop\"]\n  dev -->|\"batch\"| eng\n  tab -->|\"scan, command\"| eng\n  eng -->|\"every write\"| commit\n  commit -->|\"after the save\"| reply\n  reply -->|\"stored or refused\"| devRule\n  reply -->|\"matched by request id\"| tabRule\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class commit owner;",
+        "note": "Candidate (a): replies carry request id and final flag; scan outcomes typed; one commit saves before replying. Competing: (b) per-item batch results; (c) status endpoint by client id; (d) intent log; (e) serialised same-action sends."
+      },
+      "examples": [
+        {
+          "ids": "B-64 / C-32",
+          "text": "Scan failures like no session or queue full come back as a generic error; the tablet replays them on every snapshot."
+        },
+        {
+          "ids": "B-22 / D-13 / D-14",
+          "text": "A batch arriving with no game is answered processed but stored nowhere; both player devices delete it."
+        },
+        {
+          "ids": "B-21 / D-15",
+          "text": "A batch retried after an engine restart is stored twice; processed batches are remembered in memory for an hour."
+        },
+        {
+          "ids": "B-69 / C-35",
+          "text": "A system reset slower than the tablet's five-second wait reports failure, and the follow-on create session is skipped."
+        },
+        {
+          "ids": "B-65 / C-33",
+          "text": "A command ack carries only action, success and message, so two presses of one action resolve on the first reply."
+        },
+        {
+          "ids": "D-12",
+          "text": "One failed batch is dropped by the web scanner on any 4xx but kept forever by the ESP32."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [
+        1,
+        8
+      ],
+      "findings": 18,
+      "seenLive": ""
+    },
+    {
+      "id": "C8",
+      "title": "Engine and tests both assume they own the machine",
+      "atAShow": "On 2026-09-15 a unit test killed the live show's video player on blue's tree. In this tree the same run kills the live engine's VLC signal monitor and overwrites its process files. A killed engine leaves a full-screen player behind. Twenty-one test suites open a browser on the show TV. The operator's health script says VLC not found while the player runs.",
+      "whyItHappens": "The engine names and ends its helper programs by fixed file names and by command-line patterns over the whole machine, written as the only engine on the box. The test layers adopt whatever display, sound server and Bluetooth exist; that a layer is safe is claimed in comments, never checked.",
+      "designTerms": "A runtime-identity module should own which processes, files and windows belong to this engine instance. Today no such seam exists: each service module hard-codes a shared process file, and the kiosk and sound-server modules kill by machine-wide pattern, so identity has no locality.",
+      "modules": [
+        "backend/src/utils/processMonitor.js",
+        "backend/src/services/vlcMprisService.js",
+        "backend/src/services/musicService.js",
+        "backend/src/utils/displayDriver.js",
+        "backend/src/services/audioRoutingService.js",
+        "backend/tests/unit/services/vlcMprisService.test.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  live[\"Live engine<br/>runs the show\"]\n  pids[\"Fixed process files<br/>shared by every engine\"]\n  vlc[\"Live VLC<br/>on the show TV\"]\n  mon[\"Live signal monitor\"]\n  test[\"Unit test run<br/>builds a real supervisor\"]\n  reaper[\"Leftover reaper<br/>kills the pid on file\"]\n  suites[\"Integration suites<br/>real display, real sound\"]\n  kiosk[\"Show TV browser\"]\n  live -->|\"writes pids\"| pids\n  live -->|\"starts\"| vlc\n  live -->|\"starts\"| mon\n  test -->|\"runs\"| reaper\n  pids -->|\"live pids\"| reaper\n  reaper -->|\"kills\"| mon\n  reaper -.->|\"kills after the name fix\"| vlc\n  test -->|\"overwrites\"| pids\n  suites -->|\"open browser on\"| kiosk\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class pids,reaper,suites fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  ident[\"Runtime identity<br/>one run directory and prefix\"]\n  live[\"Live engine<br/>live prefix\"]\n  test[\"Unit test run<br/>test prefix\"]\n  livePids[\"Live process files<br/>under the live prefix\"]\n  testPids[\"Test process files<br/>under the test prefix\"]\n  vlc[\"Live VLC<br/>on the show TV\"]\n  mon[\"Live signal monitor\"]\n  reaper[\"Reaper<br/>kills only own children\"]\n  ident -->|\"names\"| live\n  ident -->|\"names\"| test\n  live -->|\"writes pids\"| livePids\n  test -->|\"writes pids\"| testPids\n  live -->|\"starts\"| vlc\n  live -->|\"starts\"| mon\n  test -->|\"runs\"| reaper\n  reaper -.->|\"never reaches\"| mon\n  reaper -.->|\"never reaches\"| vlc\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class ident owner;",
+        "note": "Candidate (a): every engine instance takes a run directory and name prefix from one place; machine-wide kill patterns go. Competing: (b) outside supervisor, (c) throwaway container for tests, (d) per-layer capability lists, (e) singleton lock."
+      },
+      "examples": [
+        {
+          "ids": "A-75 / D-64 / B-63 / D-52",
+          "text": "A unit test killed the live video player on blue's tree; here it kills the signal monitor and overwrites process files."
+        },
+        {
+          "ids": "A-64 / D-70",
+          "text": "Leftover cleanup looks for cvlc but the process is vlc, so a killed engine leaves a full-screen player."
+        },
+        {
+          "ids": "A-79 / D-54 / D-69",
+          "text": "Twenty-one suites start a real full-screen browser on the show TV pointed at the live port."
+        },
+        {
+          "ids": "D-72",
+          "text": "Starting any engine kills every pactl subscribe process of the user, including the live engine's sink monitor."
+        },
+        {
+          "ids": "X-05",
+          "text": "The health script says VLC not found while the player runs, because it looks for cvlc."
+        },
+        {
+          "ids": "X-07",
+          "text": "Fixing the reaper's name alone brings blue's unit-test kill back; the per-run process folder must land first."
+        }
+      ],
+      "blueFixes": [
+        "W9 P0.3",
+        "W10 P2",
+        "W10 P3",
+        "W10 P4",
+        "W10 C1"
+      ],
+      "questions": [
+        4
+      ],
+      "findings": 41,
+      "seenLive": "A unit test killed the live video player on 2026-09-15; a kill guard logged the show box out on 2026-09-18."
+    },
+    {
+      "id": "C9",
+      "title": "Tablets and phones decide facts the engine owns",
+      "atAShow": "A GM scans a token; the result screen says Transaction Complete with points the tablet worked out itself, before the engine has answered. The engine may refuse, and the correction arrives as a small toast. In standalone mode the tablet is the only judge, and its rules have gaps: a scan into a paused game shows complete and records nothing. A phone says revisited for last week's token.",
+      "whyItHappens": "The engine is the authority for scoring, claims and the scan gate, but the tablet carries its own copy of those rules, kept in step by hand and by comment, and the player devices pick their own team and their own new-or-seen. Each device shows its own verdict first.",
+      "designTerms": "The engine's game-rules module should own scoring, group completion and duplicate rules behind one interface both sides load. Today the tablet holds a second implementation kept in step by comment, so the seam leaks verdicts: a rule change lands in two places, with no locality.",
+      "modules": [
+        "backend/src/gameRules/scoring.js",
+        "backend/src/gameRules/duplicatePolicy.js",
+        "backend/src/websocket/adminEvents.js",
+        "ALNScanner/src/app/domains/gameOps.js",
+        "ALNScanner/src/core/storage/LocalStorage.js",
+        "aln-memory-scanner/js/app.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  gm[\"GM scans token\"]\n  tab[\"Tablet<br/>own copy of rules\"]\n  screen[\"Result screen<br/>Transaction Complete\"]\n  eng[\"Engine<br/>game rules, the authority\"]\n  toast[\"Toast<br/>corrects later\"]\n  local[\"Standalone store<br/>paused checked, ended not\"]\n  phone[\"Player phone<br/>own team, own seen list\"]\n  gm -->|\"scan\"| tab\n  tab -->|\"points, gate, match\"| screen\n  tab -->|\"submit, networked\"| eng\n  eng -.->|\"refused\"| toast\n  tab -->|\"standalone\"| local\n  phone -->|\"team engine discards\"| eng\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class tab,screen,local,phone fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  gm[\"GM scans token\"]\n  tab[\"Tablet<br/>shows verdict only\"]\n  screen[\"Result screen<br/>pending, then verdict\"]\n  eng[\"Engine<br/>game rules, the authority\"]\n  rules[\"Shared rules module<br/>loaded by both\"]\n  local[\"Standalone store<br/>uses shared rules\"]\n  phone[\"Player phone<br/>own team, own seen list\"]\n  gm -->|\"scan\"| tab\n  tab -->|\"submit, networked\"| eng\n  eng -->|\"verdict with points\"| screen\n  rules -->|\"loaded\"| eng\n  rules -->|\"loaded\"| local\n  tab -->|\"standalone\"| local\n  phone -.->|\"unchanged by this candidate\"| eng\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eng owner;",
+        "note": "Candidate (a): networked shows the engine's verdict only, pending first; standalone uses a rules module the engine also loads. Competing: (b) one shared rules package; (c) devices only display; (d) players send no team."
+      },
+      "examples": [
+        {
+          "ids": "C-07",
+          "text": "Result screen says Transaction Complete with tablet-computed points before the engine answers; the engine may refuse."
+        },
+        {
+          "ids": "A-02 / C-09",
+          "text": "Standalone: a scan into a paused game shows complete, records nothing and uses up the token; an ended game still accepts."
+        },
+        {
+          "ids": "A-34",
+          "text": "A duplicate scan on the same tablet never names the team that claimed it; the local guard fires first."
+        },
+        {
+          "ids": "D-09 / B-62",
+          "text": "Every player scan carries a team no game declared; the engine discards it and only logs it."
+        },
+        {
+          "ids": "D-10",
+          "text": "A phone that played last week still says revisited for a token in tonight's game."
+        },
+        {
+          "ids": "C-58",
+          "text": "The tablet matches token ids loosely, the engine exactly; the tablet shows success and the engine refuses."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [
+        1,
+        5
+      ],
+      "findings": 18,
+      "seenLive": ""
+    },
+    {
+      "id": "C10",
+      "title": "Screens show a normal value when nothing is known",
+      "atAShow": "The venue profile fails to load; six services turn not installed, no video plays, no light cue fires, and the panel reads a calm green 3 of 9. The GM presses Check Now on a down service and nothing visibly happens. The engine dies; the TV keeps counting down. The music card goes grey with no offline line, and nobody at the venue notices.",
+      "whyItHappens": "No fact on the wire says whether it is known, unknown, stale or partial. Snapshot builders catch errors and send plausible defaults, a missing profile reads as no equipment, healthy means a program answered, and the check times that exist are never shown. The screen draws a normal value.",
+      "designTerms": "The health registry should own whether each service fact is known, unknown or stale, and when it was seen. Today the pushed facts' interface carries neither, so snapshot builders turn errors into defaults and the seam leaks: a failure crosses as a normal value.",
+      "modules": [
+        "backend/src/services/serviceHealthRegistry.js",
+        "backend/src/websocket/syncHelpers.js",
+        "backend/src/websocket/environmentHelpers.js",
+        "backend/src/services/dormancyService.js",
+        "ALNScanner/src/ui/renderers/HealthRenderer.js",
+        "backend/public/scoreboard.html"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  prof[\"Venue profile<br/>fails to load\"]\n  dorm[\"Dormancy service<br/>reads no equipment\"]\n  reg[\"Health registry<br/>emits on change only\"]\n  snap[\"Snapshot builders<br/>catch error, send default\"]\n  push[\"Push to tablets<br/>no age, no unknown\"]\n  panel[\"Health panel<br/>calm green 3 of 9\"]\n  tv[\"TV clock<br/>keeps counting\"]\n  prof -->|\"missing or invalid\"| dorm\n  dorm -->|\"six not installed\"| reg\n  reg -->|\"check time never shown\"| push\n  snap -->|\"clock stopped, route hdmi\"| push\n  push -->|\"drawn as normal\"| panel\n  push -.->|\"engine gone, no signal\"| tv\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class dorm,snap,push,panel,tv fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  prof[\"Venue profile<br/>fails to load\"]\n  dorm[\"Dormancy service<br/>reports profile failed\"]\n  reg[\"Health registry<br/>known, unknown, stale\"]\n  snap[\"Snapshot builders<br/>send unknown, not default\"]\n  push[\"Push to tablets<br/>time observed, status\"]\n  panel[\"Health panel<br/>red profile row\"]\n  tv[\"TV clock<br/>drawn unconfirmed\"]\n  prof -->|\"missing or invalid\"| dorm\n  dorm -->|\"profile failed\"| reg\n  reg -->|\"usable or not, time\"| push\n  snap -->|\"unknown, not default\"| push\n  push -->|\"drawn as unknown\"| panel\n  push -->|\"stale past limit\"| tv\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class reg owner;",
+        "note": "Candidate (a): every pushed fact carries when it was observed and known, unknown or stale; screens draw unknown differently. Competing: (b) a heartbeat as the only staleness signal; (c) one record per service."
+      },
+      "examples": [
+        {
+          "ids": "B-72 / C-48",
+          "text": "A missing or wrong venue profile makes six services read not installed; the panel shows calm green with no sign."
+        },
+        {
+          "ids": "A-16 / C-03",
+          "text": "Check Now on a down service gives no sign anything happened; no check time is ever shown."
+        },
+        {
+          "ids": "D-22",
+          "text": "If the TV loses the engine while the clock runs, it keeps counting down with no mark."
+        },
+        {
+          "ids": "B-76 / C-47",
+          "text": "A cue with commands on a dormant service skips them quietly and reports a clean finish."
+        },
+        {
+          "ids": "A-74",
+          "text": "The music panel gives no clear sign MPD is down; a greyed card went unnoticed at the venue."
+        },
+        {
+          "ids": "D-11",
+          "text": "Offline, the 101st queued scan silently pushes the oldest out on both player devices."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [
+        8,
+        2
+      ],
+      "findings": 20,
+      "seenLive": "A greyed music card with no offline line went unnoticed at the venue."
+    },
+    {
+      "id": "C11",
+      "title": "Several places answer the same question, each differently",
+      "atAShow": "Is a video playing has seven answers. A paused video counts as free, so a player is told their video was triggered while it waits, and releasing a held video plays over the paused one. Release All can stop at the first refused video. Music stays ducked after the queue is cleared. The downloaded report's two totals disagree.",
+      "whyItHappens": "Questions such as is a video playing, which teams exist and may the GM scan now are answered by several functions or stored values, each with its own rule and write path, so they disagree at the edges. No rule says which answerer every reader must use.",
+      "designTerms": "One resolver module per question should own the verdict behind a one-call interface. Today there is no such seam: the queue, the command gate and the ducking count each implement 'is a video playing' by their own rule, so that knowledge has no locality.",
+      "modules": [
+        "backend/src/services/videoQueueService.js",
+        "backend/src/services/commandExecutor.js",
+        "backend/src/services/cueEngineService.js",
+        "backend/src/websocket/broadcasts.js",
+        "backend/src/services/musicService.js",
+        "ALNScanner/src/app/domains/gameOps.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>video paused\"]\n  cur[\"Queue current item<br/>paused is not playing\"]\n  accept[\"Can accept a video<br/>reads paused as free\"]\n  run[\"Queue run<br/>plays next over paused\"]\n  duck[\"Ducking<br/>own count of playing videos\"]\n  clear[\"Clear queue<br/>sends no completed\"]\n  player[\"Player scanner<br/>told video triggered\"]\n  music[\"Music<br/>stays ducked\"]\n  vlc -->|\"paused\"| cur\n  cur -->|\"not playing\"| accept\n  accept -->|\"available\"| player\n  cur -->|\"not playing\"| run\n  run -->|\"next video over paused\"| vlc\n  clear -.->|\"no event\"| duck\n  duck -->|\"still counts one\"| music\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class cur,accept,run,duck fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>video paused\"]\n  res[\"Video playing resolver<br/>one verdict with reason\"]\n  accept[\"Can accept a video\"]\n  run[\"Queue run\"]\n  duck[\"Ducking\"]\n  clear[\"Clear queue\"]\n  player[\"Player scanner<br/>told to wait\"]\n  music[\"Music<br/>restored\"]\n  vlc -->|\"paused\"| res\n  res -->|\"busy, paused\"| accept\n  accept -->|\"wait\"| player\n  res -->|\"busy, paused\"| run\n  clear -->|\"asks\"| res\n  res -->|\"nothing playing\"| duck\n  duck -->|\"restore\"| music\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class res owner;",
+        "note": "Candidate (a): one resolver per question, called by every reader, returns verdict, reason and door. Competing: (b) status record per service; (c) counts derived on read; (d) shared phase words; (e) one accessor per fact."
+      },
+      "examples": [
+        {
+          "ids": "B-39",
+          "text": "Is a video playing has seven answers; a paused video counts as not playing for four of them."
+        },
+        {
+          "ids": "B-40",
+          "text": "Held cues and held videos live in two stores; Release All can stop at the first refused video."
+        },
+        {
+          "ids": "B-45",
+          "text": "Ducking keeps its own count of playing videos; music stays ducked after the queue is cleared."
+        },
+        {
+          "ids": "C-25",
+          "text": "The GM's permission to scan is read from a local copy; after a reload it blocks scans in an active game."
+        },
+        {
+          "ids": "C-24",
+          "text": "Which teams exist has several answers; a second GM adding the same name gets an error though the team exists."
+        },
+        {
+          "ids": "A-08",
+          "text": "The downloaded report has two different final totals per team: the timeline leaves out group bonuses, the standings include them."
+        }
+      ],
+      "blueFixes": [
+        "W3",
+        "W5",
+        "W6"
+      ],
+      "questions": [
+        5
+      ],
+      "findings": 29,
+      "seenLive": "The display's false healthy Check Now was reproduced in-process by the recovered review."
+    },
+    {
+      "id": "C12",
+      "title": "Pack edits reach each part of the kit differently",
+      "atAShow": "A designer publishes a pack change and does not restart. The TV shows evidence by the new rules while the engine scores by the old. The file the engine serves no longer matches the hash in its own manifest, so a scanner that checks rejects it. A tablet running a different pack is only written to the log; nothing tells the GM. The publish tells the running engine nothing.",
+      "whyItHappens": "The engine freezes one pack at start, yet its file endpoints serve whatever is on disk and its token endpoint re-reads every call. The TV, tablet and hardware scanner each load it at their own moment and keep it; the phone reads its own copy. No message says it changed.",
+      "designTerms": "The pack service should own one versioned pack view. Its interface leaks the disk: it checks a path against the frozen inventory, then serves live bytes, and the token service re-reads the file around it, so frozen and live state cross the seam. No locality.",
+      "modules": [
+        "backend/src/services/packService.js",
+        "backend/src/routes/packRoutes.js",
+        "backend/src/routes/resourceRoutes.js",
+        "backend/src/websocket/socketServer.js",
+        "ALNScanner/src/core/packLoader.js",
+        "config-tool/lib/publish.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  tool[\"Config tool<br/>publishes pack\"]\n  disk[\"Pack on disk<br/>new bytes\"]\n  frozen[\"Engine rules<br/>frozen at start\"]\n  files[\"File endpoint<br/>serves disk bytes\"]\n  tokens[\"Token endpoint<br/>re-reads every call\"]\n  tv[\"TV<br/>loads at page open\"]\n  tab[\"Tablet<br/>loads at app start\"]\n  tool -->|\"writes\"| disk\n  tool -.->|\"no message\"| frozen\n  disk -->|\"read once at start\"| frozen\n  disk -->|\"live bytes\"| files\n  disk -->|\"re-read each call\"| tokens\n  files -->|\"new rules\"| tv\n  files -->|\"manifest old, bytes new\"| tab\n  tab -.->|\"pack mismatch, log only\"| frozen\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class frozen,files,tokens,tv,tab fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  tool[\"Config tool<br/>publishes pack\"]\n  disk[\"Pack on disk<br/>new bytes\"]\n  view[\"Pack view<br/>one version, frozen copy\"]\n  files[\"File endpoint<br/>serves the frozen copy\"]\n  tokens[\"Token endpoint<br/>reads the view\"]\n  tv[\"TV<br/>told pack changed\"]\n  tab[\"Tablet<br/>compares hash, shows behind\"]\n  tool -->|\"writes\"| disk\n  disk -->|\"swap makes new view\"| view\n  view -->|\"frozen bytes\"| files\n  view -->|\"one version\"| tokens\n  view -->|\"pack changed event\"| tv\n  view -->|\"pack in every snapshot\"| tab\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class view owner;",
+        "note": "Candidate (a): one versioned pack view; a swap makes a new view and one pack-changed event; files served from frozen copy. Competing: (b) restart-only packs; (c) clients keep no pack files; (d) per-file apply rules."
+      },
+      "examples": [
+        {
+          "ids": "B-07 / D-04",
+          "text": "After a pack edit with no restart, endpoints serve new bytes while the engine scores from the old pack; hash mismatches."
+        },
+        {
+          "ids": "B-28 / D-38",
+          "text": "Publishing a pack from the config tool tells the running engine nothing; the edit shows only after a restart."
+        },
+        {
+          "ids": "B-20 / C-08 / D-18",
+          "text": "A tablet or scanner on a different pack than the engine is only logged; nothing tells the device or GM."
+        },
+        {
+          "ids": "D-03",
+          "text": "Before a restart the TV shows evidence by the new rules while the engine scores by the old."
+        },
+        {
+          "ids": "D-08",
+          "text": "A new pack reaches a hardware scanner only after a reboot; tokens cannot be re-synced by command."
+        },
+        {
+          "ids": "D-41",
+          "text": "A password changed in the tool's env editor works at once on the tool, only after restart on the engine."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [
+        6,
+        5,
+        8
+      ],
+      "findings": 20,
+      "seenLive": ""
+    },
+    {
+      "id": "C13",
+      "title": "The engine does not know who is connected",
+      "atAShow": "A tablet loses Wi-Fi and reloads; the engine still holds its old socket under the same station name and refuses the new one for up to about 85 seconds. Two tablets started together pick the same station name from an open list. The TV joins the GM room, receives every transaction and all ten service domains, and filters on its own side.",
+      "whyItHappens": "Whether a credential is asked for, and what a station is called, comes from a word the device sends or a route's default. Every socket event and route checks separately; none says who its audience is, so every socket gets everything and reads need no login.",
+      "designTerms": "A role-table module should own who each connection is and what it may receive. Today the handshake seam leaks: it trusts a self-declared word, and each route and socket event checks on its own, so access rules have no locality.",
+      "modules": [
+        "backend/src/websocket/socketServer.js",
+        "backend/src/websocket/gmAuth.js",
+        "backend/src/websocket/syncHelpers.js",
+        "backend/src/routes/healthRoutes.js",
+        "backend/public/scoreboard.html",
+        "ALNScanner/src/ui/connectionWizard.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  tab[\"GM tablet<br/>types its name\"]\n  tv[\"TV page<br/>claims to be a GM\"]\n  any[\"Any device<br/>says it is not GM\"]\n  hs[\"Handshake<br/>token asked only of GM\"]\n  http[\"State route<br/>no login asked\"]\n  room[\"GM room<br/>one audience for all\"]\n  all[\"Every transaction<br/>all ten domains\"]\n  whole[\"Whole game state<br/>on request\"]\n  tab -->|\"reads free names\"| http\n  tab -->|\"name plus token\"| hs\n  tv -->|\"token minted per serve\"| hs\n  any -->|\"no token\"| hs\n  hs -->|\"every token holder joins\"| room\n  room -->|\"same snapshot, same pushes\"| all\n  hs -->|\"answers any sync request\"| whole\n  http -->|\"answers anyone\"| any\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class hs,http,room fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  tab[\"GM tablet<br/>presents credential\"]\n  tv[\"TV page<br/>presents credential\"]\n  any[\"Any device<br/>no credential\"]\n  hs[\"Handshake<br/>verified tier every socket\"]\n  roles[\"Role table<br/>events and keys per role\"]\n  http[\"State route<br/>checks a function\"]\n  gmroom[\"GM audience<br/>transactions, domains\"]\n  tvroom[\"Display audience<br/>scores, evidence, clock\"]\n  tab -->|\"tier gm\"| hs\n  tv -->|\"tier display\"| hs\n  hs -.->|\"refused\"| any\n  hs -->|\"role\"| roles\n  roles -->|\"sends to audience\"| gmroom\n  roles -->|\"sends to audience\"| tvroom\n  roles -->|\"function per route\"| http\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class roles owner;",
+        "note": "Candidate (a): an audience table per event and route, every send through that table, a verified tier at every handshake. Competing: (b) split public and operator surfaces; (c) engine-issued identities; (d) read tiers per route."
+      },
+      "examples": [
+        {
+          "ids": "B-04 / B-27 / D-27 / C-20",
+          "text": "Anyone on the kit network fetches the whole game state; a socket claiming not to be a GM gets it too."
+        },
+        {
+          "ids": "B-89 / D-25 / D-26",
+          "text": "The TV sits in the GM room, receives every transaction and all ten service domains, and filters on its own side."
+        },
+        {
+          "ids": "B-70 / C-19",
+          "text": "Two tablets reading the open name list before connecting pick the same station name; the second is refused."
+        },
+        {
+          "ids": "B-24 / C-59",
+          "text": "A tablet that reloads after losing Wi-Fi cannot replace its own stale socket for up to about 85 seconds."
+        },
+        {
+          "ids": "B-71 / D-32",
+          "text": "An ESP32 is listed as a web player scanner because its health poll sends no type."
+        },
+        {
+          "ids": "B-90 / D-29",
+          "text": "Displays get no device record and share one id, so the engine cannot count connected TVs."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [
+        7,
+        1
+      ],
+      "findings": 24,
+      "seenLive": ""
+    },
+    {
+      "id": "C14",
+      "title": "Names joining two places are kept by hand",
+      "atAShow": "A GM opens Team Details: the score box is wrong, GM adjustments never appear, completed groups read In Progress with a $0 bonus, while the scoreboard screen on the same tablet shows the real total. Game Activity shows Unknown, no stars, $0 for a token no player scanned first. The video Playing badge never appears, because its element was never in the page.",
+      "whyItHappens": "A screen reads a property the object lacks; a renderer looks up an element the page never had; a module listens for an event nothing sends; the contract lists events nobody emits. Each name is written on both sides, and a wrong side yields nothing instead of an error.",
+      "designTerms": "A join-check module should own every name two modules share, so a missing side fails at load. Today the facade-strategy seam leaks: Team Details reads a field only the strategy adapter holds, the facade never exposes it, and the miss is silent.",
+      "modules": [
+        "ALNScanner/src/ui/renderers/GameOpsRenderer.js",
+        "ALNScanner/src/core/unifiedDataManager.js",
+        "ALNScanner/src/core/storage/NetworkedStorage.js",
+        "ALNScanner/src/core/gameActivityBuilder.js",
+        "ALNScanner/src/network/orchestratorClient.js",
+        "backend/contracts/asyncapi.yaml"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  td[\"Team Details screen<br/>wrong score\"]\n  fac[\"Data facade<br/>no backendScores field\"]\n  strat[\"Networked storage<br/>holds backendScores\"]\n  vr[\"Video renderer<br/>looks up badge id\"]\n  page[\"GM page<br/>no badge element\"]\n  lis[\"Tablet listener<br/>waits for state event\"]\n  eng[\"Engine<br/>never sends it\"]\n  td -->|\"reads field, gets undefined\"| fac\n  fac -.->|\"field never delegated\"| strat\n  vr -->|\"finds nothing, no error\"| page\n  eng -.->|\"no sender\"| lis\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class td,vr,lis fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  check[\"Join check<br/>at start-up and in tests\"]\n  vr[\"Video renderer<br/>looks up badge id\"]\n  page[\"GM page<br/>element ids\"]\n  lis[\"Tablet listener<br/>waits for state event\"]\n  eng[\"Engine<br/>event senders\"]\n  td[\"Team Details screen\"]\n  fac[\"Data facade<br/>no backendScores field\"]\n  vr -->|\"id it looks up\"| check\n  check -->|\"must exist\"| page\n  lis -->|\"event it hears\"| check\n  check -->|\"must have a sender\"| eng\n  check -.->|\"throws on a miss\"| vr\n  td -.->|\"field read, needs candidate b\"| fac\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class check owner;",
+        "note": "Candidate (a): a check at start-up and in tests that every looked-up id, listened event and subscribed message has one definition. Competing: (b) typed facade interfaces; (c) checked shapes; (d) wire or delete half-built paths."
+      },
+      "examples": [
+        {
+          "ids": "A-03 / A-04 / C-06",
+          "text": "Team Details reads a field the facade lacks and a method no strategy defines; wrong score, groups always In Progress."
+        },
+        {
+          "ids": "A-07 / C-15",
+          "text": "Game Activity reads token fields off the lookup's wrapper, so a GM-claimed token shows Unknown, no stars, $0."
+        },
+        {
+          "ids": "A-28",
+          "text": "The video Playing, Paused, Idle badge never renders: its element was never in the page."
+        },
+        {
+          "ids": "A-62, A-66",
+          "text": "The cue timeline waits for a skipped field nothing sends and correlates videos by a field the pack lacks."
+        },
+        {
+          "ids": "B-06, B-50, B-67",
+          "text": "The contract lists events nobody sends, misses ones the engine emits, and disagrees with itself on the music push."
+        }
+      ],
+      "blueFixes": [
+        "W2",
+        "W5"
+      ],
+      "questions": [
+        5
+      ],
+      "findings": 41,
+      "seenLive": ""
+    },
+    {
+      "id": "C15",
+      "title": "The deployed game is many parts nothing compares",
+      "atAShow": "Between shows, a rollback moves the parent checkout but no submodule backwards, and pm2 restart keeps serving the pre-rollback scanner build, so a bad rollback reaches the next show. A machine built from the tree's own documents pairs a speaker that connects with no audio profile, because the documents carry the wrong Bluetooth role.",
+      "whyItHappens": "The show machine is a parent checkout, four submodules on main, a scanner build folder, hand-copied media, host rules, hooks and program names fixed to one OS release. Each part moves by its own hand-run step and nothing compares them afterwards, so a half-applied change goes unnoticed.",
+      "designTerms": "A deploy-check module should own what is installed: pack hash, scanner build id, submodule pins, behind one boot-time interface. Today no module owns it: each part is moved by its own hand-run step, so the seam between source and running machine leaks unchecked.",
+      "modules": [
+        ".gitmodules",
+        "backend/package.json",
+        "backend/scripts/build-scanner.sh",
+        "DEPLOYMENT_GUIDE.md",
+        "backend/src/services/packService.js",
+        "arduino-cyd-player-scanner/ALNScanner_v5/services/OrchestratorService.h"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart TD\n  roll[\"Rollback<br/>check out older commit\"]\n  parent[\"Parent checkout<br/>moves back\"]\n  subs[\"Four submodules<br/>merge setting, stay forward\"]\n  pm2[\"pm2 restart<br/>no build step\"]\n  dist[\"Scanner build folder<br/>pre-rollback code\"]\n  serve[\"Engine serves<br/>scanner symlink\"]\n  media[\"Media on disk<br/>copied by hand\"]\n  roll -->|\"moves\"| parent\n  roll -.->|\"does not move\"| subs\n  roll -->|\"then\"| pm2\n  pm2 -.->|\"skips build\"| dist\n  dist -->|\"served as is\"| serve\n  media -.->|\"tokens may point at nothing\"| serve\n  parent -.->|\"nothing compares the parts\"| subs\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class subs,dist fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart TD\n  deploy[\"One deploy command<br/>performs every step\"]\n  parent[\"Parent checkout\"]\n  subs[\"Four submodules<br/>pinned\"]\n  dist[\"Scanner build folder<br/>rebuilt\"]\n  media[\"Media on disk\"]\n  boot[\"Boot check<br/>compares pack, build, pins\"]\n  report[\"Disagreement reported<br/>before the show\"]\n  deploy -->|\"moves\"| parent\n  deploy -->|\"moves\"| subs\n  deploy -->|\"builds\"| dist\n  deploy -->|\"copies\"| media\n  parent -->|\"pins\"| boot\n  subs -->|\"pins\"| boot\n  dist -->|\"build id\"| boot\n  boot -->|\"any mismatch\"| report\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class boot owner;",
+        "note": "Candidate (a): one deploy command performs every step, and a boot check compares pack hash, scanner build id and submodule pins. No competing candidate; the check adds host program names and the kit certificate."
+      },
+      "examples": [
+        {
+          "ids": "A-91",
+          "text": "Rolling back with git submodule update --force moves no submodule backwards under the merge setting."
+        },
+        {
+          "ids": "A-92",
+          "text": "pm2 restart skips the build, so the GM scanner keeps serving the pre-rollback code."
+        },
+        {
+          "ids": "A-88 / X-03",
+          "text": "The tree's own documents give the Bluetooth role blue found wrong, so a new machine pairs a silent speaker."
+        },
+        {
+          "ids": "A-95",
+          "text": "The token sync cannot carry media; copied by hand first, or tokens point at nothing."
+        },
+        {
+          "ids": "B-98, B-100",
+          "text": "Program names and install commands are fixed to one OS release; a new machine logs warnings or refuses pip."
+        },
+        {
+          "ids": "D-34",
+          "text": "The ESP32 checks no certificate at all, because the kit's self-signed certificate is pinned and distributed nowhere."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [],
+      "findings": 12,
+      "seenLive": "Blue hit a half-applied rollback, a pre-rollback scanner build after pm2 restart, and a speaker with no audio profile."
+    },
+    {
+      "id": "C16",
+      "title": "A green test run proves nothing about the show",
+      "atAShow": "Nothing shows at the show; this is why the other fifteen reached one. Unit tests stayed green while Team Details showed the wrong score, because their fake facade had the field the real one lacks. A delete step in an end-to-end flow had been silently skipping on a selector that never matched. Blue's last full run skipped 62 tests, and group completion has no test on real content.",
+      "whyItHappens": "Fakes are written by hand with nothing comparing them to the real classes. Steps that find no element, or check only that no error appeared, pass. Every test engine runs under a flag that changes what Reset System does, so no layer runs the reset the show runs.",
+      "designTerms": "A test's fake is an adapter, so the real class should own its shape and the fake must satisfy that interface. Today each fake is hand-written and checked against nothing; the seam leaks, and no test crosses one path from authority to screen.",
+      "modules": [
+        "ALNScanner/tests/unit/ui/uiManager.test.js",
+        "ALNScanner/tests/unit/core/gameActivityBuilder.test.js",
+        "backend/tests/e2e/helpers/page-objects/GMScannerPage.js",
+        "backend/src/websocket/listenerRegistry.js",
+        "backend/jest.config.base.js",
+        ".github/workflows/test.yml"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  real[\"Real facade<br/>no backendScores field\"]\n  fake[\"Hand-written fake<br/>has backendScores\"]\n  unit[\"Unit test<br/>green\"]\n  screen[\"Team Details screen<br/>wrong score\"]\n  sel[\"Page object selector<br/>never matches\"]\n  e2e[\"End-to-end flow<br/>delete step skips, green\"]\n  flag[\"Test flag on every engine<br/>reset removes listeners\"]\n  prod[\"Show machine<br/>reset removes nothing\"]\n  fake -->|\"stands in for\"| real\n  unit -->|\"tests against\"| fake\n  unit -.->|\"nothing compares\"| real\n  real -->|\"renders\"| screen\n  sel -->|\"finds no card, no failure\"| e2e\n  flag -.->|\"never tested as run\"| prod\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class fake,sel,flag fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  real[\"Real facade<br/>declared surface\"]\n  fake[\"Fake built from surface<br/>same fields and methods\"]\n  cmp[\"Shape check<br/>fails on a missing member\"]\n  unit[\"Unit test<br/>red when shapes disagree\"]\n  sel[\"Page object selector<br/>finds no card\"]\n  e2e[\"End-to-end flow<br/>delete step skips\"]\n  skips[\"Skip list<br/>printed every run\"]\n  real -->|\"surface\"| cmp\n  fake -->|\"surface\"| cmp\n  cmp -->|\"result\"| unit\n  sel -->|\"skipped step\"| e2e\n  e2e -->|\"named, not silent\"| skips\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class real owner;",
+        "note": "Candidate (a): fakes built from the real class surface, checked for missing members; skips printed as a list. Competing: (b) one proof test per delivery path on the rig; (c) docs generated from tests."
+      },
+      "examples": [
+        {
+          "ids": "A-51",
+          "text": "Unit-test fakes drifted from the real classes, so tests stayed green while Team Details and Game Activity were wrong."
+        },
+        {
+          "ids": "A-83",
+          "text": "A page-object selector never matched the Team Details cards, so a delete step had been silently skipping."
+        },
+        {
+          "ids": "A-82",
+          "text": "Blue's last full run skipped 62 tests; group completion has no end-to-end test on real content."
+        },
+        {
+          "ids": "X-04",
+          "text": "The listener registry removes listeners only under the test flag, so no layer runs the Reset System the show runs."
+        },
+        {
+          "ids": "D-87",
+          "text": "Not one screen image is checked in either end-to-end suite; no baseline exists to compare against."
+        },
+        {
+          "ids": "D-47",
+          "text": "Parent CI never runs several suites; the config tool's own workflow never runs from this repository."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [],
+      "findings": 23,
+      "seenLive": "Blue's last full run skipped 62 tests; a delete step had been skipping silently in blue's end-to-end runs."
+    }
+  ]
+}
