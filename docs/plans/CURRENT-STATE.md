@@ -52,17 +52,16 @@ before acting.
   from the next session. The owner added a plugin-install line to the
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
-- **Live state** (2026-10-31): running, the visual report's cards:
-  workflow `wf_6fea384f-ddd` (script
-  `docs/agents/workflow-scripts/cause-report-cards.js`) drafts one card
-  per cause with before-and-after diagrams, checks them and writes
-  `docs/plans/architecture-pass/report/2026-10-31-cause-cards.json`.
-  The owner asked whether the `improve-codebase-architecture` skill was
-  used for step 1; it was not (decision 12 put it on step 3), so the
-  report follows its method to present the cause list. Also running:
-  the doc-drift fixes (decision 20), one Sonnet implementer in
-  `.worktrees/doc-drift` (parent and ALNScanner branches
-  `claude/nice-curie-hescfv-doc-drift`, base `a8ab4422`; brief
+- **Live state** (2026-10-31): the visual cause report is published
+  for the owner (a private page:
+  https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL; source
+  `docs/plans/architecture-pass/report/`, built by `build_report.py`
+  from the checked cards; workflow `wf_6fea384f-ddd`, 1.9 million
+  helper tokens). The owner asked whether `improve-codebase-architecture`
+  was used for step 1; it was not (decision 12 put it on step 3), so the
+  report presents the list by its method. Running: the review of the
+  doc-drift fixes (decision 20) in `.worktrees/doc-drift` (parent and
+  ALNScanner branches `claude/nice-curie-hescfv-doc-drift`; brief
   `docs/plans/briefs/2026-10-31-doc-drift-fixes.md`). No test rig. The cause-analysis workflow `wf_5b8300fe-cb6` finished
   on 2026-10-30 (8 agents, about 3.6 million helper tokens). Three read-only mapping runs finished earlier
   on 2026-10-30 (`wf_7bc41460-e87`, `wf_dfeaf164-afd`,
