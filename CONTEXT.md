@@ -678,7 +678,10 @@ the GM scanner, and a game's own post-show tooling)
   lessons of blue's run and the needs of the planned capabilities into
   the engine's architecture and interfaces. Phase 1 decides the shared
   rules and revises the roadmap. Phase 2 changes the engine to follow
-  them, each rule proven by a test. (Owner-ratified wording,
+  them, each rule proven by a test. Its aim is the best architecture
+  for the engine's long-term use as it grows beyond ALN; blue's fixes
+  and findings are clues to where today's design is off, never the
+  driver (owner, 2026-10-31, decision 26). (Owner-ratified wording,
   2026-10-30; decision record: `docs/plans/2026-10-30-architecture-pass.md`, Appendix A.)
 - **Truth sweep.** The roadmap's Block 3 as chartered on 2026-09-05:
   audit the routes by which service status reaches the GM's admin

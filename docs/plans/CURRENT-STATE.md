@@ -42,6 +42,15 @@ before acting.
       wherever possible, so the ESP32's missing standalone mode is a
       parity gap under (a), not a new feature. Recorded on that
       reasoning; the owner's explicit word is asked for.
+  26. The pass's frame (owner direction, 2026-10-31, answering no
+      question): design the best architecture for the next iteration
+      of the engine, for long-term use and future development as its
+      use grows beyond ALN. Blue's fixes and findings are clues to
+      where today's design is off, never the driver: the pass is not
+      a triage of ALN's issues renamed as architecture fixes. The
+      owner expects the frame to change the approach and how the
+      design and the roadmap are discussed more than the fixes
+      themselves.
   Open in round 8, all on the report page or in the chat: 17 (is the
   cause list right), 18 (the three causes no question covers), 19
   (record every scan attempt's outcome: the owner's yes to the
