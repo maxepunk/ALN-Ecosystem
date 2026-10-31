@@ -48,7 +48,7 @@ PARTS = [
     ('Player scanners', lambda p: p.startswith('aln-memory-scanner') or p.startswith('arduino-cyd-player-scanner')),
     ('Game state', lambda p: any(k in p for k in ('sessionService', 'transactionService', 'stateService', 'models/', 'gameRules', 'websocket/', 'broadcasts', 'scanRoutes', 'adminEvents', 'systemReset', 'routes/'))),
     ('Show control', lambda p: any(k in p for k in ('vlc', 'music', 'audioRouting', 'lighting', 'bluetooth', 'sound', 'cueEngine', 'videoQueue', 'gameClock', 'serviceHealth', 'displayDriver', 'dbusSignal', 'mpd', 'commandExecutor', 'dormancy', 'processMonitor', 'ducking'))),
-    ('Pack and config tool', lambda p: p.startswith('config-tool') or p.startswith('ALN-TokenData') or 'packService' in p or 'pack' in p.split('/')[-1].lower()),
+    ('Pack, config tool', lambda p: p.startswith('config-tool') or p.startswith('ALN-TokenData') or 'packService' in p or 'pack' in p.split('/')[-1].lower()),
     ('Tests', lambda p: '/tests/' in p or p.startswith('tests/') or p.startswith('.github')),
     ('Deployment', lambda p: any(k in p for k in ('DEPLOYMENT_GUIDE', 'ecosystem.config', '.gitmodules', 'scripts/', 'setup.sh', 'CLAUDE.md', 'package.json'))),
     ('Contracts', lambda p: 'contracts/' in p),
@@ -68,10 +68,21 @@ def chips(card):
     return ''.join(out)
 
 
+INIT = '%%{init: {"flowchart": {"useMaxWidth": false}, "sequence": {"useMaxWidth": false}}}%%'
+
+
+def present(src):
+    """Draw flowcharts top-down at natural size; the card scrolls a wide one in its own box."""
+    lines = src.strip().split('\n')
+    if lines[0].strip() == 'flowchart LR':
+        lines[0] = 'flowchart TD'
+    return INIT + '\n' + '\n'.join(lines)
+
+
 def card_html(c):
     ex = ''.join(f'<li><span class="ids">{e(x["ids"])}</span> {e(x["text"])}</li>' for x in c['examples'])
     mods = ''.join(f'<code>{e(m)}</code>' for m in c['modules'])
-    live = f'<p class="live-note"><span class="label">Seen live</span> {e(c["seenLive"])}</p>' if c.get('seenLive') else ''
+    live = f'<p class="live-note"><span class="tag">Seen live</span> {e(c["seenLive"])}</p>' if c.get('seenLive') else ''
     return f'''
 <article class="card" id="{c["id"].lower()}">
   <header class="card-head">
@@ -80,22 +91,22 @@ def card_html(c):
     <div class="chips">{chips(c)}</div>
   </header>
   <div class="story">
-    <p><span class="label">At a show</span> {e(c["atAShow"])}</p>
-    <p><span class="label">Why it happens</span> {e(c["whyItHappens"])}</p>
+    <p><span class="tag">At a show</span> {e(c["atAShow"])}</p>
+    <p><span class="tag">Why it happens</span> {e(c["whyItHappens"])}</p>
     {live}
   </div>
   <div class="diagrams">
     <figure class="dia before">
       <figcaption>{e(c["before"]["caption"])}</figcaption>
-      <div class="scroll"><pre class="mermaid">{e(c["before"]["mermaid"])}</pre></div>
+      <div class="scroll"><pre class="mermaid">{e(present(c["before"]["mermaid"]))}</pre></div>
     </figure>
     <figure class="dia after">
       <figcaption>{e(c["after"]["caption"])}</figcaption>
-      <div class="scroll"><pre class="mermaid">{e(c["after"]["mermaid"])}</pre></div>
-      <p class="note">{e(c["after"]["note"])}</p>
+      <div class="scroll"><pre class="mermaid">{e(present(c["after"]["mermaid"]))}</pre></div>
+      <p class="after-note">{e(c["after"]["note"])}</p>
     </figure>
   </div>
-  <p class="design"><span class="label">In design terms</span> {e(c["designTerms"])}</p>
+  <p class="design"><span class="tag">In design terms</span> {e(c["designTerms"])}</p>
   <details>
     <summary>The findings behind it, and the code they live in</summary>
     <ul class="examples">{ex}</ul>
@@ -137,8 +148,9 @@ def build():
         fams.append(f'<section class="family" id="{fid}"><h2>{e(title)}</h2><p class="intro">{e(intro)}</p>'
                     + ''.join(card_html(by_id[i]) for i in ids) + '</section>')
     aside = ''.join(f'<tr><th scope="row">{e(k)}</th><td class="num">{n}</td><td>{e(t)}</td></tr>' for k, n, t in SET_ASIDE)
+    aside_n = sum(n for _, n, _ in SET_ASIDE)
     page = TEMPLATE.format(
-        total=total, toc=toc, grid=grid_html(sorted(cards, key=lambda c: int(c['id'][1:]))),
+        total=total, total_all=total + aside_n, aside_n=aside_n, toc=toc, grid=grid_html(sorted(cards, key=lambda c: int(c['id'][1:]))),
         families=''.join(fams), aside=aside)
     OUT.write_text(page)
     print(f'wrote {OUT} ({len(page)} bytes, {len(cards)} cards, {total} findings in causes)')
@@ -166,7 +178,7 @@ TEMPLATE = '''<title>ALN Cause Analysis</title>
   --accent: #4db6aa; --fault: #ff6f61; --chip: #22302c; --chip-live: #3a2220; color-scheme: dark; }}
 body {{ background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }}
 .wrap {{ max-width: 1040px; margin: 0 auto; padding-block: 40px 72px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 40px; }}
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; }}
 h1, h2, h3 {{ text-wrap: balance; line-height: 1.2; margin: 0; }}
 h1 {{ font-size: clamp(30px, 5vw, 44px); font-weight: 600; letter-spacing: -0.01em; }}
 h2 {{ font-size: 24px; font-weight: 600; }}
@@ -174,7 +186,7 @@ h3 {{ font-size: 19px; font-weight: 600; }}
 p {{ margin: 0; }}
 a {{ color: var(--accent); }}
 a:focus-visible, summary:focus-visible {{ outline: 2px solid var(--accent); outline-offset: 2px; }}
-.eyebrow, .label, figcaption, .grid th span {{ font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--muted); }}
+.eyebrow, .tag, figcaption, .grid th span {{ font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--muted); }}
 .muted {{ color: var(--muted); }}
 .lead {{ font-size: 18px; max-width: 68ch; }}
 header.top {{ display: grid; gap: 14px; }}
@@ -192,26 +204,27 @@ dl.terms dd {{ margin: 0; color: var(--muted); }}
 .tablewrap {{ overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }}
 table {{ border-collapse: collapse; width: 100%; font-size: 14px; }}
 .grid th, .grid td {{ border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: middle; }}
-.grid thead th {{ white-space: nowrap; }}
-.grid tbody th {{ font-weight: 400; min-width: 260px; }}
+.grid thead th {{ white-space: normal; vertical-align: bottom; min-width: 64px; }}
+.grid tbody th {{ font-weight: 400; min-width: 220px; }}
 .grid tbody th a {{ font-family: var(--font-mono); font-weight: 500; text-decoration: none; margin-right: 4px; }}
 .grid td.dot {{ color: var(--accent); text-align: center; font-size: 15px; }}
-.family {{ display: grid; gap: 22px; }}
+.family {{ display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }}
 .intro {{ max-width: 72ch; color: var(--muted); font-size: 17px; }}
-.card {{ background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 22px; display: grid; gap: 18px; scroll-margin-top: 16px; }}
+.card {{ background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; scroll-margin-top: 16px; }}
+.wrap > *, .family > *, .card > * {{ min-width: 0; }}
 .card-head {{ display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: baseline; }}
 .cid {{ font-family: var(--font-mono); font-weight: 500; font-size: 15px; color: var(--accent); }}
 .chips {{ grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; }}
 .chip {{ font-family: var(--font-label); font-size: 13px; background: var(--chip); border-radius: 999px; padding: 2px 10px; }}
 .chip.live {{ background: var(--chip-live); color: var(--fault); }}
 .story {{ display: grid; gap: 10px; max-width: 76ch; }}
-.story .label, .design .label, .live-note .label {{ display: block; margin-bottom: 2px; }}
-.diagrams {{ display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }}
+.story .tag, .design .tag, .live-note .tag {{ display: block; margin-bottom: 2px; }}
+.diagrams {{ display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }}
 figure.dia {{ margin: 0; border: 1px solid var(--line); border-radius: 6px; padding: 12px; display: grid; gap: 8px; align-content: start; min-width: 0; }}
 figure.dia.after {{ border-style: dashed; }}
 .scroll {{ overflow-x: auto; min-width: 0; }}
 pre.mermaid {{ margin: 0; background: transparent; font-size: 13px; text-align: center; }}
-.note {{ font-size: 14px; color: var(--muted); }}
+.after-note {{ font-size: 14px; color: var(--muted); }}
 .design {{ font-size: 15px; max-width: 80ch; border-top: 1px solid var(--line); padding-top: 14px; }}
 details summary {{ cursor: pointer; font-size: 15px; color: var(--accent); }}
 details[open] summary {{ margin-bottom: 10px; }}
@@ -220,7 +233,7 @@ details[open] summary {{ margin-bottom: 10px; }}
 .mods {{ display: flex; flex-wrap: wrap; gap: 6px; }}
 .mods code {{ font-family: var(--font-mono); font-size: 12.5px; background: var(--chip); border-radius: 4px; padding: 2px 6px; overflow-wrap: anywhere; }}
 .aside th, .aside td {{ border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }}
-.aside th {{ font-weight: 600; white-space: nowrap; }}
+.aside th {{ font-weight: 600; min-width: 9em; }}
 .num {{ font-variant-numeric: tabular-nums; text-align: right; }}
 .questions {{ display: grid; gap: 20px; }}
 .q {{ background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 18px 20px; display: grid; gap: 10px; }}
@@ -235,7 +248,7 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
 <header class="top">
   <p class="eyebrow">Architecture pass · phase 1, step 1 · checked draft, 2026-10-31</p>
   <h1>Sixteen causes behind the engine's faults</h1>
-  <p class="lead">Every fix blue made in September, every finding blue left open, and every fault the engine maps turned up: {total} findings in all, grouped by the design choice that lets them happen. Fix a cause and you fix its whole family, including the faults nobody has hit yet.</p>
+  <p class="lead">Every fix blue made in September, every finding blue left open, and every fault the engine maps turned up: {total_all} findings in all. {total} of them group under sixteen design choices that let them happen, and the other {aside_n} need no rule. Fix a cause and you fix its whole family, including the faults nobody has hit yet.</p>
 </header>
 
 <section class="decide" aria-labelledby="deciding">
@@ -247,7 +260,7 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
 <section class="howto" aria-label="How to read a card">
   <div>
     <h2>How to read a card</h2>
-    <p><span class="label">At a show</span> is a moment a GM or a player would see. <span class="label">Why it happens</span> is the design reason behind it.</p>
+    <p><span class="tag">At a show</span> is a moment a GM or a player would see. <span class="tag">Why it happens</span> is the design reason behind it.</p>
     <p>Two diagrams sit side by side. <strong>Today</strong> shows how the fault happens now. <strong>Candidate, not decided</strong> shows one way the design could remove it. Nothing on the right is decided: step 3 puts competing designs in front of you.</p>
     <div class="legend"><span><span class="sw"></span>where it goes wrong</span><span><span class="sw owner"></span>the one place that would own the fact</span></div>
   </div>
@@ -279,7 +292,7 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
 {families}
 
 <section aria-labelledby="aside">
-  <h2 id="aside">Set aside, 21 findings</h2>
+  <h2 id="aside">Set aside, {aside_n} findings</h2>
   <p class="intro" style="margin:8px 0 14px">These need no rule. Each still has a home.</p>
   <div class="tablewrap"><table class="aside"><tbody>{aside}</tbody></table></div>
 </section>
@@ -309,4 +322,7 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
 '''
 
 if __name__ == '__main__':
+    import sys
+    if len(sys.argv) == 3:  # draft preview: build_report.py <cards.json> <out.html>
+        CARDS, OUT = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
     build()
