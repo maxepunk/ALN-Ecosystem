@@ -13,6 +13,8 @@ import pathlib
 HERE = pathlib.Path(__file__).resolve().parent
 CARDS = HERE / '2026-10-31-cause-cards.json'
 OUT = HERE / '2026-10-31-cause-report.html'
+STANDALONE = HERE / '2026-10-31-standalone-lines.json'
+PASS = HERE.parent / '2026-10-31-standalone-pass.md'
 
 FAMILIES = [
     ('screens', 'Screens keep their own versions of the game', ['C1', 'C6', 'C7', 'C9', 'C10'],
@@ -92,6 +94,8 @@ def card_html(c):
     ex = ''.join(f'<li><span class="ids">{e(x["ids"])}</span> {e(x["text"])}</li>' for x in c['examples'])
     mods = ''.join(f'<code>{e(m)}</code>' for m in c['modules'])
     live = f'<p class="live-note"><span class="tag">Seen live</span> {e(c["seenLive"])}</p>' if c.get('seenLive') else ''
+    sa = c.get('inStandalone', '')
+    sa_html = f'<p class="standalone"><span class="tag">In a standalone game</span> {e(sa)}</p>' if sa else ''
     return f'''
 <article class="card" id="{c["id"].lower()}">
   <header class="card-head">
@@ -103,6 +107,7 @@ def card_html(c):
     <p><span class="tag">At a show</span> {e(c["atAShow"])}</p>
     <p><span class="tag">Why it happens</span> {e(c["whyItHappens"])}</p>
     {live}
+    {sa_html}
   </div>
   <div class="diagrams">
     <figure class="dia before">
@@ -146,8 +151,43 @@ SET_ASIDE = [
 ]
 
 
+def parity_rows():
+    import re
+    text = PASS.read_text()
+    sec = text.split('## 4. The ESP32 parity gap')[1].split('\n## 5.')[0]
+    rows = []
+    for line in sec.splitlines():
+        m = re.match(r'^\| (\d+) \| (.*) \|\s*$', line)
+        if not m:
+            continue
+        cells = [c.strip() for c in m.group(2).split(' | ')]
+        if len(cells) != 4:
+            continue
+        clean = []
+        for c in cells:
+            c = re.sub(r'\s*\((?:[^()]|\([^()]*\))*`[^)]*\)', '', c)   # drop "(file:line)" citations
+            c = c.replace('`', '').replace(' *', '').strip()
+            clean.append(c)
+        weak = cells[1].endswith('*') or cells[2].endswith('*')
+        rows.append((m.group(1), clean, weak))
+    return rows
+
+
+def parity_html():
+    body = ''.join(
+        f'<tr{" class=both-weak" if weak else ""}><td class="num">{n}</td><th scope="row">{e(c[0])}</th><td>{e(c[1])}</td><td>{e(c[2])}</td><td>{e(c[3])}</td></tr>'
+        for n, c, weak in parity_rows())
+    return ('<div class="tablewrap"><table class="parity"><thead><tr><th>#</th><th>Behaviour</th>'
+            '<th>Web scanner, standalone</th><th>ESP32, no engine</th><th>What the ESP32 would need (candidate)</th>'
+            f'</tr></thead><tbody>{body}</tbody></table></div>')
+
+
 def build():
     cards = json.loads(CARDS.read_text())['cards']
+    lines = json.loads(STANDALONE.read_text())['lines']
+    for c in cards:
+        t = lines.get(c['id'], '')
+        c['inStandalone'] = t.split(':', 1)[1].strip() if t.lower().startswith('in a standalone game:') else t
     by_id = {c['id']: c for c in cards}
     assert len(by_id) == 16, f'expected 16 cards, got {len(by_id)}'
     total = sum(c['findings'] for c in cards)
@@ -160,7 +200,7 @@ def build():
     aside_n = sum(n for _, n, _ in SET_ASIDE)
     page = TEMPLATE.format(
         total=total, total_all=total + aside_n, aside_n=aside_n, toc=toc, grid=grid_html(sorted(cards, key=lambda c: int(c['id'][1:]))),
-        families=''.join(fams), aside=aside)
+        families=''.join(fams), aside=aside, parity=parity_html(), parity_n=len(parity_rows()))
     OUT.write_text(page)
     print(f'wrote {OUT} ({len(page)} bytes, {len(cards)} cards, {total} findings in causes)')
 
@@ -234,6 +274,14 @@ figure.dia.after {{ border-style: dashed; }}
 .scroll {{ overflow-x: auto; min-width: 0; }}
 pre.mermaid {{ margin: 0; background: transparent; font-size: 13px; text-align: center; }}
 .after-note {{ font-size: 14px; color: var(--muted); }}
+.standalone {{ border-left: 3px solid var(--accent); padding-left: 12px; }}
+.parity th, .parity td {{ border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; font-size: 14px; }}
+.parity thead th {{ font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; color: var(--muted); }}
+.parity tbody th {{ font-weight: 600; min-width: 9em; }}
+.parity td {{ min-width: 12em; }}
+.parity tr.both-weak td, .parity tr.both-weak th {{ background: var(--chip); }}
+.sa-box {{ border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 18px 20px; display: grid; gap: 12px; }}
+.sa-box p {{ max-width: 76ch; }}
 .design {{ font-size: 15px; max-width: 80ch; border-top: 1px solid var(--line); padding-top: 14px; }}
 details summary {{ cursor: pointer; font-size: 15px; color: var(--accent); }}
 details[open] summary {{ margin-bottom: 10px; }}
@@ -263,7 +311,8 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
 <section class="decide" aria-labelledby="deciding">
   <h2 id="deciding">What you are deciding</h2>
   <p><strong>Question 17.</strong> Is this the right list? Look for a fault you have seen at a show that no card explains, or two cards that are really one problem.</p>
-  <p><strong>Question 18.</strong> The last three causes, C14 to C16, fall outside the pass's nine questions. Should the pass take them on? The options are <a href="#your-questions">at the end</a>.</p>
+  <p><strong>Question 18.</strong> The last three causes, C14 to C16, fall outside the pass's nine questions. Should the pass take them on?</p>
+  <p><strong>Questions 23 to 25</strong> come from your decision 22, standalone games: whether "nothing declares a game standalone" is a cause of its own, whether a standalone game has one GM tablet, and what exposure and video tokens do with no engine. All the options are <a href="#your-questions">at the end</a>.</p>
 </section>
 
 <section class="howto" aria-label="How to read a card">
@@ -285,6 +334,18 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
       <dt>Leverage</dt><dd>One module serving many callers.</dd>
     </dl>
   </div>
+</section>
+
+<section class="sa-box" aria-labelledby="standalone">
+  <h2 id="standalone">Standalone games</h2>
+  <p>Your decision 22 adds a requirement: a whole game can run with no engine, the GM tablet and the player scanners each working alone. In a standalone game the GM tablet decides everything about the game (claimed tokens, scores, teams, the game's start, pause and end) from its own hand-kept copies of the engine's rules. Each player scanner decides only whether a token is known.</p>
+  <p>Four causes produce no fault in a standalone game (C2, C3, C8, C13), four apply in part and eight in full. The candidate designs hold for five causes as they are, eight need a small change so that the tablet takes the engine's place, and three fall short (C9, C14, C16). Each card now says what its cause means in a standalone game.</p>
+  <p>The two biggest gaps. Nothing says that a game is standalone: the tablet is set by each GM's tap, the phone by its web address, and the ESP32 has no such setting. And every device shows the missing engine as a failure: "Offline" on the phone all night, red "DISCONNECTED" on the ESP32, "VIDEO UNAVAILABLE, Rescan later" for a video that can never play.</p>
+  <details>
+    <summary>The ESP32 against the web scanner with no engine: {parity_n} differences</summary>
+    <p class="muted" style="margin:10px 0">Your parity rule says the two player scanners match wherever possible. Shaded rows are ones where both are weak, or the web scanner is the weaker side, so matching it would copy a gap.</p>
+    {parity}
+  </details>
 </section>
 
 <section aria-labelledby="where">
@@ -321,11 +382,34 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
     </ol>
     <p class="rec">Recommendation: a. The pass ends when every rule's test passes on the rig, and C16 is the risk that those tests pass without proving the real path, so it needs a rule of its own. C15 is the one that bites on a show night: a rollback that quietly keeps serving the new scanner build.</p>
   </div>
-  <p class="muted">Questions 19 and 21 are in the chat. Question 20 is decided: no rule for documents, and documents are fixed as we go.</p>
+  <div class="q">
+    <h3>23. Is "nothing declares a game standalone" a cause of its own?</h3>
+    <p>Both standalone readers found it independently, in eight places: no record says a game runs standalone, which of the pack's effects it drops, or that its devices may not mix modes.</p>
+    <ol type="a">
+      <li>Yes: a seventeenth cause, with its own rule. Three other rules (boundaries, one answer per question, staleness) need this fact as an input.</li>
+      <li>No: its eight findings join causes C9, C11 and C14 and the parity list.</li>
+    </ol>
+    <p class="rec">Recommendation: a. The three rules that need it would each otherwise invent their own answer.</p>
+  </div>
+  <div class="q">
+    <h3>24. Does a standalone game run on one GM tablet?</h3>
+    <p>Today two standalone tablets are two separate games that never share a score or a claimed token.</p>
+    <ol type="a">
+      <li>One GM tablet per standalone game.</li>
+      <li>Several tablets sharing one game. With no engine, the tablets would have to talk to each other directly, which is a large new piece.</li>
+    </ol>
+    <p class="rec">Recommendation: a, unless you plan standalone games that need two GMs.</p>
+  </div>
+  <div class="q">
+    <h3>25. With no engine, what do exposed evidence and video tokens do?</h3>
+    <p>There is no TV in a standalone game. Today an exposed token shows nowhere public, and a video token tells the player to "Rescan later" for a video that can never play.</p>
+    <p class="rec">Suggestion: exposure shows on the GM tablet's own scoreboard screen, which standalone already has. A video token shows its picture with a plain note, instead of an error.</p>
+  </div>
+  <p class="muted">Decided: 20 (no rule for documents; documents are fixed as we go) and 22 (standalone games join the requirements; no game mixes the two modes). In the chat: 19 and 21. For step 3: where the standalone fact is held (the game record, the pack, the venue profile, or each device) is a design question.</p>
 </section>
 
 <footer>
-  <p>Built from <code>docs/plans/architecture-pass/2026-10-30-cause-analysis.md</code>, its four reader sheets and its two check files. The check held 632 claims, corrected 78, struck 34 and found 7 new faults. The cards were drawn from that analysis on 2026-10-31 and checked against the code.</p>
+  <p>Built from <code>docs/plans/architecture-pass/2026-10-30-cause-analysis.md</code>, its four reader sheets and its two check files, and from the standalone pass, <code>2026-10-31-standalone-pass.md</code> (its check held 141 claims and corrected 47). The check held 632 claims, corrected 78, struck 34 and found 7 new faults. The cards were drawn from that analysis on 2026-10-31 and checked against the code.</p>
 </footer>
 </div>
 '''

@@ -1277,3 +1277,14 @@ One line per change, naming the check row it came from. Check 1 rows carry ids (
 **Section 4.** The 4.1 rows for A-12, B-01 and A-05 / C-04 carry the corrected expectations; 4.2 rows removed for B-13, B-25, A-29, A-49 / D-71, A-26, A-35, A-99, A-84 (their marks are now "no"); rows re-aimed for A-06 / C-30, A-17, A-48, A-65 / B-48, A-55 / B-43 / B-93, A-56 / B-56, B-49, B-55, A-30 / C-46, B-09, A-75, A-16 / C-03, B-39, B-40, C-25, B-24 / C-59, A-88 / X-03; rows moved with their findings (A-62, D-07 to C14; A-67, B-55, C-36 to C4; B-45, B-18 to C11; B-24 / C-59 to C13; A-80 to C16); rows added for X-01 and A-74.
 
 **Section 5.** Every move above applied; the X block added (5.5); the totals recomputed (5.6); the joins note folds the check's moves in.
+
+## 7. Standalone games (decision 22), and two later findings
+
+Added 2026-10-31. The owner's decision 22 (`docs/plans/CURRENT-STATE.md` §0) makes a whole standalone game a requirement every rule must serve: the GM scanner and the player scanners each work alone, and no game mixes networked and standalone devices. Until then this analysis treated standalone only as a source of faults, and most candidate designs above assume the engine is present.
+
+The standalone pass, `2026-10-31-standalone-pass.md` (its two reader sheets beside it; its check held 141 claims and corrected 47), answers for each cause whether it applies in a whole standalone game, which device decides the fact there, and whether the first candidate design survives with no engine (its section 2). It adds 35 findings, SG-01 to SG-12 on the GM tablet and SP-01 to SP-23 on the player devices, each placed under a cause in its section 3. It proposes a seventeenth cause, N1, "nobody declares that a game is standalone", as a question for the owner (its section 3.4; round 8, question 23). Its section 4 is the ESP32 parity gap, 24 rows. Section 5 of this document counts the 357 findings that existed before decision 22; the standalone findings are counted in the pass's own sections.
+
+Two findings noted while fixing documents on 2026-10-31 (decision 20), recorded here as evidence and left unfixed for phase 2:
+
+- **DD-01, under C16.** `ALNScanner/tests/unit/network/networkedSession.test.js:1024` feeds the tablet a `standingCues` key the backend never sends, so the test proves a shape the real path never produces.
+- **DD-02, under C14.** `ALNScanner/src/services/StateValidationService.js` `clearStaleState()` removes `aln_game_session_mode` and `aln_session_data`, keys no code writes; the real mode key is `gameSessionMode`. A unit test pins the two unused keys. No behaviour bug today, because `applyInitialScreenDecision()` also clears the real key.
