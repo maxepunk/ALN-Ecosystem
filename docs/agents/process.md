@@ -224,6 +224,13 @@ problem, since one bad passage is evidence about the rest (owner
 amendment, 2026-08-29). Meaning stays; note the edit. New entries added
 to any document follow this standard from now on.
 
+Documents are fixed as we go, always (owner, 2026-10-31, the
+architecture pass's round 8). When work finds that a document
+disagrees with the code, the same piece of work fixes the document.
+Dated records stay as written; the rule covers the documents people
+and agents work from: guides, `CLAUDE.md` files, READMEs, the
+contracts and code comments.
+
 ## 5. Working with the owner (recorded 2026-10-30 from the owner's words)
 
 - Explain each decision by how the system behaves during a game, in

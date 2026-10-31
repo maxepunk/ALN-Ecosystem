@@ -28,7 +28,15 @@ before acting.
      check files sit beside it. Step 2, the test rig, follows the
      owner's answers.
 - **Phase 1's decisions** go here as the owner makes them, then into
-  phase 1's documents (`docs/agents/process.md` §5). None yet.
+  phase 1's documents (`docs/agents/process.md` §5). A decision carries
+  the number of the question it answers.
+  20. No rule for documents in the pass (round 8). Documents are fixed
+      as we go, always: `docs/agents/process.md` §4, last paragraph.
+  Open in round 8: 17 and 18 (the cause list, and the three causes no
+  question covers) wait for the visual report the owner asked for;
+  19 (record every scan attempt's outcome) waits for the owner's yes
+  to the orchestrator's view; 21 (how many findings the rig must
+  show in step 2) was re-asked in plain words.
 - **The branch.** This program's records live on the branch
   `claude/nice-curie-hescfv`, with three draft pull requests:
   ALN-Ecosystem #35, ALNScanner #17 and ALN-TokenData #8. `main` is
