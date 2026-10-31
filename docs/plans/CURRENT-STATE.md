@@ -79,10 +79,16 @@ before acting.
   owner asked for: workflow `wf_1dea6411-991` (script
   `docs/agents/workflow-scripts/cause-list-consistency.js`), four
   checkers and a fold, reports in
-  `docs/plans/architecture-pass/consistency/`. The owner also asked
-  for a plain re-pitch of the list grounded in what the engine does,
-  and said the term "cause analysis" does not land. No worktrees, no
-  test rig. The visual cause report, version 2, is published for the
+  `docs/plans/architecture-pass/consistency/`. Also running, at the
+  owner's yes (2026-10-31): step 1 restructured around the engine's
+  jobs (decision 26's frame), workflow `wf_f3c1ef9e-a97` (script
+  `docs/agents/workflow-scripts/engine-jobs.js`): two mappers (the 52
+  capabilities, the design flaws) test the orchestrator's draft of ten
+  jobs, then a writer, a check and a fold produce
+  `docs/plans/architecture-pass/2026-10-31-engine-jobs.md` and the
+  page's data. Vocabulary: "design flaws" for C1 to C16 in owner-facing
+  text (the owner said "cause analysis" does not land). No worktrees,
+  no test rig. The visual cause report, version 2, is published for the
   owner (a private page: https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL;
   source `docs/plans/architecture-pass/report/`, rebuilt by
   `build_report.py`). Version 2 adds decision 22's standalone pass
