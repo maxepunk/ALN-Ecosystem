@@ -519,7 +519,7 @@ All service domain state (cue status, held items, health, music, video) is deliv
 **`sync:full` Phase 2 Additions:**
 - `music`: `{connected, state, volume, track, playlist, playlists, pausedByGameClock}` via `buildMusicState()`
 - `gameClock`: `{status, elapsed, expectedDuration, phase}` via `buildGameClockState()` (`phase` is required-nullable `{id, label}|null` since A3 slice 5 — the pack-declared current phase; null for degenerate/absent declarations)
-- `cueEngine`: `{cues, activeCues, standingCues}` via `buildCueEngineState()`
+- `cueEngine`: `{loaded, cues, activeCues, disabledCues}` via `buildCueEngineState()`. `loaded` is true when the engine holds at least one cue. `cues` are the cue summaries, `activeCues` the running compound cues, and `disabledCues` the ids of cues that are off for any reason (GM choice, spent once-cue, or dormant equipment). The snapshot has no separate list of standing cues: a standing cue is a `cues` entry whose `triggerType` is `event` or `clock`. The `service:state` push for domain `cueengine` carries the same keys without `loaded` (`cueEngineService.getState()`).
 
 **`sync:full` Phase 4 Additions:**
 - `serviceHealth`: `{vlc: {status, message}, music: {...}, ...}` via `serviceHealthRegistry.getSnapshot()` (9 services; dormant entries carry `door`)
