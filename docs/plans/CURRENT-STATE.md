@@ -66,7 +66,13 @@ before acting.
   from the next session. The owner added a plugin-install line to the
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
-- **Live state** (2026-10-31): nothing running, no worktrees, no
+- **Live state** (2026-10-31): running, the consistency check the
+  owner asked for: workflow `wf_1dea6411-991` (script
+  `docs/agents/workflow-scripts/cause-list-consistency.js`), four
+  checkers and a fold, reports in
+  `docs/plans/architecture-pass/consistency/`. The owner also asked
+  for a plain re-pitch of the list grounded in what the engine does,
+  and said the term "cause analysis" does not land. No worktrees, no
   test rig. The visual cause report, version 2, is published for the
   owner (a private page: https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL;
   source `docs/plans/architecture-pass/report/`, rebuilt by
