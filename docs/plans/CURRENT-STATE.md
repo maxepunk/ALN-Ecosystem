@@ -52,10 +52,16 @@ before acting.
   from the next session. The owner added a plugin-install line to the
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
-- **Live state** (2026-10-30, 12:20Z): nothing running, no worktrees,
+- **Live state** (2026-10-31): running, the visual report's cards:
+  workflow `wf_6fea384f-ddd` (script
+  `docs/agents/workflow-scripts/cause-report-cards.js`) drafts one card
+  per cause with before-and-after diagrams, checks them and writes
+  `docs/plans/architecture-pass/report/2026-10-31-cause-cards.json`.
+  The owner asked whether the `improve-codebase-architecture` skill was
+  used for step 1; it was not (decision 12 put it on step 3), so the
+  report follows its method to present the cause list. No worktrees,
   no test rig. The cause-analysis workflow `wf_5b8300fe-cb6` finished
-  (8 agents, about 3.6 million helper tokens; script
-  `docs/agents/workflow-scripts/cause-analysis.js`). Three read-only mapping runs finished earlier
+  on 2026-10-30 (8 agents, about 3.6 million helper tokens). Three read-only mapping runs finished earlier
   on 2026-10-30 (`wf_7bc41460-e87`, `wf_dfeaf164-afd`,
   `wf_3f365994-ba6`; about 4.2 million helper tokens). Their nine
   files are the pass's evidence, all committed in
