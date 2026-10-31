@@ -1,0 +1,197 @@
+{
+  "lines": {
+    "C1": "In a standalone game: one GM tablet holds the only copy, so tablets cannot drift, but it keeps a claim list beside its transactions and refreshes screens only on wired events. Two standalone tablets are two separate games; one tablet per game is undecided.",
+    "C2": "In a standalone game: no venue service runs, so this cause produces no fault. The service panels are hidden on the tablet and the player devices hold no service state. The candidate design needs no change.",
+    "C3": "In a standalone game: no outside program is driven; the tablet plays nothing and each player device plays its own audio. No fault here, and the candidate design needs no change.",
+    "C4": "In a standalone game: the GM tablet decides every boundary, but start, pause, end, reset, reload, a day change and a pack change each run their own code; the phone's seen list and the ESP32's queue outlive every game. The table needs a tablet column.",
+    "C5": "In a standalone game: there is no engine to assemble. The same shape appears in small on the tablet: a new game and Reset All Scores clear different things and raise different events. One begin-game function for both would serve.",
+    "C6": "In a standalone game: there is no snapshot and live pair. The saved game is the one snapshot; reading it back fires no live event, so the History badge stays hidden after a reload. Loading should use the same apply function as a live change.",
+    "C7": "In a standalone game: no network reply exists, but each device's own store answers and the caller ignores it: a refused scan still shows Transaction Complete, and the ESP32 shows a queued scan as recorded. Each device's record step must return the same result words.",
+    "C8": "In a standalone game: no engine runs on any machine. The tablet is a browser tab and the player devices start no helper programs. No fault here, and the candidate design needs no change.",
+    "C9": "In a standalone game: the GM tablet alone judges claims, scores and the scan gate, from hand-kept copies of every rule, and each player device alone decides whether a token is known, by two different matching rules. No shared rules module exists yet.",
+    "C10": "In a standalone game: every device draws the missing engine as an outage: the phone says Offline all night, the ESP32 shows red Disconnected and a rising queue, a video token says Rescan later. Nothing says standalone by choice, and no tablet readiness verdict exists.",
+    "C11": "In a standalone game: the tablet answers group completion in two places that disagree, teams in three and may-I-scan in none; the phone decides am-I-standalone by one URL test written three times. One resolver per question still fits; deployment mode should become one.",
+    "C12": "In a standalone game: each device loads whatever pack copy its source holds; the tablet can adopt a newer pack on a mid-game reload, and the game carries no pack stamp. No player device shows a pack identity, so nothing compares the devices.",
+    "C13": "In a standalone game: no engine, no credential and no connection exist, so this cause produces no fault. A tablet never set up for a networked game keeps device id 001 and is known to nobody (see C1). The candidate design needs no change.",
+    "C14": "In a standalone game: both sides of each join sit on one device and still disagree: Team Details reads scores standalone never fills, the ESP32 wants a wrapped token file the pack lacks, the phone ignores processingImage. One shape per join, checked against every producer.",
+    "C15": "In a standalone game: the supply chain is mostly hand work: a pinned pack and a Pages publish for tablets and phones, a card copy for each ESP32, no build id on screen, no check that the app is cached for an offline start.",
+    "C16": "In a standalone game: tests are the only check on the tablet's rules; one end-to-end test compares tablet and backend scores, but its group case skips on the real pack. The phone's pack test passes on a missing file; the ESP32 boot has no test."
+  },
+  "newFindings": [
+    {
+      "id": "SG-01",
+      "cause": "C4",
+      "text": "The tablet opens into an unnamed game marked \"Active\". No screen can start a named game or a second one: `getCurrentSession()` always returns an object, so the only \"Create New Session\" button, in the \"no session\" branch, never draws; the other create buttons belong to the networked panel. Pause therefore cannot work on the opening game (A-13). `createSession` raises no event. Inference from reading; not run."
+    },
+    {
+      "id": "SG-02",
+      "cause": "C4",
+      "text": "The only way to start over is Reset All Scores, which deletes every transaction and claim. With no report (A-37) and no export, the finished game's record is gone."
+    },
+    {
+      "id": "SG-03",
+      "cause": "C12",
+      "text": "A tablet that reloads while online mid-game adopts the newest published pack under the game in progress; the game carries no pack identity to catch it. New scans score by the new table, Team Details recomputes old cards from it, a delete rebuilds bonuses with the new multipliers. The design record's \"never mid-session\" rule is not enforced."
+    },
+    {
+      "id": "SG-04",
+      "cause": "C4",
+      "text": "The game's only copy is one browser's storage. Clearing site data, reinstalling the app or replacing the tablet mid-game ends the record; nothing exports it. Out-of-space storage would throw after the claim was marked (inference; not run)."
+    },
+    {
+      "id": "SG-05",
+      "cause": "N1 (fallback C11)",
+      "text": "Nothing declares that a game is standalone and nothing stops two kinds of device meeting in one game. The deployment mode is each tablet's own tap, saved per device; the pack has no field for it. Decision 22 asks for a declared choice and no mixing; today neither exists."
+    },
+    {
+      "id": "SG-06",
+      "cause": "C1",
+      "text": "Two standalone GM tablets are two separate games: each holds its own claim list, so one token can be sold on both; each holds its own score table; every record carries device id `001` unless the networked wizard once ran on that tablet and saved a station id. Whether a standalone game means one GM tablet is not stated in decision 22."
+    },
+    {
+      "id": "SG-07",
+      "cause": "N1 (fallback C14)",
+      "text": "In detective-style modes the pack says an exposure shows on the scoreboard (`displayBehavior.surface: scoreboard-evidence`). A tablet alone has no scoreboard to show it on: the scoreboard screen is gated to ranking modes, the evidence picker is skipped and hidden. The GM sees the summary once, on the result screen. \"Exposed means public\" has no standalone effect."
+    },
+    {
+      "id": "SG-08",
+      "cause": "C12 (C14 is the alternative)",
+      "text": "A standalone tablet adopts a pack without the engine's checks: the backend refuses a pack that needs a capability or engine version it lacks; the tablet reads neither `requires` nor `engine.minVersion` and has three partial client defences. Whether the Pages publishing path runs the engine's gate: not verified."
+    },
+    {
+      "id": "SG-09",
+      "cause": "C10",
+      "text": "No verdict says a standalone tablet is ready for the night: nothing precaches the app, a failed service-worker registration is hidden from the operator by design, no build id shows beside the pack line. A tablet never opened online may not start offline. Inference; not run."
+    },
+    {
+      "id": "SG-10",
+      "cause": "N1 (fallback C14)",
+      "text": "The pack declares a game clock (duration, overtime, phases). Standalone has no reader: the panel shows wall-clock time since the game was created, counting paused time, and nothing marks the end or overtime."
+    },
+    {
+      "id": "SG-11",
+      "cause": "C9",
+      "text": "The rules standalone copies are not all in the backend's `gameRules`, the surface the documents call the parity surface (CONTEXT.md section 2): the \"game must be active\" gate (`transactionService.js:155-163`), the GM score adjustment and its floor (`:113-130`), and the adjustment replay and floor of the delete-and-rebuild (`:817-894`) live in the backend's services; only the rebuild's recompute is in `gameRules` (`scoring.js:220`). A shared module of `gameRules` alone would leave those as second copies."
+    },
+    {
+      "id": "SG-12",
+      "cause": "C14",
+      "text": "The tablet's transaction lacks fields readers expect: no `id` (A-36), no `status`, no `summary` or `owner`. Game Activity's \"Intel\" and exposed-summary lines stay empty for claimed rows in standalone, apart from the lookup bug in A-07."
+    },
+    {
+      "id": "SP-01",
+      "cause": "C11",
+      "text": "The phone decides standalone versus networked by the same URL test written in three places; nothing makes the three agree."
+    },
+    {
+      "id": "SP-02",
+      "cause": "N1 (fallback C11)",
+      "text": "No game, pack or session record says \"this game runs without an engine\". The phone infers it from its URL, the ESP32 has no notion of it, and the NFC tag's URL record, written with an engine address by default, sends a phone to the networked page."
+    },
+    {
+      "id": "SP-03",
+      "cause": "C10",
+      "text": "The phone's header says \"Offline\" all night and its config page says \"Not Connected\". A standalone game is drawn as an outage."
+    },
+    {
+      "id": "SP-04",
+      "cause": "C11",
+      "text": "On a page served as standalone, the config page lets a person save an orchestrator URL and answers \"Connection successful!\" when it is reachable. Scans still go nowhere, because the mode is fixed by the path."
+    },
+    {
+      "id": "SP-05",
+      "cause": "N1 (fallback C9)",
+      "text": "Nothing in a standalone game records what players found. The phone keeps a seen set with no time or team; the ESP32 keeps up to 100 queue lines readable only by serial command. Networked games record these as the session's player scans."
+    },
+    {
+      "id": "SP-06",
+      "cause": "N1 (fallback C14)",
+      "text": "A player who scans a video token on the phone sees a black screen with \"New Memory! Token: kai001\". The scanner never reads `processingImage`, and the TV the video would play on does not exist."
+    },
+    {
+      "id": "SP-07",
+      "cause": "C10",
+      "text": "An ESP32 with no engine tells every video-token scanner \"VIDEO UNAVAILABLE, Rescan later\", as if the video were briefly busy. Rescanning can never work."
+    },
+    {
+      "id": "SP-08",
+      "cause": "C10",
+      "text": "If both token files fail to load, the phone switches to a one-token demo database with no on-screen sign. Every real tag then reads \"Unknown token\"."
+    },
+    {
+      "id": "SP-09",
+      "cause": "C10",
+      "text": "Offline on a phone, a memory whose picture was never viewed shows `placeholder.bmp` as if it were the memory; the service worker returns it as a valid image."
+    },
+    {
+      "id": "SP-10",
+      "cause": "C16",
+      "text": "The phone's tests prove the standalone pack-identity path with a fixture the deployed `data/` folder does not have (`aln-memory-scanner/tests/app.test.js:688-700`; `js/app.js:100-102`; `ls aln-memory-scanner/data`); in every standalone game the config page's pack line reads \"unknown (pre-pack deploy or offline)\" (`config.html:233-234`), and the green test says otherwise."
+    },
+    {
+      "id": "SP-11",
+      "cause": "N1 (fallback: parity table rows 1, 2, 23; decision 22 settles it as parity)",
+      "text": "The ESP32 has no standalone setting, but a config with no engine does not stop it. Its check wants a WiFi name, an orchestrator URL and a 3-digit team id (`ConfigService.h:322-382`; `models/Config.h:30-72`); when the check fails, setup logs \"using defaults\" and carries on (`Application.h:1598-1604`). With no WiFi name it skips WiFi and the health check (`OrchestratorService.h:69-72`), loads the token list on its card (`Application.h:997`), and scans, shows the picture, plays the audio and queues every scan (`Application.h:539-597`). So an ESP32 whose card was filled earlier already plays a standalone game, drawn as an outage (SP-20), with the config's `DEBUG_MODE` ignored (`Application.h:1602-1603`). The team id is stamped on queued scans (`Application.h:558-563`) and used by nobody."
+    },
+    {
+      "id": "SP-12",
+      "cause": "C10",
+      "text": "When the config fails its check, the ESP32 logs \"using defaults\" and carries on with whatever fields parsed; there are no defaults for the three required fields."
+    },
+    {
+      "id": "SP-13",
+      "cause": "C15",
+      "text": "A new SD card has no token list and no pictures, and the engine's sync is the only code or tool that fills it; a hand copy would need the token file wrapped (SP-14) and the pictures from `aln-memory-scanner/assets/images`, and no step documents it. Without a token list every real scan reads \"UNKNOWN TOKEN\", which the player reads as a bad tag (`TokenService.h:104-108`; `Application.h:542-547`)."
+    },
+    {
+      "id": "SP-14",
+      "cause": "C14",
+      "text": "The pack's own token file cannot be copied to an ESP32 card: the pack's `tokens.json` is flat, the device reads only a top-level `tokens` object, and the wrapper exists only in the engine's `/api/tokens` answer."
+    },
+    {
+      "id": "SP-15",
+      "cause": "C14",
+      "text": "The ESP32 plays only `/assets/audio/{id}.wav`, whenever the file exists; the phone plays whatever the token's `audio` field names, and the pack allows `.mp3`. Latent: no token in the current pack has audio."
+    },
+    {
+      "id": "SP-16",
+      "cause": "C9",
+      "text": "The phone lowercases a tag's text before lookup; the ESP32 looks up the raw text exactly. The same tag can be known to one and unknown to the other. Latent: tags are written in lowercase today."
+    },
+    {
+      "id": "SP-17",
+      "cause": "N1 (fallback: parity table row 18 and C10)",
+      "text": "Start-up with no engine is slow. Every boot with `DEBUG_MODE` off waits 30 seconds for a serial character, and a config that fails its check drops `DEBUG_MODE`, so an engine-less ESP32 always waits (`Application.h:766-811,1598-1604`). With a WiFi name set, WiFi can wait 10 more seconds, and with WiFi up and an engine address set the health check retries for about 61 seconds (`OrchestratorService.h:97-103,128,341-347,1019-1052`); with no WiFi name both are skipped (`:69-72`). No scans until `setup` returns. Arithmetic from constants, not measured."
+    },
+    {
+      "id": "SP-18",
+      "cause": "C4",
+      "text": "Every ESP32 queue line stays on the card across games (`OrchestratorService.h:445-458`). In a later game that has an engine, the lines are sent to it: those stamped 1970, which is every line taken with no WiFi (SP-19), are refused by the engine's date floor (`backend/src/routes/scanRoutes.js:176-178,266-283`), and lines with real times are stored into the later game (`OrchestratorService.h:1299-1307`). In a standalone game nothing drains or resets them except a serial command (`Application.h:1353`)."
+    },
+    {
+      "id": "SP-19",
+      "cause": "C10",
+      "text": "Without WiFi the ESP32 never asks for the time; each queue line carries a 1970 time counted from boot, useless as a record. The engine's batch route drops such lines from a replay (D-14)."
+    },
+    {
+      "id": "SP-20",
+      "cause": "C10",
+      "text": "The ESP32's status screen reads as a failure: red \"DISCONNECTED\", \"OFFLINE\" and a rising queue count that turns red at 100."
+    },
+    {
+      "id": "SP-21",
+      "cause": "C15",
+      "text": "A standalone phone works fully offline only for pictures already viewed, and its first load needs GitHub Pages and `unpkg.com`. A game on a kit LAN with no internet cannot start the page."
+    },
+    {
+      "id": "SP-22",
+      "cause": "C7",
+      "text": "A scan with no engine on the phone would return `{status:'standalone', logged:true}`, but nothing is logged. Latent: `processToken` never calls `scanToken` in standalone."
+    },
+    {
+      "id": "SP-23",
+      "cause": "C16",
+      "text": "The ESP32's production firmware build and boot path have no test; PlatformIO covers the config and token models, payload building, response classification, batch ids, the asset-manifest diff and the NDEF parser, plus a smoke test (`arduino-cyd-player-scanner/test/`; `platformio.ini:11-20`; `CLAUDE.md:155-160`)."
+    }
+  ]
+}
