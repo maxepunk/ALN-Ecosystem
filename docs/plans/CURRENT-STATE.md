@@ -32,11 +32,22 @@ before acting.
   the number of the question it answers.
   20. No rule for documents in the pass (round 8). Documents are fixed
       as we go, always: `docs/agents/process.md` §4, last paragraph.
+  22. Standalone games join the list every rule must serve, beside
+      hot-apply, the preview engine, capture and phones (round 8;
+      widens decision 12's list). Yes to (a): a whole game run with no
+      engine, the GM scanner and the player scanners each working
+      alone, as a choice a game can declare. No to (b): no game mixes
+      networked and standalone devices. On the ESP32 the owner's
+      reasoning is parity: the two player scanners keep feature parity
+      wherever possible, so the ESP32's missing standalone mode is a
+      parity gap under (a), not a new feature. Recorded on that
+      reasoning; the owner's explicit word is asked for.
   Open in round 8: 17 and 18 (the cause list, and the three causes no
-  question covers) wait for the visual report the owner asked for;
-  19 (record every scan attempt's outcome) waits for the owner's yes
-  to the orchestrator's view; 21 (how many findings the rig must
-  show in step 2) was re-asked in plain words.
+  question covers) wait for the standalone pass that decision 22
+  calls for, then the updated report; 19 (record every scan attempt's
+  outcome) waits for the owner's yes to the orchestrator's view; 21
+  (how many findings the rig must show in step 2) was re-asked in
+  plain words.
 - **The branch.** This program's records live on the branch
   `claude/nice-curie-hescfv`, with three draft pull requests:
   ALN-Ecosystem #35, ALNScanner #17 and ALN-TokenData #8. `main` is

@@ -93,7 +93,10 @@ you intend.
      (`gameRules/modeSemantics.js`).
   2. *Deployment mode.* Networked means an orchestrator is present.
      Standalone means the device works alone. This is an
-     infrastructure choice, not a gameplay choice.
+     infrastructure choice, not a gameplay choice. A whole game can
+     be run standalone: the GM scanner and the player scanners each
+     work alone, and no game mixes the two modes (owner, 2026-10-31,
+     architecture pass decision 22).
   3. *Display mode.* Which picture the venue display shows: the idle
      loop, the scoreboard, or a video. The orchestrator owns this
      state machine (`displayControlService`) and announces changes
