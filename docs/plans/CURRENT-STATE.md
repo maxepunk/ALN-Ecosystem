@@ -59,8 +59,11 @@ before acting.
   `docs/plans/architecture-pass/report/2026-10-31-cause-cards.json`.
   The owner asked whether the `improve-codebase-architecture` skill was
   used for step 1; it was not (decision 12 put it on step 3), so the
-  report follows its method to present the cause list. No worktrees,
-  no test rig. The cause-analysis workflow `wf_5b8300fe-cb6` finished
+  report follows its method to present the cause list. Also running:
+  the doc-drift fixes (decision 20), one Sonnet implementer in
+  `.worktrees/doc-drift` (parent and ALNScanner branches
+  `claude/nice-curie-hescfv-doc-drift`, base `a8ab4422`; brief
+  `docs/plans/briefs/2026-10-31-doc-drift-fixes.md`). No test rig. The cause-analysis workflow `wf_5b8300fe-cb6` finished
   on 2026-10-30 (8 agents, about 3.6 million helper tokens). Three read-only mapping runs finished earlier
   on 2026-10-30 (`wf_7bc41460-e87`, `wf_dfeaf164-afd`,
   `wf_3f365994-ba6`; about 4.2 million helper tokens). Their nine
