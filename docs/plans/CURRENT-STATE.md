@@ -42,12 +42,15 @@ before acting.
       wherever possible, so the ESP32's missing standalone mode is a
       parity gap under (a), not a new feature. Recorded on that
       reasoning; the owner's explicit word is asked for.
-  Open in round 8: 17 and 18 (the cause list, and the three causes no
-  question covers) wait for the standalone pass that decision 22
-  calls for, then the updated report; 19 (record every scan attempt's
-  outcome) waits for the owner's yes to the orchestrator's view; 21
-  (how many findings the rig must show in step 2) was re-asked in
-  plain words.
+  Open in round 8, all on the report page or in the chat: 17 (is the
+  cause list right), 18 (the three causes no question covers), 19
+  (record every scan attempt's outcome: the owner's yes to the
+  orchestrator's view), 21 (how many findings the rig shows in step 2),
+  22's ESP32 reading (the owner's word), and from the standalone pass
+  23 (is "nothing declares a game standalone" a seventeenth cause, N1),
+  24 (one GM tablet per standalone game?) and 25 (exposure and video
+  tokens with no engine). For step 3, not now: where the standalone
+  fact is held (game record, pack, profile or each device).
 - **The branch.** This program's records live on the branch
   `claude/nice-curie-hescfv`, with three draft pull requests:
   ALN-Ecosystem #35, ALNScanner #17 and ALN-TokenData #8. `main` is
@@ -63,18 +66,15 @@ before acting.
   from the next session. The owner added a plugin-install line to the
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
-- **Live state** (2026-10-31): running, the standalone pass that
-  decision 22 calls for: workflow `wf_d1152165-580` (script
-  `docs/agents/workflow-scripts/standalone-pass.js`), two readers (the
-  GM scanner; the player scanners and the ESP32 parity gap), a merge,
-  a check and a fold, writing
-  `docs/plans/architecture-pass/2026-10-31-standalone-pass.md` and one
-  standalone line per card. The visual cause report is published for
-  the owner (a private page:
-  https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL; source
-  `docs/plans/architecture-pass/report/`); it gains the standalone
-  lines when the pass lands. The doc-drift fixes merged at `4fc04790`
-  (ALNScanner `b521774`). No worktrees, no test rig. The cause-analysis workflow `wf_5b8300fe-cb6` finished
+- **Live state** (2026-10-31): nothing running, no worktrees, no
+  test rig. The visual cause report, version 2, is published for the
+  owner (a private page: https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL;
+  source `docs/plans/architecture-pass/report/`, rebuilt by
+  `build_report.py`). Version 2 adds decision 22's standalone pass
+  (`docs/plans/architecture-pass/2026-10-31-standalone-pass.md`,
+  workflow `wf_d1152165-580`; cause analysis §7): a standalone line per
+  card, the ESP32 parity table and questions 23 to 25. The doc-drift
+  fixes merged at `4fc04790` (ALNScanner `b521774`). The cause-analysis workflow `wf_5b8300fe-cb6` finished
   on 2026-10-30 (8 agents, about 3.6 million helper tokens). Three read-only mapping runs finished earlier
   on 2026-10-30 (`wf_7bc41460-e87`, `wf_dfeaf164-afd`,
   `wf_3f365994-ba6`; about 4.2 million helper tokens). Their nine
