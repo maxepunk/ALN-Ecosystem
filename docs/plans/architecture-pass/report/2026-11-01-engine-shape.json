@@ -164,7 +164,7 @@
         "flaws": ["C12", "C14", "N1"]
       },
       {
-        "title": "The game's facts are decided once and re-decided in five parts",
+        "title": "The game's facts are decided once and re-decided in five places",
         "plain": "The tablet marks a token claimed, computes the points and shows complete before the engine answers; the phone and the hardware scanner decide whether a token exists; the TV decides which modes count as evidence; a standalone tablet decides everything from a hand-kept copy of the rules. Eighteen rules are re-decided on clients, and for five of them nothing keeps the copies equal.",
         "flaws": ["C1", "C9", "C11", "C6"]
       },
@@ -185,7 +185,7 @@
       },
       {
         "title": "The life of a game is carried in six places and owned by none",
-        "plain": "Boot and Reset System are two hand-kept lists that differ; nineteen parts each reset themselves and Reset System calls fourteen of them; the record calls into the show from five places and the show calls back, a seven-module loop; the tablet and the TV guess a boundary from a changed id; the player devices' queues outlive every game; the engine undoes its own wiring only under test.",
+        "plain": "Boot and Reset System are two hand-kept lists that differ; nineteen modules each reset themselves and Reset System calls fourteen of them; the record calls into the show from five places and the show calls back, a seven-module loop; the tablet and the TV guess a boundary from a changed id; the player devices' queues outlive every game; the engine undoes its own wiring only under test.",
         "flaws": ["C4", "C5", "C1", "C6"]
       },
       {
@@ -209,12 +209,12 @@
         "flaws": ["C12", "C8"]
       },
       {
-        "title": "Joins kept by hand, fakes unchecked, tests per part",
-        "plain": "Twelve test configurations by part and three contract tests that pin joins. Nothing checks the hardware scanner's token-file shape against the pack, a fake against its class or the scoreboard's reading of the snapshot. The deployed game is several checkouts, a built folder and hand-copied media that nothing compares.",
+        "title": "Joins kept by hand, fakes unchecked, tests by area",
+        "plain": "Twelve test configurations split by area of the code and three contract tests that pin joins. Nothing checks the hardware scanner's token-file shape against the pack, a fake against its class or the scoreboard's reading of the snapshot. The deployed game is several checkouts, a built folder and hand-copied media that nothing compares.",
         "flaws": ["C14", "C16", "C15"]
       },
       {
-        "title": "Shallow chains and thick doors",
+        "title": "Long call chains, and entry points that do too much",
         "plain": "Skip video crosses five tablet modules to reach one deep one; one command dispatcher serves six promises; the player scan route decides token existence, session existence and video eligibility inline and holds a batch cache lost at restart; the engine's wiring is written by hand at about ten sites, and one of them already left music out.",
         "flaws": ["C11", "C5", "C7"]
       },
@@ -244,7 +244,7 @@
       "runsOn": ["backend", "gm-tablet", "player-devices", "config-tool"],
       "jobs": ["J1", "J6", "J5", "J2", "J9"],
       "flaws": ["C12", "C15", "N1"],
-      "seams": "The pack source (a folder, the draft store, the toy packs). Adopt is called once per boundary by the lifecycle."
+      "seams": "The pack source (a folder, the draft store, the toy packs). The lifecycle takes up a new pack once per boundary."
     },
     {
       "id": "P3",
@@ -254,7 +254,7 @@
       "runsOn": ["backend", "gm-tablet"],
       "jobs": ["J2", "J3", "J5"],
       "flaws": ["C1", "C11", "C9"],
-      "seams": "Persistence (file or memory); the host (the engine in a networked game, the tablet in a standalone one, depending on whether the game is standalone)."
+      "seams": "Persistence (file or memory); the host (the engine in a networked game, the tablet in a standalone one)."
     },
     {
       "id": "P4",
@@ -269,7 +269,7 @@
     {
       "id": "P5",
       "name": "The night's record",
-      "plain": "When a game ends, one structured record of the night is written from the facts the engine decided, with the roster, notes, accusation and later photos captured into it during play, stamped with the game it ran and the texts the players saw. The director tells the night from it; the owner and the designer read it too.",
+      "plain": "When a game ends, one structured record of the night is written from the facts the engine decided, with the roster, the GM's notes, the accusation and photos captured into it during play. It carries the game it ran and the texts the players saw. The director tells the players the story of their night from it; the owner and the designer read it too.",
       "level": "module",
       "runsOn": ["backend", "gm-tablet"],
       "jobs": ["J3", "J6", "J5"],
@@ -284,7 +284,7 @@
       "runsOn": ["backend", "gm-tablet"],
       "jobs": ["J2", "J4", "J9", "J1", "J7", "J5"],
       "flaws": ["C6", "C2", "C10", "C14"],
-      "seams": "The transport; the role filter from the connection registry. One builder per fact serves both the snapshot and the live push."
+      "seams": "The transport; the role filter from Connections and roles. One builder per fact serves both the snapshot and the live push."
     },
     {
       "id": "P7",
@@ -319,7 +319,7 @@
     {
       "id": "P10",
       "name": "Verdict",
-      "plain": "What the game needs against what the kit has tonight, as one calculation whose every line says paper or live and go, no-go or dormant. The editor, the preflight, the start gate and a cue-time refusal all quote it. Already built; what is missing is a route to the screen.",
+      "plain": "What the game needs against what the kit has tonight, as one calculation whose every line says paper or live and go, no-go or dormant. The editor, the preflight, the start gate and a cue-time refusal all quote it.",
       "level": "module",
       "runsOn": ["backend", "config-tool", "gm-tablet-standin"],
       "jobs": ["J9", "J8", "J6", "J4", "J5"],
@@ -384,7 +384,7 @@
       "runsOn": ["tests"],
       "jobs": ["J10", "J1", "J2", "J3", "J8"],
       "flaws": ["C14", "C16", "C8"],
-      "seams": "Shared shapes written once, from the reply words and the facts; a test for each plugged-in program that it does what its part promises; every suite run on two packs."
+      "seams": "Shared shapes written once, from the reply words and the facts; a test for each plugged-in program that it does what its part needs of it; every suite run on two packs."
     },
     {
       "id": "P17",
@@ -398,7 +398,7 @@
     }
   ],
   "partsMermaid": "flowchart TD\n  P1[\"P1 Game rules\"]\n  P2[\"P2 Pack channel\"]\n  P3[\"P3 Game record\"]\n  P4[\"P4 Answering\"]\n  P5[\"P5 The night's record\"]\n  P6[\"P6 Delivery\"]\n  P7[\"P7 Connections and roles\"]\n  P8[\"P8 Equipment\"]\n  P9[\"P9 Show runner\"]\n  P10[\"P10 Verdict\"]\n  P11[\"P11 Lifecycle\"]\n  P12[\"P12 Venue fit\"]\n  P13[\"P13 Engine instance\"]\n  P14[\"P14 Screens\"]\n  P15[\"P15 Design studio\"]\n  P16[\"P16 Joins and proofs\"]\n  P17[\"P17 Release\"]\n  P12 --> P1\n  P2 --> P1\n  P2 --> P13\n  P10 --> P1\n  P10 --> P12\n  P7 --> P13\n  P8 --> P12\n  P8 --> P13\n  P3 --> P1\n  P3 --> P2\n  P9 --> P8\n  P9 --> P3\n  P9 --> P1\n  P9 --> P10\n  P11 --> P3\n  P11 --> P8\n  P11 --> P9\n  P11 --> P2\n  P11 --> P10\n  P11 --> P12\n  P11 --> P13\n  P4 --> P11\n  P4 --> P3\n  P4 --> P9\n  P4 --> P8\n  P4 --> P7\n  P6 --> P3\n  P6 --> P8\n  P6 --> P9\n  P6 --> P7\n  P6 --> P11\n  P6 --> P2\n  P5 --> P3\n  P5 --> P11\n  P14 --> P4\n  P14 --> P6\n  P14 --> P7\n  P15 --> P2\n  P15 --> P10\n  P15 --> P13\n  P15 --> P4\n  P15 --> P12\n  P15 --> P5\n  P16 --> P4\n  P16 --> P6\n  P16 --> P13\n  P16 --> P1\n  P16 --> P14\n  P16 --> P11\n  P16 --> P8\n  P17 --> P2\n  P17 --> P13\n  P17 --> P10\n  P17 --> P12",
-  "componentsMermaid": "flowchart LR\n  BE[\"Backend on the show machine: pack channel serve, game record authority, answering, night's record, delivery, connections, equipment, show runner, verdict, lifecycle, venue fit, engine instance, rules as a library\"]\n  GM[\"GM tablet, networked: screens, rules library, pack client with its stamp, the client side of answering and delivery\"]\n  GS[\"GM tablet, standalone: screens, rules, pack client, game record, lifecycle, local answering, local delivery, a local night's record, the standalone declaration, and small stand-ins for connections, equipment, the show runner, the verdict and the engine's names\"]\n  PH[\"Phone and hardware scanner: screens, pack client with its stamp, reply words as data, rules as data, the standalone declaration read\"]\n  SB[\"Scoreboards, TV and Pi 4: screens under a display pass, and the TV's browser is also an equipment adapter on the backend\"]\n  CT[\"Config tool: design studio, rules for validation, pack publish, verdict badges on paper, the venue technician's profile editor (venue fit), a preview instance, release\"]\n  TS[\"Tests, CI and the rig: joins and proofs on their own engine instance, equipment stand-ins, two packs\"]\n  PK[\"Pack data: rules as data, the published pack, the needs\"]\n  CT -->|\"publish, apply, rehearse by message\"| BE\n  GM -->|\"requests in one envelope, facts out with labels\"| BE\n  PH -->|\"scans in one envelope, replies as words\"| BE\n  SB -->|\"facts with labels, filtered by role\"| BE\n  PK -->|\"adopted through the pack channel\"| BE\n  PK -->|\"the same pack, stamped\"| GS\n  TS -->|\"its own instance, never the live one\"| BE",
+  "componentsMermaid": "flowchart LR\n  BE[\"The engine on the show machine: pack channel serve, game record authority, answering, night's record, delivery, connections, equipment, show runner, verdict, lifecycle, venue fit, engine instance, the release check at start, rules as a library\"]\n  GM[\"GM tablet, networked: screens, rules library, pack client with its stamp, the client side of answering and delivery\"]\n  GS[\"GM tablet, standalone: screens, rules, pack client, game record, lifecycle, local answering, local delivery, a local night's record, the standalone declaration, and small stand-ins for connections, equipment, the show runner, the verdict and the engine's names\"]\n  PH[\"Phone and hardware scanner: screens, pack client with its stamp, reply words as data, rules as data, the standalone declaration read\"]\n  SB[\"Scoreboards, TV and Pi 4: screens under a display pass, and the TV's browser is also an equipment adapter on the engine\"]\n  CT[\"Config tool: design studio, rules for validation, pack publish, verdict badges on paper, the venue technician's profile editor (venue fit), a preview instance, release\"]\n  TS[\"Tests, CI and the rig: joins and proofs on their own engine instance, equipment stand-ins, two packs\"]\n  PK[\"Pack data: rules as data, the published pack, the needs\"]\n  CT -->|\"publish, apply, rehearse by message\"| BE\n  GM -->|\"requests in one envelope, facts out with labels\"| BE\n  PH -->|\"scans in one envelope, replies as words\"| BE\n  SB -->|\"facts with labels, filtered by role\"| BE\n  PK -->|\"adopted through the pack channel\"| BE\n  PK -->|\"the same pack, stamped\"| GS\n  TS -->|\"its own instance, never the live one\"| BE",
   "alternatives": [
     {
       "title": "Getting state onto screens: one part or a delivery per promise",
@@ -428,7 +428,7 @@
       "title": "The tap's answer and the night's record: one part or two",
       "a": "Two parts: answering at the tap, and the night's record written at the end.",
       "b": "One part that answers and remembers.",
-      "cost": "Two parts match two people and two moments and give the night's record one input and one reader; they cost a second part with no behaviour today and, if it becomes a promise of its own, a promise no flaw mainly breaks. One part keeps the promise's title whole but puts the record writer beside the reply, which share nothing."
+      "cost": "Two parts match two people and two moments and give the night's record one input, the end of the game, and readers of its own after the show; they cost a second part with no behaviour today and, if it becomes a promise of its own, a promise no flaw mainly breaks. One part keeps the promise's title whole but puts the record writer beside the reply, which share nothing."
     },
     {
       "title": "The lifecycle: a module or a table each part reads",

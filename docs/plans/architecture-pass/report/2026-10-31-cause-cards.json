@@ -271,7 +271,7 @@
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart TD\n  boot[\"Engine start\"]\n  reset[\"Reset System\"]\n  test[\"A test's setup\"]\n  root[\"Starting point<br/>builds every part once<br/>from one list<br/>under the engine's own names\"]\n  lc[\"Lifecycle<br/>start and reset are one path<br/>the only caller of every reset\"]\n  rec[\"Game record<br/>cleared, then read\"]\n  eq[\"Equipment and Show runner<br/>music included, cue events sent once\"]\n  ver[\"Verdict<br/>recomputed from the fresh picture\"]\n  del[\"Delivery<br/>the catch-up built after the move\"]\n  boot -->|\"calls\"| root\n  reset -->|\"calls\"| root\n  test -->|\"calls, with its own names\"| root\n  root -->|\"hands the parts to\"| lc\n  lc -->|\"moves\"| rec\n  lc -->|\"resets\"| eq\n  lc -->|\"asks\"| ver\n  lc -->|\"the moment\"| del\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class lc owner;\n",
-        "note": "One routine for start and reset, split in two. A starting point builds every part once, from one list. Lifecycle runs start and reset as one path and alone calls every reset. Or: each part reads the table itself; only a test checks all did."
+        "note": "Two pieces replace today's two lists: a starting point builds every part once, from one list, and Lifecycle runs start and reset as one path and alone calls every reset. Or: each part reads the table itself; only a test checks all did."
       },
       "examples": [
         {
@@ -296,7 +296,7 @@
         6
       ],
       "findings": 7,
-      "seenLive": "The red Display row after a reset was reproduced in-process by the review.",
+      "seenLive": "The review reproduced the red Display row after a reset by running the engine's code in a test.",
       "parts": [
         "P11",
         "P13"
@@ -385,8 +385,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  dev[\"Player device<br/>queued scans\"]\n  tab[\"Tablet<br/>GM scan or command\"]\n  ans[\"Answering<br/>one door, every way in<br/>knows request and device<br/>GM rights checked once\"]\n  rec[\"Game record<br/>apply, save, then the outcome\"]\n  reply[\"One reply shape<br/>which request, outcome word, final, stored\"]\n  words[\"Reply words<br/>one closed list<br/>made for every device\"]\n  scr[\"Screens<br/>delete only if stored<br/>final means stop\"]\n  dev -->|\"batch\"| ans\n  tab -->|\"scan, command\"| ans\n  ans -->|\"action\"| rec\n  rec -->|\"after the save\"| ans\n  ans -->|\"answers\"| reply\n  words -->|\"read as data\"| scr\n  reply -->|\"matched to its request\"| scr\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class ans owner;\n",
-        "note": "Every reply names its request and says whether it is final and whether anything was stored. The Game record saves, then gives Answering the outcome: one door and one list of outcome words for every device. Or: each device asks which scans are stored."
+        "mermaid": "flowchart LR\n  dev[\"Player device<br/>queued scans\"]\n  tab[\"Tablet<br/>GM scan or command\"]\n  ans[\"Answering<br/>every request, one reply<br/>knows request and device<br/>GM rights checked once\"]\n  rec[\"Game record<br/>apply, save, then the outcome\"]\n  reply[\"One reply shape<br/>which request, outcome word, final, stored\"]\n  words[\"Reply words<br/>one closed list<br/>made for every device\"]\n  scr[\"Screens<br/>delete only if stored<br/>final means stop\"]\n  dev -->|\"batch\"| ans\n  tab -->|\"scan, command\"| ans\n  ans -->|\"action\"| rec\n  rec -->|\"after the save\"| ans\n  ans -->|\"answers\"| reply\n  words -->|\"read as data\"| scr\n  reply -->|\"matched to its request\"| scr\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class ans owner;\n",
+        "note": "Every reply names its request and says whether it is final and whether anything was stored. The Game record saves, then gives Answering the outcome: Answering takes every request and replies with one list of outcome words for every device. Or: each device asks which scans are stored."
       },
       "examples": [
         {
@@ -544,7 +544,7 @@
         },
         {
           "ids": "X-08",
-          "text": "A sale carries the tablet's clock and a manual adjustment the engine's, so the bonus and transfers printed nine hours from the sales; ALN's article writer shifts them back."
+          "text": "A sale carries the tablet's clock and a manual adjustment the engine's. The GM enters the first-burial bonus and the transfers as adjustments, so they printed nine hours away from the sales; ALN's Director Console shifts them back."
         }
       ],
       "blueFixes": [],
@@ -646,7 +646,7 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>video paused\"]\n  eq[\"Equipment<br/>one dated answer, busy and paused\"]\n  run[\"Show runner<br/>queue, held items and music volume<br/>all read that answer\"]\n  ans[\"Answering<br/>one door for scans and commands\"]\n  player[\"Player scanner<br/>told to wait\"]\n  music[\"Music<br/>restored when nothing plays\"]\n  rec[\"Game record<br/>one answer for teams<br/>and whether the GM may scan\"]\n  tab[\"Tablet Screens<br/>draws the reply\"]\n  night[\"The night's record<br/>one total per team\"]\n  vlc -->|\"paused\"| eq\n  eq -->|\"busy, paused\"| run\n  run -->|\"video busy\"| ans\n  ans -->|\"wait\"| player\n  run -->|\"queue cleared, nothing playing\"| music\n  rec -->|\"outcome\"| ans\n  ans -->|\"reply\"| tab\n  rec -->|\"at the end\"| night\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eq owner;",
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>video paused\"]\n  eq[\"Equipment<br/>one dated answer, busy and paused\"]\n  run[\"Show runner<br/>queue, held items and music volume<br/>all read that answer\"]\n  ans[\"Answering<br/>scans and commands, one reply\"]\n  player[\"Player scanner<br/>told to wait\"]\n  music[\"Music<br/>restored when nothing plays\"]\n  rec[\"Game record<br/>one answer for teams<br/>and whether the GM may scan\"]\n  tab[\"Tablet Screens<br/>draws the reply\"]\n  night[\"The night's record<br/>one total per team\"]\n  vlc -->|\"paused\"| eq\n  eq -->|\"busy, paused\"| run\n  run -->|\"video busy\"| ans\n  ans -->|\"wait\"| player\n  run -->|\"queue cleared, nothing playing\"| music\n  rec -->|\"outcome\"| ans\n  ans -->|\"reply\"| tab\n  rec -->|\"at the end\"| night\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eq owner;",
         "note": "One answerer per question, inside its owning part: Equipment for whether a video plays, the Show runner for held items, the Game record for teams and scan permission, the night's record for totals. Or: an interface per program, leaving questions across programs spread."
       },
       "examples": [
@@ -684,7 +684,7 @@
         5
       ],
       "findings": 29,
-      "seenLive": "The display's false healthy Check Now was reproduced in-process by the recovered review.",
+      "seenLive": "The review reproduced, by running the engine's code in a test, Check Now reporting the display healthy when it had never launched.",
       "parts": [
         "P8",
         "P9",
@@ -715,7 +715,7 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  studio[\"Design studio<br/>publishes, then asks<br/>to apply, by message\"]\n  ans[\"Answering<br/>one door, one reply\"]\n  life[\"Lifecycle<br/>allows adopt in setup<br/>or ended, else refuses\"]\n  pack[\"Pack channel<br/>adopts once, one version, one stamp\"]\n  files[\"File fetch<br/>from the adopted copy, fingerprint checked\"]\n  del[\"Delivery<br/>pack stamp on every<br/>catch-up and live change\"]\n  tv[\"TV<br/>draws the facts as delivered,<br/>shows the stamp\"]\n  tab[\"Tablet<br/>stamp compared at connect,<br/>warns when it is behind\"]\n  dev[\"Phone and hardware scanner<br/>stamp shown\"]\n  studio -->|\"apply this version\"| ans\n  ans -->|\"asks if now is allowed\"| life\n  life -->|\"adopt when allowed\"| pack\n  pack -->|\"adopted files\"| files\n  pack -->|\"changed\"| del\n  del -->|\"pack stamp and facts\"| tv\n  del -->|\"pack stamp\"| tab\n  files -->|\"fetch and check\"| dev\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class pack owner;",
+        "mermaid": "flowchart LR\n  studio[\"Design studio<br/>publishes, then asks<br/>to apply, by message\"]\n  ans[\"Answering<br/>every request, one reply\"]\n  life[\"Lifecycle<br/>allows adopt in setup<br/>or ended, else refuses\"]\n  pack[\"Pack channel<br/>adopts once, one version, one stamp\"]\n  files[\"File fetch<br/>from the adopted copy, fingerprint checked\"]\n  del[\"Delivery<br/>pack stamp on every<br/>catch-up and live change\"]\n  tv[\"TV<br/>draws the facts as delivered,<br/>shows the stamp\"]\n  tab[\"Tablet<br/>stamp compared at connect,<br/>warns when it is behind\"]\n  dev[\"Phone and hardware scanner<br/>stamp shown\"]\n  studio -->|\"apply this version\"| ans\n  ans -->|\"asks if now is allowed\"| life\n  life -->|\"adopt when allowed\"| pack\n  pack -->|\"adopted files\"| files\n  pack -->|\"changed\"| del\n  del -->|\"pack stamp and facts\"| tv\n  del -->|\"pack stamp\"| tab\n  files -->|\"fetch and check\"| dev\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class pack owner;",
         "note": "One adopted version, one notice, one stamp. The Design studio publishes and applies by message, never by writing the engine's files. Lifecycle allows the change only between games. Delivery sends the pack version to every screen, and the engine compares stamps when a device connects."
       },
       "examples": [
@@ -779,7 +779,7 @@
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart LR\n  tab[\"GM tablet<br/>operator pass\"]\n  tv[\"TV page<br/>display pass\"]\n  dev[\"Phone and hardware scanner<br/>device pass\"]\n  any[\"Stranger on the wifi<br/>no pass\"]\n  con[\"Connections and roles<br/>admits every connection by its pass<br/>kind, name, rights,<br/>whether it is still there\"]\n  ans[\"Answering<br/>rights checked once per request\"]\n  del[\"Delivery<br/>each fact filtered by role\"]\n  gm[\"GM screens<br/>transactions, equipment, devices\"]\n  disp[\"Display screens<br/>scores, evidence, clock\"]\n  tab -->|\"pass\"| con\n  tv -->|\"pass\"| con\n  dev -->|\"pass\"| con\n  con -.->|\"refused\"| any\n  con -->|\"who may do what\"| ans\n  con -->|\"who may see what\"| del\n  del -->|\"GM facts\"| gm\n  del -->|\"display facts\"| disp\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class con owner;",
-        "note": "Every connection shows a verified pass. Connections and roles admits it by that pass, so a typed name or default decides nothing; Delivery filters each fact by role; Answering checks rights once. Or: two doors, one public for scoreboards and players, one for the GM."
+        "note": "Every connection shows a verified pass. Connections and roles admits it by that pass, so a typed name or default decides nothing; Delivery filters each fact by role; Answering checks rights once. Or: two kinds of connection, one public for scoreboards and players, one for the GM."
       },
       "examples": [
         {

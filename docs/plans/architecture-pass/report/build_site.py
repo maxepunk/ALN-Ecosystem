@@ -56,14 +56,14 @@ NAMES = {}  # part id -> plain name, filled from the shape by build()
 BUILT = {
     'J1': 'Packs that hold tokens, modes, scoring, groups and cues; a gate that refuses a broken pack; a second, toy game kept beside ALN.',
     'J2': 'One game record in the backend; a full snapshot to each screen when it connects; live updates for scores, transactions and player scans; the TV and Pi 4 scoreboards.',
-    'J3': 'GM scans scored as transactions; player scans kept in the game record; an answer to every GM command; the post-game report and the session validator. Outside the engine, ALN\'s article writer, the Director Console, reads that report by hand.',
+    'J3': 'GM scans scored as transactions; player scans kept in the game record; an answer to every GM command; the post-game report and the session validator. Outside the engine, the director pastes that report by hand into ALN\'s article writer, the Director Console.',
     'J4': 'Video on the TV, music, sounds, lights, the Bluetooth speaker and audio routing; cues and timelines; the health dashboard; items held while a service is down.',
     'J5': 'Create, start, pause and end a game; Reset System; a game restored after an engine restart; the game clock.',
     'J6': 'The config tool; a store for drafting and publishing packs.',
     'J7': 'The GM password and its login token; a watch-only pass for the Pi 4 scoreboard; anonymous player scans.',
     'J8': 'Venue profiles and "not installed tonight"; standalone modes on the GM tablet and the web player scanner; the blue and green machine method.',
     'J9': 'Health words healthy, down and dormant (grey) for each service on the health panel; a first, minimal preflight.',
-    'J10': 'Unit, contract, integration and end-to-end tests; a rung-1 run with the real programs in CI, started by hand or by a change to its own files (the standing test rig was lost with the old container; step 2 rebuilds it); CI on every pull request to main; coverage that may not fall.',
+    'J10': 'Unit, contract, integration and end-to-end tests; a run with the real programs in CI on the first test level, started by hand or by a change to its own files (the standing test rig was lost with the old container; its recipe survives, and step 2 rebuilds it); CI on every pull request to main; coverage that may not fall.',
 }
 
 # Where a flaw lives: a card's module paths, sorted into the parts of the engine.
@@ -89,11 +89,11 @@ def chips(card):
     out = [f'<span class="chip">{card["findings"]} problems found</span>']
     q = card.get('questions') or []
     if card['id'] in OUTSIDE_NINE:
-        text = 'No question covers it' + (f' (nearest: {q[0]})' if q else '')
+        text = 'No architecture pass question covers it' + (f' (nearest: {q[0]})' if q else '')
     elif len(q) == 1:
-        text = f'Question {q[0]}'
+        text = f'Architecture pass question {q[0]}'
     else:
-        text = 'Questions ' + ', '.join(map(str, q))
+        text = 'Architecture pass questions ' + ', '.join(map(str, q))
     out.append(f'<span class="chip">{text}</span>')
     if card.get('blueFixes'):
         out.append(f'<span class="chip">Clue from blue: fix {e(", ".join(card["blueFixes"]))}</span>')
@@ -121,13 +121,21 @@ def present(src):
 
 
 SET_ASIDE = [
-    ('Already fixed in this tree', 7, 'Report cells escaped; the health word "dormant" in both contracts and on the tablet; the harness-minimum review items; a routing snapshot guard; the environment template\'s bus variables (green\'s follow-ups).'),
-    ('Plain fixes for phase 2', 5, 'A name like "constructor" read as a real key in plain-object lookups; the web scanner loading its QR library from the internet; a test helper that switches certificate checks off; standalone mode\'s red "Disconnected" pill.'),
+    ('Already fixed in today\'s code', 7, 'Report cells escaped; the health word "dormant" in both contracts and on the tablet; four items the review raised about the minimum test harness; a routing snapshot guard; two system settings the deployment guide asks for, now in the environment template (green\'s follow-ups).'),
+    ('Plain fixes for phase 2', 5, 'A name like "constructor" mistaken for a real service, station or token; the web scanner loading its QR library from the internet; a test helper that switches certificate checks off; standalone mode\'s red "Disconnected" pill.'),
     ('Code-structure notes, no game symptom', 2, 'A second wrapper for running programs in the kiosk driver; the sound panel written inline instead of by its own renderer.'),
     ('No fault', 2, 'Two equal snapshots sent on connect; planned config-tool functions not built yet.'),
     ('A question for you', 1, 'A rejected or duplicate GM scan is recorded nowhere. This became question 19.'),
     ('Documents', 4, 'Plans, briefs and two CLAUDE.md files that disagree with the code. Decision 20: documents are fixed as we go.'),
 ]
+
+
+# Two cells of the parity table name an id the site never shows (candidate (d), finding SP-05); here they are
+# said in plain words. Row number -> {cell index: text}.
+PARITY_WORDS = {
+    '12': {3: 'Optional. One design for C9 takes the seen mark away from player devices instead.'},
+    '14': {3: 'Decide what a standalone record of player scans is before matching either side.'},
+}
 
 
 def parity_rows():
@@ -148,6 +156,8 @@ def parity_rows():
             c = c.replace('`', '').replace(' *', '').strip()
             clean.append(c)
         weak = cells[1].endswith('*') or cells[2].endswith('*')
+        for k, text in PARITY_WORDS.get(m.group(1), {}).items():
+            clean[k] = text
         rows.append((m.group(1), clean, weak))
     return rows
 
@@ -201,7 +211,7 @@ FIT_SUMMARY = [
     ('What happens at every tap.', 'In a networked game, four promises meet at every tap. The designer\'s pack sets the rules. The game\'s record, the same on every screen, is what the tap is judged against. The answer comes back to the GM or the player, and an accepted tap joins the record. The roles say who tapped and who may see the result.'),
     ('The engine\'s own machinery.', 'The equipment reports what it is doing. The verdict turns that, and the venue technician\'s profile, into go, no-go or "not installed tonight". The life of a game says when to check again and what to reset, which feeds back into the equipment. The profile feeds this loop from outside. In today\'s code the loop is also a chain of seven backend modules that depend on each other in a circle, with the game\'s record caught inside it.'),
     ('Two promises reach the show from outside.', 'The designer\'s week and the developer\'s proof reach a live show only through the pack and through each engine having its own names, so a test or a preview never touches the live show.'),
-    ('How each promise is kept.', 'Most promises are kept by one or two parts of their own. Two are kept by a quality every part must have, together with a few parts of their own: "Anyone reading a screen can act on it without a second question" by a label on every fact (how sure, how old), and "A change is proven before it reaches anyone, and the owner alone sends it to the show" by tests every part passes. "Each lifecycle button does exactly what its name says" rests on a table of moments (setup, start, pause, end, reset, restart, the next game) that most other promises read.'),
+    ('How each promise is kept.', 'Most promises are kept by one or two parts of their own. Two are kept mainly by a quality every part must have, with a few parts of their own: [[promise:J9|reading a screen without a second question]] by a label on every fact (how sure, how old), and [[promise:J10|proving a change before it reaches anyone]] by tests every part passes. [[promise:J5|The lifecycle buttons]] rest on a table of moments (setup, start, pause, end, reset, restart, the next game) that most other promises read.'),
 ]
 
 # The relationship map at a glance, drawn from the shape's section 2.1: the spine, the ring,
@@ -709,7 +719,9 @@ def flaw_a(fid, text=None, cls=''):
     if fid not in FLAW_TITLES:
         raise SystemExit(f'unknown design flaw {fid}')
     c = f' class="{cls}"' if cls else ''
-    return f'<a{c} href="{href("flaws", fid.lower())}">{e(text if text is not None else FLAW_TITLES[fid])}</a>'
+    # A short form (the id, or a few words) carries the flaw's title on hover and for screen readers.
+    t = f' title="{e(FLAW_TITLES[fid])}"' if text is not None and text != FLAW_TITLES[fid] else ''
+    return f'<a{c}{t} href="{href("flaws", fid.lower())}">{e(text if text is not None else FLAW_TITLES[fid])}</a>'
 
 
 def flaw_links(ids):
@@ -731,13 +743,14 @@ def q_a(key, capital=False, text=None):
 
 
 def page_a(name, text=None):
+    """A page by its name; "page#anchor" lands on that id of the page (the check finds every id)."""
+    name, _, anchor = name.partition('#')
     if name not in FILE:
         raise SystemExit(f'unknown page {name}')
-    return f'<a href="{href(name)}">{e(text if text is not None else PAGE_NAME[name])}</a>'
+    return f'<a href="{href(name, anchor or None)}">{e(text if text is not None else PAGE_NAME[name])}</a>'
 
 
 MARKER = re.compile(r'\[\[([a-z]+):([^\]|]+)(?:\|([^\]]*))?\]\]')
-PAGE_OVERRIDE = {}   # (page marker) -> href, for one list whose page links land on a table row
 
 
 def rich(text):
@@ -757,10 +770,7 @@ def rich(text):
             capital = before == '' or before[-1] in '.!?:'
             out.append(q_a(key, capital, label))
         elif kind == 'page':
-            if key in PAGE_OVERRIDE:
-                out.append(f'<a href="{PAGE_OVERRIDE[key]}">{e(label or PAGE_NAME[key])}</a>')
-            else:
-                out.append(page_a(key, label))
+            out.append(page_a(key, label))
         else:
             raise SystemExit(f'unknown marker kind in [[{kind}:{key}]]: {text[:80]}')
         pos = m.end()
@@ -924,8 +934,8 @@ RELATIONS_NOTE = ('{n} are dependencies: without them, the promise at the arrow\
 QUALITIES_INTRO = ('A quality is not a part. It is something every part must have, so that a promise holds everywhere '
                    'and not in one place only.')
 TANGLE_NOTE = ('A tangle is one piece of work spread over many places with nothing joining them, one place doing many '
-               'kinds of work, or a dependency running the wrong way. Each causes some of the design flaws on '
-               '[[page:flaws]].')
+               'kinds of work, or a dependency running the wrong way. Each causes some of the design flaws named under '
+               'it.')
 WHOLE_KEY = ('Every request comes in through Answering and gets one reply; every fact goes out to the screens through '
              'Delivery, with its label (how old, how sure). Delivery reads what changed in the game record, the '
              'lifecycle, the room and the pack channel; no part sends to it. Behind the two doors sit the game\'s facts, '
@@ -934,9 +944,9 @@ WHOLE_KEY = ('Every request comes in through Answering and gets one reply; every
              'profile and what is running, and asks for go, no-go or not installed tonight; it also takes up a new pack '
              'from the pack channel, only between games. The two doors and their arrows are drawn in teal; the dashed '
              'box is an outside program, not a part. The rows group the parts by what they do; they are not the layers '
-             'of use, which [[page:parts]] gives. In a standalone game the GM tablet runs the same doors, game record '
+             'of use, which the [[page:parts|Parts page]] shows. In a standalone game the GM tablet runs the same doors, game record '
              'and lifecycle itself, with small stand-ins for connections, the room, the verdict and the engine\'s names. '
-             'Five moments on [[page:parts]] follow single steps through the parts.')
+             'The [[page:parts|Parts page]] follows five moments step by step.')
 MOMENTS_KEY = ('Each moment follows one thing that happens at a show through the parts that handle it, in order. Solid '
                'arrows are requests; dashed arrows are answers. Delivery always asks what changed; nothing pushes facts '
                'to it. Each screen asked Delivery, when it connected, to keep it up to date; Delivery\'s dashed arrows to '
@@ -962,26 +972,32 @@ STANDALONE_P2 = ('Four design flaws cause no problem in a standalone game, four 
                  '"DISCONNECTED" on the ESP32, "VIDEO UNAVAILABLE, Rescan later" for a video that can never play).')
 PARITY_NOTE = ('Your parity rule says the two player scanners match wherever possible. Shaded rows are ones where both '
                'are weak, or the web scanner is the weaker side, so matching it would copy a gap.')
-EVIDENCE_INTRO = ('{total_all} problems came from blue\'s records and the maps of today\'s engine; {total} of them sit '
+EVIDENCE_INTRO = ('{total_all} problems came from blue\'s records, the maps of today\'s engine and, for one, the survey of '
+                  'ALN\'s after-game tools; {total} of them sit '
                   'under the design flaws above, and {aside_n} needed no change to the design. The standalone pass added '
-                  '{sa_all} more: {sa_cards} placed under the same flaws, and {sa_n1} under the proposed [[flaw:N1|N1]] '
-                  'that question 23 asks about, now folded into [[q:C]].')
+                  '{sa_all} more: {sa_cards} placed under the same flaws, and {sa_n1} under the proposed [[flaw:N1|N1]].')
+EARLIER_NOTE = ('Every promise was restated from the side of the people it serves in version 5 and retitled under '
+                'decision 27 in version 6. Each note says what the relationship map changed. "Now" means the candidate '
+                'shape, which is not decided.')
+NOW_NOTE = 'Each note says what the relationship map changed. "Now" means the candidate shape, which is not decided.'
 GRID_NOTE = 'A dot means the flaw\'s problems sit in that part of the engine.'
 STEP3_HEAD = 'The map leaves these choices to you.'
 STEP3_INTRO = ('Step 3 puts each in front of you with designs side by side. They are listed here so nothing arrives as '
-               'a surprise.')
+               'a surprise. The six with a row in the alternatives table on [[page:parts#alternatives|the Parts page]] link to it, '
+               'where both designs and their costs are compared.')
 
 FOOTERS = {   # each page names the documents it is built from (plan 2), by name, not by file
     'engine': [
         'Built from the promises document of 2026-10-31 (what the engine is for, who counts on each promise and '
         'when), the engine-shape document of 2026-11-01 (the candidate engine drawn whole), the after-game report of '
-        '2026-11-01 (around the engine), decisions 20 to 29 on the program\'s state page, and the shared vocabulary '
-        '(the words).',
+        '2026-11-01 (around the engine), the cause analysis of 2026-10-30 (the design flaws named around the engine), '
+        'decisions 20 to 29 on the program\'s state page, and the shared vocabulary (the words).',
     ],
     'decisions': [
         'Built from the questions of version 7; the engine-shape document of 2026-11-01 (its alternatives and the '
         'choices it leaves to step 3); the cause analysis of 2026-10-30; the standalone pass of 2026-10-31; the '
-        'after-game report of 2026-11-01; and decisions 20 to 29 on the program\'s state page.',
+        'after-game report of 2026-11-01; the program document of 2026-10-30 (the test rig\'s step); the promises '
+        'document of 2026-10-31; and decisions 20 to 29 on the program\'s state page.',
     ],
     'promises': [
         'Built from the promises document of 2026-10-31 (its check held 171 claims and corrected 53) and the '
@@ -997,14 +1013,16 @@ FOOTERS = {   # each page names the documents it is built from (plan 2), by name
         'document of 2026-10-31.',
     ],
     'flaws': [
-        'Built from the cause analysis of 2026-10-30 with its two checks, and the standalone pass of 2026-10-31 with '
-        'the ESP32 parity table. The cards were reconciled with the engine-shape document of 2026-11-01, each group '
-        'checked on its own.',
+        'Built from the cause analysis of 2026-10-30 with its two checks; the standalone pass of 2026-10-31 with the '
+        'ESP32 parity table; the promises document of 2026-10-31 (which promise each flaw breaks); the engine-shape '
+        'document of 2026-11-01 and the four relationship maps it was drawn from (the candidate side and the parts); '
+        'and the after-game report of 2026-11-01 (the two clocks under C9).',
     ],
     'changes': [
         'Built from the page\'s version history and decisions 20 to 29 on the program\'s state page, the first wording '
         'of each promise in the promises document of 2026-10-31, the notes each card and promise carried after the '
-        'relationship map, and the shared vocabulary.',
+        'relationship map, the cause analysis of 2026-10-30 (finding X-08 and the totals), the questions of version 7 '
+        '(E, F and G, after the map), the after-game report of 2026-11-01, and the shared vocabulary.',
     ],
 }
 
@@ -1220,6 +1238,7 @@ def page_engine(D):
     def terms(group):
         return ''.join(f'<dt>{e(t["term"])}</dt><dd>{rich(t["def"])}</dd>' for t in f['words'] if t['group'] == group)
     return f'''<header class="top page-head">
+  <p class="eyebrow">Architecture pass · phase 1, step 1 · updated {UPDATED}</p>
   <h1>What the engine promises</h1>
   <p class="lead">{rich(f["lead"])}</p>
 </header>
@@ -1302,14 +1321,15 @@ def page_decisions(D):
     <h3>{e(g["title"])}</h3>
     {"".join(question_html(q) for q in g["questions"])}
   </div>''' for g in d['groups'])
-    # A step-3 item that has a row in the alternatives table links to that row (plan 3.2, item 3).
+    # A step-3 item that has a row in the alternatives table links its opening words to that row (plan 3.2,
+    # item 3); the items keep version 7's words.
     items = []
     for s in d['step3']:
-        alt = STEP3_ALT.get(next((k for k in STEP3_ALT if s['text'].startswith(k)), None))
-        if alt is not None:
-            PAGE_OVERRIDE['parts'] = href('parts', alt)
-        items.append(f'<li>{rich(s["text"])}</li>')
-        PAGE_OVERRIDE.clear()
+        k = next((k for k in STEP3_ALT if s['text'].startswith(k)), None)
+        if k is None:
+            items.append(f'<li>{rich(s["text"])}</li>')
+        else:
+            items.append(f'<li><a href="{href("parts", STEP3_ALT[k])}">{e(k)}</a>{rich(s["text"][len(k):])}</li>')
     decided = ''.join(f'<li><span class="dn">Decision {x["n"]}<span class="dd">{e(x["date"])}</span></span><span>{rich(x["line"])}</span></li>'
                       for x in d['decided'])
     return f'''<header class="page-head">
@@ -1326,7 +1346,7 @@ def page_decisions(D):
   <h2 id="step-3-h">Coming in step 3, no answer needed</h2>
   <div class="q">
     <h4>{e(STEP3_HEAD)}</h4>
-    <p>{e(STEP3_INTRO)}</p>
+    <p>{rich(STEP3_INTRO)}</p>
     <ol class="step3">{"".join(items)}</ol>
   </div>
 </section>
@@ -1365,17 +1385,19 @@ def promise_html(j, by_id):
     anchor = PROMISE_ANCHOR[j['id']]
     needs = ''.join(f'<li>{e(n)}</li>' for n in j['needs'])
     tests = ''.join(f'<li>{e(t)}</li>' for t in j['tests'])
-    shorts = []
-    for f in sorted(j['flaws'], key=lambda f: not f['primary']):
+    def short(f):
         fid = f['id']
-        link = flaw_a(fid, fid, 'fid')
         note = ' <span class="muted">(proposed)</span>' if fid not in by_id else ''
         cls = '' if f['primary'] else ' class="secondary"'
-        shorts.append(f'<li{cls}>{link}{e(f["how"])}{note}</li>')
+        return f'<li{cls}>{flaw_a(fid, fid, "fid")}{e(f["how"])}{note}</li>'
+    main = ''.join(short(f) for f in j['flaws'] if f['primary']) or '<li class="muted">None yet.</li>'
+    also = ''.join(short(f) for f in j['flaws'] if not f['primary'])
+    shorts = ([f'<span class="tag">Main</span><ul>{main}</ul>'] if j['flaws'] else []) + \
+             ([f'<span class="tag">Also</span><ul>{also}</ul>'] if also else [])
     standalone = re.sub(r'^In a standalone game:\s*', '', j['standalone'])
     goal_tag = 'The long-term goal' + (' <span class="open">(open for step 3)</span>' if j.get('goalOpen') else '')
     q = j.get('questions') or []
-    qtext = ('Answers the pass\'s question' + ('s ' if len(q) > 1 else ' ') + ', '.join(map(str, q))) if q else 'No question of the nine covers it yet'
+    qtext = ('Answers the pass\'s design question' + ('s ' if len(q) > 1 else ' ') + ', '.join(map(str, q))) if q else 'No design question of the pass covers it yet'
     return f'''
 <section class="job" id="{anchor}" aria-labelledby="{anchor}-h">
   <header class="job-head">
@@ -1389,8 +1411,8 @@ def promise_html(j, by_id):
   </div>
   {part_row(j.get("parts", []), NAMES, "Kept by these parts of the candidate shape")}
   <div class="short">
-    <span class="tag">Broken by these design flaws today, the main one first</span>
-    <ul>{"".join(shorts) or '<li class="muted">No design flaw breaks this promise mainly: its planned parts are not built yet.</li>'}</ul>
+    <span class="tag">Broken by these design flaws today</span>
+    {"".join(shorts) or '<ul><li class="muted">No design flaw breaks this promise mainly: its planned parts are not built yet.</li></ul>'}
   </div>
   <p class="standalone"><span class="tag">In a standalone game</span> {e(standalone)}</p>
   <details><summary>What the planned capabilities need from it ({len(j["needs"])})</summary><ul class="examples">{needs}</ul></details>
@@ -1412,16 +1434,16 @@ def page_promises(D):
 
 <section id="glance" aria-labelledby="glance-h">
   <h2 id="glance-h">The ten at a glance</h2>
-  <p class="lead-in"><strong>{e(head)}</strong> {e(text)}</p>
+  <p class="lead-in"><strong>{e(head)}</strong> {rich(text)}</p>
   {glance_html(jobs)}
 </section>
 
 <section id="depend" aria-labelledby="depend-h">
   <h2 id="depend-h">How the promises depend on each other</h2>
   <figure class="dia wide">
-    <figcaption>The promises at a glance</figcaption>
+    <figcaption>The main dependencies in brief</figcaption>
     <p class="figkey">{OVERVIEW_KEY}</p>
-    <div class="scroll">{diagram(overview, "The promises at a glance")}</div>
+    <div class="scroll">{diagram(overview, "The main dependencies in brief")}</div>
     <details>
       <summary>{e(rel_cap)}</summary>
       <p class="muted" style="margin:10px 0">{e(RELATIONS_NOTE.format(n=n_deps))}</p>
@@ -1455,7 +1477,8 @@ ALT_TITLE_START = ['Getting state onto screens', 'The rules', 'Equipment', 'The 
 def page_parts(D):
     shape = D['shape']
     assert len(shape['qualities']) == len(QUALITY_KEEPS), 'the qualities changed: update QUALITY_KEEPS'
-    quality_today = {3: today_of(shape['mechanisms'][10]['plain'])}   # who decides with no engine: today's way
+    t = today_of(shape['mechanisms'][10]['plain'])   # who decides with no engine: today's way, after "Today: "
+    quality_today = {3: t[:1].lower() + t[1:]}
     qual = ''.join(f'<tr><th scope="row">{e(q["name"])}</th><td>{e(q["plain"])}' + (f' <span class="muted">Today: {e(quality_today[k])}</span>' if k in quality_today else '') + f'</td><td>{promise_links(QUALITY_KEEPS[k])}</td></tr>' for k, q in enumerate(shape['qualities']))
     tangles = ''.join(f'<li><strong>{e(t["title"])}.</strong> {e(t["plain"])} <span class="muted">Flaws: {flaw_links(t["flaws"])}</span></li>' for t in shape['today']['tangles'])
     rows = part_layers(shape)
@@ -1467,7 +1490,7 @@ def page_parts(D):
     devices = ''.join(f'<li><strong>{e(h)}</strong> {e(t)}</li>' for h, t in FIT_DEVICES)
     walks = ''.join(f'''<figure class="dia walk">
       <figcaption>{e(title)}</figcaption>
-      <p class="figkey">Keeps {"; ".join(promise_link(j) for j in keeps)}.</p>
+      <p class="figkey">Shows {"; ".join(promise_link(j) for j in keeps)}.</p>
       <div class="scroll">{diagram(present(src), title)}</div>
     </figure>''' for title, keeps, src in WALKS)
     if len(shape['alternatives']) != len(ALT_ANCHORS):
@@ -1478,6 +1501,7 @@ def page_parts(D):
     alts = ''.join(f'<tr id="{anc}"><th scope="row">{e(a["title"])}</th><td>{e(a["a"])}</td><td>{e(a["b"])}</td><td>{e(a["cost"])}</td></tr>'
                    for a, anc in zip(shape['alternatives'], ALT_ANCHORS))
     n_uses = len(re.findall(r"-->", shape["partsMermaid"]))
+    uses_src = re.sub(r'\["P\d+ ', '["', shape['partsMermaid'])   # boxes by name only: no part numbers on the page
     uses_cap = f'Which part uses which: {n_uses} links'
     return f'''<header class="page-head">
   <h1>Parts</h1>
@@ -1499,7 +1523,7 @@ def page_parts(D):
   <details>
     <summary>{e(uses_cap)}</summary>
     <p class="muted" style="margin:10px 0">{e(USES_NOTE)}</p>
-    <div class="scroll">{diagram(present(shape["partsMermaid"]), uses_cap)}</div>
+    <div class="scroll">{diagram(present(uses_src), uses_cap)}</div>
   </details>
 </section>
 
@@ -1556,7 +1580,7 @@ def n1_html(D):
   </header>
   <div class="story">
     <p><span class="tag">What breaks</span> {e(main[0][1])}</p>
-    <div><span class="tag">It also touches</span><ul class="examples">{also_html}</ul></div>
+    <div><span class="tag">It also breaks</span><ul class="examples">{also_html}</ul></div>
   </div>
   {part_row(parts, NAMES, "Removed by these parts of the candidate shape")}
   <p class="design"><span class="tag">Proposed, with no card</span> {rich("Whether it is a design flaw of its own, with its own rule, is [[q:C]], where question 23 is folded in. Its problems come from the standalone pass.")}</p>
@@ -1625,7 +1649,7 @@ def page_flaws(D):
   <p>{e(STANDALONE_P1)}</p>
   <p>{e(STANDALONE_P2)}</p>
   <details>
-    <summary>The ESP32 against the web scanner with no engine: {len(parity_rows())} differences</summary>
+    <summary>The ESP32 hardware scanner against the web scanner with no engine: {len(parity_rows())} differences</summary>
     <p class="muted" style="margin:10px 0">{e(PARITY_NOTE)}</p>
     {parity_html()}
   </details>
@@ -1683,11 +1707,13 @@ def page_changes(D):
 
 <section id="earlier-wording" aria-labelledby="earlier-wording-h">
   <h2 id="earlier-wording-h">The promises' earlier wording</h2>
+  <p>{e(EARLIER_NOTE)}</p>
   <div class="log-grid">{proms}</div>
 </section>
 
 <section id="card-changes" aria-labelledby="card-changes-h">
   <h2 id="card-changes-h">The cards</h2>
+  <p>{e(NOW_NOTE)}</p>
   <div class="log-grid">{cards}</div>
 </section>
 

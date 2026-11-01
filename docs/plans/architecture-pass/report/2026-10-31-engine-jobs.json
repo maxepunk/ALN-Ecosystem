@@ -188,7 +188,7 @@
       "goal": "Every request gets one reply in the same form: which request it answers, the outcome, whether it is final, whether anything was stored. At the end, one record of the night is written from the facts decided and the roster, notes, accusation and photos captured during play, stamped with the game it ran and the texts the players saw. The tablet's report and the game's own telling both read it; for ALN that telling is the Director Console, a separate program, and the record leaves room for it to run inside the engine's Review stage later. Whether refused scans are recorded stays open.",
       "goalOpen": false,
       "needs": [
-        "Two planned capabilities touch the answer: held items (capability 14), where a held cue is an answer the GM sees, and the interaction primitives (capability 36), whose multi-tap actions are requests with the same reply shape.",
+        "Interaction primitives (capability 36): multi-tap actions are requests with the same reply shape.",
         "Capture (capabilities 30 and 31), the session-bundle emitter (capability 32), the Review stage (capability 34) and the report pipeline move (capability 33): the engine writes a structured record of the night when the game ends, from facts the engine itself decided. Nothing writes that record today.",
         "Photo capture (capability 31): a way to receive a picture, which the engine lacks, with the data kept on the kit and retention set per game by the owner.",
         "Held items (capability 14): a held cue counts as an answer the GM can see, with a defined end for holds caused by a broken service."
@@ -332,7 +332,7 @@
       "goal": "One Lifecycle moves a game between its moments and alone resets anything; engine start, Reset System and tests run the same steps. Its table says what each fact keeps, clears or carries, and every screen is told of the change. Pack changes land only between games; a new engine version only between events. Open: rows, and standing cues in setup.",
       "goalOpen": true,
       "needs": [
-        "No capability exists mainly for this promise, but thirteen list it as a secondary promise (the eleven in the capabilities sheet's table, plus dormancy (capability 8) and the second game's modules (capability 38), which that sheet's section 3 places here); together they ask for one table of every fact against every moment.",
+        "No capability exists mainly for this promise, but thirteen list it as a secondary promise , dormancy (capability 8) and the second game's modules (capability 38) among them; together they ask for one table of every fact against every moment.",
         "Hot-apply (capability 16): refused while a game is active or paused; the setup, ended and no-game cases defined.",
         "Self-heal (capability 11): the scanner's pack copy replaced at a game boundary, once per connection and engine version.",
         "Dormancy (capability 8) and the preflight (capability 7): verdicts recomputed at reset, at game create and at restore, and the display's health not falsely red after a reset.",
@@ -405,7 +405,7 @@
         "Hot-apply (capability 16) and the design-iteration loop (capability 18): edit, publish, apply and play work in setup or after an end; a GM-scored trial needs a started game and so passes the start gate.",
         "The preview engine (capability 20) and simulation profiles (capability 21): a second engine that cannot kill the live engine's programs, write into its records or mint passes it accepts.",
         "Live verdict badges (capability 19): the same verdict function as the engine, run on the draft, labeled paper or live.",
-        "First-run state (capability 48), content tooling (capability 41) and the preset-load gate (capability 52) set no demand in the direction map's section 3."
+        "First-run state (capability 48), content tooling (capability 41) and the preset-load gate (capability 52) set no demand on it."
       ],
       "flaws": [
         {
@@ -506,7 +506,7 @@
         "Installation profiles (capability 5), the bindings page (capability 23), the hardware editor and rider (capability 24) and the Deploy stage (capability 22): the profile is read once at start, and the design says what a profile change ends in, since the pack side will have hot-apply and the profile side will not.",
         "The start-or-adopt setting (capability 10; a file of its own in the capability map, the venue technician's profile in the candidate shape), the seams for more kits (capability 42) and the kit network (capability 43): no kit-unique names in engine code, per-engine names for process files, and a name server the engine reads but does not drive.",
         "Hardware-scanner parity (capability 49): every new mechanic has matching firmware, and a decision on the hardware scanner's missing standalone mode.",
-        "Standalone games need something that says a game is standalone. Today the tablet's mode is a tap, the phone's is its URL path, the hardware scanner has no such notion, and the pack has no field for it.",
+        "Standalone games need something that says a game is standalone; today the pack has no field for it.",
         "The planning view (capability 25) needs nothing from the running engine."
       ],
       "flaws": [
@@ -646,8 +646,7 @@
         "The seams for more kits (capability 42) and the preview engine (capability 20): the same per-engine naming layer as test runs, built once. Sixteen fixed temporary paths in eight files and two machine-wide kills exist today.",
         "The supervisor (capability 9): process cleanup that cannot hit the wrong process.",
         "Screen baselines (capability 29) and the two-pack run: guards against changes the owner did not choose.",
-        "Blue/green cutover (capability 44), the Block 1 deliverables (capability 45) and the Block 6 close (capability 51): frozen production and blue containment honored; nothing deploys until the owner says so.",
-        "The rig that ran the real stack was lost with the container; its recipe survives."
+        "Blue/green cutover (capability 44) and two roadmap milestones (capabilities 45 and 51): the live machine stays frozen, and nothing deploys until the owner says so."
       ],
       "flaws": [
         {
