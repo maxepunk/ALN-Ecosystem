@@ -91,6 +91,40 @@ before acting.
       decisions, promises, parts and design flaws; the history of
       earlier wordings and changes moves to a change log. The owner
       relies on nothing in version 7, so nothing has to stay as it is.
+  30. The test rig no longer comes before design (owner, 2026-11-01,
+      answering "withdraw question 21?"): question 21 is withdrawn. The
+      rig is built at the start of building, as part of the new test
+      bench where a thin first version of the new design runs end to
+      end, not to reproduce today's problems first. Exception: if the
+      decision on how to move from today's engine chooses to change it
+      in place, pinning down today's behaviour first comes back.
+  31. The rest of the design half is reordered top-down for the
+      proactive frame of decision 26 (owner, 2026-11-01; amends
+      decisions 12, 14 and 15): finish the requirements (the owner's
+      answers, plus quality targets written as testable situations and
+      the ways the platform must be extended, and by whom); then design
+      rounds ordered by the hardest decisions to reverse (how the
+      engine holds the game's state; the published protocol and file
+      formats; where authority lives across devices, offline and
+      standalone included; how games and venues extend the engine; how
+      one engine runs as many separate copies; how today's engine moves
+      to the new design), each with two or three designs side by side,
+      checked against the promises, the quality targets, the extension
+      cases and today's sixteen design flaws as test cases; then a
+      build plan that starts with that thin first version. The owner
+      site is reframed fully to this proactive frame, and the
+      sequencing words are made unambiguous: the owner asked "which
+      phase 1?", so no page uses a bare phase, step, round or block
+      number again.
+  32. An independent panel of architects, who have not seen the
+      orchestrator's reasoning, proposes and stress-tests the top-level
+      design decisions before the first design round (owner,
+      2026-11-01). The owner said the context the panel gets is
+      critical: its brief comes to the owner before the panel runs.
+  Pending: replacing "Joins and proofs" with two design decisions (the
+  published protocol, and a test bench outside the engine). The owner
+  leans yes and asked first for a careful explanation of the published
+  protocol and where it fits in the big picture.
   Open in round 8, all on the report page or in the chat: 17 (is the
   cause list right), 18 (the three causes no question covers), 19
   (record every scan attempt's outcome: the owner's yes to the
