@@ -36,7 +36,7 @@ NAMES = {}  # part id -> plain name, filled from the shape by build()
 BUILT = {
     'J1': 'Packs that hold tokens, modes, scoring, groups and cues; a gate that refuses a broken pack; a second, toy game kept beside ALN.',
     'J2': 'One game record in the backend; a full snapshot to each screen when it connects; live updates for scores, transactions and player scans; the TV and Pi 4 scoreboards.',
-    'J3': 'GM scans scored as transactions; player scans kept in the game record; an answer to every GM command; the post-game report and the session validator.',
+    'J3': 'GM scans scored as transactions; player scans kept in the game record; an answer to every GM command; the post-game report and the session validator. Outside the engine, ALN\'s article writer, the Director Console, reads that report by hand.',
     'J4': 'Video on the TV, music, sounds, lights, the Bluetooth speaker and audio routing; cues and timelines; the health dashboard; items held while a service is down.',
     'J5': 'Create, start, pause and end a game; Reset System; a game restored after an engine restart; the game clock.',
     'J6': 'The config tool; a store for drafting and publishing packs.',
