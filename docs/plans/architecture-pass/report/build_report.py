@@ -31,7 +31,7 @@ BUILT = {
     'J7': 'The GM password and its login token; a watch-only pass for the Pi 4 scoreboard; anonymous player scans.',
     'J8': 'Venue profiles and "not installed tonight"; standalone modes on the GM tablet and the web player scanner; the blue and green machine method.',
     'J9': 'Health words healthy, down and dormant (grey); held items; a first, minimal preflight.',
-    'J10': 'Unit, contract, integration and end-to-end tests; the rung-1 test rig with real programs; CI on every pull request; coverage that may not fall.',
+    'J10': 'Unit, contract, integration and end-to-end tests; a rung-1 run with the real programs in CI, started by hand or by a change to its own files (the standing test rig was lost with the old container; step 2 rebuilds it); CI on every pull request to main; coverage that may not fall.',
 }
 
 # Where a flaw lives: a card's module paths, sorted into the parts of the engine.
@@ -176,7 +176,7 @@ def parity_html():
 def glance_html(jobs):
     rows = []
     for j in jobs:
-        prim = ' '.join(f'<a href="#{f["id"].lower()}">{e(f["id"])}</a>' if f['id'] != 'N1' else 'N1' for f in j['flaws'] if f['primary']) or '<span class="muted">none yet</span>'
+        prim = ' '.join(f'<a href="#{f["id"].lower()}">{e(f["id"])}</a>' if f['id'] != 'N1' else 'N1 <span class="muted">(proposed)</span>' for f in j['flaws'] if f['primary']) or '<span class="muted">none yet</span>'
         sec = ' '.join(f['id'] for f in j['flaws'] if not f['primary'])
         rows.append(f'<tr><th scope="row"><a href="#{j["id"].lower()}">{e(j["id"])}</a> {e(j["title"])}</th><td>{prim}</td><td class="muted">{e(sec)}</td></tr>')
     return ('<div class="tablewrap"><table class="glance"><thead><tr><th>Job</th><th>Flaws that mainly block it</th><th>Also touched by</th></tr></thead>'
@@ -192,10 +192,10 @@ def job_html(j, by_id, home):
         fid = f['id']
         if f['primary']:
             link = f'<a class="fid" href="#{fid.lower()}">{e(fid)}</a>' if fid in by_id else f'<span class="fid">{e(fid)}</span>'
-            shorts.append(f'<li>{link}{e(f["how"])}</li>')
+            shorts.append(f'<li>{link}{e(f["how"])}' + ('' if fid in by_id else ' <span class="muted">(proposed, question 23; it has no card)</span>') + '</li>')
         else:
-            where = home.get(fid, '')
-            note = f' <span class="muted">(its card is under {e(where)})</span>' if where else ''
+            where = home.get(fid, '') if fid in by_id else ''
+            note = f' <span class="muted">(its card is under {e(where)})</span>' if where else ' <span class="muted">(proposed, question 23; it has no card)</span>'
             shorts.append(f'<li class="secondary"><span class="fid">{e(fid)}</span>{e(f["how"])}{note}</li>')
     goal_tag = 'The long-term goal' + (' <span class="open">(open for step 3)</span>' if j.get('goalOpen') else '')
     q = j.get('questions') or []
@@ -206,7 +206,7 @@ def job_html(j, by_id, home):
   <header class="job-head">
     <span class="jid">{e(j["id"])}</span>
     <h2>{e(j["title"])}</h2>
-    <p class="meaning">{e(j["meaning"])}</p>
+    <p class="meaning">{e(j["meaning"].replace("section 4 asks", "a question at the end of this page asks"))}</p>
     <div class="chips">{roles}</div>
   </header>
   <div class="job-facts">
@@ -415,7 +415,7 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
 
 <section class="sa-box" aria-labelledby="standalone">
   <h2 id="standalone">Standalone games</h2>
-  <p>Your decision 22 adds a requirement: a whole game can run with no engine, the GM tablet and the player scanners each working alone, as a choice the game declares and never mixed. In a standalone game the GM tablet decides everything about the game (used tokens, scores, teams, the game's start, pause and end) from its own hand-kept copies of the engine's rules. Each player scanner decides only whether a token is known.</p>
+  <p>Your decision 22 adds a requirement: a whole game can run with no engine, the GM tablet and the player scanners each working alone, as a choice the game declares and never mixed. In a standalone game the GM tablet decides everything about the game (used tokens, scores, teams, the game's start, pause and end) from its own hand-kept copies of the engine's rules. Each player scanner decides only whether a token is known, and the phone also whether it has seen that token before.</p>
   <p>Four design flaws cause no problem in a standalone game, four apply in part and eight in full. Each job and each card says what changes. The two biggest gaps: nothing says that a game is standalone, and every device shows the missing engine as a failure ("Offline" on the phone all night, red "DISCONNECTED" on the ESP32, "VIDEO UNAVAILABLE, Rescan later" for a video that can never play).</p>
   <details>
     <summary>The ESP32 against the web scanner with no engine: {parity_n} differences</summary>
@@ -426,7 +426,7 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
 
 <section aria-labelledby="evidence">
   <h2 id="evidence">The evidence</h2>
-  <p class="intro" style="margin:8px 0 14px">{total_all} problems came from blue's records and the maps of today's engine; {total} of them sit under the design flaws above, and {aside_n} needed no change to the design. The standalone pass added 35 more, placed under the same flaws.</p>
+  <p class="intro" style="margin:8px 0 14px">{total_all} problems came from blue's records and the maps of today's engine; {total} of them sit under the design flaws above, and {aside_n} needed no change to the design. The standalone pass added 35 more: 27 placed under the same flaws, and 8 under the proposed N1 that question 23 asks about.</p>
   <div class="tablewrap"><table class="aside"><tbody>{aside}</tbody></table></div>
   <details style="margin-top:14px">
     <summary>Where each flaw lives in today's code</summary>
@@ -458,8 +458,8 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
     <div class="q">
       <p class="applied">Applied, please confirm</p>
       <h3>C. J8 now says a standalone game is a choice the game declares, never mixed.</h3>
-      <p>These are your decision 22's words. With them, question 23 (is "nothing declares a game standalone" a flaw of its own) no longer changes any work: it is J8's main shortfall either way.</p>
-      <p class="rec">Recommendation: agree, and drop question 23.</p>
+      <p>These are your decision 22's words. With them, "nothing declares a game standalone" has a home under J8. Question 23 is folded in here: is it also a design flaw of its own, with its own rule? If not, its eight problems join C9, C11 and C14 and the ESP32 parity list.</p>
+      <p class="rec">Recommendation: agree. On question 23, yes: three other rules (game boundaries, one answer per question, how old a copy is) need the declared fact as an input, and would otherwise each invent their own answer.</p>
     </div>
     <div class="q">
       <h3>D. Split J3 into "answer every action" and "keep the record of the night"?</h3>
@@ -469,15 +469,17 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
     <div class="q">
       <h3>E. Split J8 into "fit the game to the venue" and "run in any setup"?</h3>
       <p>Fitting a game to a room is the venue installer's work: the profile, the bindings, the one preflight. Running in any setup is standalone games, other kits and the open-source release.</p>
+      <p>Or keep one job and rename it "Fit the game to the venue, whatever the setup".</p>
       <p class="rec">Recommendation: split. The installer is one of the engine's five users and has no job of their own today.</p>
     </div>
     <div class="q">
-      <h3>F. J10 holds four kinds of work. Split it?</h3>
+      <h3>F. J10 holds four kinds of work. Widen it, split it, or leave it?</h3>
       <ol type="a">
         <li>"Prove it works, away from the live show": tests that use the real path and never touch the show.</li>
         <li>"Keep every part in step": names two parts share, installed pieces that match, and a new version that reaches the show only when you say it is ready.</li>
       </ol>
-      <p>None of the pass's nine questions covers this work today. This replaces question 18.</p>
+      <p>Widening instead keeps one job and adds to its sentence that a new version reaches the show only when you say it is ready, with rollback as plugging the old machine back in.</p>
+      <p>Question 4 covers keeping tests away from the live show (C8). For the other three flaws under this job no question of the nine fits: question 5 is only the nearest for the names two parts share (C14), and the installed pieces (C15) and tests that prove the real path (C16) have none. This replaces question 18.</p>
       <p class="rec">Recommendation: split, and give each half a question of its own in the pass.</p>
     </div>
     <div class="q">
@@ -518,7 +520,7 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
     <div class="q">
       <h3>21. How many problems should the test rig prove before design starts?</h3>
       <p>The test rig is the automated test machine with real video, music, audio and lighting stand-ins. On it a problem can be made to happen for real instead of read off the code. Phase 2 proves each problem anyway, because every area starts with its test failing on today's engine.</p>
-      <p class="rec">Recommendation: one per design flaw, about 17 runs.</p>
+      <p class="rec">Recommendation: one per design flaw, 16 runs.</p>
     </div>
   </div>
   <p class="muted">Decided so far: 20 (no rule for documents; documents are fixed as we go), 22 (standalone games join the requirements; never mixed) and 26 (the pass designs the best engine for the long term; blue's problems are clues, not the plan).</p>
