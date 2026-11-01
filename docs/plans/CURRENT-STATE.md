@@ -75,8 +75,17 @@ before acting.
   from the next session. The owner added a plugin-install line to the
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
-- **Live state** (2026-11-01): nothing running, no worktrees, no
-  test rig. The owner-facing page, "What the Engine Must Do"
+- **Live state** (2026-11-01): running, at the owner's request, the
+  map of how the ten jobs relate and where each lives today, at both
+  levels (the big components and the modules inside them), with a
+  candidate shape for the engine's parts: workflow `wf_5f2445a0-bac`
+  (script `docs/agents/workflow-scripts/engine-shape.js`), four
+  readers (`docs/plans/architecture-pass/relationships/`), a shape
+  writer, a check and a fold, writing
+  `docs/plans/architecture-pass/2026-11-01-engine-shape.md`. The owner
+  also said J8 and J9 read as mechanics, not what they do for people;
+  every job gets a functional restatement. No worktrees, no test
+  rig. The owner-facing page, "What the Engine Must Do"
   (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL, version 4;
   source `docs/plans/architecture-pass/report/`, built by
   `build_report.py`), leads with the engine's ten jobs
