@@ -88,7 +88,11 @@ before acting.
   capabilities, the design flaws) test the orchestrator's draft of ten
   jobs, then a writer, a check and a fold produce
   `docs/plans/architecture-pass/2026-10-31-engine-jobs.md` and the
-  page's data. Vocabulary: "design flaws" for C1 to C16 in owner-facing
+  page's data; done, and the page rebuilt around the jobs is published
+  as version 3 (same link, now titled "What the Engine Must Do"). The
+  questions are regrouped: the jobs (is the list right; A to G), three
+  standalone questions (22's ESP32 reading, 24, 25), 19 and 21; 18 is
+  folded into F and 23 into C. Vocabulary: "design flaws" for C1 to C16 in owner-facing
   text (the owner said "cause analysis" does not land). No worktrees,
   no test rig. The visual cause report, version 2, is published for the
   owner (a private page: https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL;
