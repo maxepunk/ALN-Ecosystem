@@ -162,9 +162,15 @@ before acting.
       options, costs, trial runs and the owner's questions. It runs
       after the owner confirms the requirements; its brief goes to the
       owner first.
-  Under discussion: the owner questioned numbering decisions at all
-  ("I've been using them because you've been using them, but they're
-  not necessarily clear or the best approach").
+  36. Titles, not numbers (owner, 2026-11-01): decisions, questions and
+      design flaws go by short plain titles in conversation and on the
+      owner's pages; ids stay only inside records, for cross-reference.
+      The decision record is reorganized by topic: what stands now,
+      each written as current truth, with a dated history beneath;
+      superseded decisions move into that history. The owner: "I've
+      been using them because you've been using them, but they're not
+      necessarily clear or the best approach." Being applied: the new
+      record replaces this numbered list.
   Open in round 8, all on the report page or in the chat: 17 (is the
   cause list right), 18 (the three causes no question covers), 19
   (record every scan attempt's outcome: the owner's yes to the
