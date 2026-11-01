@@ -1,0 +1,637 @@
+# Extension cases: the sources behind each case
+
+Companion to `2026-11-01-extension-cases.json` (21 cases, drafted
+2026-11-01 for the owner's confirmation under decision 31). Every
+sentence in a case rests on one of the sources below; nothing is
+invented. Where a case is marked `proposed`, the log says which part of
+it rests on the candidate shape rather than on an owner decision.
+
+Paths are under `/home/user/ALN-Ecosystem/`. Line numbers are the
+branch `claude/nice-curie-hescfv` text read on 2026-11-01.
+
+Abbreviations used only in this log:
+
+- RM = `docs/plans/ROADMAP.md`
+- CTX = `CONTEXT.md`
+- CS = `docs/plans/CURRENT-STATE.md`
+- JOBS = `docs/plans/architecture-pass/report/2026-10-31-engine-jobs.json`
+  (cited by the promise's `functional.proposedTitle` and the field read)
+- MAP = `docs/plans/architecture-pass/2026-10-30-map-direction.md`
+  (the 52 planned capabilities, cited by the capability's name and row)
+- SHAPE = `docs/plans/architecture-pass/2026-11-01-engine-shape.md`
+  (the candidate shape; a source only for `proposed` wording)
+- AFTER = `docs/plans/architecture-pass/2026-11-01-after-game-report.md`
+- BILL = `docs/plans/2026-07-17-bill-capability-scoping.md`
+  (reached through RM section 7.2 and MAP row "The second game's modules")
+- JARGON = `docs/plans/architecture-pass/report/site/checks/jargon-table.md`
+
+## Wording sources (apply to every case)
+
+- Promise titles: JOBS, `jobs[].functional.proposedTitle`, all ten.
+- Person names: "venue technician" (CTX:410-413, decision 27 at
+  CS:55-70); "director" (CTX:547-549); "designer", "GM", "player",
+  "operator" (RM:46-75).
+- Plain wordings: JARGON rows 12 (load, not adopt), 13 (start it, or use
+  one already running), 15 (a separate trial copy of the engine), 16
+  (applying a change while the engine runs, between games), 18 and 19
+  (capability numbers dropped, names kept), 29 (the hardware scanner;
+  the phone's scanner), 39 (the written list of messages between the
+  engine and the devices), 40 (devices, not clients), 45 (not installed
+  tonight), 46 (the program watcher), 57 (multi-tap player actions), 58
+  (the toy game), 64 (fingerprint; the pack's list of files), 65 (the
+  record written when the game ends), 66 (the engine, not backend);
+  words box W5 (the toy game) and W8 (health words).
+- Block names in place of block numbers: RM:277 (the unlock block),
+  RM:297 (the hardening block), RM:358 (the capture block), RM:388 (the
+  preview block), RM:416 (the depth-and-close block), RM:588 (the
+  release block); decision 31 at CS:114-118 forbids bare numbers.
+- "Published interface" (the intro's definition): the contract-first
+  rule and the two written message lists, root `CLAUDE.md` section
+  "Contract-First Architecture"; SHAPE P16 (SHAPE:209, "every shape two
+  parts share is written once and both sides read it"); the owner's
+  pending question on the published protocol, CS:129-132. The
+  definition is the drafter's plain gloss of those three; the owner is
+  asked to confirm it.
+
+## EX1. A new game as a pack
+
+- RM:40-54 (the final outcome; a designer builds a complete game as a
+  pack, never touching code or configuration files).
+- RM:128-135 (section 2.4, the design-iteration loop).
+- CTX:26-35 (section 0: engine and pack); CTX:248-250 (Toy pack: kept
+  forever, proves the engine is generic, a worked example).
+- JOBS, "The designer's game is the game the whole kit plays":
+  `functional.need` (the whole kit plays that game with no code change;
+  a second designer's game runs on the same engine), `goal` (never
+  touches code or settings files; the hardware scanner gets its rules as
+  data), `needs` (the pack and the check that refuses a broken pack;
+  hardware-scanner parity).
+- JOBS `purpose[7]` (a second, toy game stays in the repository for
+  good, so every change is proven on two games).
+- Decision 26, CS:46-54 (the pass designs for use beyond ALN).
+- Status: RM sections 1 and 2.4; CTX Toy pack; decision 26.
+
+## EX2. Changing a value between shows
+
+- RM:128-135 (section 2.4: edit, apply, playtest, repeat; the editor and
+  applying a change while the engine runs are one deliverable).
+- RM:611 (deferral registry row 8.6: applying a change while the engine
+  runs lands in the preview block, with the mechanics editor).
+- RM:388-414 (the preview block: the mechanics editor with live verdict
+  badges and hot-apply, one deliverable).
+- CTX:201-205 (Activation: a game's rules never change mid-game);
+  CTX:377-381 (Design-iteration loop; hot-apply).
+- JOBS, "The designer changes a value and plays it within minutes, and
+  the live show never notices": `functional.need`, `goal` (the Design
+  studio talks to the engine only by message; the engine applies at a
+  moment the Lifecycle allows or refuses and says why), `needs` (edits
+  touch a draft only; applying works in setup or after an end).
+- JOBS, "Each lifecycle button does exactly what its name says":
+  `functional.need` (a between-games edit never reaches the game in
+  progress), `needs` (hot-apply refused while a game is active or
+  paused).
+- JOBS, "The designer's game is the game the whole kit plays": `goal`
+  (each copy shows its version; a mismatch shows when a device
+  connects).
+- MAP:94 (row "Hot-apply": deferred to row 8.6, lands in the preview
+  block; nothing exists in code).
+- Decision 22, CS:36-45 (hot-apply on the list every rule must serve).
+- Status: RM section 2.4 and row 8.6; decision 22.
+
+## EX3. A new mode from the flags the engine offers
+
+- CTX:88-93 ("mode", pack mode: each entry declares flags; the engine
+  reads the flags, never the mode's name); CTX:106-108 (both modes can
+  occur in one game).
+- CTX:119-123 ("claim", consuming claim; a mode may declare
+  non-consuming claims).
+- CTX:160-164 (mode display surface: where a mode's results land).
+- CTX:266-268 (Strings sidecar: the pack's display wording).
+- RM:151-154 (section 2.6: the engine holds no opinion).
+- CTX:752-755 (section 8: Black Market and Detective are ALN's pack
+  modes, not engine language).
+- JOBS, "The designer's game is the game the whole kit plays": `needs`
+  (scoring models, hidden facts and multi-tap actions come from the
+  pack).
+- Status: CTX "mode"; RM section 2.6.
+
+## EX4. A new scoring model
+
+- RM:542-557 (section 7.2: graph game-state and graph scoring as
+  generic, pack-parameterized modules, tunable in the mechanics editor).
+- BILL:101-105 (a second scoring model in the rules library, selected
+  by the pack); BILL:50-54 (the capability gate governs availability).
+- CTX:216-227 (Capability: a pack lists what it needs; the gate refuses
+  and names a missing one); CTX:244-247 (Parity surface: the rules
+  functions are the single authority; the standalone tablet must match).
+- CTX:206-215 (The gate: refusal kind "not driveable by this engine
+  yet").
+- JOBS, "The designer's game is the game the whole kit plays": `needs`
+  (the second game's modules: scoring models come from the pack).
+- MAP:116 (row "The second game's modules": chartered later, section
+  7.2).
+- Status: RM section 7.2; CTX Capability and Parity surface.
+
+## EX5. New content and new media
+
+- RM:112-126 (section 2.3: media never in git packs; the pack names
+  files with hashes; a managed bundle; the designer uploads through the
+  design tool; bundles move between machines; the hardware scanner's
+  sync is the model).
+- RM:606 (row 8.1: media reference checking on the pack-manager page in
+  the preview block; the upload experience in content tooling, section
+  7.3).
+- CTX:36-42 (Media bundle); CTX:55-59 (Asset channel).
+- JOBS, "The designer's game is the game the whole kit plays": `goal`
+  (media files checked by a fingerprint of their content), `needs` (the
+  media bundle; the pack names its files by fingerprint).
+- JOBS, "The room does what the designer cued and the GM asked": `needs`
+  (the engine knows whether the named video files exist on its disk).
+- MAP:118 (row "Media bundle and asset channel": asset channel built,
+  checking in the preview block, upload later).
+- Root `CLAUDE.md`, "ESP32 Asset Sync Issues" (the hardware scanner
+  fetches pictures and sounds at boot from the engine's manifest).
+- Status: RM section 2.3 and row 8.1; CTX Media bundle.
+
+## EX6. New show cues naming roles, not instruments
+
+- CTX:286-291 (Cue: pack-declared; standing, manual, compound).
+- CTX:297-307 (Lighting role / binding / fallback: the pack names a
+  role; the profile binds it; the fallback block retires).
+- CTX:308-321 (Surface channel / binding: a channel is a name, never a
+  filename).
+- CTX:344-355 (Dormant vs fault: an absent endpoint shows grey);
+  CTX:420-430 (a stack service whose endpoints are absent is dormant;
+  a need marked degrade resolves dormant).
+- RM:607 (row 8.2: the last concrete speaker name in pack content is
+  retired in the preview block).
+- JOBS, "The room does what the designer cued and the GM asked":
+  `functional.need`; `needs` (dormancy silences the cues that depend on
+  absent equipment).
+- JOBS, "The game fits the venue it is in tonight": `goal` (binds each
+  pack name to an instrument).
+- Status: CTX Cue and Lighting role; RM row 8.2.
+
+## EX7. A game's own words and look
+
+- CTX:266-268 (Strings sidecar); CTX:280-282 (Theme).
+- CTX:166-180 (entity vs team: each pack declares its own word in
+  `entities.label`; "Team" is only the baked fallback).
+- RM:416-428 (the depth-and-close block: the strings and theme editor
+  with the real-device preview).
+- RM:732-741 (Appendix B: "Team" to "Account", star ratings hidden,
+  award wording, as pack-ruled changes).
+- JOBS, "The designer's game is the game the whole kit plays": `needs`
+  (even the word for a score-holder comes from the pack);
+  `functional.need` (the TV shows its words).
+- JOBS, "Anyone reading a screen can act on it without a second
+  question": `functional.need` (the editor and the show use the same
+  words).
+- Status: CTX Strings sidecar, Theme, entity vs team; RM the
+  depth-and-close block.
+
+## EX8. Acts and timed cues
+
+- RM:622 (row 8.17: the GM scanner redesign carries the manual
+  phase-advance control and phase-relative cue timing; design opens in
+  the preview block).
+- JOBS, "One game, the same on every screen": `needs` (the redesign
+  adds a new fact the GM writes, the game's phase).
+- JOBS, "Each lifecycle button does exactly what its name says": `needs`
+  (the new phase fact has a defined fate at pause, end and reset).
+- MAP:105 (row "The GM scanner redesign"); MAP:218 (the phase as new
+  writable state).
+- `ALN-TokenData/CLAUDE.md` (read as the submodule inside this
+  repository, not the top-level clone), file structure: `game.json`
+  carries `gameClock`; RM:711 (Appendix A: "clock phases" was an
+  extraction step, so phases are already pack content).
+- Status: RM row 8.17; the promise's needs.
+
+## EX9. A new screen or display surface
+
+- CTX:149-159 ("surface", display surface: a pack selects and configures
+  the built-in three through its surfaces block; a pack can opt out;
+  packs cannot define new surfaces, reserved for the second game's era).
+- RM:542-557 (section 7.2: the constellation display plugs into the
+  display-surface seam).
+- RM:613 (row 8.8: pack-defined new display surfaces and the
+  constellation renderer; the surface set made extensible stays
+  headroom).
+- BILL:106-110 (constellation renderer: a new display surface, never
+  hidden data, fed by server-side projection); BILL:75-82 (server-side
+  per-surface projection, mandatory for hidden-information games).
+- JOBS, "One game, the same on every screen": `functional.need` (a
+  player's hidden fact reaches only its owner), `goal` (hidden facts
+  never reach the wrong screen).
+- JOBS, "Each person sees their part and can do only their part":
+  `goal` (each screen gets only what its role may see).
+- MAP:232 (surfaces receive server-side projections scoped to their
+  granted functions).
+- Status: CTX "surface"; RM section 7.2 and row 8.8.
+
+## EX10. A new kind of player device and a new interaction
+
+- RM:66-69 (a player taps on their own phone or a shared station; no
+  account, no login, no app).
+- RM:527-540 (section 7.1: tap-to-web on the real domain, the receiving
+  experience, the device-tier model, the interaction primitives built
+  for both platforms; kit capacity work precedes phone load).
+- RM:137-149 (section 2.5: phones and hardware scanners stay equal in
+  engine capabilities; parity is not identical interfaces; everything a
+  designer iterates on is pack data, never firmware; never a mechanic
+  whose loop requires re-flashing a fleet).
+- RM:81-100 (section 2.1: players never have accounts).
+- RM:624 (row 8.19: kit DNS and the certificate land in the players'
+  phones block).
+- JOBS, "Every tap gets its answer, and the night can be told
+  afterwards": `goal` (every request gets one reply in the same form),
+  `needs` (multi-tap actions are requests with the same reply shape).
+- JOBS, "Each person sees their part and can do only their part":
+  `needs` (players' phones: passes issued without accounts; a measured
+  capacity for how many phones one kit carries; no number exists). This
+  is the "number to set".
+- JOBS, "The game fits the venue it is in tonight": `goal` (phones and
+  hardware scanners stay equal), `needs` (hardware-scanner parity:
+  every new mechanic has matching firmware).
+- MAP:113-114 (rows "Players' phones", "Interaction primitives v1");
+  MAP:238-239 (capacity: no number; parity: any new primitive adds
+  firmware work).
+- Decision 22, CS:36-45 (phones on the list every rule must serve).
+- The "published interface" wording with reply words and rules as data
+  is settled in substance by RM:137-149 and the promise's goal; the
+  shape of it (SHAPE:185, P4 reply words as a closed list the clients
+  read as data; SHAPE:179, P1 rules as data tables for the hardware
+  scanner) is the candidate shape's and is not a decision.
+- Status: RM sections 7.1, 2.1, 2.5; decision 22.
+
+## EX11. Who may do what on which device; identification moments
+
+- RM:81-100 (section 2.1: person-level identity is game policy, never
+  an engine default; identification moments through whatever the
+  hardware supports; claim-credit is one optional pattern).
+- RM:151-154 (section 2.6: identification, rosters, station scarcity and
+  tracking policy are pack and kit parameters).
+- CTX:569-574 (Actor vs device); CTX:575-579 (Auth tiers);
+  CTX:580-597 (The floor: session lifecycle, show control and score
+  intervention are always operator-only; a pack may assign any other
+  function to lower tiers; pack-declared function assignments are later
+  work).
+- CTX:757-765 (section 8: what each device kind may do is not engine
+  law; another game may let a bound station transact).
+- RM:527-540 (section 7.1: the device-tier auth model and actor-centric
+  permission resolution land with players' phones).
+- JOBS, "Each person sees their part and can do only their part":
+  `functional.need`, `goal` (players never get accounts; one door checks
+  every action once; only the GM moves the game, runs the show or
+  changes scores).
+- Status: RM sections 2.1 and 2.6; CTX The floor.
+
+## EX12. A game that runs with no engine
+
+- Decision 22, CS:36-45 (a whole game run with no engine as a choice a
+  game can declare; no game mixes networked and standalone devices; the
+  hardware scanner's missing standalone mode is a parity gap).
+- CS:137-141 (open: how many GM tablets per standalone game; exposure
+  and video tokens with no engine; where the standalone fact is held).
+  The first of these is the "number to set".
+- CTX:94-99 ("mode", deployment mode, as amended by decision 22).
+- JOBS, "The game fits the venue it is in tonight": `functional.need`
+  (a game declared standalone knows it, instead of showing a lost
+  connection all night), `goal` (standalone is declared, never mixed;
+  where, and how many tablets, stays open), `needs` (something must say
+  a game is standalone; today the pack has no field for it),
+  `standalone`.
+- JOBS, "One game, the same on every screen": `goal` (the record
+  decides on the engine, or on the tablet in a standalone game, under
+  the same rules).
+- JOBS, "Every tap gets its answer, and the night can be told
+  afterwards": `standalone` (a refused scan must show as refused on a
+  standalone tablet).
+- JOBS, "The designer's game is the game the whole kit plays":
+  `standalone` (one pack per game, its version on the record).
+- CTX:244-247 (Parity surface: the standalone implementation must match
+  the rules). Whether the tablet runs the same rules module or its own
+  kept equal by tests is the owner's open choice (SHAPE:364-380, choices
+  5 and 7); the case says "the same rules the engine would" without
+  choosing.
+- Status: decision 22; where the declaration lives and how many tablets
+  are open.
+
+## EX13. A new venue and its equipment
+
+- RM:55-61 (the venue technician fills in a profile, connects names to
+  instruments on one page, runs a one-button preflight; a planning
+  view).
+- CTX:43-51 (Kit; Venue / installation: everything venue-specific lives
+  in the installation profile; venue details never enter the pack).
+- CTX:410-413 (Venue technician); CTX:431-443 (Preflight: every line
+  traces to a field; labeled paper or live); CTX:445-452 (Paper vs live
+  checks); CTX:453-463 (every environment is a partial one; whatever a
+  profile omits resolves dormant).
+- CTX:475-480 (Remote display: a count in the profile, the preflight
+  counts connections against it).
+- CTX:507-514 (Deploy: the designer hands over the pack; the venue
+  technician satisfies its tech rider and binds the profile);
+  CTX:550-553 (Tech rider: derived from the pack, never a second source
+  of truth); CTX:554-558 (Capability catalog).
+- RM:416-428 (the depth-and-close block: the bindings page and the thin
+  profile-manager page); RM:609 (row 8.4: the planning view, a later
+  block).
+- RM:102-110 (section 2.2: the profile selected by path or id; no
+  kit-unique identifiers inside engine code).
+- JOBS, "The game fits the venue it is in tonight": `functional.need`,
+  `goal` (kit names live only in the profile and the running copy, so
+  new kits and machines need no code).
+- JOBS, "Anyone reading a screen can act on it without a second
+  question": `functional.need` (the venue technician's go is a go; a
+  desk check never passes for a room check).
+- JOBS, "The room does what the designer cued and the GM asked":
+  `needs` (dormancy: a not-installed-tonight verdict that sticks).
+- MAP:83, 100-103 (rows "Installation profiles", "The Deploy stage",
+  "Bindings page and thin profile-manager page", "Hardware/roles
+  editor, tech rider, capability catalog, reference kit", "Planning
+  view").
+- Decision 27, CS:55-70 (the name "venue technician").
+- Status: RM section 1; CTX section 5 and 5b; decision 27.
+
+## EX14. Rehearsing without the venue
+
+- CTX:515-522 (Rehearse: every player action in its simulated form, the
+  show reacting for real; input transports are venue-bound physics,
+  never the designer's frame).
+- CTX:523-531 (Simulation: an ordinary installation profile whose
+  bindings point at software stand-ins; generated from a pack's own
+  needs so every need is met; deployment never changes the pack).
+- CTX:445-452 (Paper vs live: a green at home is never mistaken for
+  venue readiness).
+- RM:388-414 (the preview block: the rehearse affordance on a running
+  preview engine; the preview ships with a preview profile).
+- RM:222-230 (the previewable readiness state: a designer friend opens
+  the toy game, changes something, rehearses it).
+- JOBS, "The designer changes a value and plays it within minutes, and
+  the live show never notices": `goal` (a preview engine is a second
+  engine copy, so it touches nothing live; on a laptop the equipment
+  reads as not installed), `needs` (a second engine that cannot kill the
+  live engine's programs, write into its records or mint passes it
+  accepts).
+- JOBS, "A change is proven before it reaches anyone, and the owner
+  alone sends it to the show": `goal` (each preview has its own names so
+  none reaches a live show).
+- MAP:98-99 (rows "Rehearsing on a preview engine", "Simulation and
+  preview profiles"); MAP:40 (gap: no document says where a preview
+  engine runs).
+- Decision 22, CS:36-45 (the preview engine on the list every rule must
+  serve).
+- Status: CTX Simulation and Rehearse; RM the preview block; decision
+  22.
+
+## EX15. A new outside program the engine drives (proposed)
+
+- Settled parts:
+  - CTX:368-372 (Supervisor: bounded restarts, then a red row with a
+    Restart verb; how each service restarts is host configuration);
+    CTX:363-367 (Self-heal).
+  - RM:297-330 (the hardening block: the supervisor; a plain host-config
+    file for restart strategies); CS:313-319 (the hardening pieces are
+    rebuilt inside the architecture pass).
+  - MAP:87-89 (rows "The supervisor", "The host-config file" with modes
+    self and adopt, "Self-heal"); MAP:172 (whether a program runs
+    tonight is the profile's truth, never the host file's).
+  - JOBS, "The room does what the designer cued and the GM asked":
+    `goal` (the engine reaches each outside program through one
+    interface and keeps a dated picture of it; one supervisor; a
+    setting, in the profile as the candidate shape has it, says whether
+    the engine starts or adopts each program), `needs` (the engine tells
+    its own video or music player from a stranger's).
+  - JOBS, "Anyone reading a screen can act on it without a second
+    question": `functional.need` (red means act now; old looks old).
+  - CTX:398-401 (Authority: an outside program the engine drives can be
+    one, for example the video player).
+- Proposed parts (the candidate shape, not a decision):
+  - SHAPE:193 (P8 Equipment: each thing the room can do behind one
+    interface, with the outside program as an adapter beneath it; one
+    adapter per program and one software stand-in per capability).
+  - SHAPE:343 and SHAPE:371 (the owner's open choice 6: one interface
+    per kind of job, or one per program).
+  - SHAPE:163 (tangle T7: seven adapters with no interface above them).
+- The task's own list named this case ("another video player, another
+  lighting system").
+- Status: proposed, with the program watcher and the start-or-use
+  setting settled.
+
+## EX16. A second kit or another operator
+
+- RM:71-75 (business shape: one production, one kit, many games; a
+  second kit or another operator deliberately not planned but kept
+  cheap).
+- RM:102-110 (section 2.2, growth without corners: pack and profile
+  selected by path or id; no kit-unique identifiers; the DNS and IP
+  model works per kit; media bundles move between machines; the seams
+  are built now).
+- RM:573-587 (section 7.4: multi-game kits, a library of installed
+  packs, the operator picks one per event; fleet growth: per-kit
+  identity and DNS, re-flash logistics).
+- CTX:481-489 (Kit network: one reserved address and one public DNS
+  name per kit; swapping routers costs three settings).
+- JOBS `purpose[5]` (nothing in the engine may assume one kit, one pack
+  or one production).
+- JOBS, "The game fits the venue it is in tonight": `functional.people`
+  (a future operator with a second kit), `functional.need` (a second kit
+  or a new machine needs no change to engine code), `needs` (seams for
+  more kits; per-engine names for process files; a name server the
+  engine reads but does not drive).
+- JOBS, "A change is proven before it reaches anyone, and the owner
+  alone sends it to the show": `goal` (each second kit has its own
+  names), `needs` (the same per-engine naming layer as test runs, built
+  once).
+- MAP:120-121 (rows "Seams for more kits and packs", "Kit network, DNS
+  and certificate"); MAP:32 (a second engine on one machine is unsafe
+  today).
+- Status: RM sections 1, 2.2 and 7.4.
+
+## EX17. A new engine version or a new show machine
+
+- RM:455-470 (section 6: the cutover is a hardware swap; green is built
+  as a real production machine; rollback is physical and immediate).
+- RM:573-587 (section 7.4, steady-state releases: engine updates only
+  between events; pack updates any time by publish).
+- RM:164-166 (the frozen-production rule until show-ready, then the
+  steady-state rule).
+- CTX:490-494 (Blue/green); CTX:654-663 (Frozen production; Cutover).
+- CS:246-256 (section 1: the game runs on blue until the new engine is
+  ready to swap in on green).
+- JOBS, "A change is proven before it reaches anyone, and the owner
+  alone sends it to the show": `functional.need` (the owner decides when
+  a new version goes to the venue; the machine carries one matching set;
+  the owner can swap back by replugging), `goal` (the owner alone sends
+  a checked machine).
+- JOBS, "Each lifecycle button does exactly what its name says": `goal`
+  (a new engine version only between events).
+- MAP:122 (row "Blue/green cutover": method ratified, green not
+  started). The "described set" wording follows JOBS goal "one matching
+  set"; its form (SHAPE:211, P17 Release) is the candidate shape's.
+- Status: RM sections 6 and 7.4; CS section 1.
+
+## EX18. A new source of game content besides Notion
+
+- RM:559-571 (section 7.3, content tooling: eliminate Notion; the full
+  narrative corpus; the report pipeline becomes the content database's
+  second consumer; the source-adapter interface, Notion as one
+  replaceable adapter; the token schema as the data spine; "content
+  tooling is a convenience, never a dependency").
+- RM:614 (row 8.9: the source-adapter interface at content tooling's
+  entry).
+- CTX:274-279 (Notion authoring format; Source adapter).
+- JOBS, "The designer's game is the game the whole kit plays": `needs`
+  (content tooling: a replacement for Notion feeds the same pack through
+  the same gate).
+- MAP:119 (row "Content tooling and the source adapter").
+- Decision 28 (3), CS:71-88 (the night's record carries the texts the
+  players saw, so the telling reads the record, not Notion); AFTER:39
+  (today the console reads memory text from Notion, not the pack the
+  show ran).
+- Status: RM section 7.3 and row 8.9; CTX Source adapter.
+
+## EX19. A game's own after-game telling reading the night's record
+
+- Decision 28, CS:71-88: (1) the promise's second half names the
+  director and the players; (2) what the players receive is the game's
+  business; (3) the record carries the pack the game ran and the texts
+  the players saw; (4) players' emails stay outside the engine; (5) the
+  console stays a separate program that reads the record, and the record
+  is designed so the console can later become ALN's own part of the
+  Review stage.
+- AFTER:13-33 (what the console and emailer are); AFTER:36-43 (what
+  they take today: the GM tablet's report pasted and parsed; Notion
+  text; the director marks unlocked documents); AFTER:55-77 (where it
+  touches the engine map); AFTER:112-128 (the owner's answers).
+- RM:358-387 (the capture block: capture, the record writer stamped
+  with the pack and the texts, the photo store under the privacy
+  defaults).
+- RM:615 (row 8.10: the report pipeline's move to the structured
+  record, owner-paced; the plan under decision 28).
+- CTX:532-546 (Review: the platform owns the record, the intake and the
+  handoff; the game owns the telling; the built-in reading must stand
+  alone); CTX:547-549 (Director).
+- RM:96-98 (section 2.1: game data stays on the kit unless the owner
+  moves it; retention is the owner's call per game).
+- JOBS, "Every tap gets its answer, and the night can be told
+  afterwards": `functional.people`, `functional.need` (afterwards the
+  director tells the players the story from what was captured during
+  play, with the game and the texts they saw, not reconstructed),
+  `goal` (one record of the night; the tablet's report and the game's
+  own telling both read it; room to run inside the Review stage later).
+- MAP:108-112 (rows "Capture", "Photo capture", "The session-bundle
+  emitter", "Report pipeline migration", "The Review stage").
+- Status: decision 28; RM row 8.10; CTX Review.
+
+## EX20. The second game's own modules
+
+- RM:542-557 (section 7.2: the compound-scan engine, the hidden-state
+  module, graph state and scoring, the constellation display; all
+  generic, pack-parameterized, tunable in the mechanics editor; a
+  toy-constellation pack proves the block; the platform delivers all
+  the technology so the owner finishes the design with no further
+  software engineering; the game requires an orchestrator by nature, a
+  capability-profile statement).
+- RM:613 (row 8.8: the renderer belongs to the second game's modules).
+- BILL:83-110 (the four new capabilities as generic modules with
+  pack-supplied parameters, none game-specific); BILL:112-125 (against
+  forking); BILL:75-82 (server-side projection, mandatory for hidden
+  information).
+- CTX:216-227 (Capability: the gate refuses a pack whose required
+  ability the engine lacks).
+- JOBS, "The designer's game is the game the whole kit plays": `needs`
+  (the second game's modules, multi-tap actions and the entity field:
+  scoring models, hidden facts, multi-tap actions come from the pack).
+- JOBS, "One game, the same on every screen": `functional.need` (in
+  future games a player's hidden fact reaches only its owner), `needs`
+  (hidden facts have a decider and a saved home; the engine filters what
+  each screen receives).
+- JOBS, "Each person sees their part and can do only their part":
+  `needs` (hidden state kept from every screen except the one entitled
+  to it).
+- MAP:116 (row "The second game's modules"); MAP:232-236 (the demands:
+  projection, hidden state with a named decider, persistence across
+  restart).
+- Decision 26, CS:46-54 (design for use beyond ALN).
+- Status: RM section 7.2 and row 8.8.
+
+## EX21. A developer from outside the team
+
+- RM:40-44 (the end goal: an open-source show platform, usable by
+  non-technical designers and extensible by technical people).
+- RM:232-236 (the adoptable readiness state: a stranger can stand the
+  platform up and learn it; guided setup, human-facing docs, the secrets
+  fix, a license, the privacy defaults stated).
+- RM:222-230 (the previewable state's safety rule: the committed token
+  and password rotate before the first outside person touches the
+  system).
+- RM:588-596 (section 7.4, the release block: secrets hygiene, license,
+  designer guide and operator runbook, privacy defaults for downstream
+  operators; the toy packs as "how to make a game, by example").
+- RM:99-100 (section 2.1: the four privacy rules every future operator
+  inherits).
+- CTX:248-250 (Toy pack as a worked example); CTX:559-562 (Reference
+  kit); CTX:564-566 (First-run state).
+- Root `CLAUDE.md`, "Contract-First Architecture" (the two written
+  message lists are updated first; this is the published-interface
+  practice an outsider builds against).
+- JOBS `purpose[0]` (technical people can extend it); JOBS, "Each person
+  sees their part and can do only their part": `needs` (open-sourcing:
+  the committed lighting token and admin password rotate before any
+  outsider touches the system).
+- JOBS, "A change is proven before it reaches anyone, and the owner
+  alone sends it to the show": `functional.need` (when every test
+  passes, the show still runs for ALN and for the toy game), `goal`
+  (every change runs on two packs).
+- MAP:125 (row "Open-sourcing and the release block"); MAP:70
+  (pre-previewable safety).
+- The adapter seams an outsider would use are those of EX4, EX10, EX15
+  and EX18; the published-interface wording is the intro's gloss (see
+  "Wording sources").
+- Status: RM sections 1, 3 and 7.4.
+
+## Cases the task named, and where each landed
+
+| Named in the task | Case |
+|---|---|
+| A new game as a pack | EX1 |
+| A new scoring rule or mode | EX3 (mode), EX4 (scoring model) |
+| New content and new media | EX5 |
+| A new screen or display surface | EX9 |
+| A new kind of player device and a new interaction (players' phones) | EX10 |
+| A new outside program the engine drives | EX15 |
+| A new venue and its equipment | EX13 |
+| A second kit or another operator | EX16 |
+| A new source of game content besides Notion | EX18 |
+| A game's own after-game telling reading the night's record | EX19 |
+| The second game's own modules | EX20 |
+| A developer from outside the team | EX21 |
+
+Cases the sources demanded beyond that list: EX2 (the design-iteration
+loop, RM section 2.4), EX6 (cues as pack content naming roles, CTX
+section 4), EX7 (a game's own words and look, CTX Strings sidecar and
+entity label), EX8 (the GM-written phase, RM row 8.17), EX11 (who may
+do what on which device, RM sections 2.1 and 2.6), EX12 (a standalone
+game, decision 22), EX14 (rehearsing on a simulation profile, CTX
+Simulation), EX17 (a new engine version by machine swap, RM section 6).
+
+## Numbers left for the owner to set
+
+- EX10: how many phones one kit carries at once (JOBS, "Each person
+  sees their part and can do only their part", `needs`: "No number
+  exists"; MAP:44).
+- EX12: how many GM tablets one standalone game may run (CS:138-139,
+  question 24).
+
+## Checks run
+
+- The JSON parses (`python3 -I -c "import json; json.load(open(...))"`).
+- No em dash, no promise number, no capability number, no bare phase,
+  step or block number, and no finding id appears in the JSON (grep for
+  the em dash character, `J[0-9]`, `C[0-9]`, `P[0-9]`, `capability [0-9]`,
+  `[Pp]hase [0-9]`, `[Ss]tep [0-9]`, `[Bb]lock [0-9]`, `[A-Z]-[0-9][0-9]`).
+- Every `promises` entry equals a `functional.proposedTitle` in JOBS.
+- Decision numbers and roadmap section numbers appear only in `status`
+  and `when`, where the task's own format names them.
