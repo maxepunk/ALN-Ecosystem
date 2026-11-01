@@ -820,6 +820,7 @@ figure.dia.wide {{ padding: 12px; }}
         <li>The scoreboard: one page in two places, or a view inside the GM app.</li>
         <li>The config tool: a separate program that talks to the engine by message, or a surface the engine itself serves.</li>
         <li>When a changed pack may be adopted while the engine runs. That is not built yet; the plan allows it only before a game starts or after it ends.</li>
+        <li>Where the setting lives that says whether the engine starts each outside program or adopts one already running: in the installer's profile, as the candidate shape has it, or in a file of its own, as the capability map you approved has it.</li>
         <li>The order of the work: by part, with the engine's own names and delivery first since most flaws land on them, or by block as the roadmap has it.</li>
       </ol>
     </div>
