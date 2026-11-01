@@ -76,7 +76,9 @@ before acting.
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
 - **Live state** (2026-10-31): running, the consistency check the
-  owner asked for: workflow `wf_1dea6411-991` (script
+  owner asked for: workflow `wf_4e810a25-00f` (the first run,
+  `wf_1dea6411-991`, stalled at 23:52Z and was lost; the rerun also
+  covers the engine-jobs document and the rebuilt page; script
   `docs/agents/workflow-scripts/cause-list-consistency.js`), four
   checkers and a fold, reports in
   `docs/plans/architecture-pass/consistency/`. Also running, at the
