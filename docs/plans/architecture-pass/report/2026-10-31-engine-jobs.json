@@ -2,7 +2,7 @@
   "purpose": [
     "The engine is the game-independent software that runs a show, and it is going toward an open-source show platform that designers who are not technical can use and technical people can extend.",
     "A game designer builds a whole game as a pack in the design tool, never touching code or configuration files, and tunes it by changing a value, applying it and playing.",
-    "A venue installer fills in a profile of what the venue has, connects the pack's names to the real instruments in the room on one page, and runs one preflight that answers go or no-go with every line traceable.",
+    "A venue technician fills in a profile of what the venue has, connects the pack's names to the real instruments in the room on one page, and runs one preflight that answers go or no-go with every line traceable.",
     "A GM runs the show from four sections (Game Ops, Show Control, Environment, Game Admin), and the post-game report builds itself from what was captured during play.",
     "A player taps tokens on a phone or a shared station with no account, no login, no app to install and no recorded identity unless the game designs an identification moment.",
     "The business is one production, one kit and many games on it; a second kit or operator is not planned, but must stay cheap to start, so nothing in the engine may assume one kit, one pack or one production.",
@@ -74,7 +74,7 @@
         "need": "The whole kit plays that game, that version, with no code change: the engine scores by it, the TV shows its words, every tablet and scanner holds the same copy, and the GM can see at a glance that they match, or a mismatched device is refused. A second designer's game runs on the same engine.",
         "proposedTitle": "The designer's game is the game the whole kit plays"
       },
-      "shapeChange": "Before, this job said the engine plays any pack, proven by the toy pack. Now it says every device plays one version, checked when a device connects, because a mismatch is only logged today; the two-pack proof is now also J10's."
+      "shapeChange": "Before, this promise covered any pack, proven by the toy pack. Now every device plays one version, checked when a device connects, since a mismatch is only logged today. The two-pack proof also keeps \"A change is proven before it reaches anyone, and the owner alone sends it to the show\"."
     },
     {
       "id": "J2",
@@ -172,7 +172,7 @@
         "need": "Whatever the GM did on any tablet is what every tablet, the TV and the audience see: a delete frees the token everywhere, a reset empties every screen, and nobody has to ask which screen is right. In future games a player's hidden fact reaches only its owner.",
         "proposedTitle": "One game, the same on every screen"
       },
-      "shapeChange": "Before, this job asked for one true record shown truly everywhere. Now the Game record is the one decider and Delivery the one route to every screen, live or after a reconnect, because a reloaded tablet can show different facts."
+      "shapeChange": "Before, this promise asked for one true record shown truly everywhere. Now the Game record is the one decider and Delivery the one route to every screen, live or after a reconnect, because a reloaded tablet can show different facts."
     },
     {
       "id": "J3",
@@ -245,7 +245,7 @@
         "need": "At a tap on a token or a button they learn at once whether it counted, why not if it did not, or that it is held for later or must be tried again; nothing is silently lost or doubled. Afterwards the night's story is read from what was captured during play, not reconstructed.",
         "proposedTitle": "Every tap gets its answer, and the night can be told afterwards"
       },
-      "shapeChange": "Before, the goal spoke only of the report. Now it rests on two parts, Answering at the tap and The night's record after the end, because its two people need different things; whether that makes two jobs stays question D."
+      "shapeChange": "Before, the goal spoke only of the report. Now two parts keep it, Answering at the tap and The night's record after the end, because its two people need different things; whether that makes two promises stays question D."
     },
     {
       "id": "J4",
@@ -261,7 +261,7 @@
       "goalOpen": false,
       "needs": [
         "The supervisor (capability 9): each program gets one restart rule with bounded tries and then a red row, and the engine tells its own video or music player from a stranger's. Today four different restart shapes exist and the TV's browser has none.",
-        "The start-or-adopt setting (capability 10): a plain setting for whether the engine starts a program itself or adopts a running one, read once at start. The capability map gives it a file of its own; the candidate shape keeps it in the installer's profile. Step 3 settles which.",
+        "The start-or-adopt setting (capability 10): a plain setting for whether the engine starts a program itself or adopts a running one, read once at start. The capability map gives it a file of its own; the candidate shape keeps it in the venue technician's profile. Step 3 settles which.",
         "Self-heal (capability 11): the engine fixes a crashed program silently and raises a red row only for what it cannot fix.",
         "Dormancy (capability 8): a not-installed-tonight verdict that sticks, silences the cues that depend on it and is never restarted, plus a decision about what a reset and a restart do to the GM's out-of-service latch.",
         "Service domains (capability 15): no service keeps a private 'connected' note beside the shared health list, and one store for hold expiry instead of two.",
@@ -316,7 +316,7 @@
         "need": "The room does what the designer cued and what the GM asked; the GM sees it happen, or sees at once that it did not and what to press; a dead program comes back by itself before anyone notices.",
         "proposedTitle": "The room does what the designer cued and the GM asked"
       },
-      "shapeChange": "Before, the title also asked the engine to know each program's true state. Now Equipment keeps that dated picture here, beside the Show runner, and showing it on a screen is J9's label, because running the room and labelling a screen differ."
+      "shapeChange": "Before, the title also asked the engine to know each program's true state. Now Equipment keeps that dated picture here, beside the Show runner, and showing it on a screen is the label every fact carries, because running the room and labelling a screen differ."
     },
     {
       "id": "J5",
@@ -331,7 +331,7 @@
       "goal": "One Lifecycle moves a game between its moments and alone resets anything; engine start, Reset System and tests run the same steps. Its table says what each fact keeps, clears or carries, and every screen is told of the change. Pack changes land only between games; a new engine version only between events. Open: rows, and standing cues in setup.",
       "goalOpen": true,
       "needs": [
-        "No capability exists mainly for J5, but thirteen list it as a secondary job (the eleven in the capabilities sheet's table, plus dormancy (capability 8) and the second game's modules (capability 38), which that sheet's section 3 places here); together they ask for one table of every fact against every moment.",
+        "No capability exists mainly for this promise, but thirteen list it as a second promise they keep (the eleven in the capabilities sheet's table, plus dormancy (capability 8) and the second game's modules (capability 38), which that sheet's section 3 places here); together they ask for one table of every fact against every moment.",
         "Hot-apply (capability 16): refused while a game is active or paused; the setup, ended and no-game cases defined.",
         "Self-heal (capability 11): the scanner's pack copy replaced at a game boundary, once per connection and engine version.",
         "Dormancy (capability 8) and the preflight (capability 7): verdicts recomputed at reset, at game create and at restore, and the display's health not falsely red after a reset.",
@@ -386,7 +386,7 @@
         "need": "Each act does exactly what its name says: an ended game stays ended and no scan lands in it, the next game starts clean, a restart during a show loses nothing, a pause blocks scans, and a between-games edit never reaches the game in progress.",
         "proposedTitle": "Each lifecycle button does exactly what its name says"
       },
-      "shapeChange": "Before, this job was said as a developer's table of facts against moments. Now it is the GM's trust in each button; the table stays, held by one Lifecycle part that alone moves and resets the game, since start and Reset System differ today."
+      "shapeChange": "Before, this promise was said as a developer's table of facts against moments. Now it is the GM's trust in each button; the table stays, kept by one Lifecycle part that alone moves and resets the game, since start and Reset System differ today."
     },
     {
       "id": "J6",
@@ -418,7 +418,7 @@
           "how": "Publishing a pack from the config tool tells the running engine nothing; the engine scores by the change only after a restart, while a reloaded TV already shows it."
         }
       ],
-      "standalone": "In a standalone game: no engine exists to rehearse against, so this job has no gap here; a mid-game reload that takes a newer pack is J1's. In the candidate shape the same Pack channel brings a published pack to the tablet, so the designer's publish is what it plays.",
+      "standalone": "In a standalone game: no engine exists to rehearse against, so this promise has no gap here; a mid-game reload that takes a newer pack breaks \"The designer's game is the game the whole kit plays\". In the candidate shape the same Pack channel brings a published pack to the tablet, so the designer's publish is what it plays.",
       "questions": [
         4,
         6
@@ -482,12 +482,12 @@
         "P7"
       ],
       "functional": {
-        "people": "The GM; the audience; a player with no account; designers and installers; a stranger on the venue wifi",
+        "people": "The GM; the audience; a player with no account; designers and venue technicians; a stranger on the venue wifi",
         "moment": "At every connection and every command",
-        "need": "The GM alone can start, pause, end and change scores, and the engine knows which tablet did it; the audience sees scores and exposed evidence and nothing else; a player sees the memory they scanned; designers and installers reach their tools and only those; a stranger sees nothing.",
+        "need": "The GM alone can start, pause, end and change scores, and the engine knows which tablet did it; the audience sees scores and exposed evidence and nothing else; a player sees the memory they scanned; designers and venue technicians reach their tools and only those; a stranger sees nothing.",
         "proposedTitle": "Each person sees their part and can do only their part"
       },
-      "shapeChange": "Before, this job gave each role its screen; knowing who is connected had no home. Now one Connections and roles part knows every connection and one door checks every action, because today a connection's own word decides what it gets."
+      "shapeChange": "Before, this promise gave each role its screen; knowing who is connected had no home. Now one Connections and roles part knows every connection and one door checks every action, because today a connection's own word decides what it gets."
     },
     {
       "id": "J8",
@@ -499,11 +499,11 @@
         "players on standalone devices",
         "a future operator with a second kit"
       ],
-      "goal": "The installer picks the pack and the profile by name, fills the profile, binds each pack name to an instrument and runs one preflight. Kit names live only in the profile and Engine instance, so new kits and machines need no code. Release checks what each machine carries at start. Phones and hardware scanners stay equal. Standalone is declared, never mixed; where, and how many tablets, stays open.",
+      "goal": "The venue technician picks the pack and the profile by name, fills the profile, binds each pack name to an instrument and runs one preflight. Kit names live only in the profile and Engine instance, so new kits and machines need no code. Release checks what each machine carries at start. Phones and hardware scanners stay equal. Standalone is declared, never mixed; where, and how many tablets, stays open.",
       "goalOpen": false,
       "needs": [
         "Installation profiles (capability 5), the bindings page (capability 23), the hardware editor and rider (capability 24) and the Deploy stage (capability 22): the profile is read once at start, and the design says what a profile change ends in, since the pack side will have hot-apply and the profile side will not.",
-        "The start-or-adopt setting (capability 10; a file of its own in the capability map, the installer's profile in the candidate shape), the seams for more kits (capability 42) and the kit network (capability 43): no kit-unique names in engine code, per-engine names for process files, and a name server the engine reads but does not drive.",
+        "The start-or-adopt setting (capability 10; a file of its own in the capability map, the venue technician's profile in the candidate shape), the seams for more kits (capability 42) and the kit network (capability 43): no kit-unique names in engine code, per-engine names for process files, and a name server the engine reads but does not drive.",
         "Hardware-scanner parity (capability 49): every new mechanic has matching firmware, and a decision on the hardware scanner's missing standalone mode.",
         "Standalone games need something that says a game is standalone. Today the tablet's mode is a tap, the phone's is its URL path, the hardware scanner has no such notion, and the pack has no field for it.",
         "The planning view (capability 25) needs nothing from the running engine."
@@ -556,12 +556,12 @@
         "P17"
       ],
       "functional": {
-        "people": "The venue installer; a GM running a game with no engine; a future operator with a second kit",
+        "people": "The venue technician; a GM running a game with no engine; a future operator with a second kit",
         "moment": "In the days before an event, and on the night when the engine is absent by choice",
-        "need": "The installer states what the kit brings tonight, binds the pack's names to real instruments and gets one go or no-go. A game declared standalone knows it is standalone instead of showing a lost connection all night. A second kit or a new machine needs no change to engine code.",
-        "proposedTitle": "Fit the game to the venue it is in tonight"
+        "need": "The venue technician states what the kit brings tonight, binds the pack's names to real instruments and gets one go or no-go. A game declared standalone knows it is standalone instead of showing a lost connection all night. A second kit or a new machine needs no change to engine code.",
+        "proposedTitle": "The game fits the venue it is in tonight"
       },
-      "shapeChange": "Before, this job covered every setup, engine or none. Now it is the installer fitting the game to tonight's venue, with a standalone game declared here (where it is kept is a step-3 choice) and Release checking each machine. Question E asks you to confirm."
+      "shapeChange": "Before, this promise covered every setup, engine or none. Now it is the venue technician fitting the game to tonight's venue, with a standalone game declared here (where it is kept is a step-3 choice) and Release checking each machine. Question E asks you to confirm."
     },
     {
       "id": "J9",
@@ -622,12 +622,12 @@
         "P14"
       ],
       "functional": {
-        "people": "The GM mid-show; the installer reading the preflight; the designer reading a badge; the audience watching the clock",
+        "people": "The GM mid-show; the venue technician reading the preflight; the designer reading a badge; the audience watching the clock",
         "moment": "At a glance, whenever a screen is read",
-        "need": "Anyone can tell whether a screen is current and whether to act: red means act now, grey means absent on purpose, old looks old, the installer's go is a go and a desk check never passes for a room check, the TV's clock never counts on its own, and the editor and the show use the same words.",
+        "need": "Anyone can tell whether a screen is current and whether to act: red means act now, grey means absent on purpose, old looks old, the venue technician's go is a go and a desk check never passes for a room check, the TV's clock never counts on its own, and the editor and the show use the same words.",
         "proposedTitle": "Anyone reading a screen can act on it without a second question"
       },
-      "shapeChange": "Before, this job asked the engine to tell the truth. Now it is a label on every fact and reply, carried by Delivery and Answering, with one part of its own, the Verdict, because today the verdict reaches no screen."
+      "shapeChange": "Before, this promise asked the engine to tell the truth. Now it is a label on every fact and reply, carried by Delivery and Answering, with one part of its own, the Verdict, because today the verdict reaches no screen."
     },
     {
       "id": "J10",
@@ -692,7 +692,7 @@
         "need": "When every test passes, the show still runs for ALN and for the toy game; the owner decides when a new version goes to the venue, the machine carries one matching set, and the owner can swap back by replugging a machine; no test or rehearsal ever reaches a live show.",
         "proposedTitle": "A change is proven before it reaches anyone, and the owner alone sends it to the show"
       },
-      "shapeChange": "Before, this job was one sentence about tests, with release day inside. Now three parts carry it, Joins and proofs, Engine instance and Release, because the developer's proof and the owner's release day are different moments; question F stays open."
+      "shapeChange": "Before, this promise was one sentence about tests, with release day inside. Now three parts keep it, Joins and proofs, Engine instance and Release, because the developer's proof and the owner's release day are different moments; question F stays open."
     }
   ],
   "jobChanges": [

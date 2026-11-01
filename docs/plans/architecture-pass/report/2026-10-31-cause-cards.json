@@ -21,7 +21,7 @@
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart LR\n  rec[\"Game record<br/>decides claims from the transactions\"]\n  life[\"Lifecycle<br/>announces a reset or new game<br/>with a version\"]\n  del[\"Delivery<br/>one route per fact<br/>live or after a reconnect<br/>each fact labelled\"]\n  tabA[\"Tablet A<br/>draws the claim fact<br/>keeps no list\"]\n  tabB[\"Tablet B<br/>draws the claim fact<br/>keeps no list\"]\n  ans[\"Answering<br/>one reply per tap\"]\n  gm[\"GM rescan<br/>accepted\"]\n  rec -->|\"delete frees the token\"| del\n  life -->|\"reset, restart\"| del\n  del -->|\"replace the drawn fact\"| tabA\n  del -->|\"replace the drawn fact\"| tabB\n  tabB -->|\"tap on the freed token\"| ans\n  ans -->|\"asks the record\"| rec\n  ans -->|\"accepted\"| gm\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rec owner;\n",
-        "note": "Only the Game record decides which tokens are claimed, from the transactions. Delivery sends it by one route, live or on reconnect; Lifecycle announces resets with a version every tablet compares. The tablet keeps no list: it draws the fact and asks at each tap. Or: each job sends its own."
+        "note": "Only the Game record decides which tokens are claimed, from the transactions. Delivery sends it by one route, live or on reconnect; Lifecycle announces resets with a version every tablet compares. The tablet keeps no list: it draws the fact and asks at each tap. Or: the parts keeping each promise send their own facts."
       },
       "examples": [
         {
@@ -85,7 +85,7 @@
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart LR\n  mpd[\"Music player<br/>dies mid-show\"]\n  eq[\"Equipment, play music<br/>one dated picture: value, health, age\"]\n  del[\"Delivery<br/>one route per fact<br/>live and catch-up alike\"]\n  panel[\"GM panel<br/>card and row from one fact<br/>age shown\"]\n  other[\"Other tablets and a late reconnect<br/>same fact, same route\"]\n  mpd -->|\"dies\"| eq\n  eq -->|\"picture changed\"| del\n  del -->|\"one fact with its label\"| panel\n  del -->|\"the same fact\"| other\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eq owner;\n",
-        "note": "Equipment keeps one dated record per thing the room does, health and state together. Delivery sends it by one route, live or on reconnect, so every panel, even one opened late, sees outages and recoveries. Or: each job sends its own facts; this fault returns."
+        "note": "Equipment keeps one dated record per thing the room does, health and state together. Delivery sends it by one route, live or on reconnect, so every panel, even one opened late, sees outages and recoveries. Or: the parts keeping each promise send their own facts; this fault returns."
       },
       "examples": [
         {
@@ -324,7 +324,7 @@
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart LR\n  rec[\"Game record<br/>changes since, dated\"]\n  eq[\"Equipment<br/>state with health and age\"]\n  run[\"Show runner<br/>cues, clock, held items\"]\n  con[\"Connections and roles<br/>who is connected\"]\n  life[\"Lifecycle<br/>new game, reset and restore\"]\n  del[\"Delivery<br/>one builder per fact\"]\n  snap[\"Catch-up on connect<br/>the facts, same shape, labelled\"]\n  live[\"Live message on change<br/>one fact, same shape, labelled\"]\n  scr[\"Screens<br/>one drawing per fact<br/>same signal either way\"]\n  rec -->|\"its changes\"| del\n  eq -->|\"its changes\"| del\n  run -->|\"its changes\"| del\n  con -->|\"device list\"| del\n  life -->|\"a restore sent like a change\"| del\n  del -->|\"on connect\"| snap\n  del -->|\"on change\"| live\n  snap -->|\"same shape\"| scr\n  live -->|\"same shape\"| scr\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class del owner;\n",
-        "note": "Delivery builds each fact once, so the catch-up and the live message carry one fact in one shape, with its label. A restore after a reload is sent like a change. Screens draws each fact one way. Or: each job sends its own facts."
+        "note": "Delivery builds each fact once, so the catch-up and the live message carry one fact in one shape, with its label. A restore after a reload is sent like a change. Screens draws each fact one way. Or: the parts keeping each promise send their own facts."
       },
       "examples": [
         {
@@ -578,7 +578,7 @@
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart LR\n  prof[\"Venue fit<br/>profile fails to load\"]\n  life[\"Lifecycle<br/>asks the Verdict at start\"]\n  ver[\"Verdict<br/>profile failed, no-go<br/>(on paper, not a live check)\"]\n  eq[\"Equipment<br/>state with health and age\"]\n  con[\"Connections and roles<br/>one rule for whether<br/>a device is still there\"]\n  del[\"Delivery<br/>every fact labelled:<br/>what, how old, how sure\"]\n  panel[\"Health panel<br/>red profile row,<br/>with the time it was checked\"]\n  tv[\"TV clock<br/>drawn as old past its limit\"]\n  music[\"Music card<br/>down, not a calm grey\"]\n  prof -->|\"missing or invalid\"| life\n  life -->|\"profile and inventory\"| ver\n  ver -->|\"a failed check, never no equipment\"| life\n  life -->|\"verdicts\"| del\n  eq -->|\"dated picture\"| del\n  con -->|\"connection state\"| del\n  del -->|\"label drawn\"| panel\n  del -->|\"label drawn\"| tv\n  del -->|\"label drawn\"| music\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class del owner;",
-        "note": "Every delivered fact carries a label: what, how old, how sure, and Screens draw unknown, old and down as such. The Verdict, asked by Lifecycle at start, calls a failed profile no-go, not no equipment. Or: each job sends its own facts."
+        "note": "Every delivered fact carries a label: what, how old, how sure, and Screens draw unknown, old and down as such. The Verdict, asked by Lifecycle at start, calls a failed profile no-go, not no equipment. Or: the parts keeping each promise send their own facts."
       },
       "examples": [
         {
@@ -837,7 +837,7 @@
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart LR\n  del[\"Delivery<br/>one builder per fact,<br/>the shape written once\"]\n  ans[\"Answering<br/>reply words, a closed list\"]\n  joins[\"Joins and proofs<br/>contracts built from those shapes,<br/>both sides checked\"]\n  eng[\"Engine<br/>sends only the generated shapes\"]\n  scr[\"Screens on the tablet<br/>draw the delivered shape,<br/>keep no copy\"]\n  td[\"Team Details and Game Activity<br/>draw the facts as delivered\"]\n  badge[\"Video badge<br/>drawn from the video fact,<br/>or the check fails\"]\n  dead[\"A message with no sender<br/>or no reader<br/>fails the proof, not the show\"]\n  del -->|\"fact shapes\"| joins\n  ans -->|\"reply words\"| joins\n  joins -->|\"checks\"| eng\n  joins -->|\"checks\"| scr\n  del -->|\"delivered facts\"| scr\n  scr -->|\"draws\"| td\n  scr -->|\"draws\"| badge\n  joins -->|\"lists\"| dead\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;",
-        "note": "Every shape is written once, facts by Delivery, replies by Answering, and Joins and proofs checks both sides against them. Screens keep no copy; Team Details draws only delivered facts. Unsent messages fail the proof. Or: each job sends its own facts."
+        "note": "Every shape is written once, facts by Delivery, replies by Answering, and Joins and proofs checks both sides against them. Screens keep no copy; Team Details draws only delivered facts. Unsent messages fail the proof. Or: the parts keeping each promise send their own facts."
       },
       "examples": [
         {
