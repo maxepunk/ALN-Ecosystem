@@ -1,0 +1,444 @@
+{
+  "jobs": [
+    {
+      "id": "J1",
+      "functional": {
+        "people": "The designer who publishes a game; the GM at doors-open; a second designer later",
+        "moment": "Between games when the designer publishes, and at doors-open when the GM checks that every device matches",
+        "need": "The whole kit plays that game, that version, with no code change: the engine scores by it, the TV shows its words, every tablet and scanner holds the same copy, and the GM can see at a glance that they match, or a mismatched device is refused. A second designer's game runs on the same engine.",
+        "proposedTitle": "The designer's game is the game the whole kit plays"
+      },
+      "goal": "A designer builds a whole game as a pack and never touches code or settings files; the hardware scanner gets its rules as data, never new firmware. One list names every holder; each copy shows its version, the Game record carries it, and a mismatch shows when a device connects. Media files are checked by a fingerprint of their content.",
+      "standalone": "In a standalone game: each device loads whatever pack copy it was given; a tablet reloading mid-game takes the newest pack; no record says which pack a game used. In the candidate shape the tablet runs Game rules and Pack channel: one pack per game, its version on the record.",
+      "shapeChange": "Before, this job said the engine plays any pack, proven by the toy pack. Now it says every device plays one version, checked when a device connects, because a mismatch is only logged today; the toy-pack proof moves to J10.",
+      "log": [
+        {
+          "field": "people",
+          "replaced": "nothing",
+          "why": "Already plain: three people named by what they do."
+        },
+        {
+          "field": "moment",
+          "replaced": "\"when agreement must be visible\"",
+          "why": "Abstract; said as the GM checking that every device matches."
+        },
+        {
+          "field": "need",
+          "replaced": "\"or is refused\"",
+          "why": "Unclear who is refused; said as \"a mismatched device is refused\"."
+        },
+        {
+          "field": "goal",
+          "replaced": "\"configuration\"; \"generated tables\"; \"the game record carries it\"; \"shows at connect\"; \"media by fingerprint, checked against the bundle\"",
+          "why": "Settings files, data, the part name Game record, \"when a device connects\" and \"checked by a fingerprint of its content\" are the page's own plain words; \"bundle\" is undefined on the page."
+        },
+        {
+          "field": "standalone",
+          "replaced": "\"its source holds\"; \"adopts\"; \"pack stamp\"; \"a Pack channel client\"; \"In the candidate\"; \"stamped on its record\"",
+          "why": "Source, adopt, stamp and client are engineering words; said as what each device loads and what is written on the record, and \"the candidate shape\" named as the page does. \"No player device shows one\" is dropped for length; J8's line carries the player devices. Starts \"In a standalone game:\". 50 words."
+        },
+        {
+          "field": "shapeChange",
+          "replaced": "three sentences on the need, the goal, the quality and a needs line (70 words)",
+          "why": "Cut to before, now and why in 40 words; the move of \"nothing assumes ALN\" to a quality of every part is dropped here and stays in the fit section's note on question A."
+        }
+      ]
+    },
+    {
+      "id": "J2",
+      "functional": {
+        "people": "The GM on any tablet; the audience reading the TV; in future games, a player with a hidden fact",
+        "moment": "Mid-show, at once, and after a tablet comes back",
+        "need": "Whatever the GM did on any tablet is what every tablet, the TV and the audience see: a delete frees the token everywhere, a reset empties every screen, and nobody has to ask which screen is right. In future games a player's hidden fact reaches only its owner.",
+        "proposedTitle": "One game, the same on every screen"
+      },
+      "goal": "The Game record decides teams, claims, scores, evidence and phase: on the engine, or on the tablet in a standalone game, under the same rules. Delivery carries each fact by one route to the screens that may see it, live and after a reconnect; no screen keeps its own copy to decide from. Hidden facts never reach the wrong screen.",
+      "standalone": "In a standalone game: one tablet holds the only copy, so tablets cannot disagree, but not every screen refreshes; two tablets are two games, one per game undecided. In the candidate shape the tablet runs the engine's Game record and Delivery, or its own engine kept equal by tests.",
+      "shapeChange": "Before, this job asked for one true record shown truly everywhere. Now the Game record is the one decider and Delivery the one route to every screen, live or after a reconnect, because a reloaded tablet can show different facts.",
+      "log": [
+        {
+          "field": "people",
+          "replaced": "nothing",
+          "why": "Already plain."
+        },
+        {
+          "field": "moment",
+          "replaced": "nothing",
+          "why": "Already plain: \"comes back\" is the show word for a reconnect."
+        },
+        {
+          "field": "need",
+          "replaced": "nothing",
+          "why": "Already plain: a delete, a reset, which screen is right."
+        },
+        {
+          "field": "goal",
+          "replaced": "\"The engine's Game record ... and the tablet decides them\"; \"no screen keeps a copy it judges by\"; \"filters hidden facts before they leave it\"",
+          "why": "Said as one Game record with two hosts, \"its own copy to decide from\", and hidden facts never leaving the engine for the wrong screen; the part names Game record and Delivery stay as the page names them."
+        },
+        {
+          "field": "standalone",
+          "replaced": "\"refreshes screens only on wired events\"; \"hosts\"; \"In the candidate\"; \"a local Delivery\"; \"the other way is its own engine\"",
+          "why": "\"Wired events\" is code talk; said as \"not every screen refreshes\". The candidate shape is named as the page does and the alternative said as \"its own engine\". Starts \"In a standalone game:\"."
+        },
+        {
+          "field": "shapeChange",
+          "replaced": "four sentences on the need, two parts, a quality and a returning clause (62 words)",
+          "why": "Cut to before, now and why in 38 words; the move of \"who decides with no engine\" to a quality and the hidden-fact clause are dropped here, both still in the need and the fit section."
+        }
+      ]
+    },
+    {
+      "id": "J3",
+      "functional": {
+        "people": "The GM at a token or button and the player at a token; the owner and designer after the show",
+        "moment": "During play at every tap, and after the game when the night is reviewed",
+        "need": "At a tap on a token or a button they learn at once whether it counted, why not if it did not, or that it is held for later or must be tried again; nothing is silently lost or doubled. Afterwards the night's story is read from what was captured during play, not reconstructed.",
+        "proposedTitle": "Every tap gets its answer, and the night can be told afterwards"
+      },
+      "goal": "Every request gets one reply in the same form: which request it answers, the outcome, whether it is final, whether anything was stored. At the end, one record of the night is written from the facts decided and the roster, notes, accusation and photos captured during play; the report builds itself from it. Whether refused scans are recorded stays open.",
+      "standalone": "In a standalone game: a refused scan shows Transaction Complete, a queued hardware-scanner scan shows as recorded, nothing records what players found, starting over deletes the finished game. In the candidate shape the tablet runs Answering, so a refusal shows; player scans reach the night's record if sent to it.",
+      "shapeChange": "Before, the goal spoke only of the report. Now it rests on two parts, Answering at the tap and The night's record after the end, because its two people need different things; whether that makes two jobs stays question D.",
+      "log": [
+        {
+          "field": "people",
+          "replaced": "two articles",
+          "why": "22 words cut to 20; no meaning changed."
+        },
+        {
+          "field": "moment",
+          "replaced": "\"at the Review stage\"",
+          "why": "An internal name for a design-tool stage; said as \"after the game when the night is reviewed\"."
+        },
+        {
+          "field": "need",
+          "replaced": "\"that it is held\"",
+          "why": "Said as \"held for later\" so a reader who has not met held items follows."
+        },
+        {
+          "field": "goal",
+          "replaced": "\"in one shape\"; \"from a tap or a button\"; \"captured as they happen\"",
+          "why": "\"Shape\" is the page's code-side word; said as \"in the same form\". The tap-or-button aside is in the need; the captures are said as made during play. 60 words."
+        },
+        {
+          "field": "standalone",
+          "replaced": "\"Each device's store answers and the caller ignores it\"; \"the hardware scanner shows a queued scan as recorded\"; \"hosts\"; \"In the candidate\"; \"only if delivered\"",
+          "why": "Store and caller are code words; the sentence now lists what the GM and the player see. \"Only if delivered\" said as \"if sent to it\". Starts \"In a standalone game:\"."
+        },
+        {
+          "field": "shapeChange",
+          "replaced": "\"outcome words\"; the needs-line sentence (63 words)",
+          "why": "Cut to before, now and why in 40 words; the return of \"held\" and \"try again\" is visible in the need itself."
+        }
+      ]
+    },
+    {
+      "id": "J4",
+      "functional": {
+        "people": "The audience who see and hear the show; the GM at the Environment and Show Control sections",
+        "moment": "When the game says so, and whenever the GM presses a control",
+        "need": "The room does what the designer cued and what the GM asked; the GM sees it happen, or sees at once that it did not and what to press; a dead program comes back by itself before anyone notices.",
+        "proposedTitle": "The room does what the designer cued and the GM asked"
+      },
+      "goal": "The engine reaches each outside program through one interface and keeps a dated picture of it, checked against the program. One supervisor restarts a crashed program a few times, then shows a red row with a Restart button. The profile says whether the engine starts or adopts each program. The Show runner keeps held cues and videos in one place.",
+      "standalone": "In a standalone game: no outside program runs; the service panels are hidden on the tablet and each player device plays its own audio, so nothing here fails. In the candidate shape the tablet carries stand-ins for Equipment and Show runner that report every engine duty dormant: grey, never red.",
+      "shapeChange": "Before, this job also asked the engine to know each program's true state. Now that belongs to J9 and this job rests on two parts, Equipment and the Show runner, because running the room and labelling a screen differ.",
+      "log": [
+        {
+          "field": "people",
+          "replaced": "nothing",
+          "why": "Already plain; the two section names are the GM's own."
+        },
+        {
+          "field": "moment",
+          "replaced": "nothing",
+          "why": "Already plain."
+        },
+        {
+          "field": "need",
+          "replaced": "nothing",
+          "why": "Already plain: cued, asked, what to press, comes back."
+        },
+        {
+          "field": "goal",
+          "replaced": "\"The program decides what it does, and the engine dates its picture of it and checks that picture against it\"; \"the venue profile says\"; \"holds what cannot run yet in one place\"",
+          "why": "Said as one dated picture checked against the program, and the Show runner keeping held cues and videos in one place. \"Interface\" and \"adopts\" are the page's words for Equipment and Venue fit. 60 words."
+        },
+        {
+          "field": "standalone",
+          "replaced": "\"no venue service runs and no outside program is driven\"; \"these flaws produce no fault with no engine\"; \"In the candidate\"",
+          "why": "Driven and fault are engineering words; said as \"no outside program runs\" and \"nothing here fails\". Starts \"In a standalone game:\"."
+        },
+        {
+          "field": "shapeChange",
+          "replaced": "\"whose label every fact carries\"; \"the three health words\"; \"one held store\"; \"The host setting moves into the venue profile\" (64 words)",
+          "why": "Cut to before, now and why in 38 words; the start-or-adopt setting's move stays in this job's needs list and in J8's what-changed line."
+        }
+      ]
+    },
+    {
+      "id": "J5",
+      "functional": {
+        "people": "The GM who starts, pauses, ends and resets games; the designer whose edit lands between games",
+        "moment": "At each lifecycle button, at an engine restart, and when a pack changes",
+        "need": "Each act does exactly what its name says: an ended game stays ended and no scan lands in it, the next game starts clean, a restart during a show loses nothing, a pause blocks scans, and a between-games edit never reaches the game in progress.",
+        "proposedTitle": "Each lifecycle button does exactly what its name says"
+      },
+      "goal": "One Lifecycle moves a game between its moments and alone resets anything; engine start, Reset System and tests run the same steps. Its table says what each fact keeps, clears or carries, and every screen is told of the change. Pack changes land only between games; a new engine version only between events. Open: rows, and standing cues in setup.",
+      "standalone": "In a standalone game: the tablet decides each game's start and end by separate steps; it opens a game it cannot name, pause or replace; player devices' lists and queues outlive every game. In the candidate shape it runs the engine's Lifecycle or its own, kept equal by tests.",
+      "shapeChange": "Before, this job was a developer's table of facts against moments. Now it is the GM's trust in each button, carried by one Lifecycle part that alone moves and resets the game, because start and Reset System follow different lists.",
+      "log": [
+        {
+          "field": "people",
+          "replaced": "nothing",
+          "why": "Already plain."
+        },
+        {
+          "field": "moment",
+          "replaced": "nothing",
+          "why": "Already plain; \"lifecycle\" is in the proposed title."
+        },
+        {
+          "field": "need",
+          "replaced": "nothing",
+          "why": "Already plain: ended stays ended, starts clean, loses nothing."
+        },
+        {
+          "field": "goal",
+          "replaced": "\"share one path\"; \"tells every screen the boundary\"; \"replaces a scanner's old pack at a boundary\"; \"updates only between events\" (67 words)",
+          "why": "Path and boundary are code words; said as \"run the same steps\", \"told of the change\" and \"between games\". The scanner clause folds into \"pack changes land only between games\", since the Pack channel reaches every holder. 60 words."
+        },
+        {
+          "field": "standalone",
+          "replaced": "\"decides every boundary\"; \"each run their own code\"; \"unnamed Active game\"; \"the phone's seen list and the hardware scanner's queue\"; \"hosts\"; \"In the candidate\"",
+          "why": "Boundary and code are engineering words; said as each game's start and end, each by its own steps; the two device stores said as \"player devices' lists and queues\". Starts \"In a standalone game:\". 50 words."
+        },
+        {
+          "field": "shapeChange",
+          "replaced": "\"the developer's table\"; \"the only mover and the only caller of every reset\"; \"boot and Reset System on one path\"; \"every screen told the boundary\" (56 words)",
+          "why": "Caller, path and boundary are code words; cut to before, now and why in 40 words."
+        }
+      ]
+    },
+    {
+      "id": "J6",
+      "functional": {
+        "people": "The game designer; the owner designing the second game; a new designer learning from the toy game",
+        "moment": "In the days before a show, on a laptop or on the show machine between games",
+        "need": "Build a game or change one value in it, publish and apply it, and play a round within minutes; the engine's own check refuses a bad pack at the desk; nothing they do can reach the live show or its records.",
+        "proposedTitle": "The designer changes a value and plays it within minutes, and the live show never notices"
+      },
+      "goal": "Edit, apply, play, repeat. The Design studio talks to the engine only by message; the engine applies a change at a moment the Lifecycle allows, never mid-game, or refuses and says why. A preview engine is a second Engine instance, so it touches nothing live, and on a laptop the equipment reads as not installed. Where it runs is open.",
+      "standalone": "In a standalone game: no engine exists to rehearse against, so this job has no gap here; a mid-game reload that takes a newer pack is J1's. In the candidate shape the same Pack channel brings a published pack to the tablet, so the designer's publish is what it plays.",
+      "shapeChange": "Before, a change could wait for a restart. Now the Design studio talks to the engine only by message, which applies a change between games or refuses, so the designer plays within minutes and the live show never notices.",
+      "log": [
+        {
+          "field": "people",
+          "replaced": "nothing",
+          "why": "Already plain."
+        },
+        {
+          "field": "moment",
+          "replaced": "nothing",
+          "why": "Already plain."
+        },
+        {
+          "field": "need",
+          "replaced": "nothing",
+          "why": "Already plain: change a value, publish, play, at the desk."
+        },
+        {
+          "field": "goal",
+          "replaced": "\"the mechanics editor and hot-apply are one deliverable\"; \"at a window the Lifecycle allows\"; \"under a preview profile\"; \"a laptop reads hardware as not installed\" (69 words)",
+          "why": "Hot-apply, deliverable, window and profile are roadmap and code words; said as \"at a moment the Lifecycle allows\" and \"the equipment reads as not installed\". The preview profile and the one-deliverable note stay in this job's needs list. 59 words."
+        },
+        {
+          "field": "standalone",
+          "replaced": "\"has no shortfall of its own\"; \"adopting a newer pack is filed under J1\"; \"In the candidate\"; \"stamped\"",
+          "why": "Shortfall, adopt, filed and stamped are the pass's working words; said as \"no gap here\", \"is J1's\" and what the tablet plays. Starts \"In a standalone game:\"."
+        },
+        {
+          "field": "shapeChange",
+          "replaced": "\"gets back the engine's own check\"; \"a window the Lifecycle allows\"; \"a second Engine instance with its own names\"; \"The restart fallback in one test goes\" (62 words)",
+          "why": "Fallback and instance names are code words; cut to before, now and why in 39 words. The preview engine as a second Engine instance stays in the goal."
+        }
+      ]
+    },
+    {
+      "id": "J7",
+      "functional": {
+        "people": "The GM; the audience; a player with no account; designers and installers; a stranger on the venue wifi",
+        "moment": "At every connection and every command",
+        "need": "The GM alone can start, pause, end and change scores, and the engine knows which tablet did it; the audience sees scores and exposed evidence and nothing else; a player sees the memory they scanned; designers and installers reach their tools and only those; a stranger sees nothing.",
+        "proposedTitle": "Each person sees their part and can do only their part"
+      },
+      "goal": "Players never get accounts; the engine knows them only by device or session, and their data stays on the kit. Every connection shows a verified pass: kind, name, role, still there or not; each screen gets only what its role may see. One door checks every action once; only the GM moves the game, runs the show or changes scores.",
+      "standalone": "In a standalone game: no engine, pass or connection exists, so nothing fails; a tablet never set up for the network is called 001, known to nobody. In the candidate shape a Connections and roles stand-in knows one connection, itself, so the same door runs with no pass to check.",
+      "shapeChange": "Before, this job gave each role its screen; knowing who is connected had no home. Now one Connections and roles part knows every connection and one door checks every action, because today a connection's own word decides what it gets.",
+      "log": [
+        {
+          "field": "people",
+          "replaced": "\"at their tools\"",
+          "why": "21 words cut to 19; the tools are in the need."
+        },
+        {
+          "field": "moment",
+          "replaced": "nothing",
+          "why": "Already plain."
+        },
+        {
+          "field": "need",
+          "replaced": "nothing",
+          "why": "Already plain: who can do what, who sees what."
+        },
+        {
+          "field": "goal",
+          "replaced": "\"device or session id\"; \"its class\"; \"The door\"; \"Secrets rotate before outsiders arrive\" (66 words)",
+          "why": "Id and class are code words; said as \"device or session\" and \"kind\". \"One door\" is the fit section's word. The secrets rule is dropped from the goal to fit 59 words; it stays in this job's needs list and the page's standing rules."
+        },
+        {
+          "field": "standalone",
+          "replaced": "\"this flaw produces no fault\"; \"keeps device id 001\"; \"carries a ... stand-in with one connection, itself, so the same door and grants run\"; \"In the candidate\"",
+          "why": "Fault, device id and grants are code words; said as \"nothing fails\", \"is called 001\" and one door. Starts \"In a standalone game:\"."
+        },
+        {
+          "field": "shapeChange",
+          "replaced": "\"one liveness rule\"; \"issues the display pass to a connection, never into the page\" (51 words)",
+          "why": "Liveness and the page-text pass are engineering detail; cut to before, now and why in 39 words. The display-pass point stays in this job's needs list."
+        }
+      ]
+    },
+    {
+      "id": "J8",
+      "functional": {
+        "people": "The venue installer; a GM running a game with no engine; a future operator with a second kit",
+        "moment": "In the days before an event, and on the night when the engine is absent by choice",
+        "need": "The installer states what the kit brings tonight, binds the pack's names to real instruments and gets one go or no-go. A game declared standalone knows it is standalone instead of showing a lost connection all night. A second kit or a new machine needs no change to engine code.",
+        "proposedTitle": "Fit the game to the venue it is in tonight"
+      },
+      "goal": "The installer fills a profile, binds each pack name to an instrument and runs one preflight. Kit names live only in the profile and Engine instance, so new kits and machines need no code. Release checks what each machine carries at start. Phones and hardware scanners stay equal. Standalone is declared, never mixed; where, and how many tablets, stays open.",
+      "standalone": "In a standalone game: the tablet's mode is a tap, the phone's is its web address, the hardware scanner has none: it treats a missing engine as an outage and trails the phone in seven of 24 abilities. In the candidate shape the declaration reaches every device with its pack.",
+      "shapeChange": "Before, this job covered every setup, engine or none. Now the installer fits the game to tonight's venue, declares a standalone game and Release checks each machine, because running anywhere is a quality every part carries; question E stays open.",
+      "log": [
+        {
+          "field": "people",
+          "replaced": "nothing",
+          "why": "Already plain."
+        },
+        {
+          "field": "moment",
+          "replaced": "nothing",
+          "why": "Already plain."
+        },
+        {
+          "field": "need",
+          "replaced": "\"mourning a lost connection\"",
+          "why": "A metaphor; said as \"showing a lost connection all night\"."
+        },
+        {
+          "field": "goal",
+          "replaced": "\"picks pack and profile by path or id, fills the profile\" (67 words)",
+          "why": "Path and id are code words; the installer fills a profile. Cut to 60 words; every other fact kept."
+        },
+        {
+          "field": "standalone",
+          "replaced": "\"URL path\"; \"an endless outage\"; \"seven of 24 parity rows\"; \"In the candidate\"; \"wherever the owner puts it\"",
+          "why": "URL path and parity rows are engineering words; said as \"web address\" and \"abilities\". \"Wherever the owner puts it\" is dropped for length and stays in the page's question C. Starts \"In a standalone game:\"."
+        },
+        {
+          "field": "shapeChange",
+          "replaced": "\"The title names the installer's moment\"; \"the act J8 makes\"; \"One needs line moves the start-or-adopt setting into the profile\" (56 words)",
+          "why": "Cut to before, now and why in 40 words; the setting's move stays in this job's needs list."
+        }
+      ]
+    },
+    {
+      "id": "J9",
+      "functional": {
+        "people": "The GM mid-show; the installer reading the preflight; the designer reading a badge; the audience watching the clock",
+        "moment": "At a glance, whenever a screen is read",
+        "need": "Anyone can tell whether a screen is current and whether to act: red means act now, grey means absent on purpose, old looks old, the installer's go is a go and a desk check never passes for a room check, the TV's clock never counts on its own, and the editor and the show use the same words.",
+        "proposedTitle": "Anyone reading a screen can act on it without a second question"
+      },
+      "goal": "Every fact and reply carries a label: how old, how sure, paper or live. Red means act now; grey means absent on purpose; an unreadable equipment list shows unknown. One Verdict (healthy, down or dormant) answers the editor, the preflight and the start check, and reaches the screen. The preflight says what it cannot check; a broken profile blocks starting.",
+      "standalone": "In a standalone game: the phone says Offline all night, the hardware scanner shows a red Disconnected and a growing queue, a video token says Rescan later, which never works; nothing says a standalone tablet is ready. In the candidate shape the tablet's Verdict marks every engine duty dormant: grey.",
+      "shapeChange": "Before, this job asked the engine to tell the truth. Now it is a label on every fact and reply, carried by Delivery and Answering, with one part of its own, the Verdict, because today the verdict reaches no screen.",
+      "log": [
+        {
+          "field": "people",
+          "replaced": "\"with seconds to decide\"",
+          "why": "An aside; 22 words cut to 18."
+        },
+        {
+          "field": "moment",
+          "replaced": "nothing",
+          "why": "Already plain."
+        },
+        {
+          "field": "need",
+          "replaced": "\"without asking whether what they see is current and whether they must act\"; \"a go at the desk never passes for one in the room\" (65 words)",
+          "why": "Said shorter as \"whether a screen is current and whether to act\" and \"a desk check never passes for a room check\". 60 words; every fact kept."
+        },
+        {
+          "field": "goal",
+          "replaced": "\"One pure Verdict, speaking healthy, down or dormant\"; \"the start gate\"; \"an unreadable list shows unknown\"; \"a missing or broken profile refuses the start\" (65 words)",
+          "why": "Pure and gate are code words; said as one Verdict with its three words, \"the start check\", \"an unreadable equipment list\" and \"a broken profile blocks starting\". 59 words."
+        },
+        {
+          "field": "standalone",
+          "replaced": "\"Every device draws the missing engine as an outage:\"; \"No verdict says\"; \"reads every engine duty dormant, grey\"; \"In the candidate\"",
+          "why": "The lead-in repeats what the three examples show; \"reads\" said as \"marks\". Starts \"In a standalone game:\". 49 words."
+        },
+        {
+          "field": "shapeChange",
+          "replaced": "\"J9 is now a quality with one part of its own\"; \"keeps the three health words that left J4\" (61 words)",
+          "why": "Cut to before, now and why in 40 words; the three health words are in the goal."
+        }
+      ]
+    },
+    {
+      "id": "J10",
+      "functional": {
+        "people": "The developer changing the engine; the owner sending a version to the venue; the GM running a live show",
+        "moment": "Before every change reaches anyone, and on release day",
+        "need": "When every test passes, the show still runs for ALN and for the toy game; the owner decides when a new version goes to the venue, the machine carries one matching set, and the owner can swap back by replugging a machine; no test or rehearsal ever reaches a live show.",
+        "proposedTitle": "A change is proven before it reaches anyone, and the owner alone sends it to the show"
+      },
+      "goal": "Tests run the real engine with stand-in equipment. Each test run, preview and second kit gets its own names, so none reaches a live show. Every shape two parts share is written once; every stand-in is checked against the real thing. Every change runs on two packs. The owner alone sends a checked machine and can replug the old one.",
+      "standalone": "In a standalone game: nothing tests a player device with no engine; the phone's pack test checks a file the deployed site lacks; the one test comparing both modes skips its group case. In the candidate shape the same proofs cover the tablet, or, with its own engine, a cross-check.",
+      "shapeChange": "Before, this job was one sentence about tests, with release day inside. Now three parts carry it, Joins and proofs, Engine instance and Release, because the developer's proof and the owner's release day are different moments; question F stays open.",
+      "log": [
+        {
+          "field": "people",
+          "replaced": "\"who changes\"; \"who sends\"; \"whose live show no test may touch\"",
+          "why": "24 words cut to 19; the no-test rule is in the need."
+        },
+        {
+          "field": "moment",
+          "replaced": "nothing",
+          "why": "Already plain."
+        },
+        {
+          "field": "need",
+          "replaced": "\"A green run means the show path still works\"",
+          "why": "Green run and show path are test and code words; said as \"when every test passes, the show still runs\"."
+        },
+        {
+          "field": "goal",
+          "replaced": "\"A ladder of test rungs\"; \"its own engine names\"; \"fake\"; \"skips are loud\"; \"rollback is a replug\" (66 words)",
+          "why": "Ladder is a metaphor, fake and skips are test words; said as tests, names, stand-ins and replugging the old machine. \"Skips are loud\" is dropped for length and stays in this job's needs list. 60 words."
+        },
+        {
+          "field": "standalone",
+          "replaced": "\"either player device's standalone path\"; \"passes on a file the deployed folder lacks\"; \"the hardware scanner's boot has no test\"; \"one cross-mode proof compares scores only\"; \"In the candidate\"",
+          "why": "Path, boot and cross-mode are code words; said as devices with no engine and \"the one test comparing both modes\". The hardware scanner's untested start-up folds into \"nothing tests a player device with no engine\". Starts \"In a standalone game:\"."
+        },
+        {
+          "field": "shapeChange",
+          "replaced": "\"a quality over every part\"; \"the developer's green run\"; \"closes its open item as a candidate: one naming layer\"; \"Two needs lines are corrected\" (66 words)",
+          "why": "Green run and naming layer are code words; cut to before, now and why in 40 words. The one set of names per engine is in the goal."
+        }
+      ]
+    }
+  ]
+}
