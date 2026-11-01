@@ -356,7 +356,7 @@ OVERVIEW = """flowchart TD
 FIT_DEVICES = [
     ('The engine', 'decides every fact of a networked game, serves the pack, admits every connection, answers every request through one door and sends every fact to the screens through one route.'),
     ('A GM tablet in a networked game', 'draws what it is sent, with each fact\'s label, and sends requests in one envelope. It keeps no list of its own and decides nothing before the engine answers.'),
-    ('A GM tablet in a standalone game', 'is the same app with the switch set. In the candidate it runs the same record, lifecycle, answering and delivery parts the engine runs. The other way is its own engine, kept equal by tests.'),
+    ('A GM tablet in a standalone game', 'is the same app with the switch set. In the candidate it runs the same record, lifecycle, answering and delivery parts the engine runs, with small stand-ins that report every engine duty (video, music, lights) as not installed tonight. The other way is its own engine, kept equal by tests.'),
     ('The phone and the ESP32', 'draw, send scans in one envelope, and read the reply words and the few rules they need as data made from the one source. They stay equal by sharing that data.'),
     ('The scoreboards', 'are one page in two places, the TV and the Pi 4, drawing what they are sent and deciding nothing.'),
     ('The config tool', 'holds the design studio and the installer\'s profile editor, and talks to the running engine only by message.'),
