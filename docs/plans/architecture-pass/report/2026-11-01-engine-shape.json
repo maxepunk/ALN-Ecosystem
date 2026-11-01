@@ -433,18 +433,18 @@
     {
       "title": "The rules: shared code or two implementations under one contract",
       "a": "One rules module loaded by the engine and the tablet, with generated tables for the hardware scanner.",
-      "b": "Two implementations (engine, tablet) at one seam, held equal by a test that runs the same inputs through both.",
+      "b": "Two bodies of code, one in the engine and one on the tablet, held equal by a test that runs the same inputs through both.",
       "cost": "A needs the engine's rules packaged so a browser can run them, and a generator for the tables; it removes C9 for the tablet by construction. B keeps today's two bodies and relies on a test that runs both and compares them; it detects drift and never removes it."
     },
     {
       "title": "Equipment: an interface per capability or per program",
-      "a": "Per capability (play a video, set a volume, light a scene), with programs and software stand-ins as adapters.",
+      "a": "Per capability (play a video, set a volume, light a scene), with the programs, or software stand-ins, plugged in beneath.",
       "b": "Per program (a supervised process with its own verbs), as today's seven adapters under one supervision rule.",
-      "cost": "A gives the preview engine and the rig real second adapters and lets the show runner ask one object whether a video is playing; it costs one interface over programs that work differently (a video queue is not a music playlist). B is nearer today's code and cheaper first, but leaves the stand-ins hypothetical and the cross-program questions spread."
+      "cost": "A gives the preview engine and the rig a real second thing to plug in and lets the show runner ask one object whether a video is playing; it costs one interface over programs that work differently (a video queue is not a music playlist). B is nearer today's code and cheaper first, but leaves the stand-ins hypothetical and the cross-program questions spread."
     },
     {
       "title": "The standalone tablet: the same modules as the engine, or its own engine",
-      "a": "The same game record, lifecycle, answering and delivery hosted on the tablet, with the authority switch as a parameter.",
+      "a": "The same game record, lifecycle, answering and delivery hosted on the tablet, with a switch that says the game is standalone.",
       "b": "A tablet-local engine kept equal by tests, as today but improved.",
       "cost": "A needs the record, the lifecycle table and the doors to run outside the engine's own runtime, which limits how the engine's code is packaged; it makes parity structural. B keeps the engine free of that constraint and keeps a second body of rules on the tablet, with five rules that nothing keeps equal today as the standing risk."
     },
@@ -462,7 +462,7 @@
     },
     {
       "title": "The scoreboard: one page in two hosts, or a view of the GM app",
-      "a": "One screens adapter in two hosts, the TV's browser and the Pi 4.",
+      "a": "One page shown in two places, the TV's browser and the Pi 4.",
       "b": "The scoreboard as a view inside the GM app, chosen by the pass.",
       "cost": "A keeps the audience's page apart from the GM's command center and is the smaller change; it keeps two drawings of the same facts, the GM app's and the page's. B gives one drawing per fact on every screen and one build, at the cost of a far larger client on a Pi 4 and a pass that must keep the GM's controls off the audience's screen."
     },

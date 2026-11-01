@@ -376,7 +376,8 @@ def fit_html(shape):
     qual = ''.join(f'<tr><th scope="row">{e(q["name"])}</th><td>{e(q["plain"])}</td><td class="idcell">{job_links(q["jobs"])}</td></tr>' for q in shape['qualities'])
     tangles = ''.join(f'<li><strong>{e(t["title"])}.</strong> {e(t["plain"])} <span class="muted">Flaws: {flaw_links(t["flaws"])}</span></li>' for t in shape['today']['tangles'])
     rows = part_layers(shape)
-    layers = ''.join(f'<li>{"".join(part_link(i, names) for i in row)}</li>' for row in rows)
+    edge = {0: '<span class="lvl">Top</span>', len(rows) - 1: '<span class="lvl">Bottom</span>'}
+    layers = ''.join(f'<li>{edge.get(k, "")}{"".join(part_link(i, names) for i in row)}</li>' for k, row in enumerate(rows))
     order = [i for row in reversed(rows) for i in row]
     by_id = {p['id']: p for p in shape['parts']}
     parts = ''.join(part_html(by_id[i]) for i in order)
@@ -621,7 +622,8 @@ dl.who dd {{ margin: 0; }}
 .idcell a, .pmeta a {{ text-decoration: none; margin-right: 2px; }}
 .layers-fig {{ margin: 0; display: grid; gap: 8px; }}
 ol.layers {{ list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }}
-ol.layers li {{ display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }}
+ol.layers li {{ display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }}
+ol.layers .lvl {{ font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; font-weight: 600; color: var(--muted); min-width: 4.5em; }}
 .parts {{ display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }}
 .part {{ background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; scroll-margin-top: 16px; }}
 .part h4 {{ margin: 0; font-size: 16px; font-weight: 600; }}
