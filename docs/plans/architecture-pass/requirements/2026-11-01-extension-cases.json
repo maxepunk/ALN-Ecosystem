@@ -1,0 +1,304 @@
+{
+  "intro": "These are the ways the platform must be able to grow, each told as a situation, with the person who does the growing, what they should need to touch, and what must stay untouched. They say what is needed, never how to build it. The independent panel designs against them beside the ten promises and the quality targets; every case that is not marked proposed rests on a decision the owner has already made or a roadmap section the owner ratified. A 'published interface' here means a written, versioned description of how two sides talk that both sides can read: the list of requests and replies between the engine and the devices, the pack's file formats, and the format of the night's record.",
+  "cases": [
+    {
+      "id": "EX1",
+      "who": "designer",
+      "case": "A designer who did not build ALN makes a whole second game: its tokens and their texts, its modes, scoring, groups, cues, clock, words and look. They publish it, and that night the whole kit plays it: the engine scores by it, the TV shows its words, every tablet and scanner holds the same copy, and the GM can see at a glance that they match. The toy game kept beside ALN is the standing proof that this works for a game that is not ALN.",
+      "throughWhat": "A pack, written in the design tool and published through the engine's own check that refuses a broken pack; a media bundle for the files the pack names.",
+      "mustNotNeed": "The engine's code, its settings files, new firmware for the hardware scanner, ALN's pack, or any word of ALN's inside the engine.",
+      "when": "now",
+      "promises": [
+        "The designer's game is the game the whole kit plays",
+        "The designer changes a value and plays it within minutes, and the live show never notices"
+      ],
+      "status": "settled by the owner (roadmap section 1 and section 2.4; glossary, Toy pack; decision 26)",
+      "why": "The platform exists so that a game is data the engine plays, and ALN is one pack among others."
+    },
+    {
+      "id": "EX2",
+      "who": "designer",
+      "case": "Between two shows the designer changes one value, say a token's rating or a group's bonus, applies it to the running engine, and plays a round to feel the change, all within minutes. A game in progress never receives the change: the engine applies it only at a moment its lifecycle allows, between games, or refuses and says why. Every copy of the pack in the kit is told, and the GM sees which version each device runs.",
+      "throughWhat": "The pack, edited as a draft in the design tool and published; the apply step is a request the engine answers at a moment between games.",
+      "mustNotNeed": "A restart of the engine, a code or settings change, a rebuild of the tablet or phone app, or any touch on a running game's records.",
+      "when": "a planned block: the preview block (the rules editor and applying a change while the engine runs are one deliverable)",
+      "promises": [
+        "The designer changes a value and plays it within minutes, and the live show never notices",
+        "Each lifecycle button does exactly what its name says",
+        "The designer's game is the game the whole kit plays"
+      ],
+      "status": "settled by the owner (roadmap section 2.4 and the deferral registry's row on applying a change while the engine runs; decision 22 keeps it on the list every design choice must serve)",
+      "why": "Making games playable without code or settings files is the point of the engine work, and speed is what makes the loop usable."
+    },
+    {
+      "id": "EX3",
+      "who": "designer",
+      "case": "A designer adds a third thing a team can do with a token, for example 'donate it to the archive': the token is used up, no money moves, and the result lands on the evidence screen. They describe the new mode by its flags, how it scores, whether it uses the token up, where its result shows, and name it on screen in their own words. The engine reads the flags and never the mode's name, so ALN's two modes and this third one are the same kind of thing to it.",
+      "throughWhat": "The pack's list of modes, and the pack's strings that name the mode on screen.",
+      "mustNotNeed": "The engine's code, the screens' code, or any change to another game's pack.",
+      "when": "now",
+      "promises": [
+        "The designer's game is the game the whole kit plays",
+        "One game, the same on every screen"
+      ],
+      "status": "settled by the owner (glossary, 'mode', the pack mode entry; roadmap section 2.6)",
+      "why": "The engine holds no opinion about game design, so a way of turning in a token is a pack value, not engine code."
+    },
+    {
+      "id": "EX4",
+      "who": "developer, then designer",
+      "case": "A game needs a way of scoring the engine has never had, for example a score read off a graph of connected tokens instead of a table of values. A developer adds it once as a generic model with its own parameters. A designer selects the model in their pack and tunes its parameters like any other pack value. A pack that asks for a model the engine lacks is refused when published, with the model named, instead of running with the wrong rules.",
+      "throughWhat": "A module of the engine's own rules library, selected by the pack by name and listed among the abilities the pack requires; the parameters in the pack.",
+      "mustNotNeed": "ALN's pack or ALN's rules, the tablet's screens, the hardware scanner's firmware, or a fork of the engine for that game.",
+      "when": "later (roadmap section 7.2, the second game's modules)",
+      "promises": [
+        "The designer's game is the game the whole kit plays",
+        "One game, the same on every screen"
+      ],
+      "status": "settled by the owner (roadmap section 7.2; glossary, Capability and Parity surface)",
+      "why": "The rules are written once and run by the engine and by a standalone tablet alike, so a new model is one addition, not two."
+    },
+    {
+      "id": "EX5",
+      "who": "designer",
+      "case": "A designer adds twenty tokens with new texts, pictures, sounds and three videos. The texts and the names of the files go into the pack; the files themselves go into the media bundle through the design tool. Before the show, a check says whether every file the pack names is on the show machine, by a fingerprint of its content. The hardware scanners fetch the new pictures and sounds by themselves at their next start.",
+      "throughWhat": "The pack (tokens, texts, file names with fingerprints) and the media bundle, uploaded through the design tool and moved as one to the show machine.",
+      "mustNotNeed": "Media files inside the pack's repository, files copied by hand into folders on the show machine, engine code, or a visit to each hardware scanner.",
+      "when": "now for the pack's content; a planned block, the preview block, for checking the bundle against the pack's list; later (roadmap section 7.3, content tooling) for the upload experience",
+      "promises": [
+        "The designer's game is the game the whole kit plays",
+        "The room does what the designer cued and the GM asked"
+      ],
+      "status": "settled by the owner (roadmap section 2.3 and the deferral registry's row on media reference checking; glossary, Media bundle and Asset channel)",
+      "why": "The pack stays small and names its media; the files travel in a bundle that can be checked and moved between machines."
+    },
+    {
+      "id": "EX6",
+      "who": "designer",
+      "case": "A designer adds a cue: at the ninety-minute mark the lights go to a 'police arrival' look, a siren plays and the music turns down. They name the look by its role in the show. Which real lamp and which scene make that look is the venue technician's business, bound per venue. In a venue with no lights tonight, the cue's lighting shows as not installed tonight, grey, and the siren still plays.",
+      "throughWhat": "The pack's cues, naming lighting roles, sound files and display channels; the venue profile binds each name to an instrument.",
+      "mustNotNeed": "A venue's scene ids or speaker names inside the pack, engine code, or a change to the GM's screens.",
+      "when": "now (cues are pack content; the last venue name left in pack content is retired in the preview block)",
+      "promises": [
+        "The room does what the designer cued and the GM asked",
+        "The game fits the venue it is in tonight",
+        "Anyone reading a screen can act on it without a second question"
+      ],
+      "status": "settled by the owner (glossary, Cue and Lighting role / binding / fallback; the deferral registry's row on the last speaker name in pack content)",
+      "why": "Venue details never enter the pack, so one game's cues play in any room the pack's names can be bound to."
+    },
+    {
+      "id": "EX7",
+      "who": "designer",
+      "case": "One game calls its score-holders 'Accounts', another 'Crews'; one shows star ratings, another hides them; each has its own colours and its own award message. The designer sets these in the pack, and the GM's tablet, the TV and the phones all use them, with the same words in the editor as at the show. The engine's own fallback words appear only when a pack declares none.",
+      "throughWhat": "The pack's strings file, its theme file and its score-holder label.",
+      "mustNotNeed": "Engine code, the screens' code, or a rebuild of the tablet or phone apps.",
+      "when": "now (built); the strings and theme editor with a real-device preview: a planned block, the depth-and-close block",
+      "promises": [
+        "The designer's game is the game the whole kit plays",
+        "Anyone reading a screen can act on it without a second question"
+      ],
+      "status": "settled by the owner (glossary, Strings sidecar, Theme, and entity versus team; roadmap, the depth-and-close block)",
+      "why": "Even the word for a score-holder comes from the pack, so no screen carries ALN's vocabulary."
+    },
+    {
+      "id": "EX8",
+      "who": "designer",
+      "case": "A designer divides the game into acts. A cue fires two minutes into act two, and the GM moves the game from act to act with one button when the room is ready, not by the clock alone. The acts and the timings are the designer's; the button is the engine's, and what it does at pause, end and reset is defined.",
+      "throughWhat": "The pack's clock and phases block, and cues timed relative to a phase.",
+      "mustNotNeed": "Engine code or a change to the GM's screens for a new set of acts.",
+      "when": "a planned block: the preview block, where the GM scanner redesign's design opens (the phase-advance control and phase-relative cue timing)",
+      "promises": [
+        "The room does what the designer cued and the GM asked",
+        "Each lifecycle button does exactly what its name says"
+      ],
+      "status": "settled by the owner (the deferral registry's row on the GM scanner redesign; the promise 'One game, the same on every screen', whose needs name the phase as a new fact the GM writes)",
+      "why": "The phase is a fact the GM writes, so it needs a decider, a saved home and a defined fate at every lifecycle moment, like any other game fact."
+    },
+    {
+      "id": "EX9",
+      "who": "designer; developer for a new kind of screen",
+      "case": "A designer turns the scoreboard off for a game with no public score, or changes how fast the evidence pages turn, in the pack. A game that needs a new kind of public screen, say a constellation of nodes and edges, gets it as a generic renderer a developer adds once; the pack selects it and themes it. A screen receives only what it may show: hidden facts are filtered before they leave the engine, never on the screen itself.",
+      "throughWhat": "The pack's surfaces block for the built-in screens; for a new kind of screen, a renderer module behind the display-surface seam, selected by the pack and listed among the abilities it requires.",
+      "mustNotNeed": "The engine's core code or ALN's scoreboard page for a new screen kind; no screen's own code to keep hidden facts hidden.",
+      "when": "now for selecting and configuring the built-in screens; later (roadmap section 7.2 and the deferral registry's row on pack-defined display surfaces) for a new kind of screen",
+      "promises": [
+        "One game, the same on every screen",
+        "Each person sees their part and can do only their part",
+        "The designer's game is the game the whole kit plays"
+      ],
+      "status": "settled by the owner (glossary, 'surface'; roadmap section 7.2 and the deferral registry's row on pack-defined display surfaces)",
+      "why": "Packs can configure the three built-in screens today but cannot define new ones; the second game's constellation screen is the first case that needs the seam opened."
+    },
+    {
+      "id": "EX10",
+      "who": "designer; developer for the device adapter",
+      "case": "A game lets players use their own phones: tap a token, a web page opens, no account, no login, no app. The same game asks for a two-tap action: a player taps their own token, then another player's, and something happens between them. The designer declares which device kinds its players use, what each may do, and the two-tap action's rules, in the pack. The phone and the hardware scanner both perform the action, each in its own way on its own screen. A developer builds each device kind's adapter once, as platform work, never per game. number to set: how many phones one kit carries at once.",
+      "throughWhat": "The pack (device classes, what each may do, the multi-tap actions); a published interface (the written list of requests and reply words between the engine and a device, with the reply words and the rules a device needs delivered to it as data); one device adapter per device kind.",
+      "mustNotNeed": "New firmware for each game, a second hand-written copy of the rules inside a device, player accounts or logins, or a change to another game's pack.",
+      "when": "later (roadmap section 7.1, players' phones; the deferral registry's row on the kit's network name and certificate)",
+      "promises": [
+        "Every tap gets its answer, and the night can be told afterwards",
+        "Each person sees their part and can do only their part",
+        "The game fits the venue it is in tonight"
+      ],
+      "status": "settled by the owner (roadmap sections 7.1, 2.1 and 2.5; decision 22 keeps phones on the list every design choice must serve)",
+      "why": "Phones and hardware scanners must stay equal in what they can drive, and everything a designer iterates on must be pack data, never firmware."
+    },
+    {
+      "id": "EX11",
+      "who": "designer",
+      "case": "One game wants players named: a typed name on their own phone, or a scanned band at a shared station. Another wants nobody named. A third lets a station on the floor make a transaction that only a GM may make today. The designer sets this per game: which device classes exist, what each may do, whether a person is ever identified. In every game, starting, pausing and ending the game, show control and score changes stay with staff who log in, such as the GM.",
+      "throughWhat": "The pack (device classes, what each may do, the identification moment); the engine computes each pass's rights from the pack and its own floor.",
+      "mustNotNeed": "Player accounts or logins, an engine default about naming people, a change to the engine's code, or any loosening of the staff-only floor.",
+      "when": "now for the floor; later (roadmap section 7.1, the function-gated access model) for pack-assigned rights per device class",
+      "promises": [
+        "Each person sees their part and can do only their part"
+      ],
+      "status": "settled by the owner (roadmap sections 2.1 and 2.6; glossary, The floor, and the GM scanner versus player scanner entry)",
+      "why": "Who may do what on which device is game design, and the engine holds no opinion about game design; only the floor is engine law."
+    },
+    {
+      "id": "EX12",
+      "who": "designer declares it; the GM runs it",
+      "case": "A small game runs in a room with no show machine: one GM tablet and the player scanners each work alone. The designer declares the game standalone. The tablet says 'standalone', never 'disconnected', runs the same rules the engine would, and its record names the pack version it played. No game mixes devices on an engine with devices working alone. Where the declaration lives, and how many tablets a standalone game may have, are the owner's open choices. number to set: how many GM tablets one standalone game may run.",
+      "throughWhat": "A declaration carried with the pack, the venue profile or the game's record (the owner chooses where), read by every device; the same rules module on the tablet.",
+      "mustNotNeed": "An engine, venue equipment, a second hand-kept copy of the rules on the tablet, or any engine code.",
+      "when": "now, as a choice a game may declare; the declaration itself does not exist yet and where it lives is a design-rounds question",
+      "promises": [
+        "The game fits the venue it is in tonight",
+        "One game, the same on every screen",
+        "Every tap gets its answer, and the night can be told afterwards"
+      ],
+      "status": "settled by the owner (decision 22; where the declaration lives, and how many tablets, are open)",
+      "why": "A whole game with no engine is on the list every design choice must serve, and today nothing in the pack can say so."
+    },
+    {
+      "id": "EX13",
+      "who": "venue technician",
+      "case": "The kit goes to a new venue. The technician reads the pack's tech rider, fills in a profile of what the room has tonight (which speakers, which lights, which network, how many stations and how many extra scoreboard screens), binds each of the pack's names to a real instrument on one page, and runs one preflight that says go or no-go. Each line says what it checked and whether it checked paper or the live room. Equipment left at home shows as not installed tonight, grey, never red. A second venue is a second profile; the pack is the same.",
+      "throughWhat": "A venue profile, edited in the venue technician's tool, with its bindings page, its profile manager and the preflight; the tech rider derived from the pack.",
+      "mustNotNeed": "The pack, the engine's code, kit-unique names inside code, or a developer.",
+      "when": "now for the profile and the hand-run preflight; a planned block, the depth-and-close block, for the bindings page and the profile manager; later (the deferral registry's row on the planning view) for 'what does bringing hardware X unlock'",
+      "promises": [
+        "The game fits the venue it is in tonight",
+        "Anyone reading a screen can act on it without a second question",
+        "The room does what the designer cued and the GM asked"
+      ],
+      "status": "settled by the owner (roadmap section 1; glossary, Venue technician, Preflight, Paper versus live, Deploy and Tech rider; decision 27)",
+      "why": "Everything specific to a venue lives in its profile, so fitting a game to a room is the technician's work alone."
+    },
+    {
+      "id": "EX14",
+      "who": "designer",
+      "case": "On a laptop with no lights, speakers or TV, the designer rehearses the whole show: every player action performed in its simulated form, the show reacting for real on software stand-ins. The profile for this is generated from the pack's own needs so that every need is met; every verdict on screen says 'paper', never 'live'. The live engine, its programs and its records are untouched, and nothing the trial engine issues is accepted by the live one.",
+      "throughWhat": "A venue profile whose bindings point at software stand-ins, generated from the pack; a separate trial copy of the engine with its own files, ports and settings.",
+      "mustNotNeed": "A change to the pack, the live engine's programs or records, the show machine, or any hardware.",
+      "when": "a planned block: the preview block",
+      "promises": [
+        "The designer changes a value and plays it within minutes, and the live show never notices",
+        "Anyone reading a screen can act on it without a second question",
+        "A change is proven before it reaches anyone, and the owner alone sends it to the show"
+      ],
+      "status": "settled by the owner (glossary, Simulation and Rehearse; roadmap, the preview block; decision 22 keeps the trial engine on the list every design choice must serve)",
+      "why": "A simulation is an ordinary profile bound to stand-ins, so rehearsing changes nothing in the pack and reaches nothing live."
+    },
+    {
+      "id": "EX15",
+      "who": "developer writes the adapter; the venue technician chooses it",
+      "case": "A kit uses a different lighting system, or the team replaces the video player. A developer writes one adapter for the new program beneath the engine's equipment interface: the few verbs the engine uses (play, stop, set a volume, light a scene, show a picture), a dated picture of what the program is doing, and a software stand-in for tests and rehearsal. The venue technician says in the profile whether the engine starts the program itself or uses one already running. The program watcher restarts it like any other. The cues, the GM's screens and the pack do not change.",
+      "throughWhat": "An adapter module of the engine's own, beneath its equipment interface, with its stand-in; the venue profile's setting that says whether the engine starts each program or uses one already running.",
+      "mustNotNeed": "The pack, any cue, the GM's screens, the other adapters, the engine's rules, or the lifecycle.",
+      "when": "proposed for the design rounds; the program watcher and the start-or-use setting are settled hardening work rebuilt inside the architecture pass",
+      "promises": [
+        "The room does what the designer cued and the GM asked",
+        "Anyone reading a screen can act on it without a second question"
+      ],
+      "status": "proposed (the candidate shape's Equipment part; the owner's open choice between one interface per kind of job and one per program; the program watcher and the start-or-use setting are settled)",
+      "why": "Today seven programs are each read in their own way with no interface above them, so a new program means touching the engine everywhere it drives the room."
+    },
+    {
+      "id": "EX16",
+      "who": "operator",
+      "case": "A second production takes the platform: another operator with their own kit, their own venue profiles and a library of installed packs, picking one per event. Their kit has its own network name and its own machine; two kits in one building never confuse each other's devices. Nothing in the engine assumes one kit, one pack or one production, so they install the engine and go.",
+      "throughWhat": "Their own venue profiles and installed packs; the engine's per-kit settings (its network name, the described set its machine carries); their own copy of the engine with its own files, ports and settings.",
+      "mustNotNeed": "Engine code, a kit-unique name inside code, our pack, our venue profile, or our live machine.",
+      "when": "later (roadmap section 7.4, fleet growth and multi-game kits); the seams that keep it cheap are built now (roadmap section 2.2)",
+      "promises": [
+        "The game fits the venue it is in tonight",
+        "A change is proven before it reaches anyone, and the owner alone sends it to the show"
+      ],
+      "status": "settled by the owner (roadmap sections 1, 2.2 and 7.4)",
+      "why": "The business plans one kit, but every design must keep a second one cheap to start later."
+    },
+    {
+      "id": "EX17",
+      "who": "operator (the owner)",
+      "case": "A new engine version is ready. The owner builds a second machine, checks that it carries one matching set (engine version, tablet and phone apps, pack version, media by fingerprint, venue profile), rehearses on it, and swaps it in between events by replugging. If the night goes wrong, replugging the old machine brings everything back as it was. After the swap, packs may change at any time by publishing; the engine changes only between events.",
+      "throughWhat": "The machine's described set, which the engine compares at start and reports; the swap of machines; the pack channel for pack updates.",
+      "mustNotNeed": "An upgrade of the live machine in place, files copied by hand, a change to the pack for the new engine version, or a developer at the venue.",
+      "when": "now (the swap method is ratified; the between-events rule takes over after the first swap)",
+      "promises": [
+        "A change is proven before it reaches anyone, and the owner alone sends it to the show",
+        "Each lifecycle button does exactly what its name says"
+      ],
+      "status": "settled by the owner (roadmap section 6 and section 7.4, steady-state releases; the current-state page's goal section)",
+      "why": "The owner alone sends a version to the venue, and must be able to take it back by moving a plug."
+    },
+    {
+      "id": "EX18",
+      "who": "developer writes the adapter; the designer uses it",
+      "case": "A designer writes their game's corpus in a different tool, or in the platform's own content database once it exists: tokens and characters, timeline, puzzles and lore. A developer writes one source adapter for that tool; it feeds the same pack through the same check that refuses a broken pack. The scanners, the engine and the night's record never notice where the content came from, and the game's own after-game telling reads the record, not the content tool.",
+      "throughWhat": "A source adapter behind a published interface for content sources; the pack it produces is the ordinary pack.",
+      "mustNotNeed": "The engine's code, the pack's formats, the check at publish, the scanners, or the after-game telling.",
+      "when": "later (roadmap section 7.3, content tooling; the deferral registry's row on the source adapter)",
+      "promises": [
+        "The designer's game is the game the whole kit plays"
+      ],
+      "status": "settled by the owner (roadmap section 7.3 and the deferral registry's row on the source adapter; glossary, Source adapter)",
+      "why": "Content tooling is a convenience, never a dependency: the pack is the data spine, and Notion is only its first source."
+    },
+    {
+      "id": "EX19",
+      "who": "director; the game's own developer builds the telling",
+      "case": "The game ends. The engine writes one record of the night: the facts it decided, with the roster, the GM's notes, the accusation and the photos captured during play, the pack the game ran and the texts the players saw. ALN's Director Console, a separate program on the director's computer, reads that record, and the director writes the players' story from it, quoting what they held, with no retyping and no reading of Notion. The record is shaped so that a game's telling can later run inside the engine's Review stage. What reaches the players afterwards, and their emails, stay the game's business outside the engine.",
+      "throughWhat": "The night's record, a published file format read from outside the engine; later, if the owner chooses, a module of the game's own inside the Review stage.",
+      "mustNotNeed": "The engine's code, the GM tablet's report pasted and parsed back into lists, Notion, players' emails or consent inside the engine, or the live machine.",
+      "when": "a planned block: the capture block (writing the record when the game ends); later (the deferral registry's row on the report pipeline's move) for the console reading it, owner-paced",
+      "promises": [
+        "Every tap gets its answer, and the night can be told afterwards"
+      ],
+      "status": "settled by the owner (decision 28; the deferral registry's row on the report pipeline's move; glossary, Review)",
+      "why": "The platform owns the record, the intake and the handoff; the game owns the telling, and it must be able to tell from what was captured, not reconstructed."
+    },
+    {
+      "id": "EX20",
+      "who": "developer builds the modules; the designer (the owner) tunes the game",
+      "case": "The owner's second game needs four things the engine has never had: two-tap actions between players' objects, hidden per-player and per-token state that spreads on contact, a score read off a graph, and a constellation screen. A developer builds each as a generic module with pack-supplied parameters. The owner then finishes the game's design at his own pace with no further engineering, tuning spread rates and seeds like any other pack values and playtesting them through the edit, apply, play loop. A second toy game proves the modules the way the first toy game proves the engine. The game needs an engine by nature and its pack says so. A hidden fact reaches only its owner's screen.",
+      "throughWhat": "Generic modules of the engine's own (the rules library, the interaction engine, the display-surface seam), each an ability the pack requires and selects by name; the game's values in its pack.",
+      "mustNotNeed": "A fork of the engine for that game, code with the game's name in it, ALN's pack or ALN's screens, or a screen that filters hidden facts itself.",
+      "when": "later (roadmap section 7.2, the second game's modules; the game's design track is open now, owner-paced)",
+      "promises": [
+        "The designer's game is the game the whole kit plays",
+        "One game, the same on every screen",
+        "Each person sees their part and can do only their part"
+      ],
+      "status": "settled by the owner (roadmap section 7.2 and the deferral registry's row on pack-defined display surfaces)",
+      "why": "The platform delivers all the technology the second game needs, so its design finishes without software engineering, and a third game can reuse the same modules."
+    },
+    {
+      "id": "EX21",
+      "who": "developer from outside the team",
+      "case": "A stranger downloads the platform, stands it up from the guide, opens the toy game and builds something new: a device adapter, an equipment adapter, a scoring model or a content source. They work from the published interfaces and the toy game as a worked example, and send their change back with the proof that the show still runs for both games. They never see our secrets, our pack or our venue, and the privacy defaults every operator inherits are written down for them.",
+      "throughWhat": "The published interfaces (the written list of requests and replies between the engine and the devices, the pack's file formats, the night's record's format, the adapter seams), the human-facing designer and operator guides, the toy game, a license.",
+      "mustNotNeed": "Private knowledge of the team, our pack, our venue profile, our live machine, or a committed password or token in the repository.",
+      "when": "later (roadmap section 7.4, the release block, and the adoptable readiness state); the committed secrets rotate before the first outsider touches the system",
+      "promises": [
+        "A change is proven before it reaches anyone, and the owner alone sends it to the show",
+        "Each person sees their part and can do only their part"
+      ],
+      "status": "settled by the owner (roadmap section 1, section 3 'Adoptable' and 'Previewable', section 7.4, the release block)",
+      "why": "The end goal is an open-source show platform that non-technical designers can use and technical people can extend."
+    }
+  ]
+}
