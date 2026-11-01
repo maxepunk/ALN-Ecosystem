@@ -1,19 +1,21 @@
-"""Build the owner's site: five linked pages and a change log (decision 29, 2026-11-01).
+"""Build the owner's site, version 9: six linked pages in the proactive frame (2026-11-01).
 
-Plan: site/2026-11-01-site-plan.md (the one source for the site's pages, anchors, markers and checks).
-Inventory: site/inventory.md (every element of version 7 and its home on the site).
+Plan: site/2026-11-01-site-plan-v2.md (the pages, anchors, markers and checks of version 9); where it is silent,
+site/2026-11-01-site-plan.md sections 2, 4, 5 and 6 (the frame, the design system, the diagram pipeline).
+Log: site/v9/build-log.md (where each version 8 section went, the jargon rows applied, the checks).
 
-Inputs: 2026-10-31-cause-cards.json, 2026-10-31-engine-jobs.json, 2026-10-31-standalone-lines.json,
-        2026-11-01-engine-shape.json, ../2026-10-31-standalone-pass.md (the ESP32 parity table), and the
-        three overlays beside the plan: site/front.json, site/decisions.json, site/changes.json.
-Output: site/index.html (the artifact's main page: no doctype, html, head or body tags), and
-        site/decisions.html, promises.html, parts.html, flaws.html, changes.html (full documents).
+Inputs: the page data in this folder (2026-10-31-cause-cards.json, 2026-10-31-engine-jobs.json,
+        2026-10-31-standalone-lines.json, 2026-11-01-engine-shape.json), the parity table in
+        ../2026-10-31-standalone-pass.md, the requirements (../requirements/2026-11-01-quality-targets.json and
+        ../requirements/2026-11-01-extension-cases.json), and the version 9 overlays in site/v9/ (front.json,
+        decisions.json, design.json, changes.json, rules.json).
+Output: site/index.html (the artifact's main page: no doctype, html, head or body tags), and site/decisions.html,
+        requirements.html, design.html, today.html, changes.html (full documents). Version 8's promises.html,
+        parts.html and flaws.html are deleted when the build succeeds.
 
-Every Mermaid diagram is drawn at build time by render_diagrams.js (one call for the whole site) and
-themed by diagram_theme.theme_svg(); no page loads Mermaid or any other script.
-
-Self-contained: the renderers and texts it needs from build_report.py (version 7's builder) are copied
-here and adapted, so build_report.py can retire.
+Every Mermaid diagram is drawn at build time by render_diagrams.js (one call for the whole site) and themed by
+diagram_theme.theme_svg(); no page loads Mermaid or any script library. Each page carries one small inline script
+(OPEN_SCRIPT) that opens the folds holding a link's target.
 
 Run: cd docs/plans/architecture-pass/report && MERMAID_JS=/path/to/mermaid.min.js python3 -I build_site.py
 """
@@ -31,42 +33,63 @@ sys.path.insert(0, str(HERE))   # -I leaves the script's folder off the path; di
 from diagram_theme import DIAGRAM_CSS, DIAGRAM_TOKENS_DARK, DIAGRAM_TOKENS_LIGHT, theme_svg  # noqa: E402
 
 SITE = HERE / 'site'
+V9 = SITE / 'v9'
 CARDS = HERE / '2026-10-31-cause-cards.json'
 JOBS = HERE / '2026-10-31-engine-jobs.json'
 STANDALONE = HERE / '2026-10-31-standalone-lines.json'
 SHAPE = HERE / '2026-11-01-engine-shape.json'
 PASS = HERE.parent / '2026-10-31-standalone-pass.md'
-FRONT = SITE / 'front.json'
-DECISIONS = SITE / 'decisions.json'
-CHANGES = SITE / 'changes.json'
+QUALITY_TARGETS = HERE.parent / 'requirements' / '2026-11-01-quality-targets.json'
+EXTENSION_CASES = HERE.parent / 'requirements' / '2026-11-01-extension-cases.json'
+FRONT = V9 / 'front.json'
+DECISIONS = V9 / 'decisions.json'
+DESIGN = V9 / 'design.json'
+CHANGES = V9 / 'changes.json'
+RULES = V9 / 'rules.json'
 RENDER = HERE / 'render_diagrams.js'
+RETIRED_PAGES = ('promises.html', 'parts.html', 'flaws.html')
 
 # ---------------------------------------------------------------------------------------------------
-# Copied from build_report.py (version 7), unchanged unless a comment says otherwise.
+# Constants carried from version 8, in the plain wordings (site/checks/jargon-table.md, the rows for
+# build_site.py; each change names its row).
 # ---------------------------------------------------------------------------------------------------
 
-# Where each candidate part runs, in the owner's words.
+# Where each part of the earlier candidate runs, in the owner's words.
 RUNS_ON = {'backend': 'the engine', 'gm-tablet': 'GM tablets', 'player-devices': 'player scanners',
            'scoreboards': 'the scoreboards', 'config-tool': 'the config tool', 'tests': 'the tests',
            'gm-tablet-standin': ''}
-NAMES = {}  # part id -> plain name, filled from the shape by build()
+NAMES = {}  # part id -> plain name, filled from the shape by load()
 
-# What each promise already has today: the orchestrator's addition, from the root CLAUDE.md
-# ("GM Scanner Admin Capabilities", "Event Architecture") and the capability map's "built" rows.
+# What each promise already has today, from the root CLAUDE.md ("GM Scanner Admin Capabilities", "Event
+# Architecture") and the list of planned capabilities' "built" rows. Rows P31 (J2), P40 (J3), P79 (J8) and P92
+# (J10) applied; in J10 the test rig is built again when the build half starts (the decision "Build the test rig
+# when building starts"), and "the test level above logic alone" names the level (real programs with stand-in
+# hardware).
 BUILT = {
     'J1': 'Packs that hold tokens, modes, scoring, groups and cues; a gate that refuses a broken pack; a second, toy game kept beside ALN.',
-    'J2': 'One game record in the backend; a full snapshot to each screen when it connects; live updates for scores, transactions and player scans; the TV and Pi 4 scoreboards.',
-    'J3': 'GM scans scored as transactions; player scans kept in the game record; an answer to every GM command; the post-game report and the session validator. Outside the engine, the director pastes that report by hand into ALN\'s article writer, the Director Console.',
+    'J2': 'One game record on the engine; a full catch-up to each screen when it connects; live updates for scores, transactions and player scans; the TV and Pi 4 scoreboards.',
+    'J3': 'GM scans scored as transactions; player scans kept in the game record; an answer to every GM command; the post-game report and an after-game check that the night\'s records add up. Outside the engine, the director pastes that report by hand into ALN\'s article writer, the Director Console.',
     'J4': 'Video on the TV, music, sounds, lights, the Bluetooth speaker and audio routing; cues and timelines; the health dashboard; items held while a service is down.',
     'J5': 'Create, start, pause and end a game; Reset System; a game restored after an engine restart; the game clock.',
     'J6': 'The config tool; a store for drafting and publishing packs.',
     'J7': 'The GM password and its login token; a watch-only pass for the Pi 4 scoreboard; anonymous player scans.',
-    'J8': 'Venue profiles and "not installed tonight"; standalone modes on the GM tablet and the web player scanner; the blue and green machine method.',
-    'J9': 'Health words healthy, down and dormant (grey) for each service on the health panel; a first, minimal preflight.',
-    'J10': 'Unit, contract, integration and end-to-end tests; a CI run of the real engine and its programs, the test level above logic alone, started by hand or by a change to its own files (the standing test rig was lost with the old container; its recipe survives, and step 2 rebuilds it); CI on every pull request to main; coverage that may not fall.',
+    'J8': 'Venue profiles and "not installed tonight"; standalone modes on the GM tablet and the phone\'s scanner; the blue and green machine method: a new show machine is built beside the one in use and swapped in by replugging.',
+    'J9': 'Health words healthy, down and not installed tonight (grey) for each service on the health panel; a first, minimal preflight.',
+    'J10': 'Automated tests at four levels, from single pieces of code to the whole system in a browser; an automatic test run of the real engine and its programs, at the level of real programs with stand-in hardware, started by hand or by a change to its own files (the standing test rig was lost when the cloud computer it ran on was wiped; its recipe survives, and the rig is built again when the build half starts); an automatic test run on every proposed change before it joins the main code; and a rule that the share of code the tests reach may not fall.',
 }
+# The pieces already well built (plan v2 section 3.5 item 2), from the decision record: "Corrections to the
+# readers and the hardening pieces" and "Blue's fixes are evidence of design causes".
+WELL_BUILT = [
+    'The hardening block\'s merged pieces stay in the engine and change only where a design choice requires: the '
+    'equipment families, the core that marks equipment not installed tonight, and the smallest test set-up '
+    '([[dec:corrections-to-the-readers-and-the-hardening-pieces]]).',
+    'Blue, the show machine in use now, runs every show until the new engine is ready; its fixes and the problems '
+    'found in it are evidence of where today\'s design is weak, never the reason for a design '
+    '([[dec:blue-s-fixes-are-evidence-of-design-causes]]).',
+]
 
-# Where a flaw lives: a card's module paths, sorted into the parts of the engine.
+# Where a flaw lives: a card's module paths, sorted into the parts of the engine. Row F163: "Contracts" is
+# "Message lists".
 PARTS = [
     ('GM tablets', lambda p: p.startswith('ALNScanner/src') or p.startswith('ALNScanner/index') or p.startswith('ALNScanner/sw')),
     ('Scoreboards', lambda p: 'scoreboard' in p),
@@ -76,17 +99,40 @@ PARTS = [
     ('Pack, config tool', lambda p: p.startswith('config-tool') or p.startswith('ALN-TokenData') or 'packService' in p or 'pack' in p.split('/')[-1].lower()),
     ('Tests', lambda p: '/tests/' in p or p.startswith('tests/') or p.startswith('.github')),
     ('Deployment', lambda p: any(k in p for k in ('DEPLOYMENT_GUIDE', 'ecosystem.config', '.gitmodules', 'scripts/', 'setup.sh', 'CLAUDE.md', 'package.json'))),
-    ('Contracts', lambda p: 'contracts/' in p),
+    ('Message lists', lambda p: 'contracts/' in p),
 ]
 
 e = html.escape
 
 
-OUTSIDE_NINE = {'C14', 'C15', 'C16'}  # the analysis: no question of the nine covers these
-# A card's seenLive note is either a problem seen live or, where the card sets reproducedInTest,
-# one the review reproduced only by running the engine's code in a test (the cause analysis's "in-process").
+OUTSIDE_NINE = {'C14', 'C15', 'C16'}  # the review: no question of the nine covers these
+# A card's seenLive note is either a problem seen live or, where the card sets reproducedInTest, one the review
+# reproduced only by running the engine's code in a test.
 SEEN_LIVE, SEEN_TEST = 'Seen live', 'Reproduced in a test'
 NUM_WORD = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
+
+# The nine architecture pass questions by name (jargon wording 24 and the words box's revision 1; rows P21 to
+# P30 replace the numbers in each promise's test summary, and the cards' chips take the same names).
+PASS_QUESTIONS = {
+    1: 'who decides each fact',
+    2: 'whether a service\'s state travels with its health',
+    3: 'how the engine reads the programs it runs',
+    4: 'whether anything but the live engine can touch the live show',
+    5: 'whether one question gets one answer',
+    6: 'what each fact does between games',
+    7: 'whether each screen gets only what its role needs',
+    8: 'how copies update and whether a screen shows their age',
+    9: 'whether the catch-up after a reconnect matches the live message',
+}
+
+
+def pass_questions(nums):
+    """'the architecture pass question(s) on A, on B, and on C' (rows P21 to P30)."""
+    names = [PASS_QUESTIONS[int(n)] for n in nums]
+    if len(names) == 1:
+        return 'the architecture pass question on ' + names[0]
+    return ('the architecture pass questions on ' + ', on '.join(names[:-1]) + (',' if len(names) > 2 else '')
+            + ' and on ' + names[-1])
 
 
 def seen_label(card):
@@ -97,60 +143,98 @@ def seen_label(card):
 
 def chips(card):
     out = [f'<span class="chip">{card["findings"]} problems found</span>']
-    q = card.get('questions') or []
-    if card['id'] in OUTSIDE_NINE:
-        text = 'No architecture pass question covers it' + (f' (nearest: {q[0]})' if q else '')
-    elif len(q) == 1:
-        text = f'Architecture pass question {q[0]}'
-    else:
-        text = 'Architecture pass questions ' + ', '.join(map(str, q))
-    out.append(f'<span class="chip">{text}</span>')
-    if card.get('blueFixes'):
-        out.append(f'<span class="chip">Clue from blue: fix {e(", ".join(card["blueFixes"]))}</span>')
+    # Row F6: blue's fix codes become a count.
+    n = len(card.get('blueFixes') or [])
+    if n == 1:
+        out.append('<span class="chip">A fix on blue points here</span>')
+    elif n > 1:
+        out.append(f'<span class="chip">{NUM_WORD[n].capitalize()} fixes on blue point here</span>')
     if card.get('seenLive'):
         out.append(f'<span class="chip">{SEEN_TEST}</span>' if card.get('reproducedInTest')
                    else f'<span class="chip live">{SEEN_LIVE}</span>')
     return ''.join(out)
 
 
+def questions_line(card):
+    """The architecture pass questions a card touches, by name (rows P21 to P30's table; version 8 numbered them)."""
+    q = card.get('questions') or []
+    if card['id'] in OUTSIDE_NINE:
+        text = 'No architecture pass question covers it' + (f'; the nearest is the one on {PASS_QUESTIONS[int(q[0])]}' if q else '')
+    else:
+        text = 'Touches ' + pass_questions(q)
+    return f'<p class="qline">{e(text)}.</p>'
+
+
 INIT = '%%{init: {"flowchart": {"useMaxWidth": false}, "sequence": {"useMaxWidth": false}}}%%'
-
-
 SEQ_INIT = ('%%{init: {"sequence": {"useMaxWidth": true, "mirrorActors": false, "actorMargin": 22, "width": 112, '
             '"boxMargin": 6, "messageMargin": 26, "messageFontSize": 13, "noteFontSize": 12.5, "actorFontSize": 13}}}%%')
 
 
-def present(src):
+def present(src, keep_direction=False):
     """Draw flowcharts top-down at natural size; the card scrolls a wide one in its own box.
     Sequence diagrams are drawn compact, with no repeated row of participants at the bottom."""
     if src.strip().startswith('sequenceDiagram'):
         return SEQ_INIT + '\n' + src.strip()
     lines = src.strip().split('\n')
-    if lines[0].strip() == 'flowchart LR':
+    if lines[0].strip() == 'flowchart LR' and not keep_direction:
         lines[0] = 'flowchart TD'
     return INIT + '\n' + '\n'.join(lines)
 
 
+# The findings set aside (rows F158 to F162; "phase 2" is the build half, plan v2 section 2; the question and
+# the decision go by their titles).
 SET_ASIDE = [
-    ('Already fixed in today\'s code', 7, 'Report cells escaped; the health word "dormant" in both contracts and on the tablet; four items the review raised about the minimum test harness; a routing snapshot guard; two system settings the deployment guide asks for, now in the environment template (green\'s follow-ups).'),
-    ('Plain fixes for phase 2', 5, 'A name like "constructor" mistaken for a real service, station or token; the web scanner loading its QR library from the internet; a test helper that switches certificate checks off; standalone mode\'s red "Disconnected" pill.'),
-    ('Code-structure notes, no game symptom', 2, 'A second wrapper for running programs in the kiosk driver; the sound panel written inline instead of by its own renderer.'),
-    ('No fault', 2, 'Two equal snapshots sent on connect; planned config-tool functions not built yet.'),
-    ('A question for you', 1, 'A rejected or duplicate GM scan is recorded nowhere. It is [[q:19|question 19]] on Decisions.'),
-    ('Documents', 4, 'Plans, briefs and two CLAUDE.md files that disagree with the code. Decision 20: documents are fixed as we go.'),
+    ('Already fixed in today\'s code', 7, 'Odd characters in the after-game report\'s tables made safe; the health word for not installed tonight, in both written lists of messages and on the tablet; four items the review raised about the smallest test set-up; a guard on the audio routing in the catch-up; two machine settings the deployment guide asks for, now in the settings template (fixed in this work\'s first follow-ups on green).'),
+    ('Plain fixes for the build half', 5, 'A built-in programming word such as "constructor" mistaken for a real service, station or token; the phone\'s scanner loading its QR library from the internet; a test helper that switches off the check that a device is talking to the real engine; standalone mode\'s red "Disconnected" pill.'),
+    ('Code-structure notes, no game symptom', 2, 'A second piece of code for starting programs, inside the code that runs the TV\'s browser; the sound panel drawn by the admin page\'s own code instead of its own drawing code.'),
+    ('No fault', 2, 'Two identical catch-ups sent on connect; planned config-tool functions not built yet.'),
+    ('A question for you', 1, 'A rejected or duplicate GM scan is recorded nowhere. It is [[q:O]] on [[page:decisions]].'),
+    ('Documents', 4, 'Plans, briefs and two of the developers\' guide files that disagree with the code. Documents are fixed as we go ([[dec:no-rule-for-documents-fix-as-we-go]]).'),
 ]
 
 
-# Two cells of the parity table name an id the site never shows (candidate (d), finding SP-05); here they are
-# said in plain words. Row number -> {cell index: text}.
+# Cells of the parity table restated in plain words (rows F138 to F156; rows 12 and 14 keep version 8's entries
+# for the ids the site never shows). Row number -> {cell index: text}.
 PARITY_WORDS = {
-    '12': {3: 'Optional. One design for C9 takes the seen mark away from player devices instead.'},
-    '14': {3: 'Decide what a standalone record of player scans is before matching either side.'},
+    '1': {1: 'The web address it is opened from',
+          3: 'A declared standalone setting in the scanner\'s settings file that skips Wi-Fi, the check-in with the engine and the queue of saved scans'},
+    '2': {2: 'The settings check wants a Wi-Fi name, the engine\'s address and a 3-digit team id, but a failed check only writes a note; the device starts and scans from its memory card'},
+    '3': {1: 'Its own copy of the token list', 2: 'The token list on its memory card, written only when the engine sends it'},
+    '4': {1: 'The pack\'s own format', 2: 'A different format, the list one level deeper',
+          3: 'Read the pack\'s format, or convert it when loading the card'},
+    '6': {1: None,   # PARITY_PREFIX: the cell's start only
+          2: 'Kept only while switched on, taken from the engine\'s list of pictures and sounds, which today does not say which pack it is, and shown only by a command typed over a cable'},
+    '7': {1: 'Lowercase, keeping only letters, digits and underscores'},
+    '8': {1: '3-second pop-up with the id'},
+    '9': {1: 'The picture named in the token list', 2: 'A picture file named after the token'},
+    '10': {1: 'The page\'s offline helper shows a stand-in picture as if it were the memory', 2: 'The screen shows its own error'},
+    '11': {1: 'Plays the sound file the token names, in any format',
+           2: 'Plays a sound file named after the token if one exists, whatever the token says',
+           3: 'Read the sound the token names, and accept both sound formats'},
+    '12': {1: '"New Memory!" or "Memory Revisited", kept in the phone\'s browser for good',
+           3: 'Optional. One design for the situation "Tablets and phones decide facts the engine owns" takes the seen mark away from player devices instead.'},
+    '14': {2: 'One line in the queue on the memory card, at most 100, oldest dropped',
+           3: 'Decide what a standalone record of player scans is before matching either side.'},
+    '15': {2: 'A dummy date in 1970, because it never gets the time from the network'},
+    '16': {2: 'Queue and token list until cleared by a command typed over a cable, or sent to the engine'},
+    '18': {2: None},   # PARITY_PREFIX: the cell's start only
+    '19': {1: 'QR camera, NFC, typed entry, a link carrying the token',
+           2: 'NFC reader only; a test command typed over a cable in test mode'},
+    '17': {1: 'A fixed "Offline" label', 2: 'Red Wi-Fi and engine lines, queue count'},
+    '21': {1: 'The first load, from the website and a code library online', 3: 'Nothing; the hardware scanner is ahead here'},
+    '22': {3: 'Nothing; the hardware scanner is ahead here'},
+    '24': {1: 'The settings page tests and saves an engine address the page will not use',
+           2: 'Commands typed over a cable that set and save the same address'},
+}
+# Rows F142 and F153 quote only the start of a cell ("..."): the rest of the cell is kept and its start replaced.
+PARITY_PREFIX = {
+    ('6', 1): ('Reads ./data/pack-manifest.json, which is absent,', 'Reads the pack\'s file list, which is missing,'),
+    ('18', 2): ('A 30 s window on every boot with DEBUG_MODE off; with a WiFi name set, up to 10 s WiFi and up to about 61 s health retry;',
+                'A 30 s window at every start in normal show mode; with a Wi-Fi name set, up to 10 s for Wi-Fi and up to about 61 s retrying the check-in with the engine;'),
 }
 
 
 def parity_rows():
-    import re
     text = PASS.read_text()
     sec = text.split('## 4. The ESP32 parity gap')[1].split('\n## 5.')[0]
     rows = []
@@ -167,9 +251,16 @@ def parity_rows():
             c = c.replace('`', '').replace(' *', '').strip()
             clean.append(c)
         weak = cells[1].endswith('*') or cells[2].endswith('*')
-        for k, text in PARITY_WORDS.get(m.group(1), {}).items():
-            clean[k] = text
-        rows.append((m.group(1), clean, weak))
+        n = m.group(1)
+        for k, words in PARITY_WORDS.get(n, {}).items():
+            if (n, k) in PARITY_PREFIX:
+                old, new = PARITY_PREFIX[(n, k)]
+                if not clean[k].startswith(old):
+                    raise SystemExit(f'parity row {n}, cell {k}: the start "{old}" changed in the standalone review')
+                clean[k] = new + clean[k][len(old):]
+            else:
+                clean[k] = words
+        rows.append((n, clean, weak))
     return rows
 
 
@@ -198,13 +289,13 @@ def part_layers(shape):
     return [[i for i in ids if level[i] == n] for n in range(top, 0, -1)]
 
 
-# Which piece of shared work each part takes over (the shape's mechanisms, in their order; the eleventh,
-# who decides when there is no engine, is a quality, not a part). Used for each part's "Today" line.
+# Which piece of shared work each part takes over (the shape's mechanisms, in their order; the eleventh, who
+# decides when there is no engine, is a quality, not a part). Used for each part's "Today" line.
 MECH_PART = ['P1', 'P6', 'P7', 'P11', 'P8', 'P10', 'P4', 'P13', 'P2', 'P16', None]
-# Which promises each quality mainly keeps (the shape's qualities, in their order).
+# Which promises each of the earlier candidate's qualities mainly keeps (the shape's qualities, in their order).
 QUALITY_KEEPS = [['J9'], ['J10'], ['J1', 'J8'], ['J8'], ['J7']]
-KEEPS = {}   # part id -> the promises it mainly keeps, from each promise's parts; filled by build()
-TODAY = {}   # part id -> how its work is done today, from the shared work it takes over; filled by build()
+KEEPS = {}   # part id -> the promises it mainly keeps, from each promise's parts; filled by load()
+TODAY = {}   # part id -> how its work is done today, from the shared work it takes over; filled by load()
 
 
 def today_of(plain):
@@ -217,16 +308,20 @@ def today_of(plain):
     return rest
 
 
-# The plain summary of the relationship map (the shape's section 2.1 and the end of its section 1).
+# The plain summary of how the earlier candidate fits together (the shape's section 2.1 and the end of its
+# section 1). Version 8 showed the first three on the front page and the fourth over the promises' glance table;
+# version 9 keeps all four with the earlier candidate. Wordings 8 and 9 (the designer's changes to the game
+# between shows; the developer's tests), 10 (each running copy's own files, network ports and settings), 15 (a
+# separate trial copy) and 66 (the engine for "backend") applied.
 FIT_SUMMARY = [
     ('What happens at every tap.', 'In a networked game, four promises meet at every tap. The designer\'s pack sets the rules. The game\'s record, the same on every screen, is what the tap is judged against. The answer comes back to the GM or the player, and an accepted tap joins the record. The roles say who tapped and who may see the result.'),
-    ('The engine\'s own machinery.', 'The equipment reports what it is doing. The verdict turns that, and the venue technician\'s profile, into go, no-go or "not installed tonight". The life of a game says when to check again and what to reset, which feeds back into the equipment. The profile feeds this loop from outside. In today\'s code the loop is also a chain of seven backend modules that depend on each other in a circle, with the game\'s record caught inside it.'),
-    ('Two promises reach the show from outside.', 'The designer\'s week and the developer\'s proof reach a live show only through the pack and through each engine having its own names, so a test or a preview never touches the live show.'),
+    ('The engine\'s own machinery.', 'The equipment reports what it is doing. The verdict turns that, and the venue technician\'s profile, into go, no-go or "not installed tonight". The life of a game says when to check again and what to reset, which feeds back into the equipment. The profile feeds this loop from outside. In today\'s code the loop is also a chain of seven modules of the engine that depend on each other in a circle, with the game\'s record caught inside it.'),
+    ('Two promises reach the show from outside.', 'The designer\'s changes to the game between shows and the developer\'s tests reach a live show only through the pack and through each running copy of the engine keeping its own files, network ports and settings, so a test or a separate trial copy of the engine never touches the live show.'),
     ('How each promise is kept.', 'Most promises are kept by one or two parts of their own. Two are kept mainly by a quality every part must have, with a few parts of their own: [[promise:J9|reading a screen without a second question]] by a label on every fact (how sure, how old), and [[promise:J10|proving a change before it reaches anyone]] by tests every part passes. [[promise:J5|The lifecycle buttons]] rest on a table of moments (setup, start, pause, end, reset, restart, the next game) that most other promises read.'),
 ]
 
-# The relationship map at a glance, drawn from the shape's section 2.1: the spine, the ring,
-# and the two jobs that reach the show from outside. The full diagram (25 dependencies) follows it.
+# The relationship of the promises at a glance, drawn from the shape's section 2.1. Row P7: the arrow from the
+# developer's promise reads "each engine copy's own files and settings".
 OVERVIEW = """flowchart TD
   J1["@J1@"]
   J2["@J2@"]
@@ -251,7 +346,7 @@ OVERVIEW = """flowchart TD
   J5 -->|"what the record keeps or clears"| J2
   J9 -.->|"a label on every fact"| J2
   J6 -->|"a published pack"| J1
-  J10 -->|"each engine's own names"| J8
+  J10 -->|"each engine copy's own files and settings"| J8
   classDef tap stroke:#0f766e,stroke-width:3px;
   classDef machine stroke:#b45309,stroke-width:3px;
   classDef outside stroke:#6b7280,stroke-width:2px,stroke-dasharray:5 4;
@@ -260,14 +355,15 @@ OVERVIEW = """flowchart TD
   class J6,J10 outside;
 """
 
-# Which parts run where (the shape's section 4.3), one line per device.
+# Which parts would run where (the shape's section 4.3), one line per device. Rows A57 to A61 applied, with "the
+# design rounds" for step 3.
 FIT_DEVICES = [
     ('The engine', 'would decide every fact of a networked game, serve the pack, admit every connection, answer every request through one door and send every fact to the screens through one route.'),
-    ('A GM tablet in a networked game', 'would draw what it is sent, with each fact\'s label, and send requests in one envelope. It would keep no list of its own and decide nothing before the engine answers. Today it decides before the engine answers.'),
-    ('A GM tablet in a standalone game', 'would be the same app with the switch set. In the candidate it runs the same record, lifecycle, answering and delivery parts the engine runs, with small stand-ins that report every engine duty (video, music, lights) as not installed tonight. The other way is an engine of its own, kept equal by tests.'),
-    ('The phone and the ESP32', 'would draw, send scans in one envelope, and read the reply words and the few rules they need as data made from the one source. They would stay equal by sharing that data.'),
-    ('The scoreboards', 'would be one page in two places, the TV and the Pi 4, drawing what they are sent and deciding nothing. Today the page decides which modes count as evidence. One page or a view inside the GM app is an open choice for step 3.'),
-    ('The config tool', 'would hold the design studio and the venue technician\'s profile editor, and talk to the running engine only by message. Today it writes the engine\'s files. A separate program or a surface the engine serves is an open choice for step 3.'),
+    ('A GM tablet in a networked game', 'would draw what it is sent, with each fact\'s label, and send requests in one shared format. It would keep no list of its own and decide nothing before the engine answers. Today it decides before the engine answers.'),
+    ('A GM tablet in a standalone game', 'would be the same app with its standalone setting on. In the candidate it runs the same record, lifecycle, answering and delivery parts the engine runs, with small stand-ins that report every service the engine runs (video, music, lights) as not installed tonight. The other way is an engine of its own, kept equal by tests.'),
+    ('The phone and the hardware scanner', 'would draw, send scans in one shared format, and read the reply words and the few rules they need as data made from the one source. They would stay equal by sharing that data.'),
+    ('The scoreboards', 'would be one page in two places, the TV and the Pi 4, drawing what they are sent and deciding nothing. Today the page decides which modes count as evidence. One page or a view inside the GM app is an open choice for the design rounds.'),
+    ('The config tool', 'would hold the design studio and the venue technician\'s profile editor, and talk to the running engine only by sending it requests. Today it writes the engine\'s files. A separate program or pages the engine itself serves is an open choice for the design rounds.'),
     ('The tests', 'would run on an engine of their own, with stand-ins for the equipment, and never touch the live one. Today they use the live display and audio.'),
 ]
 
@@ -277,9 +373,8 @@ def wrap_label(text, per_line=4):
     return '<br/>'.join(' '.join(words[i:i + per_line]) for i in range(0, len(words), per_line))
 
 
-# The candidate engine drawn whole (the shape's sections 4.1 to 4.3): devices and tools on top, the two
-# doors, the game's facts, the life of a game and the room behind them, the foundations below. Arrows show
-# what passes at a show; the walkthroughs below follow single moments. Hand-drawn SVG on a 1000 x 800 grid.
+# The earlier candidate drawn whole (the shape's sections 4.1 to 4.3). Hand-drawn SVG on a 1000 x 800 grid.
+# Rows I12 to I16 applied to the labels.
 def shape_svg():
     out = []
 
@@ -325,8 +420,8 @@ def shape_svg():
     for x, label in ((44, 'GM tablets'), (218, 'Phones and scanners'), (392, 'TV and Pi 4')):
         out.append(f'<rect x="{x}" y="78" width="164" height="32" rx="5" fill="none" stroke="currentColor" stroke-opacity=".45"/>')
         text(x + 82, 99, label, size=12.5, anchor='middle')
-    text(44, 124, 'tablets and scanners also keep a stamped copy of the pack and the game rules', size=11, op='.75')
-    box(580, 50, 128, 80, 'Design studio', ('the config tool,', 'talks by message'))
+    text(44, 124, 'tablets and scanners also keep a copy of the pack, marked with its version, and the game rules', size=11, op='.75')
+    box(580, 50, 128, 80, 'Design studio', ('the config tool,', 'sends requests only'))
     box(716, 50, 116, 80, 'Release', ('what each', 'machine carries'))
     box(840, 50, 136, 80, 'Joins and proofs', ('the tests, on an', 'engine of their own'), name_size=13)
     # the doors
@@ -351,13 +446,13 @@ def shape_svg():
     box(36, 390, 250, 60, 'Game record', ('decides teams, claims,', 'scores and the phase'))
     box(36, 500, 250, 60, "The night's record", ('written at the end of a game',))
     box(376, 390, 250, 60, 'Lifecycle', ('moves the game,', 'resets every part'))
-    box(436, 500, 190, 60, 'Verdict', ("the needs against tonight's kit:", 'go, no-go or not tonight'))
+    box(436, 496, 190, 68, 'Verdict', ('what the game needs vs', "tonight's kit: go, no-go", 'or not installed'))
     box(716, 390, 250, 60, 'Show runner', ('cues, clock, video queue,', 'held items'))
     box(716, 500, 250, 60, 'Equipment', ('video, music, sound,', 'lights, displays'))
     box(716, 585, 250, 50, 'Outside programs', ('VLC, the music player, lights',), dashed=True, name_size=12.5)
     arrow([(376, 420), (286, 420)], 'keeps, clears', (331, 412), anchor='middle')
     arrow([(626, 420), (716, 420)], 'resets', (671, 412), anchor='middle')
-    arrow([(520, 450), (520, 500)], 'asks', (528, 480), both=True)
+    arrow([(520, 450), (520, 496)], 'asks', (528, 478), both=True)
     arrow([(841, 450), (841, 500)], 'drives', (849, 480))
     arrow([(716, 515), (650, 515), (650, 440), (626, 440)], 'what runs', (656, 480))
     arrow([(161, 450), (161, 500)], "the night's facts", (169, 480))
@@ -367,8 +462,8 @@ def shape_svg():
     band(20, 700, 960, 92, 'Foundations: the parts above build on these', right=True)
     box(36, 728, 170, 52, 'Game rules', ("the pack's rules,", 'one copy everywhere'))
     box(330, 728, 170, 52, 'Venue fit', ("tonight's kit and", 'its bindings'))
-    box(540, 728, 170, 52, 'Engine instance', ('its own names',))
-    box(740, 728, 180, 52, 'Pack channel', ('one pack, stamped,', 'on every copy'))
+    box(540, 728, 170, 52, 'Engine instance', ('its own files, ports', 'and settings'))
+    box(740, 728, 180, 52, 'Pack channel', ('one pack, its version', 'marked on every copy'))
     arrow([(121, 728), (121, 650)], 'the rules, from the pack in use', (129, 690))
     arrow([(400, 728), (400, 450)], "tonight's profile", (392, 640), anchor='end')
     arrow([(920, 754), (990, 754), (990, 241), (980, 241)], 'the pack version', (982, 676), anchor='end')
@@ -377,13 +472,14 @@ def shape_svg():
             '<marker id="shp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>'
             '<marker id="shpA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent)"/></marker>'
             '</defs>')
-    label = ('The candidate engine as a whole: devices and tools on top; Answering, the one door in, and Delivery, the one door out; '
-             "behind them the game's facts, the life of a game and the room; the foundations below.")
+    label = ('The earlier candidate as a whole: devices and tools on top; Answering, the one door in, and Delivery, the '
+             "one door out; behind them the game's facts, the life of a game and the room; the foundations below.")
     return (f'<svg class="shape-svg" viewBox="0 0 1000 800" role="img" aria-label="{e(label)}" '
             f'font-family="IBM Plex Sans, system-ui, sans-serif">{defs}{"".join(out)}</svg>')
 
 
-# Five moments followed through the parts, each with the promises it keeps (titles by promise id).
+# Five moments followed through the parts, each with the promises it keeps. Rows A12 to A14 applied; A10 and A11
+# keep the drawing tool's "alt", which MOMENTS_KEY explains (row A9).
 WALKS = [
     ('A GM taps a token', ['J3', 'J2', 'J7'], """sequenceDiagram
   participant T as GM tablet
@@ -458,10 +554,10 @@ WALKS = [
   F-->>L: what the kit brought tonight
   L->>E: what is running?
   E-->>L: what runs, dated
-  L->>X: the needs, the profile, what runs
-  X-->>L: go, two lights grey: not tonight
+  L->>X: what the game needs, the profile, what runs
+  X-->>L: go, two lights grey: not installed tonight
   L-->>A: go
-  A-->>V: go, checked live, two lights not tonight"""),
+  A-->>V: go, checked live, two lights not installed tonight"""),
     ('The designer publishes a change', ['J6', 'J1'], """sequenceDiagram
   participant G as Design studio
   participant A as Answering
@@ -489,7 +585,7 @@ WALKS = [
 
 # Version 7's stylesheet (build_report.py TEMPLATE), braces undoubled; stylesheet() adapts it.
 V7_CSS = '''
-/* Layout: one reading column; the engine's promises lead, each holding the design flaws that break it; evidence and questions at the end. */
+/* Layout: one reading column. */
 :root {
   --bg: #f4f6f5; --surface: #ffffff; --fg: #17201e; --muted: #5b6965; --line: #d5dddb;
   --accent: #0f766e; --fault: #c2261f; --chip: #e7eeec; --chip-live: #fbe9e7;
@@ -517,32 +613,25 @@ a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outli
 .muted { color: var(--muted); }
 .lead { font-size: 18px; max-width: 68ch; }
 header.top { display: grid; gap: 14px; }
-.decide { border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--surface); border-radius: 6px; padding: 18px 20px; display: grid; gap: 10px; }
-.decide p { max-width: 72ch; }
-.decided-note { font-size: 15px; max-width: 78ch; color: var(--muted); border-left: 3px solid var(--line); padding-left: 12px; }
-.howto { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
-.howto > div { display: grid; gap: 8px; align-content: start; }
 .legend { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: 14px; }
 .sw { display: inline-block; width: 22px; height: 14px; border-radius: 3px; border: 3px solid var(--fault); vertical-align: -2px; margin-right: 6px; }
 .sw.owner { border-color: var(--accent); }
 dl.terms { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 15px; }
 dl.terms dt { font-weight: 600; }
 dl.terms dd { margin: 0; color: var(--muted); }
-.toc { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
 .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 .grid th, .grid td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: middle; }
 .grid thead th { white-space: normal; vertical-align: bottom; min-width: 64px; }
 .grid tbody th { font-weight: 400; min-width: 220px; }
-.grid tbody th a { font-family: var(--font-mono); font-weight: 500; text-decoration: none; margin-right: 4px; }
+.grid tbody th a { text-decoration: none; }
 .grid td.dot { color: var(--accent); text-align: center; font-size: 15px; }
 .family { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
 .intro { max-width: 72ch; color: var(--muted); font-size: 17px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; scroll-margin-top: 16px; }
 .wrap > *, .family > *, .card > * { min-width: 0; }
-.card-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: baseline; }
-.cid { font-family: var(--font-mono); font-weight: 500; font-size: 15px; color: var(--accent); }
-.chips { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; }
+.card-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { font-family: var(--font-label); font-size: 13px; background: var(--chip); border-radius: 999px; padding: 2px 10px; }
 .chip.live { background: var(--chip-live); color: var(--fault); }
 .story { display: grid; gap: 10px; max-width: 76ch; }
@@ -565,7 +654,6 @@ pre.mermaid { margin: 0; background: transparent; font-size: 13px; text-align: c
 details summary { cursor: pointer; font-size: 15px; color: var(--accent); }
 details[open] summary { margin-bottom: 10px; }
 .examples { margin: 0 0 12px; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; }
-.ids { font-family: var(--font-mono); font-size: 13px; color: var(--muted); margin-right: 4px; }
 .mods { display: flex; flex-wrap: wrap; gap: 6px; }
 .mods code { font-family: var(--font-mono); font-size: 12.5px; background: var(--chip); border-radius: 4px; padding: 2px 6px; overflow-wrap: anywhere; }
 .aside th, .aside td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
@@ -580,49 +668,36 @@ footer code { font-family: var(--font-mono); font-size: 13px; }
 .job { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; padding-top: 8px; border-top: 2px solid var(--line); scroll-margin-top: 16px; }
 .job > * { min-width: 0; }
 .job-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
-.job-head .kind { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--accent); }
-.jid { font-family: var(--font-mono); font-weight: 500; font-size: 17px; color: var(--accent); }
 .job-head .meaning { font-size: 17px; max-width: 74ch; }
-.chip.role { background: transparent; border: 1px solid var(--line); }
 .job-facts { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
 .job-facts > div { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
 .open { color: var(--fault); font-weight: 600; }
 .short { display: grid; gap: 8px; }
 .short ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 .short li { max-width: 80ch; }
-.fid { font-family: var(--font-mono); font-weight: 500; margin-right: 6px; }
 .secondary { color: var(--muted); }
 .glance td, .glance th { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
 .glance tbody th { font-weight: 500; min-width: 15em; }
 .glance a { text-decoration: none; }
 .qgroup { display: grid; gap: 14px; }
-.qgroup > h3 { font-size: 17px; color: var(--muted); font-weight: 600; }
 .q h3 { color: var(--fg); }
-.q .applied { font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }
-.q .changedrec { font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fault); }
-.changed { font-size: 15px; max-width: 80ch; background: var(--chip); border-radius: 6px; padding: 10px 14px; }
-.changed .tag { display: block; margin-bottom: 2px; color: var(--accent); }
 .partrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
 .partrow .tag { margin-right: 4px; }
 a.chip.part { text-decoration: none; color: var(--fg); border: 1px solid var(--accent); background: transparent; }
 a.chip.part:hover { background: var(--chip); }
-.job-head .was { font-size: 14px; color: var(--muted); }
 .job-head dl.who { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0; font-size: 15px; max-width: 80ch; }
 dl.who dt { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--muted); padding-top: 3px; }
 dl.who dd { margin: 0; }
-.fit { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; border-top: 2px solid var(--line); padding-top: 8px; }
-.fit > * { min-width: 0; }
 .fit-summary { display: grid; gap: 10px; max-width: 78ch; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 16px 20px; }
 .fit-block { display: grid; gap: 10px; min-width: 0; }
-.fit-block > *, .fit details { min-width: 0; }
+.fit-block > *, .fit-block details { min-width: 0; }
 .fit-block > p { max-width: 76ch; }
 .mech th, .mech td, .alts th, .alts td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
 .mech thead th, .alts thead th { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; color: var(--muted); }
 .mech tbody th { font-weight: 600; min-width: 10em; }
 .alts tbody th { font-weight: 600; min-width: 11em; }
 .alts td { min-width: 14em; }
-.idcell { font-family: var(--font-mono); font-size: 13px; min-width: 8em; }
-.idcell a, .pmeta a { text-decoration: none; margin-right: 2px; }
+.pmeta a { text-decoration: none; margin-right: 2px; }
 .layers-fig { margin: 0; display: grid; gap: 8px; }
 ol.layers { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 ol.layers li { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
@@ -650,36 +725,45 @@ figure.dia.walk pre.mermaid svg { min-width: 720px; }
 '''
 
 # ---------------------------------------------------------------------------------------------------
-# The site: pages, anchors, links and markers (plan sections 1, 2 and 4).
+# The site: pages, anchors, links and markers (plan v2 sections 1 and 2; plan v1 section 4).
 # ---------------------------------------------------------------------------------------------------
 PAGES = [  # key, file, name in the navigation and in [[page:]] markers
     ('engine', 'index.html', 'The engine'),
     ('decisions', 'decisions.html', 'Decisions'),
-    ('promises', 'promises.html', 'Promises'),
-    ('parts', 'parts.html', 'Parts'),
-    ('flaws', 'flaws.html', 'Design flaws'),
+    ('requirements', 'requirements.html', 'Requirements'),
+    ('design', 'design.html', 'Design'),
+    ('today', 'today.html', 'Today\'s engine'),
     ('changes', 'changes.html', 'Change log'),
 ]
 FILE = {k: f for k, f, _ in PAGES}
 PAGE_NAME = {k: n for k, _, n in PAGES}
+RETIRED_MARKER_PAGES = ('promises', 'parts', 'flaws')
 SITE_NAME = 'What the Engine Promises'
-UPDATED = '2026-11-01'
-STATUS_LINE = ('Architecture pass, phase 1, step 1. The shape is a candidate; nothing is decided unless a page '
+STATUS_LINE = ('Architecture pass, design half: the requirements. Nothing in the design is decided unless a page '
                'says so. Updated 2026-11-01.')
 
 PROMISE_ANCHOR = {'J1': 'designers-game', 'J2': 'one-game', 'J3': 'every-tap', 'J4': 'the-room',
                   'J5': 'lifecycle-buttons', 'J6': 'change-a-value', 'J7': 'each-person', 'J8': 'the-venue',
                   'J9': 'read-a-screen', 'J10': 'proven-change'}
-N1_TITLE = 'Nothing declares a game standalone'   # question C's words for the proposed flaw (it has no card)
+N1_TITLE = 'Nothing declares a game standalone'   # the question's words for the proposed flaw (it has no card)
 
 CUR = None          # the page being rendered; links within it are bare #anchors
-TITLES = {}         # promise id -> its title; ids never reach a page (decision 27)
+TITLES = {}         # promise id -> its title; ids never reach a page
+TITLE_TO_PROMISE = {}
 FLAW_TITLES = {}    # flaw id -> its title
-QUESTIONS = {}      # question key -> its anchor
+QUESTIONS = {}      # question letter -> its anchor
+QT = {}             # quality target id -> the target
+EX = {}             # extension case id -> the case
+DEC = {}            # decision slug -> its decided entry
+
+
+def slug(text):
+    """The title in lower case, every run of non-letters one hyphen, trimmed (plan v2, markers)."""
+    return re.sub(r'[^a-z]+', '-', text.lower()).strip('-')
 
 
 def part_anchor(name):
-    """The part's name in lowercase, apostrophes dropped, other non-letters as hyphens (plan section 2)."""
+    """The part slugs of plan v1: the name in lowercase, apostrophes dropped, other non-letters as hyphens."""
     s = name.lower().replace("'", '').replace('’', '')
     return re.sub(r'[^a-z]+', '-', s).strip('-')
 
@@ -697,7 +781,7 @@ def promise_a(jid, text=None, quotes=False, cls=''):
     if quotes and text is None:
         t = f'“{t}”'
     c = f' class="{cls}"' if cls else ''
-    return f'<a{c} href="{href("promises", PROMISE_ANCHOR[jid])}">{t}</a>'
+    return f'<a{c} href="{href("requirements", PROMISE_ANCHOR[jid])}">{t}</a>'
 
 
 def promise_link(jid):
@@ -713,38 +797,34 @@ def part_a(pid, text=None, chip=False):
     if pid not in NAMES:
         raise SystemExit(f'unknown part {pid}')
     c = ' class="chip part"' if chip else ''
-    return f'<a{c} href="{href("parts", part_anchor(NAMES[pid]))}">{e(text if text is not None else NAMES[pid])}</a>'
+    return f'<a{c} href="{href("design", part_anchor(NAMES[pid]))}">{e(text if text is not None else NAMES[pid])}</a>'
 
 
-def part_link(pid, names=None):
+def part_link(pid):
     return part_a(pid, chip=True)
 
 
-def part_row(pids, names, label):
+def part_row(pids, label):
     if not pids:
         return ''
     return f'<div class="partrow"><span class="tag">{e(label)}</span>{"".join(part_link(p) for p in pids)}</div>'
 
 
 def flaw_a(fid, text=None, cls=''):
+    """A flaw by its title alone, linked to its situation on Today's engine (plan v2: flaws go by title)."""
     if fid not in FLAW_TITLES:
         raise SystemExit(f'unknown design flaw {fid}')
     c = f' class="{cls}"' if cls else ''
-    # A short form (the id, or a few words) carries the flaw's title on hover and for screen readers.
     t = f' title="{e(FLAW_TITLES[fid])}"' if text is not None and text != FLAW_TITLES[fid] else ''
-    return f'<a{c}{t} href="{href("flaws", fid.lower())}">{e(text if text is not None else FLAW_TITLES[fid])}</a>'
+    return f'<a{c}{t} href="{href("today", fid.lower())}">{e(text if text is not None else FLAW_TITLES[fid])}</a>'
 
 
-def flaw_links(ids):
-    """Flaw ids as links to their cards; the proposed N1 links to its short entry."""
-    return ' '.join(flaw_a(i, i) for i in ids)
+def flaw_list(ids):
+    return '; '.join(flaw_a(i) for i in ids)
 
 
 def q_text(key, capital):
-    word = 'Question' if capital else 'question'
-    if key == 'promises':
-        return ('The' if capital else 'the') + ' promises question'
-    return f'{word} {key}'
+    return f'{"Question" if capital else "question"} {key}'
 
 
 def q_a(key, capital=False, text=None):
@@ -753,9 +833,29 @@ def q_a(key, capital=False, text=None):
     return f'<a href="{href("decisions", QUESTIONS[key])}">{e(text if text is not None else q_text(key, capital))}</a>'
 
 
+def qt_a(qid, text=None):
+    if qid not in QT:
+        raise SystemExit(f'unknown quality target {qid}')
+    return f'<a href="{href("requirements", qid.lower())}">{e(text if text is not None else QT[qid]["title"])}</a>'
+
+
+def ex_a(xid, text=None):
+    if xid not in EX:
+        raise SystemExit(f'unknown extension case {xid}')
+    return f'<a href="{href("requirements", xid.lower())}">{e(text if text is not None else EX[xid]["title"])}</a>'
+
+
+def dec_a(s, text=None):
+    if s not in DEC:
+        raise SystemExit(f'unknown decision [[dec:{s}]]')
+    return f'<a href="{href("decisions", "dec-" + s)}">{e(text if text is not None else DEC[s]["title"])}</a>'
+
+
 def page_a(name, text=None):
     """A page by its name; "page#anchor" lands on that id of the page (the check finds every id)."""
     name, _, anchor = name.partition('#')
+    if name in RETIRED_MARKER_PAGES:
+        raise SystemExit(f'retired marker [[page:{name}]]: the {name} page is gone in version 9')
     if name not in FILE:
         raise SystemExit(f'unknown page {name}')
     return f'<a href="{href(name, anchor or None)}">{e(text if text is not None else PAGE_NAME[name])}</a>'
@@ -765,7 +865,7 @@ MARKER = re.compile(r'\[\[([a-z]+):([^\]|]+)(?:\|([^\]]*))?\]\]')
 
 
 def rich(text):
-    """Plain overlay text to HTML: escape the text around each [[marker]] and resolve the marker (plan 4)."""
+    """Plain overlay text to HTML: escape the text around each [[marker]] and resolve the marker."""
     out, pos = [], 0
     for m in MARKER.finditer(text):
         out.append(e(text[pos:m.start()]))
@@ -782,6 +882,12 @@ def rich(text):
             out.append(q_a(key, capital, label))
         elif kind == 'page':
             out.append(page_a(key, label))
+        elif kind == 'qt':
+            out.append(qt_a(key, label))
+        elif kind == 'ex':
+            out.append(ex_a(key, label))
+        elif kind == 'dec':
+            out.append(dec_a(key, label))
         else:
             raise SystemExit(f'unknown marker kind in [[{kind}:{key}]]: {text[:80]}')
         pos = m.end()
@@ -801,8 +907,12 @@ def paras(items, cls=''):
     return ''.join(f'<p{c}>{rich(x)}</p>' for x in items)
 
 
+def cap1(s):
+    return s[:1].upper() + s[1:]
+
+
 # ---------------------------------------------------------------------------------------------------
-# Diagrams: collected while the pages render, drawn in one call, themed, then placed (plan 5.1).
+# Diagrams: collected while the pages render, drawn in one call, themed, then placed (plan v1 5.1).
 # ---------------------------------------------------------------------------------------------------
 DIAGRAMS = []   # (key, source after present(), caption)
 
@@ -838,115 +948,20 @@ def draw_all():
 
 
 # ---------------------------------------------------------------------------------------------------
-# Version 7's renderers, adapted for the site.
+# Texts version 8 wrote in its builder, in the plain wordings (each change names its jargon row).
 # ---------------------------------------------------------------------------------------------------
-def card_html(c, level=4):
-    """A flaw card (version 7's card_html), without its "what changed" note, which moved to the change log."""
-    ex = ''.join(f'<li><span class="ids">{e(x["ids"])}</span> {e(x["text"])}</li>' for x in c['examples'])
-    mods = ''.join(f'<code>{e(m)}</code>' for m in c['modules'])
-    live = f'<p class="live-note"><span class="tag">{seen_label(c)}</span> {e(c["seenLive"])}</p>' if c.get('seenLive') else ''
-    sa = c.get('inStandalone', '')
-    sa_html = f'<p class="standalone"><span class="tag">In a standalone game</span> {rich(sa)}</p>' if sa else ''
-    return f'''
-<article class="card" id="{c["id"].lower()}">
-  <header class="card-head">
-    <span class="cid">{e(c["id"])}</span>
-    <h{level}>{e(c["title"])}</h{level}>
-    <div class="chips">{chips(c)}</div>
-  </header>
-  <div class="story">
-    <p><span class="tag">At a show</span> {e(c["atAShow"])}</p>
-    <p><span class="tag">Why it happens</span> {e(c["whyItHappens"])}</p>
-    {live}
-    {sa_html}
-  </div>
-  <div class="diagrams">
-    <figure class="dia before">
-      <figcaption>{e(c["before"]["caption"])}</figcaption>
-      <div class="scroll">{diagram(present(c["before"]["mermaid"]), c["before"]["caption"])}</div>
-    </figure>
-    <figure class="dia after">
-      <figcaption>{e(c["after"]["caption"])}</figcaption>
-      <div class="scroll">{diagram(present(c["after"]["mermaid"]), c["after"]["caption"])}</div>
-      <p class="after-note">{e(c["after"]["note"])}</p>
-    </figure>
-  </div>
-  {part_row(c.get("parts", []), NAMES, "Removed by these parts of the candidate shape")}
-  <p class="design"><span class="tag">In design terms</span> {e(c["designTerms"])}</p>
-  <details>
-    <summary>The problems behind it, and the code they live in</summary>
-    <ul class="examples">{ex}</ul>
-    <div class="mods">{mods}</div>
-  </details>
-</article>'''
-
-
-def grid_html(cards):
-    head = ''.join(f'<th scope="col"><span>{e(name)}</span></th>' for name, _ in PARTS)
-    rows = []
-    for c in cards:
-        cells = []
-        for _, match in PARTS:
-            hit = any(match(m) for m in c['modules'])
-            cells.append('<td class="dot" aria-label="yes">●</td>' if hit else '<td></td>')
-        rows.append(f'<tr><th scope="row">{flaw_a(c["id"], c["id"])} {e(c["title"])}</th>{"".join(cells)}</tr>')
-    return f'<div class="tablewrap"><table class="grid"><thead><tr><th scope="col">Design flaw</th>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
-
-
-def parity_html():
-    body = ''.join(
-        f'<tr{" class=both-weak" if weak else ""}><td class="num">{n}</td><th scope="row">{e(c[0])}</th><td>{e(c[1])}</td><td>{e(c[2])}</td><td>{e(c[3])}</td></tr>'
-        for n, c, weak in parity_rows())
-    return ('<div class="tablewrap"><table class="parity"><thead><tr><th>#</th><th>Behaviour</th>'
-            '<th>Web scanner, standalone</th><th>ESP32, no engine</th><th>What the ESP32 would need (candidate)</th>'
-            f'</tr></thead><tbody>{body}</tbody></table></div>')
-
-
-def overview_src(jobs):
-    """The at-a-glance diagram with each node labelled by its promise's title, as the headings show it."""
-    src = OVERVIEW
-    for j in jobs:
-        src = src.replace(f'@{j["id"]}@', wrap_label(TITLES[j["id"]]))
-    assert '@' not in src, 'a promise in the overview has no title'
-    return src
-
-
-def relations_src(shape):
-    """The full diagram of links between promises, each node labelled by its promise's title alone."""
-    return re.sub(r'^(\s*)(J\d+)\["[^"]*"\]', lambda m: f'{m.group(1)}{m.group(2)}["{wrap_label(TITLES[m.group(2)])}"]', shape['relationsMermaid'], flags=re.M)
-
-
-def part_html(p):
-    """A part card (version 7's part_html); links now cross to the promises and design-flaw pages."""
-    also = [j for j in p.get('jobs', []) if j not in KEEPS.get(p['id'], [])]
-    runs = ', '.join(RUNS_ON.get(r, r) for r in p['runsOn'] if r != 'gm-tablet-standin')
-    if 'gm-tablet-standin' in p['runsOn']:
-        runs += '; in a standalone game, a small stand-in on the GM tablet'
-    return f'''<article class="part" id="{part_anchor(p["name"])}">
-  <h3>{e(p["name"])}</h3>
-  <p>{e(p["plain"])}</p>
-  <p class="pmeta"><span class="tag">Mainly keeps</span> {promise_links(KEEPS.get(p["id"], []))}</p>
-  {f'<p class="pmeta muted"><span class="tag">Also needed by</span> {promise_links(also)}</p>' if also else ''}
-  {f'<p class="pmeta"><span class="tag">Today</span> {e(TODAY[p["id"]])}</p>' if p["id"] in TODAY else ''}
-  <p class="pmeta"><span class="tag">Removes</span> {flaw_links(p["flaws"])}</p>
-  <p class="pmeta"><span class="tag">Runs on</span> {e(runs)}</p>
-  <p class="pmeta muted"><span class="tag">Where it can be swapped</span> {e(p["seams"])}</p>
-</article>'''
-
-
-# Texts version 7 wrote inline in its template and fit_html, copied here (the inventory's notes for the
-# builder, note 1). Where a text pointed "below" on the one page, it now names the page it points to.
 OVERVIEW_KEY = ('<span class="key tap"></span>what happens at every tap <span class="key machine"></span>the engine\'s own '
                 'machinery <span class="key outside"></span>from outside the show. Each arrow runs from a promise to one '
                 'that cannot be kept without it, and says what passes. The dotted line is a label every fact carries, '
                 'not a dependency.')
 RELATIONS_NOTE = ('{n} are dependencies: without them, the promise at the arrow\'s end cannot be kept at a show. One is a '
-                  'quality and one is shared work; they are drawn dotted.')
+                  'quality and one is work two promises share; they are drawn dotted.')   # row P8
 QUALITIES_INTRO = ('A quality is not a part. It is something every part must have, so that a promise holds everywhere '
-                   'and not in one place only.')
+                   'and not in one place only. These five are the earlier candidate\'s own; the twelve qualities the '
+                   'requirements group their targets under are on [[page:requirements#qualities|Requirements]].')
 TANGLE_NOTE = ('A tangle is one piece of work spread over many places with nothing joining them, one place doing many '
-               'kinds of work, or a dependency running the wrong way. Each causes some of the design flaws named under '
-               'it.')
+               'kinds of work, or a lower piece of code relying on one that should rely on it. Each causes some of the '
+               'design flaws named under it.')   # row A75
 WHOLE_KEY = ('Every request comes in through Answering and gets one reply; every fact goes out to the screens through '
              'Delivery, with its label (how old, how sure). Delivery reads what changed in the game record, the '
              'lifecycle, the room and the pack channel; no part sends to it. Behind the two doors sit the game\'s facts, '
@@ -955,87 +970,116 @@ WHOLE_KEY = ('Every request comes in through Answering and gets one reply; every
              'profile and what is running, and asks for go, no-go or not installed tonight; it also takes up a new pack '
              'from the pack channel, only between games. The two doors and their arrows are drawn in teal; the dashed '
              'box is an outside program, not a part. The rows group the parts by what they do; they are not the layers '
-             'of use, which the [[page:parts|Parts page]] shows. In a standalone game the GM tablet runs the same doors, game record '
-             'and lifecycle itself, with small stand-ins for connections, the room, the verdict and the engine\'s names. '
-             'The [[page:parts|Parts page]] follows five moments step by step.')
+             'of which part uses which, shown [[page:design#layers|below]]. In a standalone game the GM tablet runs the '
+             'same doors, game record and lifecycle itself, with small stand-ins for connections, the room, the verdict '
+             'and the engine\'s own files and settings. The [[page:design#walks|five walkthroughs]] below follow single '
+             'moments step by step.')   # rows I17, I18
 MOMENTS_KEY = ('Each moment follows one thing that happens at a show through the parts that handle it, in order. Solid '
                'arrows are requests; dashed arrows are answers. Delivery always asks what changed; nothing pushes facts '
                'to it. Each screen asked Delivery, when it connected, to keep it up to date; Delivery\'s dashed arrows to '
-               'screens answer that standing request.')
+               'screens answer that standing request. A box marked "alt" holds two ways the moment can go, each named '
+               'in brackets.')   # row A9
 LAYERS_CAPTION = ('The parts in layers, top row first. Each part uses only the parts in the rows below it, so nothing '
                   'loops back: a change low down can affect the parts above it, and nothing above can break what sits '
                   'below. Tap a part to read it.')
 USES_NOTE = 'An arrow means "uses". No arrow loops back.'
-ALTS_INTRO = ('For these, the map found two sound ways to build a part or to word a promise. Step 3 puts each in front '
-              'of you with designs side by side; no answer is needed now.')
-WORDS_INTRO = ('The site\'s own words come first. The rest are the words step 3 uses; each card on [[page:flaws]] ends '
-               'with the reason restated in them.')
+ALTS_INTRO = ('For these, drawing the earlier candidate found two sound ways to build a part or to word a promise. The '
+              'design rounds put each in front of you with the designs side by side; no answer is needed now.')   # row A102
+WORDS_INTRO = ('The site\'s own words come first, then the names of the steps of the work, then the words the design '
+               'rounds use; each situation on [[page:today]] ends with the reason restated in them.')   # row I49
 LEGEND = ('<div class="legend"><span><span class="sw"></span>where it goes wrong</span>'
           '<span><span class="sw owner"></span>the one place that would own the fact</span></div>')
-STANDALONE_P1 = ('Your decision 22 adds a requirement: a whole game can run with no engine, the GM tablet and the player '
-                 'scanners each working alone, as a choice the game declares and never mixed. In a standalone game the '
-                 'GM tablet decides everything about the game (used tokens, scores, teams, the game\'s start, pause and '
-                 'end) from its own hand-kept copies of the engine\'s rules. Each player scanner decides only whether a '
-                 'token is known, and the phone also whether it has seen that token before.')
+STANDALONE_P1 = ('The decision [[dec:standalone-games-declared-never-mixed]] adds a requirement: a whole game can run with no '
+                 'engine, the GM tablet and the player scanners each working alone, as a choice the game declares and '
+                 'never mixed. In a standalone game the GM tablet decides everything about the game (used tokens, '
+                 'scores, teams, the game\'s start, pause and end) from its own hand-kept copies of the engine\'s rules. '
+                 'Each player scanner decides only whether a token is known, and the phone also whether it has seen '
+                 'that token before.')
 STANDALONE_P2 = ('Four design flaws cause no problem in a standalone game, four apply in part and eight in full. Each '
-                 'promise and each card says what changes. The two biggest gaps: nothing says that a game is standalone, '
-                 'and every device shows the missing engine as a failure ("Offline" on the phone all night, red '
-                 '"DISCONNECTED" on the ESP32, "VIDEO UNAVAILABLE, Rescan later" for a video that can never play).')
+                 'promise and each situation says what changes. The two biggest gaps: nothing says that a game is '
+                 'standalone, and every device shows the missing engine as a failure ("Offline" on the phone all night, '
+                 'red "DISCONNECTED" on the hardware scanner, "VIDEO UNAVAILABLE, Rescan later" for a video that can '
+                 'never play).')   # row F135
 PARITY_NOTE = ('Your parity rule says the two player scanners match wherever possible. Shaded rows are ones where both '
-               'are weak, or the web scanner is the weaker side, so matching it would copy a gap.')
-EVIDENCE_INTRO = ('{total_all} problems came from blue\'s records, the maps of today\'s engine and, for one, the survey of '
-                  'ALN\'s after-game tools; {total} of them sit '
-                  'under the design flaws above, and {aside_n} needed no change to the design. The standalone pass added '
-                  '{sa_all} more: {sa_cards} placed under the same flaws, and {sa_n1} under the proposed [[flaw:N1|N1]].')
+               'are weak, or the phone\'s scanner is the weaker side, so matching it would copy a gap.')
+EVIDENCE_INTRO = ('{total_all} problems came from blue\'s records, the review\'s survey of today\'s code and, for one, the '
+                  'survey of ALN\'s after-game tools; {total} of them sit under the sixteen situations above, and '
+                  '{aside_n} needed no change to the design. The review of standalone games added {sa_all} more: '
+                  '{sa_cards} placed under the same situations, and {sa_n1} under the proposed seventeenth, '
+                  '[[flaw:N1]].')   # row F157
 EARLIER_NOTE = ('Every promise was restated from the side of the people it serves in version 5 and retitled under '
-                'decision 27 in version 6. Each note says what the relationship map changed. "Now" means the candidate '
-                'shape, which is not decided.')
-NOW_NOTE = 'Each note says what the relationship map changed. "Now" means the candidate shape, which is not decided.'
-GRID_NOTE = 'A dot means the flaw\'s problems sit in that part of the engine.'
-STEP3_HEAD = 'The map leaves these choices to you.'
-STEP3_INTRO = ('Step 3 puts each in front of you with designs side by side. They are listed here so nothing arrives as '
-               'a surprise. The six with a row in the alternatives table on [[page:parts#alternatives|the Parts page]] link to it, '
-               'where both designs and their costs are compared.')
+                'decision 27 in version 6. Each note says what the candidate shape changed. "Now" means the candidate '
+                'shape, which is not decided.')   # row C35
+NOW_NOTE = 'Each note says what the candidate shape changed. "Now" means the candidate shape, which is not decided.'   # row C47
+GRID_NOTE = 'A dot means the situation\'s problems sit in that part of the engine.'
+LATER_INTRO = ('Inside the design rounds come these later choices. They are listed here so nothing arrives as a surprise. '
+               'The six with a row in the earlier candidate\'s alternatives table on [[page:design]] link to it, where '
+               'both designs and their costs are compared.')   # rows D45 and D46, as plan v2 frames them
+DECIDED_HISTORY = ('Each decision is written as it stands today. Its old number, and the versions of this site that '
+                   'recorded it, are in the [[page:changes#numbers|change log]].')
+TODAY_GROUP_TAG = 'Mainly touches'
 
-FOOTERS = {   # each page names the documents it is built from (plan 2), by name, not by file
+# Each page names the documents it is built from, by name (plan v1 section 2; rows I54, D56, P107, P108, A119,
+# F164 and C79, with the plan's names: the design half, the earlier candidate, the decision record).
+FOOTERS = {
     'engine': [
-        'Built from the promises document of 2026-10-31 (what the engine is for, who counts on each promise and '
-        'when), the engine-shape document of 2026-11-01 (the candidate engine drawn whole), the after-game report of '
-        '2026-11-01 (around the engine), the cause analysis of 2026-10-30 (the design flaws named around the engine), '
-        'decisions 20 to 29 on the program\'s state page, and the shared vocabulary (the words).',
+        'Built from the promises (2026-10-31: what the engine is for, who counts on each promise and when), the '
+        'quality targets and the extension cases (2026-11-01), the roadmap (the blocks and the readiness states), '
+        'the decision record (by topic), and the glossary (the words).',
     ],
     'decisions': [
-        'Built from the questions of version 7; the engine-shape document of 2026-11-01 (its alternatives and the '
-        'choices it leaves to step 3); the cause analysis of 2026-10-30; the standalone pass of 2026-10-31; the '
-        'after-game report of 2026-11-01; the program document of 2026-10-30 (the test rig\'s step); the promises '
-        'document of 2026-10-31; and decisions 20 to 29 on the program\'s state page.',
+        'Built from the decision record (by topic, with the old numbers mapped to titles); the questions of version '
+        '7, the earlier one-page report; the quality targets and the extension cases (2026-11-01); the earlier '
+        'candidate (2026-11-01, its alternatives and the choices it leaves to the design rounds); the review that '
+        'named the design flaws (2026-10-30); the review of standalone games (2026-10-31); the survey of ALN\'s '
+        'after-game tools (2026-11-01); and the promises (2026-10-31).',
     ],
-    'promises': [
-        'Built from the promises document of 2026-10-31 (its check held 171 claims and corrected 53) and the '
-        'standalone pass of 2026-10-31. "Built today" is summarized from the project guide and the capability map.',
-        'How the promises depend on each other, the parts that keep them and the promises\' wording come from the '
-        'engine-shape document of 2026-11-01 and the four relationship maps it was drawn from, with that document\'s '
-        'check.',
+    'requirements': [
+        'Built from the promises (2026-10-31; a check confirmed 171 of its statements and corrected 53), the quality '
+        'targets and the extension cases (2026-11-01, each with its own check), the roadmap\'s standing '
+        'constraints, and the review of standalone games (2026-10-31).',
+        'Where today\'s engine falls short comes from the review that named the design flaws (2026-10-30); what the '
+        'planned capabilities need comes from the list of planned capabilities you approved.',
     ],
-    'parts': [
-        'Built from the engine-shape document of 2026-11-01 and the four relationship maps it was drawn from, with '
-        'that document\'s check: the qualities, the seventeen parts, which part uses which, the moments, which part '
-        'would run where, the tangles and the alternatives. Which promises each part keeps comes from the promises '
-        'document of 2026-10-31.',
+    'design': [
+        'Built from the decision record (the design half\'s order, the published protocol, the test bench, the test '
+        'rig and the after-game boundary), the quality targets and the extension cases (2026-11-01), and the '
+        'earlier candidate (2026-11-01) with the four studies of how the promises fit together that it was drawn '
+        'from, and its check: its picture, qualities, parts, walkthroughs, devices, tangles and alternatives.',
     ],
-    'flaws': [
-        'Built from the cause analysis of 2026-10-30 with its two checks; the standalone pass of 2026-10-31 with the '
-        'ESP32 parity table; the promises document of 2026-10-31 (which promise each flaw breaks); the engine-shape '
-        'document of 2026-11-01 and the four relationship maps it was drawn from (the candidate side and the parts); '
-        'and the after-game report of 2026-11-01 (the two clocks under C9).',
+    'today': [
+        'Built from the review that named the design flaws (2026-10-30) and its two checks; the review of standalone '
+        'games (2026-10-31), with the table comparing the hardware scanner with the phone\'s scanner; the promises '
+        '(2026-10-31; which promise each flaw touches, and what each already has); the earlier candidate '
+        '(2026-11-01; the folded side of each situation); the survey of ALN\'s after-game tools (2026-11-01; the two '
+        'clocks); and the decision record (the pieces already well built). "What each promise already has" is '
+        'summarized from the project\'s guide for developers and the list of planned capabilities.',
     ],
     'changes': [
-        'Built from the page\'s version history and decisions 20 to 29 on the program\'s state page, the first wording '
-        'of each promise in the promises document of 2026-10-31, the notes each card and promise carried after the '
-        'relationship map, the cause analysis of 2026-10-30 (finding X-08 and the totals), the questions of version 7 '
-        '(E, F and G, after the map), the after-game report of 2026-11-01, and the shared vocabulary.',
+        'Built from this report\'s version history and the decision record (its old numbers mapped to titles), the '
+        'first wording of each promise (the promises, 2026-10-31), the notes each card and promise carried after the '
+        'candidate shape was drawn, the review that named the design flaws (2026-10-30: the two clocks and the '
+        'totals), the questions of version 7 (E, F and G, after the candidate shape), the survey of ALN\'s after-game '
+        'tools (2026-11-01), the jargon check of 2026-11-01, and the glossary.',
     ],
 }
+
+# The one script any page carries (plan v2 section 2, brief): a link into folded content opens every <details>
+# holding its target, on load and on hashchange. No library.
+OPEN_SCRIPT = '''<script>
+(function () {
+  function openTarget() {
+    var id = decodeURIComponent(location.hash.slice(1));
+    var t = id && document.getElementById(id);
+    if (!t) return;
+    for (var d = t.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;
+    t.scrollIntoView();
+  }
+  window.addEventListener('hashchange', openTarget);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', openTarget);
+  else openTarget();
+})();
+</script>'''
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -1043,7 +1087,7 @@ FOOTERS = {   # each page names the documents it is built from (plan 2), by name
 # ---------------------------------------------------------------------------------------------------
 SITE_CSS = '''
 /* The site's frame: one gutter on the outer wrapper, a sticky navigation bar under the safe area,
-   the status line, and the components the new pages add. Every colour is a token. */
+   the status line, and the components the pages add. Every colour is a token. */
 .site { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .site > * { max-width: 1040px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
 body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); background: var(--nav-bg); z-index: 30; }
@@ -1061,17 +1105,23 @@ main.wrap { padding-top: 24px; }
 [id] { scroll-margin-top: var(--anchor-gap); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 h1, h2, h3, h4 { text-wrap: balance; }
+h4 { margin: 0; line-height: 1.25; }
 section { display: grid; gap: 14px; min-width: 0; }
 section > * { min-width: 0; }
 .page-head { display: grid; gap: 14px; }
 .page-head p { max-width: 72ch; }
 .prose { display: grid; gap: 10px; }
 .prose p { max-width: 76ch; }
-.where-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); }
-.where-grid > div { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
-.where-grid > div.open-now { border-left: 4px solid var(--accent); }
-.where-grid h3 { font-size: 17px; }
-.where-grid ul, .plain-list { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 15px; }
+.plain-list { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 15px; }
+/* Where the work stands: done, now, next. */
+.timeline { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); }
+.timeline > div { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+.timeline > div.tl-now { border-left: 4px solid var(--accent); }
+.timeline h3 { font-size: 17px; }
+.timeline ul, .timeline ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 15px; }
+.timeline li.current { font-weight: 600; }
+.timeline .here { display: inline-block; font-family: var(--font-label); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-radius: 999px; padding: 0 8px; margin-right: 6px; background: var(--accent); color: var(--on-accent); }
+.callout { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 14px 18px; max-width: 86ch; }
 .moments { display: grid; gap: 14px; }
 .moment { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 16px 18px; display: grid; gap: 12px 28px; grid-template-columns: minmax(0, 17rem) minmax(0, 1fr); align-items: start; }
 .moment-meta, .moment-counts { display: grid; gap: 10px; align-content: start; min-width: 0; }
@@ -1082,17 +1132,24 @@ section > * { min-width: 0; }
 .moment ul.counts { list-style: none; padding-left: 0; gap: 10px; }
 .moment ul.counts a { font-weight: 500; }
 .moment ul.counts span { display: block; color: var(--muted); }
-.around { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items: start; }
-.around-item { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; font-size: 14.5px; }
-.around-item h3 { font-size: 16px; }
-.around-item .tag { margin-right: 6px; }
 .guide { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
-.guide li { display: grid; grid-template-columns: minmax(7.5em, max-content) 1fr; gap: 2px 14px; max-width: 86ch; }
+.guide li { display: grid; grid-template-columns: minmax(8.5em, max-content) 1fr; gap: 2px 14px; max-width: 86ch; }
 .guide li a { font-weight: 600; }
+@media (max-width: 520px) { .guide li { grid-template-columns: minmax(0, 1fr); } }
+.lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; max-width: 88ch; }
+.lines li { border-left: 3px solid var(--line); padding-left: 12px; }
+.lines li > a:first-child, .lines li > strong { font-weight: 600; display: block; }
+.growth { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items: start; }
+.growth > div { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; font-size: 14.5px; }
+.growth h3 { font-size: 16px; }
 .words { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); }
 .words h3 { font-size: 16px; margin-bottom: 6px; }
+@media (max-width: 520px) { dl.terms { grid-template-columns: minmax(0, 1fr); } dl.terms dd { margin-bottom: 8px; } }
+figure.dia.world .dia-svg svg { display: block; margin: 0 auto; }
+/* Decisions. */
 .q { scroll-margin-top: var(--anchor-gap); }
-.q h4 { font-size: 19px; font-weight: 600; line-height: 1.25; margin: 0; color: var(--fg); }
+.q h3 { font-size: 19px; font-weight: 600; line-height: 1.25; margin: 0; color: var(--fg); }
+.q h3 .letter { color: var(--accent); margin-right: 4px; }
 .q ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; }
 .q .block { display: grid; gap: 4px; }
 .q ul.options { list-style: none; padding-left: 0; gap: 8px; }
@@ -1101,47 +1158,102 @@ section > * { min-width: 0; }
 .q .rec { border-top: 1px solid var(--line); padding-top: 10px; }
 .q .rec .tag { display: block; color: var(--accent); margin-bottom: 2px; }
 .stag { justify-self: start; font-family: var(--font-label); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-radius: 999px; padding: 2px 10px; border: 1px solid var(--line); color: var(--muted); }
-.stag.s-applied { color: var(--accent); border-color: var(--accent); }
+.stag.s-applied, .stag.k-settled { color: var(--accent); border-color: var(--accent); }
 .stag.s-changed { color: var(--fault); border-color: var(--fault); background: var(--chip-live); }
+.stag.k-partly-settled { color: var(--warm); border-color: var(--warm); }
+.stag.k-proposed { color: var(--fg); border-color: var(--line-strong); border-style: dashed; }
 .q.q-applied { border-left-color: var(--accent); }
 .q.q-changed { border-left-color: var(--fault); }
 .q.q-open { border-left-color: var(--line-strong); }
 .qgroup > h3 { font-size: 17px; color: var(--muted); font-weight: 600; }
-ol.step3 { margin: 0; padding-left: 22px; display: grid; gap: 6px; max-width: 86ch; }
+ol.rounds, ol.later { margin: 0; padding-left: 22px; display: grid; gap: 8px; max-width: 88ch; }
+ol.rounds li a.round { font-weight: 600; }
+.topic { display: grid; gap: 10px; }
+.topic > h3 { font-size: 18px; }
 .decided-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
-.decided-list li { display: grid; grid-template-columns: minmax(8.5em, max-content) 1fr; gap: 2px 14px; max-width: 92ch; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; }
-.decided-list .dn { font-family: var(--font-label); font-weight: 600; }
-.decided-list .dd { display: block; font-size: 13px; color: var(--muted); font-weight: 500; }
+.decided-list li { display: grid; gap: 4px; max-width: 92ch; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; }
+.decided-list .dn { font-weight: 600; }
+.decided-list .dd { font-family: var(--font-label); font-size: 12.5px; color: var(--muted); font-weight: 500; margin-left: 8px; }
+/* Requirements. */
+.req-group { display: grid; gap: 12px; border-top: 2px solid var(--line); padding-top: 10px; }
+.req-group > h3 { font-size: 20px; }
+.req-group > p { max-width: 80ch; color: var(--muted); }
+.reqs { display: grid; gap: 12px; }
+.req { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 18px; display: grid; gap: 8px; max-width: 100%; }
+.req h4 { font-size: 17px; font-weight: 600; }
+.req p { max-width: 82ch; font-size: 15px; }
+.req .tag { margin-right: 6px; }
+.req .numset { background: var(--chip); border-radius: 6px; padding: 8px 12px; }
+.req .numset a { font-size: 14px; white-space: nowrap; }
+.req .state { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.req .state .small { font-size: 13.5px; color: var(--muted); flex: 1 1 20em; }
+.served { display: grid; gap: 6px; }
+.served ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 15px; }
+.rule-group { display: grid; gap: 10px; }
+.rule-group > h3 { font-size: 18px; margin-top: 10px; }
+.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.rules li { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; display: grid; gap: 4px; max-width: 92ch; }
+.rules li strong { font-weight: 600; }
+.rules li .src { font-size: 13.5px; color: var(--muted); }
+/* Design. */
+.ahead { display: grid; gap: 16px; }
+.ahead-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 16px 20px; display: grid; gap: 10px; }
+.ahead-item h3 .ord { color: var(--muted); font-weight: 500; margin-right: 6px; }
+.ahead-item .block { display: grid; gap: 4px; }
+.ahead-item .block p { max-width: 82ch; font-size: 15px; }
+.directions { display: grid; gap: 14px; }
+.direction { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 20px; display: grid; gap: 10px; }
+.direction p { max-width: 80ch; font-size: 15.5px; }
+details.earlier { border: 1px dashed var(--line-strong); border-radius: 8px; padding: 14px 18px; background: var(--surface); }
+details.earlier > summary { font-size: 15.5px; color: var(--fg); line-height: 1.5; }
+details.earlier > summary .tag { color: var(--accent); }
+details.earlier > summary .note { display: block; margin-top: 4px; }
+details.earlier[open] > summary { margin-bottom: 18px; }
+.earlier-body { display: grid; gap: 34px; min-width: 0; }
+.earlier-body > section > h3 { font-size: 20px; }
+.replaced { font-size: 14px; color: var(--warm); font-weight: 500; }
+.replaced a { font-weight: 500; }
+article.part.is-replaced { border-style: dashed; }
+/* Today's engine. */
+.fgroup { display: grid; gap: 16px; border-top: 2px solid var(--line); padding-top: 10px; }
+.fgroup > h3 { font-size: 20px; }
+.fgroup > h3 .tag { display: block; margin-bottom: 4px; }
+.card-head h3 { font-size: 19px; font-weight: 600; line-height: 1.2; margin: 0; }
+.card.proposed { border-style: dashed; }
+.qline { font-size: 14px; color: var(--muted); }
+details.fold > summary { margin-bottom: 0; }
+details.fold[open] > summary { margin-bottom: 12px; }
+details.fold .diagrams, details.fold .partrow { margin-bottom: 10px; }
+.works { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.works li { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; display: grid; gap: 4px; max-width: 92ch; font-size: 15px; }
+.works li > a:first-child { font-weight: 600; }
+.flawtable th, .flawtable td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.flawtable thead th, .glance thead th, .logtable thead th { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; color: var(--muted); }
+.flawtable tbody th { font-weight: 500; min-width: 13em; }
+.flawtable td { min-width: 9em; }
+.flawtable td.num { min-width: 4em; }
+.flawtable a, .glance a { text-decoration: none; }
+.glance td { font-size: 14px; }
+.glance td.who, .glance td.when { min-width: 12em; }
+/* Change log. */
 .log-entry { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; display: grid; gap: 8px; scroll-margin-top: var(--anchor-gap); }
 .log-entry h3 { font-size: 18px; }
 .log-entry .when { font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--muted); }
 .log-entry ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; max-width: 86ch; }
 .log-entry .prompt { font-size: 15px; color: var(--muted); border-left: 3px solid var(--accent); padding-left: 12px; max-width: 86ch; }
 .log-entry .was-title { font-size: 15px; }
+.log-entry .cid { font-family: var(--font-mono); font-weight: 500; font-size: 15px; color: var(--accent); margin-right: 6px; }
 .log-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
 .beforeafter { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
 .beforeafter > div { display: grid; gap: 4px; align-content: start; font-size: 15px; }
-.fgroup { display: grid; gap: 16px; border-top: 2px solid var(--line); padding-top: 10px; }
-.fgroup > h3 { font-size: 20px; }
-.fgroup > h3 .tag { display: block; margin-bottom: 4px; }
-.card-head h4 { font-size: 19px; font-weight: 600; line-height: 1.2; margin: 0; }
-.card.proposed { border-style: dashed; }
-.flawtable th, .flawtable td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
-.flawtable thead th, .glance thead th { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; color: var(--muted); }
-.flawtable tbody th { font-weight: 500; min-width: 16em; }
-.flawtable td { min-width: 9em; }
-.flawtable td.num { min-width: 4em; }
-.flawtable .fid, .glance .fid { font-family: var(--font-mono); font-weight: 500; margin-right: 4px; }
-.flawtable a, .glance a { text-decoration: none; }
-.glance td { min-width: 12em; font-size: 14px; }
-.glance td.flawcell { min-width: 9em; }
+.logtable th, .logtable td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; font-size: 14px; }
+.logtable td, .logtable th { min-width: 12em; }
 .lead-in { max-width: 78ch; }
 .alts tbody tr { scroll-margin-top: var(--anchor-gap); }
 .alts tbody tr:target th, .alts tbody tr:target td { background: var(--chip); }
-.part h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.part h3, .part h4 { margin: 0; font-size: 16px; font-weight: 600; }
 footer.site-foot { padding: 32px 0 48px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); display: grid; gap: 6px; }
 footer.site-foot p { max-width: 90ch; }
-footer.site-foot code { font-family: var(--font-mono); font-size: 13px; overflow-wrap: anywhere; }
 .dia-svg { margin: 0; background: transparent; font-size: 13px; text-align: center; }
 figure.dia.walk .dia-svg svg { min-width: 720px; }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
@@ -1176,8 +1288,7 @@ def stylesheet():
     css = css.replace('.figkey .key.machine { border-color: #b45309; }', '.figkey .key.machine { border-color: var(--warm); }')
     css = css.replace('.figkey .key.outside { border: 2px dashed #6b7280; }', '.figkey .key.outside { border: 2px dashed var(--muted); }')
     css = css.replace('scroll-margin-top: 16px', 'scroll-margin-top: var(--anchor-gap)')
-    # Version 7's part-card rules also matched the part chips (a.chip.part), giving each chip the card's
-    # padding; they now apply to the card alone.
+    # Version 7's part-card rules also matched the part chips (a.chip.part); they apply to the card alone.
     for a, b in (('\n.part {', '\narticle.part {'), ('\n.part h4 {', '\narticle.part h4 {'), ('\n.part p {', '\narticle.part p {')):
         if css.count(a) != 1:
             raise SystemExit(f'the stylesheet changed: {a.strip()}')
@@ -1203,10 +1314,10 @@ def nav(page, open_n):
 
 
 def shell(page, title, body, css, open_n):
-    footer = ''.join(f'<p>{p}</p>' for p in FOOTERS[page])
+    footer = ''.join(f'<p>{e(p)}</p>' for p in FOOTERS[page])
     content = (f'<div class="site">\n<a class="skip" href="#main">Skip to the page</a>\n{nav(page, open_n)}\n'
                f'<p class="status">{e(STATUS_LINE)}</p>\n<main class="wrap" id="main">\n{body}\n</main>\n'
-               f'<footer class="site-foot">{footer}</footer>\n</div>\n')
+               f'<footer class="site-foot">{footer}</footer>\n</div>\n{OPEN_SCRIPT}\n')
     if page == 'engine':
         return (f'<title>{e(title)}</title>\n<meta name="claude:viewport-fit-sides" content="cover">\n{FONTS}\n'
                 f'<style>{css}</style>\n{content}')
@@ -1216,12 +1327,69 @@ def shell(page, title, body, css, open_n):
             f'{content}</body>\n</html>\n')
 
 
+# The world picture's layout (front.worldMermaid is drawn as written, with three changes of presentation only, so
+# it reads at phone width; the build checks that no node, label, edge or group title changes):
+# 1. it keeps its left-to-right direction (present() turns other flowcharts top-down);
+# 2. the four people and screens outside the engine that only receive (the TV and scoreboards, the audience, the
+#    Director's console, the director) are drawn in a second box with the same title as the first, so the layout
+#    can place them after the engine instead of stretching one box across the whole picture;
+# 3. the group titles are drawn as plain text (htmlLabels off), so a long title takes its own room above the boxes
+#    instead of covering them.
+WORLD_LATE = ('tv', 'aud', 'con', 'dir')
+WORLD_INIT = '%%{init: {"flowchart": {"useMaxWidth": false, "htmlLabels": false, "subGraphTitleMargin": {"top": 10, "bottom": 10}}}}%%'
+
+
+def world_src(src):
+    lines = src.strip().split('\n')
+    out, moved, inside, title = [], [], False, None
+    for line in lines:
+        st = line.strip()
+        m = re.match(r'subgraph outside\["([^"]+)"\]', st)
+        if m:
+            inside, title = True, m.group(1)
+            out.append(line)
+            continue
+        if inside and st == 'end':
+            inside = False
+            out.append(line)
+            out.append(f'  subgraph outside2["{title}"]')
+            out.append('    direction LR')
+            out.extend(moved)
+            out.append('  end')
+            continue
+        n = re.match(r'(\w+)\[', st)
+        if inside and n and n.group(1) in WORLD_LATE:
+            moved.append(line)
+            continue
+        out.append(line)
+    if title is None or len(moved) != len(WORLD_LATE):
+        raise SystemExit('front.worldMermaid changed: its outside group or the four receiving nodes are not as the builder expects')
+
+    def content(ls):
+        return sorted(l.strip() for l in ls if not re.match(r'\s*(subgraph\b|end$|direction\b)', l.strip()))
+    if content(lines) != content(out) or sorted(set(re.findall(r'subgraph \w+\["([^"]+)"\]', '\n'.join(out)))) != sorted(set(re.findall(r'subgraph \w+\["([^"]+)"\]', src))):
+        raise SystemExit('the world picture\'s layout changed a node, a label, an edge or a group title')
+    return WORLD_INIT + '\n' + '\n'.join(out)
+
+
 # ---------------------------------------------------------------------------------------------------
-# The pages (plan section 3).
+# index.html, The engine (plan v2 section 3.1).
 # ---------------------------------------------------------------------------------------------------
 def page_engine(D):
     f, purpose = D['front'], D['jobs_data']['purpose']
-    w = f['whereYouAre']
+    tl = f['timeline']
+
+    def tl_items(items, ordered=False):
+        out = []
+        for x in items:
+            if x.get('current'):
+                out.append(f'<li class="current" aria-current="step"><span class="here">Now</span>{rich(x["text"])}</li>')
+            else:
+                out.append(f'<li>{rich(x["text"])}</li>')
+        tag = 'ol' if ordered else 'ul'
+        return f'<{tag}>{"".join(out)}</{tag}>'
+    if sum(1 for x in tl['now'] if x.get('current')) != 1:
+        raise SystemExit('front.timeline.now must mark exactly one current item')
     moments = ''.join(f'''<article class="moment">
   <div class="moment-meta">
     <h3>{e(m["name"])}</h3>
@@ -1230,21 +1398,14 @@ def page_engine(D):
   </div>
   <div class="moment-counts"><span class="tag">What they count on</span><ul class="counts">{"".join(f"<li>{promise_a(p['id'])}<span>{rich(p['why'])}</span></li>" for p in m["promises"])}</ul></div>
 </article>''' for m in f['moments'])
-    fit = ''.join(f'<p><strong>{e(p["head"])}</strong> {rich(p["text"])}</p>' for p in f['fitSummary'])
-    around = ''.join(f'''<article class="around-item">
-  <h3>{e(a["name"])}</h3>
-  <p>{rich(a["what"])}</p>
-  <p><span class="tag">How it connects</span>{rich(a["connects"])}</p>
-  <p class="muted"><span class="tag">Status</span>{rich(a["status"])}</p>
-</article>''' for a in f['around'])
-    around_fig = ''
-    if f.get('aroundMermaid', '').strip():
-        cap = 'Around the engine: what sits outside it and how each connects'
-        around_fig = f'''<figure class="dia wide">
-    <figcaption>{e(cap)}</figcaption>
-    <div class="scroll">{diagram(present(f["aroundMermaid"]), cap)}</div>
-  </figure>'''
     guide = ''.join(f'<li>{page_a(g["page"])}<span>{rich(g["line"])}</span></li>' for g in f['siteGuide'])
+    quals = ''.join(f'<li><a href="{href("requirements", "quality-" + slug(q["quality"]))}">{e(q["quality"])}</a>{rich(q["line"])}</li>'
+                    for q in f['qualities'])
+    growth = ''.join(f'<div><h3><a href="{href("requirements", "growth-" + slug(g["who"]))}">{e(g["who"])}</a></h3><p>{rich(g["line"])}</p></div>'
+                     for g in f['growth'])
+    cap = 'The engine in its world: the people, their devices and tools, the published protocol and the outside programs'
+    world = diagram(world_src(f['worldMermaid']), cap)
+    lately = ''.join(f'<li>{dec_a(x["slug"])}<span>{rich(x["line"])}</span></li>' for x in f['decidedLately'])
 
     def terms(group):
         return ''.join(f'<dt>{e(t["term"])}</dt><dd>{rich(t["def"])}</dd>' for t in f['words'] if t['group'] == group)
@@ -1254,12 +1415,22 @@ def page_engine(D):
 </header>
 
 <section id="where" aria-labelledby="where-h">
-  <h2 id="where-h">Where things stand</h2>
-  <div class="where-grid">
-    <div class="open-now"><h3>Open for you</h3><ul>{li(w["open"])}</ul></div>
-    <div><h3>Decided lately</h3><ul>{li(w["decided"])}</ul></div>
-    <div><h3>What comes next</h3><ul>{li(w["next"])}</ul></div>
+  <h2 id="where-h">Where the work stands</h2>
+  <div class="timeline">
+    <div><h3>Done</h3>{tl_items(tl["done"])}</div>
+    <div class="tl-now"><h3>Now: the design half</h3>{tl_items(tl["now"], ordered=True)}</div>
+    <div><h3>Next</h3>{tl_items(tl["next"])}</div>
   </div>
+</section>
+
+<section id="now" aria-labelledby="now-h">
+  <h2 id="now-h">What you can do now</h2>
+  <p class="callout">{rich(f["now"])}</p>
+</section>
+
+<section id="guide" aria-labelledby="guide-h">
+  <h2 id="guide-h">The pages</h2>
+  <ul class="guide">{guide}</ul>
 </section>
 
 <section class="sa-box" id="purpose" aria-labelledby="purpose-h">
@@ -1273,25 +1444,28 @@ def page_engine(D):
   <p class="standalone">{rich(f["standaloneLine"])}</p>
 </section>
 
-<section class="fit" id="fit" aria-labelledby="fit-h">
-  <h2 id="fit-h">How it fits together</h2>
-  <figure class="dia whole">
-    <figcaption>The candidate engine, whole</figcaption>
-    <div class="scroll"><div class="svgwrap">{shape_svg()}</div></div>
-    <p class="figkey">{rich(WHOLE_KEY)}</p>
+<section id="qualities" aria-labelledby="qualities-h">
+  <h2 id="qualities-h">How well it must work</h2>
+  <ul class="lines">{quals}</ul>
+</section>
+
+<section id="growth" aria-labelledby="growth-h">
+  <h2 id="growth-h">How it must grow</h2>
+  <div class="growth">{growth}</div>
+</section>
+
+<section id="world" aria-labelledby="world-h">
+  <h2 id="world-h">The engine in its world</h2>
+  <figure class="dia wide world">
+    <figcaption>{e(cap)}</figcaption>
+    <div class="scroll">{world}</div>
+    <p class="figkey">{rich(f["worldKey"])}</p>
   </figure>
-  <div class="fit-summary">{fit}</div>
 </section>
 
-<section id="around" aria-labelledby="around-h">
-  <h2 id="around-h">Around the engine</h2>
-  <div class="around">{around}</div>
-  {around_fig}
-</section>
-
-<section id="guide" aria-labelledby="guide-h">
-  <h2 id="guide-h">How to use these pages</h2>
-  <ul class="guide">{guide}</ul>
+<section id="lately" aria-labelledby="lately-h">
+  <h2 id="lately-h">Decided lately</h2>
+  <ul class="lines">{lately}</ul>
 </section>
 
 <section id="words" aria-labelledby="words-h">
@@ -1299,178 +1473,20 @@ def page_engine(D):
   <p>{rich(WORDS_INTRO)}</p>
   <div class="words">
     <div><h3>This site's words</h3><dl class="terms">{terms("page")}</dl></div>
-    <div><h3>The words step 3 uses</h3><dl class="terms">{terms("design")}</dl></div>
+    <div><h3>The names of the steps</h3><dl class="terms">{terms("sequence")}</dl>
+      <h3 style="margin-top:18px">The words the design rounds use</h3><dl class="terms">{terms("design")}</dl></div>
   </div>
 </section>'''
 
 
-STATUS_TEXT = {'open': 'Open', 'applied': 'Applied, please confirm', 'changed': 'Recommendation changed by the map'}
-
-
-def question_html(q):
-    key = q['key']
-    prefix = '' if key == 'promises' else f'{key}. '
-    opts = ''
-    if q.get('options'):
-        opts = ('<div class="block"><span class="tag">The options, and what each costs</span><ul class="options">'
-                + ''.join(f'<li><strong>{rich(o["label"])}</strong> {rich(o["cost"])}</li>' for o in q['options'])
-                + '</ul></div>')
-    return f'''<div class="q q-{q["status"]}" id="{q["anchor"]}">
-  <p class="stag s-{q["status"]}">{e(STATUS_TEXT[q["status"]])}</p>
-  <h4>{e(prefix)}{rich(q["heading"])}</h4>
-  <div class="block"><span class="tag">What it decides</span><p>{rich(q["decides"])}</p></div>
-  <div class="block"><span class="tag">What we know</span><ul>{li(q["evidence"])}</ul></div>
-  {opts}
-  <p class="rec"><span class="tag">{e(q["recKind"])}</span>{rich(q["recommendation"])}</p>
-</div>'''
-
-
-def page_decisions(D):
-    d = D['decisions']
-    groups = ''.join(f'''<div class="qgroup">
-    <h3>{e(g["title"])}</h3>
-    {"".join(question_html(q) for q in g["questions"])}
-  </div>''' for g in d['groups'])
-    # A step-3 item that has a row in the alternatives table links its opening words to that row (plan 3.2,
-    # item 3); the items keep version 7's words.
-    items = []
-    for s in d['step3']:
-        k = next((k for k in STEP3_ALT if s['text'].startswith(k)), None)
-        if k is None:
-            items.append(f'<li>{rich(s["text"])}</li>')
-        else:
-            items.append(f'<li><a href="{href("parts", STEP3_ALT[k])}">{e(k)}</a>{rich(s["text"][len(k):])}</li>')
-    decided = ''.join(f'<li><span class="dn">Decision {x["n"]}<span class="dd">{e(x["date"])}</span></span><span>{rich(x["line"])}</span></li>'
-                      for x in d['decided'])
-    return f'''<header class="page-head">
-  <h1>Decisions</h1>
-  <div class="prose">{paras(d["intro"])}</div>
-</header>
-
-<section class="questions" id="open" aria-labelledby="open-h">
-  <h2 id="open-h">Open now</h2>
-  {groups}
-</section>
-
-<section class="questions" id="step-3" aria-labelledby="step-3-h">
-  <h2 id="step-3-h">Coming in step 3, no answer needed</h2>
-  <div class="q">
-    <h4>{e(STEP3_HEAD)}</h4>
-    <p>{rich(STEP3_INTRO)}</p>
-    <ol class="step3">{"".join(items)}</ol>
-  </div>
-</section>
-
-<section id="decided" aria-labelledby="decided-h">
-  <h2 id="decided-h">Decided</h2>
-  <ul class="decided-list">{decided}</ul>
-</section>'''
-
-
-def glance_html(jobs):
-    """The ten at a glance: title, who, when, the parts that keep it, the flaws that break it (main one first)."""
-    rows = []
-    for j in jobs:
-        fn = j['functional']
-        prim = [f['id'] for f in j['flaws'] if f['primary']]
-        sec = [f['id'] for f in j['flaws'] if not f['primary']]
-
-        def fl(i):
-            return flaw_a(i, i, 'fid') + (' <span class="muted">(proposed)</span>' if i == 'N1' else '')
-        main = ' '.join(fl(i) for i in prim) or '<span class="muted">none yet</span>'
-        also = ' '.join(fl(i) for i in sec)
-        flaws = f'<span class="tag">Main</span> {main}' + (f'<br/><span class="tag">Also</span> {also}' if also else '')
-        parts = ', '.join(part_a(p) for p in j.get('parts', []))
-        rows.append(f'<tr><th scope="row">{promise_a(j["id"])}</th><td>{e(fn["people"])}</td><td>{e(fn["moment"])}</td>'
-                    f'<td>{parts}</td><td class="flawcell">{flaws}</td></tr>')
-    return ('<div class="tablewrap"><table class="glance"><thead><tr><th>Promise</th><th>Who</th><th>When</th>'
-            '<th>Parts that would keep it</th><th>Design flaws that break it</th></tr></thead>'
-            f'<tbody>{"".join(rows)}</tbody></table></div>')
-
-
-def promise_html(j, by_id):
-    """A promise entry (version 7's job_html), without its earlier wording, its "what changed" note and its
-    cards: the first two moved to the change log, the cards to the design-flaws page."""
-    fn = j['functional']
-    anchor = PROMISE_ANCHOR[j['id']]
-    needs = ''.join(f'<li>{e(n)}</li>' for n in j['needs'])
-    tests = ''.join(f'<li>{e(t)}</li>' for t in j['tests'])
-    def short(f):
-        fid = f['id']
-        note = ' <span class="muted">(proposed)</span>' if fid not in by_id else ''
-        cls = '' if f['primary'] else ' class="secondary"'
-        return f'<li{cls}>{flaw_a(fid, fid, "fid")}{e(f["how"])}{note}</li>'
-    main = ''.join(short(f) for f in j['flaws'] if f['primary']) or '<li class="muted">None yet.</li>'
-    also = ''.join(short(f) for f in j['flaws'] if not f['primary'])
-    shorts = ([f'<span class="tag">Main</span><ul>{main}</ul>'] if j['flaws'] else []) + \
-             ([f'<span class="tag">Also</span><ul>{also}</ul>'] if also else [])
-    standalone = re.sub(r'^In a standalone game:\s*', '', j['standalone'])
-    goal_tag = 'The long-term goal' + (' <span class="open">(open for step 3)</span>' if j.get('goalOpen') else '')
-    q = j.get('questions') or []
-    qtext = ('answers architecture pass question' + ('s ' if len(q) > 1 else ' ') + ', '.join(map(str, q))) if q else 'no architecture pass question covers it yet'
-    return f'''
-<section class="job" id="{anchor}" aria-labelledby="{anchor}-h">
-  <header class="job-head">
-    <h2 id="{anchor}-h">{e(TITLES[j["id"]])}</h2>
-    <dl class="who"><dt>Who</dt><dd>{e(fn["people"])}</dd><dt>When</dt><dd>{e(fn["moment"])}</dd></dl>
-  </header>
-  <div class="countson"><span class="tag">What they count on</span><p class="meaning">{e(fn["need"])}</p></div>
-  <div class="job-facts">
-    <div><span class="tag">Built today</span><p>{e(BUILT.get(j["id"], ""))}</p></div>
-    <div><span class="tag">{goal_tag}</span><p>{e(j["goal"])}</p></div>
-  </div>
-  {part_row(j.get("parts", []), NAMES, "Kept by these parts of the candidate shape")}
-  <div class="short">
-    <span class="tag">Broken by these design flaws today</span>
-    {"".join(shorts) or '<ul><li class="muted">No design flaw breaks this promise mainly: its planned parts are not built yet.</li></ul>'}
-  </div>
-  <p class="standalone"><span class="tag">In a standalone game</span> {e(standalone)}</p>
-  <details><summary>What the planned capabilities need from it ({len(j["needs"])})</summary><ul class="examples">{needs}</ul></details>
-  <details><summary>Test cases from the shows ({len(j["tests"])}); {e(qtext)}</summary><ol class="examples">{tests}</ol></details>
-</section>'''
-
-
-def page_promises(D):
-    jobs, shape = D['jobs'], D['shape']
-    head, text = FIT_SUMMARY[3]
-    n_links = len(re.findall(r"-\.?->", shape["relationsMermaid"]))
-    n_deps = len(re.findall(r"[^.]-->", shape["relationsMermaid"]))
-    overview = present(overview_src(jobs)).replace('"useMaxWidth": false}, "sequence"', '"useMaxWidth": false, "nodeSpacing": 20}, "sequence"', 1)
-    rel_cap = f'The {n_links} main links between the promises'
-    return f'''<header class="page-head">
-  <h1>Promises</h1>
-  <div class="prose">{paras(D["front"]["intros"]["promises"])}</div>
-</header>
-
-<section id="glance" aria-labelledby="glance-h">
-  <h2 id="glance-h">The ten at a glance</h2>
-  <p class="lead-in"><strong>{e(head)}</strong> {rich(text)}</p>
-  {glance_html(jobs)}
-</section>
-
-<section id="depend" aria-labelledby="depend-h">
-  <h2 id="depend-h">How the promises depend on each other</h2>
-  <figure class="dia wide">
-    <figcaption>The main dependencies in brief</figcaption>
-    <p class="figkey">{OVERVIEW_KEY}</p>
-    <div class="scroll">{diagram(overview, "The main dependencies in brief")}</div>
-    <details>
-      <summary>{e(rel_cap)}</summary>
-      <p class="muted" style="margin:10px 0">{e(RELATIONS_NOTE.format(n=n_deps))}</p>
-      <div class="scroll">{diagram(present(relations_src(shape)), rel_cap)}</div>
-    </details>
-  </figure>
-</section>
-
-<section id="the-ten" aria-labelledby="the-ten-h">
-  <h2 id="the-ten-h">The ten promises</h2>
-</section>
-{"".join(promise_html(j, D["by_id"]) for j in jobs)}'''
-
-
-# The step-3 items that have a row in the alternatives table (plan 3.2, item 3): the item's opening words
-# and the row's anchor on the parts page. The build checks that all six find their item.
-STEP3_ALT = {
+# ---------------------------------------------------------------------------------------------------
+# decisions.html (plan v2 section 3.2).
+# ---------------------------------------------------------------------------------------------------
+# Row D3, with plan v2's name (the decisions overlay's intro uses the same words).
+STATUS_TEXT = {'open': 'Open', 'applied': 'Applied, please confirm', 'changed': 'Recommendation changed by the earlier candidate'}
+# The later choices that have a row in the earlier candidate's alternatives table: the item's opening words and
+# the row's anchor on the design page. The build checks that all six find their item.
+LATER_ALT = {
     'Getting facts onto screens': 'alt-delivery',
     'The life of a game': 'alt-lifecycle',
     'The game rules as one shared body': 'alt-rules',
@@ -1484,19 +1500,321 @@ ALT_TITLE_START = ['Getting state onto screens', 'The rules', 'Equipment', 'The 
                    "The tap's answer and the night's record", 'The lifecycle', 'The scoreboard', 'Release day']
 
 
-def page_parts(D):
-    shape = D['shape']
+def question_html(q):
+    opts = ''
+    if q.get('options'):
+        opts = ('<div class="block"><span class="tag">The options, and what each costs</span><ul class="options">'
+                + ''.join(f'<li><strong>{rich(o["label"])}</strong> {rich(o["cost"])}</li>' for o in q['options'])
+                + '</ul></div>')
+    if q['anchor'] != 'q-' + q['letter'].lower():
+        raise SystemExit(f'question {q["letter"]}: anchor {q["anchor"]} is not q-<letter>')
+    return f'''<article class="q q-{q["status"]}" id="{q["anchor"]}">
+  <p class="stag s-{q["status"]}">{e(STATUS_TEXT[q["status"]])}</p>
+  <h3><span class="letter">{e(q["letter"])}.</span> {rich(q["title"])}</h3>
+  <div class="block"><span class="tag">What it decides</span><p>{rich(q["decides"])}</p></div>
+  <div class="block"><span class="tag">What we know</span><ul>{li(q["evidence"])}</ul></div>
+  {opts}
+  <p class="rec"><span class="tag">{e(q["recKind"])}</span>{rich(q["recommendation"])}</p>
+</article>'''
+
+
+def page_decisions(D):
+    d = D['decisions']
+    groups = ''.join(f'''<div class="qgroup" id="g-{slug(g["title"])}">
+    <h3>{e(g["title"])}</h3>
+    {"".join(question_html(q) for q in g["questions"])}
+  </div>''' for g in d['groups'])
+    rounds = []
+    for r in d['designRounds']:
+        head, sep, rest = r['text'].partition(':')
+        if not sep:
+            raise SystemExit(f'design round without a name before its colon: {r["text"][:60]}')
+        m = re.fullmatch(r'design\.html#(d-[a-z-]+)', r['link'])
+        if not m:
+            raise SystemExit(f'design round link is not design.html#d-<slug>: {r["link"]}')
+        rounds.append(f'<li><a class="round" href="{href("design", m.group(1))}">{e(head)}</a>:{rich(rest)}</li>')
+    later = []
+    for s in d['later']:
+        k = next((k for k in LATER_ALT if s['text'].startswith(k)), None)
+        if k is None:
+            later.append(f'<li>{rich(s["text"])}</li>')
+        else:
+            later.append(f'<li><a href="{href("design", LATER_ALT[k])}">{e(k)}</a>{rich(s["text"][len(k):])}</li>')
+    topics = []
+    for t in d['decided']:
+        entries = ''.join(f'<li id="dec-{x["slug"]}"><span class="dn">{e(x["title"])}<span class="dd">{e(x["date"])}</span></span>'
+                          f'<span>{rich(x["line"])}</span></li>' for x in t['entries'])
+        topics.append(f'''<div class="topic" id="t-{t["slug"]}">
+    <h3>{e(t["topic"])}</h3>
+    <ul class="decided-list">{entries}</ul>
+  </div>''')
+    return f'''<header class="page-head">
+  <h1>Decisions</h1>
+  <div class="prose">{paras(d["intro"])}</div>
+</header>
+
+<section class="questions" id="open" aria-labelledby="open-h">
+  <h2 id="open-h">Open now</h2>
+  {groups}
+</section>
+
+<section id="design-rounds" aria-labelledby="design-rounds-h">
+  <h2 id="design-rounds-h">Coming in the design rounds, no answer needed now</h2>
+  <p>The top-level decisions, in the order the design rounds take them, hardest to reverse first. Each links to its entry on {page_a("design")}.</p>
+  <ol class="rounds">{"".join(rounds)}</ol>
+  <h3>Later choices</h3>
+  <p>{rich(LATER_INTRO)}</p>
+  <ol class="later">{"".join(later)}</ol>
+</section>
+
+<section id="decided" aria-labelledby="decided-h">
+  <h2 id="decided-h">Decided, by topic</h2>
+  <p>{rich(DECIDED_HISTORY)}</p>
+  {"".join(topics)}
+</section>'''
+
+
+# ---------------------------------------------------------------------------------------------------
+# requirements.html (plan v2 section 3.3).
+# ---------------------------------------------------------------------------------------------------
+STATUS_KIND = {'settled': 'Settled', 'partly settled': 'Partly settled', 'proposed': 'Proposed'}
+
+
+def serves(item):
+    return [TITLE_TO_PROMISE[t] for t in item['promises']]
+
+
+def state_html(item):
+    k = item['statusKind']
+    if k not in STATUS_KIND:
+        raise SystemExit(f'{item["id"]}: unknown statusKind {k}')
+    return (f'<p class="state"><span class="stag k-{slug(k)}">{e(STATUS_KIND[k])}</span>'
+            f'<span class="small">{rich(cap1(item["status"]))}</span></p>')
+
+
+def promise_served_list(ids):
+    return '; '.join(promise_a(j) for j in ids)
+
+
+def glance_html(jobs, D):
+    """The ten at a glance: title, who, when, how many quality targets and extension cases serve it."""
+    rows = []
+    for j in jobs:
+        fn = j['functional']
+        nq, nx = len(D['served_qt'][j['id']]), len(D['served_ex'][j['id']])
+        rows.append(f'<tr><th scope="row">{promise_a(j["id"])}</th><td class="who">{e(fn["people"])}</td><td class="when">{e(fn["moment"])}</td>'
+                    f'<td class="num">{nq}</td><td class="num">{nx}</td></tr>')
+    return ('<div class="tablewrap"><table class="glance"><thead><tr><th>Promise</th><th>Who</th><th>When</th>'
+            '<th>Quality targets</th><th>Extension cases</th></tr></thead>'
+            f'<tbody>{"".join(rows)}</tbody></table></div>')
+
+
+def promise_html(j, D):
+    """A promise entry (version 8's), in version 9's frame: "Built today" moved to Today's engine and the earlier
+    candidate's parts to the part cards on Design; "Broken by" is "Where today's engine falls short"; the
+    quality targets and extension cases that serve it follow."""
+    fn = j['functional']
+    anchor = PROMISE_ANCHOR[j['id']]
+    needs = ''.join(f'<li>{e(n)}</li>' for n in j['needs'])
+    tests = ''.join(f'<li>{e(t)}</li>' for t in j['tests'])
+
+    def short(f):
+        fid = f['id']
+        note = ' <span class="muted">(proposed)</span>' if fid == 'N1' else ''
+        cls = '' if f['primary'] else ' class="secondary"'
+        return f'<li{cls}>{flaw_a(fid)}{note}: {e(f["how"])}</li>'
+    main = ''.join(short(f) for f in j['flaws'] if f['primary'])
+    also = ''.join(short(f) for f in j['flaws'] if not f['primary'])
+    shorts = ([f'<span class="tag">Mainly</span><ul>{main}</ul>'] if main else []) + \
+             ([f'<span class="tag">Also</span><ul>{also}</ul>'] if also else [])
+    standalone = re.sub(r'^In a standalone game:\s*', '', j['standalone'])
+    goal_tag = 'The long-term goal' + (' <span class="open">(open for the design rounds)</span>' if j.get('goalOpen') else '')   # row P55
+    q = j.get('questions') or []
+    qtext = ('answers ' + pass_questions(q)) if q else 'no architecture pass question covers it yet'   # rows P21 to P30
+    qts = ''.join(f'<li>{qt_a(x)}</li>' for x in D['served_qt'][j['id']])
+    exs = ''.join(f'<li>{ex_a(x)}</li>' for x in D['served_ex'][j['id']])
+    return f'''
+<section class="job" id="{anchor}" aria-labelledby="{anchor}-h">
+  <header class="job-head">
+    <h3 id="{anchor}-h">{e(TITLES[j["id"]])}</h3>
+    <dl class="who"><dt>Who</dt><dd>{e(fn["people"])}</dd><dt>When</dt><dd>{e(fn["moment"])}</dd></dl>
+  </header>
+  <div class="countson"><span class="tag">What they count on</span><p class="meaning">{e(fn["need"])}</p></div>
+  <div class="job-facts">
+    <div><span class="tag">{goal_tag}</span><p>{e(j["goal"])}</p></div>
+    <div class="served"><span class="tag">Served by these quality targets</span><ul>{qts}</ul>
+      <span class="tag">and these extension cases</span><ul>{exs}</ul></div>
+  </div>
+  <div class="short">
+    <span class="tag">Where today's engine falls short</span>
+    {"".join(shorts) or '<ul><li class="muted">No design flaw breaks this promise mainly: its planned capabilities are not built yet.</li></ul>'}
+  </div>
+  <p class="standalone"><span class="tag">In a standalone game</span> {e(standalone)}</p>
+  <details><summary>What the planned capabilities need from it ({len(j["needs"])})</summary><ul class="examples">{needs}</ul></details>
+  <details><summary>Test situations from the shows ({len(j["tests"])}); {e(qtext)}</summary><ol class="examples">{tests}</ol></details>
+</section>'''
+
+
+def qt_html(t):
+    num = ''
+    if t.get('numberToSet', '').strip():
+        num = (f'<p class="numset"><span class="tag">Number to set</span>{rich(cap1(t["numberToSet"]))}. '
+               f'{rich("[[q:A|One of the numbers question A asks you to set]]")}</p>')
+    return f'''<article class="req" id="{t["id"].lower()}">
+  <h4>{e(t["title"])}</h4>
+  <p>{rich(t["situation"])}</p>
+  {num}
+  <p><span class="tag">Serves</span>{promise_served_list(serves(t))}</p>
+  {state_html(t)}
+  <p><span class="tag">Why it matters</span>{rich(t["why"])}</p>
+</article>'''
+
+
+def ex_html(x):
+    return f'''<article class="req" id="{x["id"].lower()}">
+  <h4>{e(x["title"])}</h4>
+  <p><span class="tag">Who</span>{rich(cap1(x["who"]))}</p>
+  <p>{rich(x["case"])}</p>
+  <p><span class="tag">Goes through</span>{rich(x["throughWhat"])}</p>
+  <p><span class="tag">Must not need</span>{rich(x["mustNotNeed"])}</p>
+  <p><span class="tag">When</span>{rich(cap1(x["when"]))}</p>
+  <p><span class="tag">Serves</span>{promise_served_list(serves(x))}</p>
+  {state_html(x)}
+  <p><span class="tag">Why</span>{rich(x["why"])}</p>
+</article>'''
+
+
+def growth_groups(D):
+    """Each extension case in exactly one group: the growth item whose line links it with an [[ex:]] marker."""
+    groups, seen = [], {}
+    for g in D['front']['growth']:
+        ids = re.findall(r'\[\[ex:(EX\d+)(?:\|[^\]]*)?\]\]', g['line'])
+        for x in ids:
+            if x in seen:
+                raise SystemExit(f'extension case {x} falls in two groups: "{seen[x]}" and "{g["who"]}"')
+            seen[x] = g['who']
+        groups.append((g, ids))
+    missing = [x for x in EX if x not in seen]
+    if missing:
+        raise SystemExit(f'extension cases in no group of front.growth: {missing}')
+    return groups
+
+
+def page_requirements(D):
+    jobs, R = D['jobs'], D['rules']
+    quality_groups = []
+    order = []
+    for t in D['qt_list']:
+        if t['quality'] not in order:
+            order.append(t['quality'])
+    for qname in order:
+        items = [t for t in D['qt_list'] if t['quality'] == qname]
+        quality_groups.append(f'''<div class="req-group" id="quality-{slug(qname)}">
+    <h3>{e(qname)}</h3>
+    <div class="reqs">{"".join(qt_html(t) for t in items)}</div>
+  </div>''')
+    growth = ''.join(f'''<div class="req-group" id="growth-{slug(g["who"])}">
+    <h3>{e(g["who"])}</h3>
+    <p>{rich(g["line"])}</p>
+    <div class="reqs">{"".join(ex_html(EX[x]) for x in ids)}</div>
+  </div>''' for g, ids in growth_groups(D))
+    rules = ''.join(f'''<div class="rule-group" id="rules-{g["slug"]}">
+    <h3>{e(g["title"])}</h3>
+    <ul class="rules">{"".join(f'<li id="rule-{r["slug"]}"><strong>{e(r["title"])}</strong><span>{rich(r["line"])}</span><span class="src">{rich(r["source"])}</span></li>' for r in g["rules"])}</ul>
+  </div>''' for g in R['groups'])
+    n_num = sum(1 for t in D['qt_list'] if t.get('numberToSet', '').strip())
+    return f'''<header class="page-head">
+  <h1>Requirements</h1>
+  <div class="prose">{paras(D["front"]["intros"]["requirements"])}</div>
+</header>
+
+<section id="promises" aria-labelledby="promises-h">
+  <h2 id="promises-h">The promises</h2>
+  <p class="lead-in">Ten promises, each what a person can count on at a given moment. The table counts the quality targets and extension cases that serve each one.</p>
+  {glance_html(jobs, D)}
+  {"".join(promise_html(j, D) for j in jobs)}
+</section>
+
+<section id="qualities" aria-labelledby="qualities-h">
+  <h2 id="qualities-h">How well it must work</h2>
+  <p class="lead-in">{len(D["qt_list"])} quality targets under {len(order)} qualities. {cap1(NUM_WORD[n_num] if n_num < len(NUM_WORD) else str(n_num))} leave a number for you to set; {rich("[[q:A]]")} lists them in one place.</p>
+  {"".join(quality_groups)}
+</section>
+
+<section id="growth" aria-labelledby="growth-h">
+  <h2 id="growth-h">How it must grow</h2>
+  <p class="lead-in">{len(EX)} extension cases, grouped by the kind of person who does the growing.</p>
+  {growth}
+</section>
+
+<section id="rules" aria-labelledby="rules-h">
+  <h2 id="rules-h">The standing rules</h2>
+  <div class="prose">{paras(R["intro"])}</div>
+  {rules}
+</section>'''
+
+
+# ---------------------------------------------------------------------------------------------------
+# design.html (plan v2 section 3.4), with the earlier candidate folded at the end.
+# ---------------------------------------------------------------------------------------------------
+JOINS = 'P16'   # Joins and proofs: replaced by the published protocol and the test bench
+
+
+def overview_src(jobs):
+    """The at-a-glance diagram with each node labelled by its promise's title."""
+    src = OVERVIEW
+    for j in jobs:
+        src = src.replace(f'@{j["id"]}@', wrap_label(TITLES[j["id"]]))
+    assert '@' not in src, 'a promise in the overview has no title'
+    return src
+
+
+def relations_src(shape):
+    """The full diagram of links between promises, each node labelled by its promise's title alone."""
+    return re.sub(r'^(\s*)(J\d+)\["[^"]*"\]', lambda m: f'{m.group(1)}{m.group(2)}["{wrap_label(TITLES[m.group(2)])}"]', shape['relationsMermaid'], flags=re.M)
+
+
+def part_html(p, D):
+    """A part card (version 8's), now inside the earlier candidate on Design; flaws go by title."""
+    also = [j for j in p.get('jobs', []) if j not in KEEPS.get(p['id'], [])]
+    runs = ', '.join(RUNS_ON.get(r, r) for r in p['runsOn'] if r != 'gm-tablet-standin')
+    if 'gm-tablet-standin' in p['runsOn']:
+        runs += '; in a standalone game, a small stand-in on the GM tablet'
+    replaced = ''
+    cls = 'part'
+    if p['id'] == JOINS:
+        cls = 'part is-replaced'
+        dirs = D['design_decided']
+        replaced = (f'<p class="replaced">Replaced by the published protocol and the test bench: '
+                    f'<a href="{href("design", "decided-" + dirs["protocol"])}">the published protocol</a>, '
+                    f'<a href="{href("design", "decided-" + dirs["bench"])}">the test bench outside the engine</a>.</p>')
+    return f'''<article class="{cls}" id="{part_anchor(p["name"])}">
+  <h4>{e(p["name"])}</h4>
+  {replaced}
+  <p>{e(p["plain"])}</p>
+  <p class="pmeta"><span class="tag">Mainly keeps</span> {promise_links(KEEPS.get(p["id"], []))}</p>
+  {f'<p class="pmeta muted"><span class="tag">Also needed by</span> {promise_links(also)}</p>' if also else ''}
+  {f'<p class="pmeta"><span class="tag">Today</span> {e(TODAY[p["id"]])}</p>' if p["id"] in TODAY else ''}
+  <p class="pmeta"><span class="tag">Removes</span> {flaw_list(p["flaws"])}</p>
+  <p class="pmeta"><span class="tag">Runs on</span> {e(runs)}</p>
+  <p class="pmeta muted"><span class="tag">Where it can be swapped</span> {e(p["seams"])}</p>
+</article>'''
+
+
+def earlier_html(D):
+    """Version 8's Parts page, with the whole-engine picture and the promises' dependencies, inside one fold."""
+    shape, jobs = D['shape'], D['jobs']
     assert len(shape['qualities']) == len(QUALITY_KEEPS), 'the qualities changed: update QUALITY_KEEPS'
-    t = today_of(shape['mechanisms'][10]['plain'])   # who decides with no engine: today's way, after "Today: "
+    t = today_of(shape['mechanisms'][10]['plain'])   # who decides with no engine: today's way
     quality_today = {3: t[:1].lower() + t[1:]}
     qual = ''.join(f'<tr><th scope="row">{e(q["name"])}</th><td>{e(q["plain"])}' + (f' <span class="muted">Today: {e(quality_today[k])}</span>' if k in quality_today else '') + f'</td><td>{promise_links(QUALITY_KEEPS[k])}</td></tr>' for k, q in enumerate(shape['qualities']))
-    tangles = ''.join(f'<li><strong>{e(t["title"])}.</strong> {e(t["plain"])} <span class="muted">Flaws: {flaw_links(t["flaws"])}</span></li>' for t in shape['today']['tangles'])
+    tangles = ''.join(f'<li><strong>{e(t["title"])}.</strong> {e(t["plain"])} <span class="muted">Situations: {flaw_list(t["flaws"])}</span></li>' for t in shape['today']['tangles'])
     rows = part_layers(shape)
     edge = {0: '<span class="lvl">Top</span>', len(rows) - 1: '<span class="lvl">Bottom</span>'}
     layers = ''.join(f'<li>{edge.get(k, "")}{"".join(part_link(i) for i in row)}</li>' for k, row in enumerate(rows))
     order = [i for row in reversed(rows) for i in row]
     by_id = {p['id']: p for p in shape['parts']}
-    parts = ''.join(part_html(by_id[i]) for i in order)
+    parts = ''.join(part_html(by_id[i], D) for i in order)
     devices = ''.join(f'<li><strong>{e(h)}</strong> {e(t)}</li>' for h, t in FIT_DEVICES)
     walks = ''.join(f'''<figure class="dia walk">
       <figcaption>{e(title)}</figcaption>
@@ -1508,24 +1826,52 @@ def page_parts(D):
     for a, start in zip(shape['alternatives'], ALT_TITLE_START):
         if not a['title'].startswith(start):
             raise SystemExit(f'alternative "{a["title"]}" no longer matches its anchor (ALT_TITLE_START)')
-    alts = ''.join(f'<tr id="{anc}"><th scope="row">{e(a["title"])}</th><td>{e(a["a"])}</td><td>{e(a["b"])}</td><td>{e(a["cost"])}</td></tr>'
+    alts = ''.join(f'<tr id="{anc}"><th scope="row">{rich(a["title"])}</th><td>{rich(a["a"])}</td><td>{rich(a["b"])}</td><td>{rich(a["cost"])}</td></tr>'
                    for a, anc in zip(shape['alternatives'], ALT_ANCHORS))
     n_uses = len(re.findall(r"-->", shape["partsMermaid"]))
     uses_src = re.sub(r'\["P\d+ ', '["', shape['partsMermaid'])   # boxes by name only: no part numbers on the page
     uses_cap = f'Which part uses which: {n_uses} links'
-    return f'''<header class="page-head">
-  <h1>Parts</h1>
-  <div class="prose">{paras(D["front"]["intros"]["parts"])}</div>
-</header>
+    fit = ''.join(f'<p><strong>{e(h)}</strong> {rich(t)}</p>' for h, t in FIT_SUMMARY)
+    n_links = len(re.findall(r"-\.?->", shape["relationsMermaid"]))
+    n_deps = len(re.findall(r"[^.]-->", shape["relationsMermaid"]))
+    overview = present(overview_src(jobs)).replace('"useMaxWidth": false}, "sequence"', '"useMaxWidth": false, "nodeSpacing": 20}, "sequence"', 1)
+    rel_cap = f'The {n_links} main links between the promises'
+    return f'''<details class="earlier">
+    <summary><span class="tag">The earlier candidate, folded</span><span class="note">{rich(D["design"]["earlierNote"])}</span></summary>
+    <div class="earlier-body">
 
-<section class="fit-block" id="qualities" aria-labelledby="qualities-h">
-  <h2 id="qualities-h">Qualities every part must have</h2>
-  <p>{e(QUALITIES_INTRO)}</p>
+<section class="fit-block" id="whole" aria-labelledby="whole-h">
+  <h3 id="whole-h">The earlier candidate, whole</h3>
+  <figure class="dia whole">
+    <figcaption>The earlier candidate, whole</figcaption>
+    <div class="scroll"><div class="svgwrap">{shape_svg()}</div></div>
+    <p class="figkey">{rich(WHOLE_KEY)}</p>
+  </figure>
+  <div class="fit-summary">{fit}</div>
+</section>
+
+<section class="fit-block" id="depend" aria-labelledby="depend-h">
+  <h3 id="depend-h">How the promises depend on each other</h3>
+  <figure class="dia wide">
+    <figcaption>The main dependencies in brief</figcaption>
+    <p class="figkey">{OVERVIEW_KEY}</p>
+    <div class="scroll">{diagram(overview, "The main dependencies in brief")}</div>
+    <details>
+      <summary>{e(rel_cap)}</summary>
+      <p class="muted" style="margin:10px 0">{e(RELATIONS_NOTE.format(n=n_deps))}</p>
+      <div class="scroll">{diagram(present(relations_src(shape)), rel_cap)}</div>
+    </details>
+  </figure>
+</section>
+
+<section class="fit-block" id="candidate-qualities" aria-labelledby="candidate-qualities-h">
+  <h3 id="candidate-qualities-h">Qualities every part must have</h3>
+  <p>{rich(QUALITIES_INTRO)}</p>
   <div class="tablewrap"><table class="mech"><thead><tr><th>Quality</th><th>What it means</th><th>Mainly keeps</th></tr></thead><tbody>{qual}</tbody></table></div>
 </section>
 
 <section class="fit-block" id="layers" aria-labelledby="layers-h">
-  <h2 id="layers-h">The parts in layers</h2>
+  <h3 id="layers-h">The parts in layers</h3>
   <figure class="layers-fig">
     <figcaption>{e(LAYERS_CAPTION)}</figcaption>
     <ol class="layers">{layers}</ol>
@@ -1537,19 +1883,19 @@ def page_parts(D):
   </details>
 </section>
 
-<section class="fit-block" id="moments" aria-labelledby="moments-h">
-  <h2 id="moments-h">Five moments, part by part</h2>
+<section class="fit-block" id="walks" aria-labelledby="walks-h">
+  <h3 id="walks-h">Five moments, part by part</h3>
   <p>{e(MOMENTS_KEY)}</p>
   <div class="walks">{walks}</div>
 </section>
 
 <section class="fit-block" id="the-parts" aria-labelledby="the-parts-h">
-  <h2 id="the-parts-h">The seventeen parts</h2>
+  <h3 id="the-parts-h">The seventeen parts</h3>
   <div class="parts">{parts}</div>
 </section>
 
 <section class="fit-block" id="where-they-run" aria-labelledby="where-they-run-h">
-  <h2 id="where-they-run-h">Which part would run where</h2>
+  <h3 id="where-they-run-h">Which part would run where</h3>
   <ul class="devices">{devices}</ul>
   <details>
     <summary>As a diagram</summary>
@@ -1558,7 +1904,7 @@ def page_parts(D):
 </section>
 
 <section class="fit-block" id="tangles" aria-labelledby="tangles-h">
-  <h2 id="tangles-h">Where today's code tangles</h2>
+  <h3 id="tangles-h">Where today's code tangles</h3>
   <details>
     <summary>Where the promises' work sits in today's code: {len(shape["today"]["tangles"])} tangles</summary>
     <p class="muted" style="margin:10px 0">{rich(TANGLE_NOTE)}</p>
@@ -1567,71 +1913,188 @@ def page_parts(D):
 </section>
 
 <section class="fit-block" id="alternatives" aria-labelledby="alternatives-h">
-  <h2 id="alternatives-h">Where a real alternative exists</h2>
+  <h3 id="alternatives-h">Where a real alternative exists</h3>
   <p>{e(ALTS_INTRO)}</p>
   <div class="tablewrap"><table class="alts"><thead><tr><th>Choice</th><th>The candidate</th><th>The other way</th><th>What each costs</th></tr></thead><tbody>{alts}</tbody></table></div>
+</section>
+    </div>
+  </details>'''
+
+
+def page_design(D):
+    g = D['design']
+    ahead = ''.join(f'''<article class="ahead-item" id="d-{a["slug"]}">
+    <h3><span class="ord">{k}.</span>{e(a["title"])}</h3>
+    <div class="block"><span class="tag">What it decides</span><p>{rich(a["decides"])}</p></div>
+    <div class="block"><span class="tag">What drives it</span><p>{rich(a["drivers"])}</p></div>
+    <div class="block"><span class="tag">Already settled around it</span><p>{rich(a["settled"])}</p></div>
+    <div class="block"><span class="tag">What the panel and the design round bring</span><p>{rich(a["panel"])}</p></div>
+  </article>''' for k, a in enumerate(g['ahead'], 1))
+    for a in g['ahead']:
+        if a['slug'] != slug(a['title']):
+            raise SystemExit(f'design.ahead slug {a["slug"]} is not the slug of its title')
+    decided = ''.join(f'''<article class="direction" id="decided-{x["slug"]}">
+    <h3>{e(x["title"])}</h3>
+    {paras(x["paragraphs"])}
+  </article>''' for x in g['decided'])
+    later = []
+    for x in g['later']:
+        alt = (x.get('alt') or '').strip()
+        link = f' <a href="{href("design", alt)}">Both designs compared.</a>' if alt else ''
+        later.append(f'<li>{rich(x["text"])}{link}</li>')
+    return f'''<header class="page-head">
+  <h1>Design</h1>
+  <div class="prose">{paras(D["front"]["intros"]["design"])}</div>
+</header>
+
+<section id="ahead" aria-labelledby="ahead-h">
+  <h2 id="ahead-h">The decisions ahead</h2>
+  <div class="ahead">{ahead}</div>
+</section>
+
+<section id="decided" aria-labelledby="decided-h">
+  <h2 id="decided-h">Decided directions</h2>
+  <div class="directions">{decided}</div>
+</section>
+
+<section id="later" aria-labelledby="later-h">
+  <h2 id="later-h">Later choices</h2>
+  <p>Mid-level choices that still stand. Each is settled inside one of the decisions ahead, or by the build plan.</p>
+  <ol class="later">{"".join(later)}</ol>
+</section>
+
+<section id="earlier" aria-labelledby="earlier-h">
+  <h2 id="earlier-h">The earlier candidate</h2>
+  {earlier_html(D)}
 </section>'''
 
 
+# ---------------------------------------------------------------------------------------------------
+# today.html (plan v2 section 3.5).
+# ---------------------------------------------------------------------------------------------------
+def card_html(c):
+    """A situation (version 8's card): title only; the candidate's side folded (plan v2 3.5 item 3)."""
+    ex = ''.join(f'<li>{e(x["text"])}</li>' for x in c['examples'])   # row F7: no finding ids
+    mods = ''.join(f'<code>{e(m)}</code>' for m in c['modules'])
+    live = f'<p class="live-note"><span class="tag">{seen_label(c)}</span> {e(c["seenLive"])}</p>' if c.get('seenLive') else ''
+    sa = c.get('inStandalone', '')
+    sa_html = f'<p class="standalone"><span class="tag">In a standalone game</span> {rich(sa)}</p>' if sa else ''
+    return f'''
+<article class="card" id="{c["id"].lower()}">
+  <header class="card-head">
+    <h3>{e(c["title"])}</h3>
+    <div class="chips">{chips(c)}</div>
+    {questions_line(c)}
+  </header>
+  <div class="story">
+    <p><span class="tag">At a show</span> {e(c["atAShow"])}</p>
+    <p><span class="tag">Why it happens</span> {e(c["whyItHappens"])}</p>
+    {live}
+    {sa_html}
+  </div>
+  <figure class="dia before">
+    <figcaption>{e(c["before"]["caption"])}</figcaption>
+    <div class="scroll">{diagram(present(c["before"]["mermaid"]), c["before"]["caption"])}</div>
+  </figure>
+  <details class="fold">
+    <summary>How the earlier candidate would remove it</summary>
+    <figure class="dia after">
+      <figcaption>{e(c["after"]["caption"])}</figcaption>
+      <div class="scroll">{diagram(present(c["after"]["mermaid"]), c["after"]["caption"])}</div>
+      <p class="after-note">{e(c["after"]["note"])}</p>
+    </figure>
+    {part_row(c.get("parts", []), "Removed by these parts of the earlier candidate")}
+  </details>
+  <p class="design"><span class="tag">In design terms</span> {e(c["designTerms"])}</p>
+  <details>
+    <summary>The problems behind it, and the code they live in</summary>
+    <ul class="examples">{ex}</ul>
+    <div class="mods">{mods}</div>
+  </details>
+</article>'''
+
+
 def n1_html(D):
-    """The proposed N1, a short entry: no card, no record in the cards data. Its text comes from the promises'
-    four lines for N1, question C and the standalone pass (inventory row 73)."""
+    """The proposed seventeenth, a short entry: no card, no record in the cards data (row F82)."""
     lines = D['n1_lines']
     main = [(j, h) for j, h, p in lines if p]
     also = [(j, h) for j, h, p in lines if not p]
-    parts = D['n1_parts']
     also_html = ''.join(f'<li>{promise_a(j)}: {e(h)}</li>' for j, h in also)
     return f'''
 <article class="card proposed" id="n1">
   <header class="card-head">
-    <span class="cid">N1</span>
-    <h4>{e(N1_TITLE)}</h4>
+    <h3>{e(N1_TITLE)}</h3>
     <div class="chips"><span class="chip">Proposed</span><span class="chip">{D["n1_findings"]} problems found</span></div>
   </header>
   <div class="story">
     <p><span class="tag">What breaks</span> {e(main[0][1])}</p>
-    <div><span class="tag">It also breaks</span><ul class="examples">{also_html}</ul></div>
+    <p><span class="tag">It mainly touches</span> {promise_a(main[0][0])}</p>
+    <div><span class="tag">It also touches</span><ul class="examples">{also_html}</ul></div>
   </div>
-  {part_row(parts, NAMES, "Removed by these parts of the candidate shape")}
-  <p class="design"><span class="tag">Proposed, with no card</span> {rich("Whether it is a design flaw of its own, with its own rule, is [[q:C]], where question 23 is folded in. Its problems come from the standalone pass.")}</p>
+  <details class="fold">
+    <summary>How the earlier candidate would remove it</summary>
+    {part_row(D["n1_parts"], "Removed by these parts of the earlier candidate")}
+  </details>
+  <p class="design"><span class="tag">Proposed, with no card</span> {rich("Whether it is a design flaw of its own, needing its own design choice, is [[q:G]]. Its problems come from the review of standalone games.")}</p>
 </article>'''
 
 
-def page_flaws(D):
+def grid_html(cards):
+    head = ''.join(f'<th scope="col"><span>{e(name)}</span></th>' for name, _ in PARTS)
+    rows = []
+    for c in cards:
+        cells = []
+        for _, match in PARTS:
+            hit = any(match(m) for m in c['modules'])
+            cells.append('<td class="dot" aria-label="yes">●</td>' if hit else '<td></td>')
+        rows.append(f'<tr><th scope="row">{flaw_a(c["id"])}</th>{"".join(cells)}</tr>')
+    return f'<div class="tablewrap"><table class="grid"><thead><tr><th scope="col">Situation</th>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
+
+
+def parity_html():
+    body = ''.join(
+        f'<tr{" class=both-weak" if weak else ""}><td class="num">{n}</td><th scope="row">{e(c[0])}</th><td>{e(c[1])}</td><td>{e(c[2])}</td><td>{e(c[3])}</td></tr>'
+        for n, c, weak in parity_rows())
+    # Row F137.
+    return ('<div class="tablewrap"><table class="parity"><thead><tr><th>Row</th><th>Behaviour</th>'
+            '<th>Phone\'s scanner, standalone</th><th>Hardware scanner, no engine</th><th>What the hardware scanner would need (candidate)</th>'
+            f'</tr></thead><tbody>{body}</tbody></table></div>')
+
+
+def page_today(D):
     cards, jobs, by_id, home = D['cards'], D['jobs'], D['by_id'], D['home']
-    # The flaws at a glance.
+    works = ''.join(f'<li>{promise_a(j["id"])}<span>{e(BUILT[j["id"]])}</span></li>' for j in jobs)
+    well = ''.join(f'<li><span>{rich(x)}</span></li>' for x in WELL_BUILT)
+    # The situations at a glance.
     others = {}
     for j in jobs:
         for f in j['flaws']:
             if not f['primary']:
                 others.setdefault(f['id'], []).append(j['id'])
     rows = []
-    entries = [(c['id'], c['title'], c.get('parts', []), c['findings'], seen_label(c)) for c in
-               sorted(cards, key=lambda c: int(c['id'][1:]))]
-    entries.append(('N1', N1_TITLE + ' (proposed)', D['n1_parts'], D['n1_findings'], ''))
-    n_live = sum(1 for x in entries if x[4] == SEEN_LIVE)
-    n_test = sum(1 for x in entries if x[4] == SEEN_TEST)
-    for fid, title, parts, n, live in entries:
-        main = promise_a(home[fid], quotes=True)
+    entries = [(c['id'], c['findings'], seen_label(c)) for c in sorted(cards, key=lambda c: int(c['id'][1:]))]
+    entries.append(('N1', D['n1_findings'], ''))
+    n_live = sum(1 for x in entries if x[2] == SEEN_LIVE)
+    n_test = sum(1 for x in entries if x[2] == SEEN_TEST)
+    for fid, n, live in entries:
+        note = ' <span class="muted">(proposed)</span>' if fid == 'N1' else ''
         oth = '<br/>'.join(promise_a(x, quotes=True) for x in others.get(fid, []))
-        rows.append(f'<tr><th scope="row">{flaw_a(fid, fid, "fid")} {flaw_a(fid, title)}</th>'
-                    f'<td>{main}</td><td class="muted">{oth}</td><td>{", ".join(part_a(p) for p in parts)}</td>'
-                    f'<td class="num">{n}</td><td>{live}</td></tr>')
-    table = ('<div class="tablewrap"><table class="flawtable"><thead><tr><th>Design flaw</th><th>Mainly breaks</th>'
-             '<th>Also breaks</th><th>Parts that would remove it</th><th>Findings</th><th>Seen live or in a test</th></tr></thead>'
+        rows.append(f'<tr><th scope="row">{flaw_a(fid)}{note}</th><td>{promise_a(home[fid], quotes=True)}</td>'
+                    f'<td class="muted">{oth}</td><td class="num">{n}</td><td>{live}</td></tr>')
+    table = ('<div class="tablewrap"><table class="flawtable"><thead><tr><th>Situation</th><th>Mainly touches</th>'
+             '<th>Also touches</th><th>Problems</th><th>Seen live or in a test</th></tr></thead>'
              f'<tbody>{"".join(rows)}</tbody></table></div>'
-             f'<p class="muted">{NUM_WORD[n_live].capitalize()} flaws were seen live; '
+             f'<p class="muted">{NUM_WORD[n_live].capitalize()} situations were seen live; '
              f'{NUM_WORD[n_test]} more were reproduced in a test.</p>')
-    # The cards, grouped under the promise each mainly breaks.
+    # The sixteen, grouped under the promise each mainly touches; the proposed seventeenth after them.
     groups = []
     for j in jobs:
-        mine = [f['id'] for f in j['flaws'] if f['primary']]
+        mine = [f['id'] for f in j['flaws'] if f['primary'] and f['id'] != 'N1']
         if not mine:
             continue
-        body = ''.join(card_html(by_id[i]) if i in by_id else n1_html(D) for i in mine)
-        anchor = 'under-' + PROMISE_ANCHOR[j['id']]
-        groups.append(f'''<div class="fgroup" id="{anchor}">
-  <h3><span class="tag">Mainly breaks</span>{promise_a(j["id"])}</h3>
+        body = ''.join(card_html(by_id[i]) for i in mine)
+        groups.append(f'''<div class="fgroup" id="under-{PROMISE_ANCHOR[j["id"]]}">
+  <h3><span class="tag">{TODAY_GROUP_TAG}</span>{promise_a(j["id"])}</h3>
   {body}
 </div>''')
     total = sum(c['findings'] for c in cards)
@@ -1642,28 +2105,36 @@ def page_flaws(D):
     intro = EVIDENCE_INTRO.format(total_all=total + aside_n, total=total, aside_n=aside_n, sa_all=sa_all,
                                   sa_cards=sa_all - sa_n1, sa_n1=sa_n1)
     D['totals'] = (total, aside_n, total + aside_n)
+    n_parity = len(parity_rows())
     return f'''<header class="page-head">
-  <h1>Design flaws</h1>
-  <div class="prose">{paras(D["front"]["intros"]["flaws"])}</div>
-  {LEGEND}
+  <h1>Today's engine</h1>
+  <div class="prose">{paras(D["front"]["intros"]["today"])}</div>
 </header>
 
-<section id="glance" aria-labelledby="glance-h">
-  <h2 id="glance-h">The flaws at a glance</h2>
-  {table}
+<section id="works" aria-labelledby="works-h">
+  <h2 id="works-h">What works today</h2>
+  <h3>What each promise already has</h3>
+  <ul class="works">{works}</ul>
+  <h3>The pieces already well built</h3>
+  <ul class="works">{well}</ul>
 </section>
 
-<section class="family" id="cards" aria-labelledby="cards-h">
-  <h2 id="cards-h">The cards</h2>
-  {"".join(groups)}
+<section id="situations" aria-labelledby="situations-h">
+  <h2 id="situations-h">Sixteen situations any new design must handle</h2>
+  <p class="lead-in">Each is a design flaw of today's engine, kept as a situation every design is checked against. Under each card's first drawing, where it goes wrong today, the second is folded: the earlier candidate's way of removing it.</p>
+  {LEGEND}
+  {table}
+  <div class="family">{"".join(groups)}</div>
+  <h3>The proposed seventeenth</h3>
+  {n1_html(D)}
 </section>
 
 <section class="sa-box" id="standalone" aria-labelledby="standalone-h">
-  <h2 id="standalone-h">Standalone games</h2>
-  <p>{e(STANDALONE_P1)}</p>
-  <p>{e(STANDALONE_P2)}</p>
+  <h2 id="standalone-h">Standalone today</h2>
   <details>
-    <summary>The ESP32 hardware scanner against the web scanner with no engine: {len(parity_rows())} differences</summary>
+    <summary>Standalone games today, and the hardware scanner against the phone's scanner with no engine: {n_parity} differences</summary>
+    <p>{rich(STANDALONE_P1)}</p>
+    <p style="margin-top:10px">{rich(STANDALONE_P2)}</p>
     <p class="muted" style="margin:10px 0">{e(PARITY_NOTE)}</p>
     {parity_html()}
   </details>
@@ -1677,13 +2148,16 @@ def page_flaws(D):
     <div class="tablewrap"><table class="aside"><tbody>{aside}</tbody></table></div>
   </details>
   <details>
-    <summary>Where each flaw lives in today's code</summary>
+    <summary>Where each situation lives in today's code</summary>
     <p class="muted" style="margin:10px 0">{e(GRID_NOTE)}</p>
     {grid_html(sorted(cards, key=lambda c: int(c['id'][1:])))}
   </details>
 </section>'''
 
 
+# ---------------------------------------------------------------------------------------------------
+# changes.html (plan v2 section 3.6).
+# ---------------------------------------------------------------------------------------------------
 def page_changes(D):
     c = D['changes']
     versions = ''.join(f'''<article class="log-entry" id="v{e(v["version"])}">
@@ -1698,17 +2172,27 @@ def page_changes(D):
   <ul>{li(p["changes"])}</ul>
 </article>''' for p in c['promises'])
     cards = ''.join(f'''<article class="log-entry" id="changed-{x["id"].lower()}">
-  <h3><span class="cid">{e(x["id"])}</span> {flaw_a(x["id"])}</h3>
+  <h3><span class="cid">{e(x["id"])}</span>{flaw_a(x["id"])}</h3>
   <ul>{li(x["changes"])}</ul>
 </article>''' for x in c['cards'])
-    recs = ''.join(f'''<article class="log-entry" id="rec-{r["key"].lower()}">
-  <h3>{q_a(r["key"], True)}</h3>
+    recs = []
+    for r in c['recommendations']:
+        m = re.fullmatch(r'\[\[q:([A-Z])\]\]', r['question'].strip())
+        if not m:
+            raise SystemExit(f'recommendation {r["key"]}: "question" is not a [[q:X]] marker')
+        title = next(q['title'] for g in D['decisions']['groups'] for q in g['questions'] if q['letter'] == m.group(1))
+        recs.append(f'''<article class="log-entry" id="rec-{r["key"].lower()}">
+  <p class="when">Earlier question {e(r["key"])}</p>
+  <h3>{rich(r["question"])}: {rich(title)}</h3>
   <div class="beforeafter">
     <div><span class="tag">Before</span><p>{rich(r["before"])}</p></div>
     <div><span class="tag">After</span><p>{rich(r["after"])}</p></div>
   </div>
   <p class="prompt"><span class="tag">Why</span> {rich(r["why"])}</p>
-</article>''' for r in c['recommendations'])
+</article>''')
+    jargon = ''.join(f'<tr><th scope="row">{rich(x["was"])}</th><td>{rich(x["now"])}</td></tr>' for x in c['jargon'])
+    numbers = ''.join(f'<tr><th scope="row">{rich(x["was"])}</th><td>{rich(x["title"])}</td><td>{rich(x["where"])}</td></tr>' for x in c['numbers'])
+    seq = ''.join(f'<tr><th scope="row">{rich(x["was"])}</th><td>{rich(x["now"])}</td></tr>' for x in c['sequence'])
     return f'''<header class="page-head">
   <h1>Change log</h1>
   <div class="prose">{paras(c["intro"])}</div>
@@ -1732,18 +2216,33 @@ def page_changes(D):
 </section>
 
 <section id="recommendations" aria-labelledby="recommendations-h">
-  <h2 id="recommendations-h">Recommendations the map changed</h2>
-  {recs}
+  <h2 id="recommendations-h">Recommendations the candidate shape changed</h2>
+  {"".join(recs)}
 </section>
 
 <section id="vocabulary" aria-labelledby="vocabulary-h">
   <h2 id="vocabulary-h">The words</h2>
   <ul class="plain-list">{li(c["vocabulary"])}</ul>
+</section>
+
+<section id="jargon" aria-labelledby="jargon-h">
+  <h2 id="jargon-h">The words replaced in version 9</h2>
+  <div class="tablewrap"><table class="logtable"><thead><tr><th>Was</th><th>Now</th></tr></thead><tbody>{jargon}</tbody></table></div>
+</section>
+
+<section id="numbers" aria-labelledby="numbers-h">
+  <h2 id="numbers-h">Old numbers and their titles</h2>
+  <div class="tablewrap"><table class="logtable"><thead><tr><th>Was</th><th>Title</th><th>Where it is now</th></tr></thead><tbody>{numbers}</tbody></table></div>
+</section>
+
+<section id="sequence" aria-labelledby="sequence-h">
+  <h2 id="sequence-h">Old sequencing words and the new names</h2>
+  <div class="tablewrap"><table class="logtable"><thead><tr><th>Was</th><th>Now</th></tr></thead><tbody>{seq}</tbody></table></div>
 </section>'''
 
 
 # ---------------------------------------------------------------------------------------------------
-# Checks (plan 5.2), failing loudly.
+# Checks (plan v2 section 5 and plan v1 5.2), failing loudly.
 # ---------------------------------------------------------------------------------------------------
 def strip_svgs(s):
     return re.sub(r'<svg\b.*?</svg>', ' ', s, flags=re.S)
@@ -1751,15 +2250,105 @@ def strip_svgs(s):
 
 def visible_text(s):
     s = re.sub(r'<style\b.*?</style>', ' ', s, flags=re.S)
+    s = re.sub(r'<script\b.*?</script>', ' ', s, flags=re.S)
+    s = re.sub(r'<title\b.*?</title>', ' ', s, flags=re.S)
     s = re.sub(r'<[^>]+>', ' ', s)
     return html.unescape(s)
 
 
+def reader_text(s):
+    """What a reader reads as prose, for the word checks: visible text without the code-file lists (engineers'
+    reference, untouched by the jargon table) and without the navigation (its count of open questions)."""
+    s = re.sub(r'<code\b.*?</code>', ' ', s, flags=re.S)
+    s = re.sub(r'<nav class="sitenav".*?</nav>', ' ', s, flags=re.S)
+    return visible_text(s)
+
+
 def prose_words(s):
     s = re.sub(r'<style\b.*?</style>', ' ', s, flags=re.S)
+    s = re.sub(r'<script\b.*?</script>', ' ', s, flags=re.S)
     for tag in ('svg', 'table', 'nav', 'footer', 'code', 'pre', 'title'):
         s = re.sub(rf'<{tag}\b.*?</{tag}>', ' ', s, flags=re.S)
     return len(re.findall(r"[A-Za-z0-9][\w'’.,-]*", html.unescape(re.sub(r'<[^>]+>', ' ', s))))
+
+
+def index_prose_without(s):
+    """The front page's prose without the moments and the words (plan v2 3.1: under about 2,500 words)."""
+    for sid in ('moments', 'words'):
+        s = re.sub(rf'<section id="{sid}"[\s>].*?</section>', ' ', s, flags=re.S)
+    return prose_words(s)
+
+
+def index_sentences_without(s):
+    """The same, counting sentences only: headings, figure captions and the small labels left out."""
+    for sid in ('moments', 'words'):
+        s = re.sub(rf'<section id="{sid}"[\s>].*?</section>', ' ', s, flags=re.S)
+    s = re.sub(r'<(h[1-4]|figcaption)\b.*?</\1>', ' ', s, flags=re.S)
+    s = re.sub(r'<span class="(?:tag|here)">.*?</span>', ' ', s, flags=re.S)
+    return prose_words(s)
+
+
+# Visible ids no page but the change log may show (plan v2 section 5).
+VISIBLE_IDS = re.compile(r'\b(?:J(?:10|[1-9])|C(?:1[0-6]|[1-9])|N1|QT\d+|EX\d+|[A-Z]{1,2}-\d{2,3})\b')
+BARE_NUMBERS = re.compile(r'\b(?:phase|step|round|block|decision|question)s? \d+\b', re.I)
+# Retired words: allowed on changes.html only (the brief's list, then every other term of the jargon table's
+# "Term as it appears" column a pattern matches without false positives). Three phrases are excepted, each named
+# in the build log as an input to reword: "kind of job" is jargon wording 20's own plain wording for
+# "capability"; "a developer's job" (one extension case's "why") is the everyday word for a task, not the retired
+# name for a promise; "orchestrator" naming the agent that runs the pass is not the retired name for the engine.
+RETIRED = [
+    ('job', r'\bjobs?\b(?<!kind of job)(?<!kinds of job)(?<!developer[\'’]s job)'),
+    ('installer', r'\binstallers?\b'),
+    ('orchestrator', r'\borchestrator\b(?![\'’]s reasoning| \(the agent running the pass\)|[\'’]s recommendations)'),
+    ('the planning half', r'\bplanning half\b'),
+    ('the building half', r'\bbuilding half\b'),
+    ('the map', r'\bthe map\b'),
+    ('relationship map', r'\brelationship maps?\b'),
+    ('hot-apply', r'\bhot-apply\b'),
+    ('preview instance', r'\bpreview (?:instance|engine|profile)\b'),
+    ('capability N', r'\bcapabilit(?:y|ies) \d'),
+    ("the designer's week", r"\bdesigner['’]s week\b"),
+    ("the developer's proof", r"\bdeveloper['’]s proofs?\b"),
+    ('the cause analysis', r'\bcause analysis\b'),
+    ('the standalone pass', r'\bstandalone pass\b'),
+    ('parity table', r'\bparity table\b'),
+    ("the program's state page", r"\bprogram['’]s state page\b"),
+    ('the capability map', r'\bcapability map\b'),
+    ('the engine-shape document', r'\bengine-shape document\b'),
+    ('the promises document', r'\bpromises document\b'),
+    ('the shared vocabulary', r'\bshared vocabulary\b'),
+    ('the old container', r'\bold container\b'),
+    ('start-or-adopt', r'\bstart-or-adopt\b'),
+    ('interaction primitives', r'\binteraction primitives?\b'),
+    ('session bundle', r'\bsession[- ]bundle\b'),
+    ('two-pack proof', r'\btwo-pack proof\b'),
+    ('toy pack', r'\btoy pack\b'),
+    ('deploy chain', r'\bdeploy chain\b'),
+    ('Deploy stage', r'\bDeploy stage\b'),
+    ('auth tiers', r'\bauth tiers?\b'),
+    ('activation gate', r'\bactivation gate\b'),
+    ('start gate', r'\bstart gate\b'),
+    ('web scanner', r'\bweb (?:player )?scanner\b'),
+    ('ESP32', r'\bESP32\b'),
+    ('the session validator', r'\bsession validator\b'),
+    ('snapshot builder', r'\bsnapshot builders?\b'),
+    ('catch-up snapshot', r'\b(?:catch-up|full) snapshots?\b'),
+    ('envelope', r'\benvelopes?\b'),
+    ('pack stamp', r'\bpack stamp\b'),
+    ('preview engine', r'\bpreview engine\b'),
+    ('supervision shapes', r'\bsupervision shapes?\b'),
+    ('per-engine names', r'\bper-engine nam'),
+    ('the floor', r'\bthe floor\b'),
+    ('described set', r'\bdescribed set\b'),
+    ('handoff', r'\bhandoff\b'),
+    ('kiosk', r'\bkiosk\b'),
+    ('MPD', r'\bMPD\b'),
+    ('ducking', r'\bducking\b'),
+    ('Step 3', r'\bstep[- ]3\b'),
+]
+
+
+INDEX_LIMIT = 2500
 
 
 def check(pages, D):
@@ -1782,6 +2371,9 @@ def check(pages, D):
                 fails.append(f'{FILE[k]}: link out of the site {h}')
                 continue
             f, _, anchor = h.partition('#')
+            if f in RETIRED_PAGES:
+                fails.append(f'{FILE[k]}: link to a retired page {h}')
+                continue
             target = k if f == '' else by_file.get(f)
             if target is None:
                 fails.append(f'{FILE[k]}: link to a missing page {h}')
@@ -1793,57 +2385,101 @@ def check(pages, D):
             fails.append(f'{FILE[k]}: an unresolved marker')
         if '@@SVG:' in s:
             fails.append(f'{FILE[k]}: a diagram was not placed')
-        text = visible_text(s)
-        for m in re.finditer(r'\bJ(?:10|[1-9])\b', text):
-            fails.append(f'{FILE[k]}: a promise id in visible text: ...{text[max(0, m.start() - 50):m.end() + 30]!r}')
+        text = reader_text(s)
         if k != 'changes':
-            for m in re.finditer(r'\b(?:jobs?|installers?)\b', text, re.I):
-                fails.append(f'{FILE[k]}: retired word "{m.group(0)}": ...{text[max(0, m.start() - 50):m.end() + 30]!r}')
-        if re.search(r'<script\b', s, re.I) or 'mermaid.min.js' in s or 'class="mermaid"' in s:
-            fails.append(f'{FILE[k]}: the page loads a script or Mermaid')
+            for m in VISIBLE_IDS.finditer(text):
+                fails.append(f'{FILE[k]}: a visible id "{m.group(0)}": ...{text[max(0, m.start() - 50):m.end() + 30]!r}')
+            for m in BARE_NUMBERS.finditer(text):
+                fails.append(f'{FILE[k]}: a bare sequencing number "{m.group(0)}": ...{text[max(0, m.start() - 50):m.end() + 30]!r}')
+            for name, pat in RETIRED:
+                for m in re.finditer(pat, text, 0 if name in ('ESP32', 'MPD', 'Deploy stage') else re.I):
+                    fails.append(f'{FILE[k]}: retired word "{name}": ...{text[max(0, m.start() - 50):m.end() + 30]!r}')
+        if '—' in text:
+            fails.append(f'{FILE[k]}: an em dash in visible text')
+        scripts = re.findall(r'<script\b.*?</script>', s, flags=re.S | re.I)
+        if scripts != [OPEN_SCRIPT] or 'mermaid.min.js' in s or 'class="mermaid"' in s:
+            fails.append(f'{FILE[k]}: the page loads a script other than the one fold opener, or Mermaid')
         cur = re.findall(r'<a [^>]*aria-current="page"[^>]*>', s)
         if len(cur) != 1 or f'href="{FILE[k]}"' not in cur[0]:
             fails.append(f'{FILE[k]}: the navigation does not mark this page as current')
-    # Each promise, part and flaw once as an entry on its own page; each question once.
+        if f'<p class="status">{e(STATUS_LINE)}</p>' not in s:
+            fails.append(f'{FILE[k]}: the status line is not the plan\'s')
+    # Each promise, quality target, extension case, flaw and question once as an entry on its home page; each
+    # part of the earlier candidate once on Design.
+    def once(page, pattern, what):
+        n = len(re.findall(pattern, pages[page]))
+        if n != 1:
+            fails.append(f'{what} appears {n} times as an entry on {FILE[page]}')
     for jid, anc in PROMISE_ANCHOR.items():
-        n = len(re.findall(rf'<section class="job" id="{anc}"', pages['promises']))
-        if n != 1:
-            fails.append(f'promise {anc} appears {n} times as an entry on promises.html')
-    for p in D['shape']['parts']:
-        n = len(re.findall(rf'<article class="part" id="{part_anchor(p["name"])}"', pages['parts']))
-        if n != 1:
-            fails.append(f'part {p["name"]} appears {n} times as an entry on parts.html')
+        once('requirements', rf'<section class="job" id="{anc}"', f'promise {anc}')
+    for qid in QT:
+        once('requirements', rf'<article class="req" id="{qid.lower()}"', f'quality target {qid}')
+    for xid in EX:
+        once('requirements', rf'<article class="req" id="{xid.lower()}"', f'extension case {xid}')
     for fid in list(D['by_id']) + ['N1']:
-        n = len(re.findall(rf'<article class="card[^"]*" id="{fid.lower()}"', pages['flaws']))
-        if n != 1:
-            fails.append(f'flaw {fid} appears {n} times as an entry on flaws.html')
-    keys = [q['key'] for g in D['decisions']['groups'] for q in g['questions']]
-    if len(keys) != len(set(keys)):
-        fails.append(f'decisions.json repeats a question key: {keys}')
+        once('today', rf'<article class="card[^"]*" id="{fid.lower()}"', f'flaw {fid}')
     for g in D['decisions']['groups']:
         for q in g['questions']:
-            n = len(re.findall(rf'<div class="q q-[a-z]+" id="{q["anchor"]}"', pages['decisions']))
-            if n != 1:
-                fails.append(f'question {q["key"]} appears {n} times on decisions.html')
-    for anc in ('q-promises', 'q-a', 'q-b', 'q-c', 'q-d', 'q-e', 'q-f', 'q-g', 'q-22', 'q-24', 'q-25', 'q-19', 'q-21',
-                'step-3', 'decided'):
-        if anc not in ids['decisions']:
-            fails.append(f'decisions.html lacks the plan\'s anchor {anc}')
-    for want in ['c%d' % i for i in range(1, 17)] + ['n1']:
-        if want not in ids['flaws']:
-            fails.append(f'flaws.html lacks the plan\'s anchor {want}')
-    alt_links = len(re.findall(r'href="parts\.html#alt-[a-z-]+"', pages['decisions'].split('id="step-3"')[1]))
+            once('decisions', rf'<article class="q q-[a-z]+" id="{q["anchor"]}"', f'question {q["letter"]}')
+    for p in D['shape']['parts']:
+        once('design', rf'<article class="part[^"]*" id="{part_anchor(p["name"])}"', f'part {p["name"]}')
+    for t in D['decisions']['decided']:
+        for x in t['entries']:
+            once('decisions', rf'<li id="dec-{x["slug"]}"', f'decision {x["slug"]}')
+    # Titles unique within each kind.
+    kinds = {
+        'promise': list(TITLES.values()),
+        'quality target': [t['title'] for t in QT.values()],
+        'extension case': [x['title'] for x in EX.values()],
+        'flaw': list(FLAW_TITLES.values()),
+        'question': [q['title'] for g in D['decisions']['groups'] for q in g['questions']],
+        'decision': [x['title'] for t in D['decisions']['decided'] for x in t['entries']],
+        'decision ahead': [a['title'] for a in D['design']['ahead']],
+        'standing rule': [r['title'] for g in D['rules']['groups'] for r in g['rules']],
+    }
+    for kind, titles in kinds.items():
+        dup = sorted({t for t in titles if titles.count(t) > 1})
+        if dup:
+            fails.append(f'{kind} titles repeat: {dup}')
+    letters = [q['letter'] for g in D['decisions']['groups'] for q in g['questions']]
+    if len(letters) != len(set(letters)):
+        fails.append(f'decisions.json repeats a question letter: {letters}')
+    # The plan's anchors.
+    want = {
+        'requirements': list(PROMISE_ANCHOR.values()) + ['promises', 'qualities', 'growth', 'rules']
+        + [f'quality-{slug(t["quality"])}' for t in QT.values()],
+        'design': ['ahead', 'decided', 'later', 'earlier', 'alternatives'] + ALT_ANCHORS
+        + [f'd-{a["slug"]}' for a in D['design']['ahead']] + [f'decided-{x["slug"]}' for x in D['design']['decided']],
+        'today': ['c%d' % i for i in range(1, 17)] + ['n1', 'works', 'situations', 'standalone', 'evidence'],
+        'decisions': [q['anchor'] for g in D['decisions']['groups'] for q in g['questions']]
+        + ['design-rounds', 'decided'] + [f't-{t["slug"]}' for t in D['decisions']['decided']],
+    }
+    for page, anchors in want.items():
+        for anc in anchors:
+            if anc not in ids[page]:
+                fails.append(f'{FILE[page]} lacks the plan\'s anchor {anc}')
+    rounds = pages['decisions'].split('id="design-rounds"')[1]
+    if len(re.findall(r'class="round" href="design\.html#d-', rounds)) != len(D['decisions']['designRounds']):
+        fails.append('a design round does not link to its entry on design.html')
+    alt_links = len(re.findall(r'href="design\.html#alt-[a-z-]+"', rounds.split('id="decided"')[0]))
     if alt_links != 6:
-        fails.append(f'the step-3 list links to {alt_links} alternatives rows, not 6')
+        fails.append(f'the later choices on decisions.html link to {alt_links} alternatives rows, not 6')
+    for x in D['design']['later']:
+        if (x.get('alt') or '').strip() and x['alt'] not in ids['design']:
+            fails.append(f'design.later item with alt {x["alt"]} finds no row')
+    # The earlier candidate: one <details>, closed, its summary carrying the plan's label.
+    if not re.search(r'<section id="earlier"[^>]*>\s*<h2[^>]*>[^<]*</h2>\s*<details class="earlier">', pages['design']):
+        fails.append('design.html: the earlier candidate is not one closed <details> under its heading')
+    if 'Replaced by the published protocol and the test bench' not in pages['design']:
+        fails.append('design.html: Joins and proofs is not marked as replaced')
     # Every diagram placed once, as an inline SVG inside its .dia-svg box.
     for k, s in pages.items():
         boxes = re.findall(r'<div class="dia-svg" role="img" aria-label="[^"]+"><svg\b', s)
-        want = sum(1 for key, _, _ in DIAGRAMS if key.startswith(f'd-{k}-'))
-        if len(boxes) != want:
-            fails.append(f'{FILE[k]}: {len(boxes)} diagrams placed, {want} expected')
-    # Every colour in the stylesheet is a token: outside the :root blocks no literal colour is left, except
-    # the attribute selectors that restyle Mermaid's fixed presentation attributes (plan 5.1).
-    css = next(x for x in re.findall(r'<style>(.*?)</style>', pages['promises'], re.S) if '--anchor-gap' in x)
+        want_n = sum(1 for key, _, _ in DIAGRAMS if key.startswith(f'd-{k}-'))
+        if len(boxes) != want_n:
+            fails.append(f'{FILE[k]}: {len(boxes)} diagrams placed, {want_n} expected')
+    # Every colour in the stylesheet is a token.
+    css = next(x for x in re.findall(r'<style>(.*?)</style>', pages['requirements'], re.S) if '--anchor-gap' in x)
     rules = re.sub(r':root(?::not\(\[data-theme="light"\]\)|\[data-theme="dark"\])? \{[^}]*\}', '', css)
     rules = re.sub(r'\[(?:fill|stroke)="#[0-9a-fA-F]+"\]', '', rules)
     lit = re.findall(r'#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)', rules)
@@ -1860,16 +2496,22 @@ def check(pages, D):
     for k in pages:
         if k != 'engine' and not pages[k].startswith('<!doctype html>'):
             fails.append(f'{FILE[k]} is not a full document')
-    # The evidence totals come from the data (plan 3.5.5).
+    # The evidence totals come from the data.
     total, aside_n, total_all = D['totals']
     if (total, aside_n, total_all) != (337, 21, 358):
         fails.append(f'the evidence totals changed: {total} under the flaws, {aside_n} set aside, {total_all} in all')
+    # "Under about 2,500 words" (plan v2 3.1): above 2,500 the build warns; above 2,625 (5 per cent over) it fails.
+    n_index = index_sentences_without(pages['engine'])
+    if n_index > INDEX_LIMIT * 1.05:
+        fails.append(f'index.html prose without the moments and the words is {n_index} words, well over about {INDEX_LIMIT}')
+    elif n_index > INDEX_LIMIT:
+        print(f'WARNING: index.html prose without the moments and the words is {n_index} words, a little over {INDEX_LIMIT}')
     if fails:
         print('CHECKS FAILED:', file=sys.stderr)
         for f in fails:
             print('  ' + f, file=sys.stderr)
         raise SystemExit(1)
-    print(f'checks passed: {n_links} links resolve; markers, ids, entries, diagrams and words as the plan asks')
+    print(f'checks passed: {n_links} links resolve; markers, ids, entries, titles, diagrams and words as the plan asks')
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -1889,6 +2531,7 @@ def load():
     TITLES.update({j['id']: (j.get('functional') or {}).get('proposedTitle') or j['title'] for j in jobs})
     if set(TITLES) != set(PROMISE_ANCHOR):
         raise SystemExit(f'the promises changed: {sorted(TITLES)}')
+    TITLE_TO_PROMISE.update({t: j for j, t in TITLES.items()})
     FLAW_TITLES.update({c['id']: c['title'] for c in cards})
     FLAW_TITLES['N1'] = N1_TITLE
     for j in jobs:
@@ -1905,11 +2548,38 @@ def load():
     decisions = json.loads(DECISIONS.read_text())
     for g in decisions['groups']:
         for q in g['questions']:
-            QUESTIONS[q['key']] = q['anchor']
+            QUESTIONS[q['letter']] = q['anchor']
+    for t in decisions['decided']:
+        if t['slug'] != slug(t['topic']):
+            raise SystemExit(f'decided topic slug {t["slug"]} is not the slug of "{t["topic"]}"')
+        for x in t['entries']:
+            if x['slug'] != slug(x['title']):
+                raise SystemExit(f'decision slug {x["slug"]} is not the slug of "{x["title"]}"')
+            DEC[x['slug']] = x
+    qt_list = json.loads(QUALITY_TARGETS.read_text())['targets']
+    ex_list = json.loads(EXTENSION_CASES.read_text())['cases']
+    QT.update({t['id']: t for t in qt_list})
+    EX.update({x['id']: x for x in ex_list})
+    served_qt = {j: [] for j in TITLES}
+    served_ex = {j: [] for j in TITLES}
+    for items, served in ((qt_list, served_qt), (ex_list, served_ex)):
+        for it in items:
+            if not it.get('title', '').strip():
+                raise SystemExit(f'{it["id"]} has no title')
+            for p in it['promises']:
+                if p not in TITLE_TO_PROMISE:
+                    raise SystemExit(f'{it["id"]} names a promise by a title no promise has: "{p}"')
+                served[TITLE_TO_PROMISE[p]].append(it['id'])
+    design = json.loads(DESIGN.read_text())
+    dslugs = [x['slug'] for x in design['decided']]
+    design_decided = {'protocol': next(s for s in dslugs if 'protocol' in s), 'bench': next(s for s in dslugs if 'bench' in s)}
     n1_lines = [(j['id'], f['how'], f['primary']) for j in jobs for f in j['flaws'] if f['id'] == 'N1']
     return {
         'cards': cards, 'by_id': by_id, 'shape': shape, 'jobs_data': data, 'jobs': jobs, 'home': home,
-        'front': json.loads(FRONT.read_text()), 'decisions': decisions, 'changes': json.loads(CHANGES.read_text()),
+        'front': json.loads(FRONT.read_text()), 'decisions': decisions, 'design': design,
+        'design_decided': design_decided, 'changes': json.loads(CHANGES.read_text()),
+        'rules': json.loads(RULES.read_text()), 'qt_list': qt_list, 'ex_list': ex_list,
+        'served_qt': served_qt, 'served_ex': served_ex,
         'new_findings': sl['newFindings'], 'n1_lines': n1_lines,
         'n1_parts': [p['id'] for p in shape['parts'] if 'N1' in p['flaws']],
         'n1_findings': sum(1 for f in sl['newFindings'] if f['cause'].startswith('N1')),
@@ -1921,8 +2591,8 @@ def build():
     D = load()
     css = stylesheet()
     open_n = sum(len(g['questions']) for g in D['decisions']['groups'])
-    makers = {'engine': page_engine, 'decisions': page_decisions, 'promises': page_promises,
-              'parts': page_parts, 'flaws': page_flaws, 'changes': page_changes}
+    makers = {'engine': page_engine, 'decisions': page_decisions, 'requirements': page_requirements,
+              'design': page_design, 'today': page_today, 'changes': page_changes}
     bodies = {}
     for k, _, _ in PAGES:
         CUR = k
@@ -1937,9 +2607,15 @@ def build():
     check(pages, D)
     for k, f, _ in PAGES:
         (SITE / f).write_text(pages[k])
-    print(f'{"page":<16}{"bytes":>10}{"prose words":>14}')
+    for f in RETIRED_PAGES:
+        if (SITE / f).exists():
+            (SITE / f).unlink()
+            print(f'deleted {f} (version 8)')
+    print(f'{"page":<20}{"bytes":>10}{"prose words":>14}')
     for k, f, _ in PAGES:
-        print(f'{f:<16}{len(pages[k].encode()):>10}{prose_words(pages[k]):>14}')
+        print(f'{f:<20}{len(pages[k].encode()):>10}{prose_words(pages[k]):>14}')
+    print(f'index.html without the moments and the words: {index_prose_without(pages["engine"])} words in all, '
+          f'{index_sentences_without(pages["engine"])} in sentences (headings, captions and labels left out)')
 
 
 if __name__ == '__main__':

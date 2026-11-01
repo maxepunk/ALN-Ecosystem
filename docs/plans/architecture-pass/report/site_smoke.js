@@ -1,9 +1,10 @@
-// Smoke test for the owner's site (site/2026-11-01-site-plan.md): load each of the six pages as a browser
-// would see it, at 1100 and 400 pixels wide, in light and in dark, and fail on:
+// Smoke test for the owner's site, version 9 (site/2026-11-01-site-plan-v2.md): load each of the six pages as a
+// browser would see it, at 1100 and 400 pixels wide, in light and in dark, and fail on:
 //   - any console error or page error;
 //   - document.documentElement.scrollWidth wider than the viewport (the body scrolling sideways);
 //   - any .dia-svg box without its svg;
-//   - any link to another page of the site whose file or anchor is missing.
+//   - any link to another page of the site whose file or anchor is missing;
+//   - any link to version 8's retired pages (promises.html, parts.html, flaws.html).
 // It saves one full-page screenshot per page, width and theme: <shotsDir>/<page>-<width>-<theme>.png (24 files).
 //
 // index.html is the artifact's main page and has no document skeleton; it is wrapped here as the publish step
@@ -17,7 +18,8 @@ const os = require('os');
 const path = require('path');
 const { chromium } = require('playwright');
 
-const PAGES = ['index', 'decisions', 'promises', 'parts', 'flaws', 'changes'];
+const PAGES = ['index', 'decisions', 'requirements', 'design', 'today', 'changes'];
+const RETIRED = new Set(['promises.html', 'parts.html', 'flaws.html']);
 const WIDTHS = [1100, 400];
 const THEMES = ['light', 'dark'];
 const BASE_RESET = ':root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);'
@@ -85,6 +87,7 @@ async function main() {
           for (const h of r.links) {
             if (/^[a-z]+:/i.test(h)) { failures.push(`${tag}: link leaves the site: ${h}`); continue; }
             const [file, anchor] = h.split('#');
+            if (RETIRED.has(file)) { failures.push(`${tag}: link to a retired page: ${h}`); continue; }
             const target = file === '' ? own : file;
             if (!ids[target]) { failures.push(`${tag}: link to a missing page: ${h}`); continue; }
             if (anchor && !ids[target].has(anchor)) failures.push(`${tag}: link ${h} finds no id "${anchor}" on ${target}`);
