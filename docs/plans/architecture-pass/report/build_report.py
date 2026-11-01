@@ -446,10 +446,11 @@ def shape_svg():
             text(x + w / 2, round(top + i * 15, 1), t, size=name_size if i == 0 else 11.5, anchor='middle',
                  weight='600' if i == 0 else None, op=None if i == 0 else '.8')
 
-    def band(x, y, w, h, label=None):
+    def band(x, y, w, h, label=None, right=False):
         out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8" style="fill: var(--chip)" fill-opacity=".6"/>')
         if label:
-            text(x + 16, y + 20, label.upper(), size=10.5, weight='600', op='.7')
+            text(x + w - 16 if right else x + 16, y + 20, label.upper(), size=10.5, weight='600', op='.7',
+                 anchor='end' if right else 'start')
 
     def arrow(points, label=None, at=None, anchor='start', accent=False, both=False):
         d = 'M' + ' L'.join(f'{px},{py}' for px, py in points)
@@ -468,9 +469,10 @@ def shape_svg():
     out.append('<rect x="30" y="50" width="540" height="80" rx="6" style="fill: var(--surface); stroke: currentColor" stroke-width="1.2"/>')
     text(44, 71, 'Screens', size=14, weight='600')
     text(108, 71, 'on every device: they draw what they are sent, decide nothing', op='.8')
-    for x, label in ((44, 'GM tablets'), (218, 'Phones and ESP32'), (392, 'TV and Pi 4')):
-        out.append(f'<rect x="{x}" y="82" width="164" height="38" rx="5" fill="none" stroke="currentColor" stroke-opacity=".45"/>')
-        text(x + 82, 105, label, size=12.5, anchor='middle')
+    for x, label in ((44, 'GM tablets'), (218, 'Phones and scanners'), (392, 'TV and Pi 4')):
+        out.append(f'<rect x="{x}" y="78" width="164" height="32" rx="5" fill="none" stroke="currentColor" stroke-opacity=".45"/>')
+        text(x + 82, 99, label, size=12.5, anchor='middle')
+    text(44, 124, 'each keeps its own stamped copy of the pack and the game rules', size=11, op='.75')
     box(580, 50, 128, 80, 'Design studio', ('the config tool,', 'talks by message'))
     box(716, 50, 116, 80, 'Release', ('what each', 'machine carries'))
     box(840, 50, 136, 80, 'Joins and proofs', ('the tests, on an', 'engine of their own'), name_size=13)
@@ -488,7 +490,7 @@ def shape_svg():
     arrow([(200, 272), (200, 390)], 'game actions', (192, 330), anchor='end')
     arrow([(240, 272), (240, 330), (560, 330), (560, 390)], 'start, pause, end, reset', (400, 347), anchor='middle')
     arrow([(275, 272), (275, 310), (800, 310), (800, 390)], 'room commands', (660, 303), anchor='middle')
-    arrow([(900, 350), (900, 272)], 'every change', (892, 318), anchor='end')
+    arrow([(940, 350), (940, 272)], 'read by Delivery', (932, 340), anchor='end')
     # behind the doors
     text(36, 372, "THE GAME'S FACTS", size=10.5, weight='600', op='.7')
     text(376, 372, 'THE LIFE OF A GAME', size=10.5, weight='600', op='.7')
@@ -496,25 +498,27 @@ def shape_svg():
     box(36, 390, 250, 60, 'Game record', ('decides teams, claims,', 'scores and the phase'))
     box(36, 500, 250, 60, "The night's record", ('written at the end of a game',))
     box(376, 390, 250, 60, 'Lifecycle', ('moves the game,', 'resets every part'))
-    box(376, 500, 250, 60, 'Verdict', ('go, no-go,', 'not installed tonight'))
+    box(436, 500, 190, 60, 'Verdict', ("the game's needs against", "tonight's kit: go or no-go"))
     box(716, 390, 250, 60, 'Show runner', ('cues, clock, video queue,', 'held items'))
     box(716, 500, 250, 60, 'Equipment', ('video, music, sound,', 'lights, displays'))
     box(716, 585, 250, 50, 'Outside programs', ('VLC, the music player, lights',), dashed=True, name_size=12.5)
     arrow([(376, 420), (286, 420)], 'keeps, clears', (331, 412), anchor='middle')
     arrow([(626, 420), (716, 420)], 'resets', (671, 412), anchor='middle')
-    arrow([(501, 500), (501, 450)], 'go, no-go', (509, 480))
+    arrow([(520, 450), (520, 500)], 'asks: go or no-go', (528, 480), both=True)
     arrow([(841, 450), (841, 500)], 'drives', (849, 480))
-    arrow([(716, 530), (626, 530)], 'what runs', (671, 522), anchor='middle')
-    arrow([(161, 450), (161, 500)], 'at the end', (169, 480))
-    arrow([(841, 560), (841, 585)])
+    arrow([(716, 515), (650, 515), (650, 440), (626, 440)], 'what runs', (656, 480))
+    arrow([(161, 450), (161, 500)], "the night's facts", (169, 480))
+    arrow([(376, 440), (330, 440), (330, 530), (286, 530)], 'the end', (322, 487), anchor='end')
+    arrow([(841, 560), (841, 585)], 'commands, checks', (849, 577), both=True)
     # the foundations
-    band(20, 700, 960, 92, 'Foundations: every part above uses these')
-    box(36, 728, 160, 52, 'Game rules', ('one calculation',))
-    box(216, 728, 180, 52, 'Pack channel', ('one pack, stamped',))
-    box(421, 728, 160, 52, 'Venue fit', ('set by the venue technician',))
-    box(606, 728, 180, 52, 'Engine instance', ('its own names',))
-    arrow([(501, 728), (501, 560)], "tonight's profile", (509, 690))
-    arrow([(206, 700), (206, 650)], 'the rules, the pack', (214, 682))
+    band(20, 700, 960, 92, 'Foundations: the parts above build on these', right=True)
+    box(36, 728, 170, 52, 'Game rules', ("the pack's rules,", 'one copy everywhere'))
+    box(330, 728, 170, 52, 'Venue fit', ("tonight's kit and", 'its bindings'))
+    box(540, 728, 170, 52, 'Engine instance', ('its own names',))
+    box(740, 728, 180, 52, 'Pack channel', ('one pack, stamped,', 'on every copy'))
+    arrow([(121, 728), (121, 650)], 'the rules', (129, 690))
+    arrow([(400, 728), (400, 450)], "tonight's profile", (392, 640), anchor='end')
+    arrow([(920, 754), (990, 754), (990, 241), (980, 241)], 'the pack version', (982, 676), anchor='end')
 
     defs = ('<defs>'
             '<marker id="shp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>'
@@ -534,7 +538,7 @@ WALKS = [
   participant C as Connections and roles
   participant R as Game record
   participant D as Delivery
-  participant S as Every other screen
+  participant S as Other tablets and scoreboards
   T->>A: Team X scans this token
   A->>C: may this tablet do that?
   C-->>A: yes, it is a GM
@@ -561,11 +565,14 @@ WALKS = [
     E-->>D: playing, healthy, as of now
     D-->>T: now playing
   else no answer
+    E->>P: restart
     E-->>S: failed: the player is down
     S->>S: hold the cue
+    D->>E: what changed?
+    E-->>D: video player down, as of now
     D->>S: what changed?
-    S-->>D: one cue held, video down
-    D-->>T: red row, held cue, try again
+    S-->>D: one cue held, waiting for the video
+    D-->>T: red: player down, cue held, release or discard
   end"""),
     ('The GM ends the game', ['J5', 'J3'], """sequenceDiagram
   participant T as GM tablet
@@ -577,13 +584,15 @@ WALKS = [
   T->>A: end the game
   A->>L: move the game to ended
   L->>R: close the game, no more scans
-  L->>S: stop the cues, clear held items
-  L->>N: write the night's record
-  N->>R: read the night's facts
+  L->>S: stop the clock and the cues
   L-->>A: ended
   A-->>T: ended, final
-  Note over T,L: Delivery then tells every screen the game ended"""),
-    ('Doors open: the preflight', ['J8', 'J9', 'J5'], """sequenceDiagram
+  N->>L: has the game ended?
+  L-->>N: ended
+  N->>R: read the night's facts
+  R-->>N: the night's facts
+  Note over T,L: Delivery then asks the lifecycle what changed and tells every screen the game ended"""),
+    ('Doors open: the preflight', ['J8', 'J9'], """sequenceDiagram
   participant V as Venue technician
   participant A as Answering
   participant L as Lifecycle
@@ -599,7 +608,7 @@ WALKS = [
   L->>X: the needs, the profile, what runs
   X-->>L: go, two lights grey: not tonight
   L-->>A: go
-  A-->>V: go, every line traceable"""),
+  A-->>V: go, every line checked live in the room"""),
     ('The designer publishes a change', ['J6', 'J1'], """sequenceDiagram
   participant G as Design studio
   participant A as Answering
@@ -617,9 +626,9 @@ WALKS = [
     P-->>D: the pack is now version 7
     D-->>V: version 7
     V->>P: fetch version 7
-  else a game is running
+  else a game is on, running or paused
     L-->>A: not during a game
-    A-->>G: refused: after this game ends
+    A-->>G: refused: try again after this game ends
   end"""),
 ]
 
@@ -674,17 +683,17 @@ def fit_html(shape, jobs):
 
   <div class="fit-block">
     <h3>A candidate shape: {len(shape["parts"])} parts</h3>
-    <p>Most of today's problems sit in work several promises depend on: getting a fact onto a screen, answering a request, knowing who is connected, the boundary between one game and the next. Each is done several times today, in different places. In the candidate shape each such piece of work becomes one part, and that part's card says how the work is done today. Each part uses only the parts in the rows below it, so nothing loops back. A change low down can affect the parts above it; nothing above can break what sits below. The parts that are already well built today (the game rules, the verdict, the health words) are the pattern for the rest.</p>
+    <p>Most of today's problems sit in work several promises depend on: getting a fact onto a screen, answering a request, knowing who is connected, the boundary between one game and the next. Each is done several times today, in different places. In the candidate shape each such piece of work becomes one part, and that part's card says how the work is done today. The parts that are already well built today (the game rules, the verdict, the health words) are the pattern for the rest.</p>
     <figure class="dia whole">
       <figcaption>The candidate engine, whole</figcaption>
       <div class="scroll"><div class="svgwrap">{shape_svg()}</div></div>
-      <p class="figkey">Every request comes in through Answering and gets one reply; every fact goes out to the screens through Delivery, with its label (how old, how sure). Behind the two doors sit the game's facts, the life of a game and the room. The foundations are used by every part above them. The arrows show what passes at a show. The lifecycle hands the verdict tonight's profile and what is running before a start; the moments below follow each step.</p>
+      <p class="figkey">Every request comes in through Answering and gets one reply; every fact goes out to the screens through Delivery, with its label (how old, how sure). Delivery reads what changed in each part; no part sends to it. Behind the two doors sit the game's facts, the life of a game and the room; the parts above build on the foundations, directly or through another part. The arrows show what passes at a show. Before a start, the lifecycle hands the verdict tonight's profile and what is running, and asks for go or no-go. The two doors are outlined in green; the dashed box is an outside program, not a part. The rows group the parts by what they do; they are not the layers of use, which the list further down gives. In a standalone game the GM tablet runs its own small copy of the doors, the game's facts and the lifecycle, with stand-ins for the room. The moments below follow single steps through the parts.</p>
     </figure>
     <h3>{len(WALKS)} moments, part by part</h3>
-    <p>Each moment follows one thing that happens at a show through the parts that handle it, in order. Solid arrows are requests; dashed arrows are answers. Delivery always asks what changed; nothing pushes facts to it.</p>
+    <p>Each moment follows one thing that happens at a show through the parts that handle it, in order. Solid arrows are requests; dashed arrows are answers. Delivery always asks what changed; nothing pushes facts to it. Each screen asked Delivery, when it connected, to keep it up to date; Delivery's dashed arrows to screens answer that standing request.</p>
     <div class="walks">{walks}</div>
     <figure class="layers-fig">
-      <figcaption>The parts in layers, top row first: each uses only the rows below it. Tap a part to read it.</figcaption>
+      <figcaption>The parts in layers, top row first. Each part uses only the parts in the rows below it, so nothing loops back: a change low down can affect the parts above it, and nothing above can break what sits below. Tap a part to read it.</figcaption>
       <ol class="layers">{layers}</ol>
     </figure>
     <div class="parts">{parts}</div>
