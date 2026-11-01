@@ -138,7 +138,7 @@
     {
       "name": "Proof",
       "jobs": ["J1", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9"],
-      "plain": "A passing test run means the show works for two games, and no test reaches a live show. Carried by testing each part through the same door everything else uses, and by giving every test run its own engine names."
+      "plain": "A passing test run means the show works for two games, and no test reaches a live show. Carried by testing each part through its interface, the one everything else uses, and by giving every test run its own engine names."
     },
     {
       "name": "Generic",

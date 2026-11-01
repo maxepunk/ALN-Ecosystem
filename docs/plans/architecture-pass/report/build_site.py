@@ -63,7 +63,7 @@ BUILT = {
     'J7': 'The GM password and its login token; a watch-only pass for the Pi 4 scoreboard; anonymous player scans.',
     'J8': 'Venue profiles and "not installed tonight"; standalone modes on the GM tablet and the web player scanner; the blue and green machine method.',
     'J9': 'Health words healthy, down and dormant (grey) for each service on the health panel; a first, minimal preflight.',
-    'J10': 'Unit, contract, integration and end-to-end tests; a run with the real programs in CI on the first test level, started by hand or by a change to its own files (the standing test rig was lost with the old container; its recipe survives, and step 2 rebuilds it); CI on every pull request to main; coverage that may not fall.',
+    'J10': 'Unit, contract, integration and end-to-end tests; a CI run of the real engine and its programs, the test level above logic alone, started by hand or by a change to its own files (the standing test rig was lost with the old container; its recipe survives, and step 2 rebuilds it); CI on every pull request to main; coverage that may not fall.',
 }
 
 # Where a flaw lives: a card's module paths, sorted into the parts of the engine.
@@ -83,6 +83,16 @@ e = html.escape
 
 
 OUTSIDE_NINE = {'C14', 'C15', 'C16'}  # the analysis: no question of the nine covers these
+# A card's seenLive note is either a problem seen live or, where the card sets reproducedInTest,
+# one the review reproduced only by running the engine's code in a test (the cause analysis's "in-process").
+SEEN_LIVE, SEEN_TEST = 'Seen live', 'Reproduced in a test'
+NUM_WORD = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
+
+
+def seen_label(card):
+    if not card.get('seenLive'):
+        return ''
+    return SEEN_TEST if card.get('reproducedInTest') else SEEN_LIVE
 
 
 def chips(card):
@@ -98,7 +108,8 @@ def chips(card):
     if card.get('blueFixes'):
         out.append(f'<span class="chip">Clue from blue: fix {e(", ".join(card["blueFixes"]))}</span>')
     if card.get('seenLive'):
-        out.append(f'<span class="chip live">Seen live</span>')
+        out.append(f'<span class="chip">{SEEN_TEST}</span>' if card.get('reproducedInTest')
+                   else f'<span class="chip live">{SEEN_LIVE}</span>')
     return ''.join(out)
 
 
@@ -125,7 +136,7 @@ SET_ASIDE = [
     ('Plain fixes for phase 2', 5, 'A name like "constructor" mistaken for a real service, station or token; the web scanner loading its QR library from the internet; a test helper that switches certificate checks off; standalone mode\'s red "Disconnected" pill.'),
     ('Code-structure notes, no game symptom', 2, 'A second wrapper for running programs in the kiosk driver; the sound panel written inline instead of by its own renderer.'),
     ('No fault', 2, 'Two equal snapshots sent on connect; planned config-tool functions not built yet.'),
-    ('A question for you', 1, 'A rejected or duplicate GM scan is recorded nowhere. This became question 19.'),
+    ('A question for you', 1, 'A rejected or duplicate GM scan is recorded nowhere. It is [[q:19|question 19]] on Decisions.'),
     ('Documents', 4, 'Plans, briefs and two CLAUDE.md files that disagree with the code. Decision 20: documents are fixed as we go.'),
 ]
 
@@ -502,7 +513,7 @@ h3 { font-size: 19px; font-weight: 600; }
 p { margin: 0; }
 a { color: var(--accent); }
 a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.eyebrow, .tag, figcaption, .grid th span { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--muted); }
+.tag, figcaption, .grid th span { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--muted); }
 .muted { color: var(--muted); }
 .lead { font-size: 18px; max-width: 68ch; }
 header.top { display: grid; gap: 14px; }
@@ -833,9 +844,9 @@ def card_html(c, level=4):
     """A flaw card (version 7's card_html), without its "what changed" note, which moved to the change log."""
     ex = ''.join(f'<li><span class="ids">{e(x["ids"])}</span> {e(x["text"])}</li>' for x in c['examples'])
     mods = ''.join(f'<code>{e(m)}</code>' for m in c['modules'])
-    live = f'<p class="live-note"><span class="tag">Seen live</span> {e(c["seenLive"])}</p>' if c.get('seenLive') else ''
+    live = f'<p class="live-note"><span class="tag">{seen_label(c)}</span> {e(c["seenLive"])}</p>' if c.get('seenLive') else ''
     sa = c.get('inStandalone', '')
-    sa_html = f'<p class="standalone"><span class="tag">In a standalone game</span> {e(sa)}</p>' if sa else ''
+    sa_html = f'<p class="standalone"><span class="tag">In a standalone game</span> {rich(sa)}</p>' if sa else ''
     return f'''
 <article class="card" id="{c["id"].lower()}">
   <header class="card-head">
@@ -1238,7 +1249,6 @@ def page_engine(D):
     def terms(group):
         return ''.join(f'<dt>{e(t["term"])}</dt><dd>{rich(t["def"])}</dd>' for t in f['words'] if t['group'] == group)
     return f'''<header class="top page-head">
-  <p class="eyebrow">Architecture pass · phase 1, step 1 · updated {UPDATED}</p>
   <h1>What the engine promises</h1>
   <p class="lead">{rich(f["lead"])}</p>
 </header>
@@ -1397,7 +1407,7 @@ def promise_html(j, by_id):
     standalone = re.sub(r'^In a standalone game:\s*', '', j['standalone'])
     goal_tag = 'The long-term goal' + (' <span class="open">(open for step 3)</span>' if j.get('goalOpen') else '')
     q = j.get('questions') or []
-    qtext = ('Answers the pass\'s design question' + ('s ' if len(q) > 1 else ' ') + ', '.join(map(str, q))) if q else 'No design question of the pass covers it yet'
+    qtext = ('answers architecture pass question' + ('s ' if len(q) > 1 else ' ') + ', '.join(map(str, q))) if q else 'no architecture pass question covers it yet'
     return f'''
 <section class="job" id="{anchor}" aria-labelledby="{anchor}-h">
   <header class="job-head">
@@ -1596,18 +1606,22 @@ def page_flaws(D):
             if not f['primary']:
                 others.setdefault(f['id'], []).append(j['id'])
     rows = []
-    entries = [(c['id'], c['title'], c.get('parts', []), c['findings'], bool(c.get('seenLive'))) for c in
+    entries = [(c['id'], c['title'], c.get('parts', []), c['findings'], seen_label(c)) for c in
                sorted(cards, key=lambda c: int(c['id'][1:]))]
-    entries.append(('N1', N1_TITLE + ' (proposed)', D['n1_parts'], D['n1_findings'], False))
+    entries.append(('N1', N1_TITLE + ' (proposed)', D['n1_parts'], D['n1_findings'], ''))
+    n_live = sum(1 for x in entries if x[4] == SEEN_LIVE)
+    n_test = sum(1 for x in entries if x[4] == SEEN_TEST)
     for fid, title, parts, n, live in entries:
         main = promise_a(home[fid], quotes=True)
         oth = '<br/>'.join(promise_a(x, quotes=True) for x in others.get(fid, []))
         rows.append(f'<tr><th scope="row">{flaw_a(fid, fid, "fid")} {flaw_a(fid, title)}</th>'
                     f'<td>{main}</td><td class="muted">{oth}</td><td>{", ".join(part_a(p) for p in parts)}</td>'
-                    f'<td class="num">{n}</td><td>{"Seen live" if live else ""}</td></tr>')
+                    f'<td class="num">{n}</td><td>{live}</td></tr>')
     table = ('<div class="tablewrap"><table class="flawtable"><thead><tr><th>Design flaw</th><th>Mainly breaks</th>'
-             '<th>Also breaks</th><th>Parts that would remove it</th><th>Findings</th><th>Seen live</th></tr></thead>'
-             f'<tbody>{"".join(rows)}</tbody></table></div>')
+             '<th>Also breaks</th><th>Parts that would remove it</th><th>Findings</th><th>Seen live or in a test</th></tr></thead>'
+             f'<tbody>{"".join(rows)}</tbody></table></div>'
+             f'<p class="muted">{NUM_WORD[n_live].capitalize()} flaws were seen live; '
+             f'{NUM_WORD[n_test]} more were reproduced in a test.</p>')
     # The cards, grouped under the promise each mainly breaks.
     groups = []
     for j in jobs:
@@ -1622,7 +1636,7 @@ def page_flaws(D):
 </div>''')
     total = sum(c['findings'] for c in cards)
     aside_n = sum(n for _, n, _ in SET_ASIDE)
-    aside = ''.join(f'<tr><th scope="row">{e(k)}</th><td class="num">{n}</td><td>{e(t)}</td></tr>' for k, n, t in SET_ASIDE)
+    aside = ''.join(f'<tr><th scope="row">{e(k)}</th><td class="num">{n}</td><td>{rich(t)}</td></tr>' for k, n, t in SET_ASIDE)
     sa_all = len(D['new_findings'])
     sa_n1 = sum(1 for f in D['new_findings'] if f['cause'].startswith('N1'))
     intro = EVIDENCE_INTRO.format(total_all=total + aside_n, total=total, aside_n=aside_n, sa_all=sa_all,

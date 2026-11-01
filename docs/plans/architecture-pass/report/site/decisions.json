@@ -2,7 +2,8 @@
   "intro": [
     "Everything still open for you is on this page, each question with its evidence on the same screen. Answer in the chat, by the question's letter or number (the first one is the promises question). Answer any of them, in any order, and leave the rest for later.",
     "Three tags say where a question stands. Open: no answer yet. Applied, please confirm: the change is already in the promise's wording, and one word from you keeps it or undoes it. Recommendation changed by the map: the candidate shape changed what we recommend, and the Change log has the earlier recommendation.",
-    "Under each question, \"What we know\" lists the facts the answer rests on. Most facts link to the promise, part, design flaw or question they come from, so you can read more before you answer. Only the Decided list at the end records what you have decided."
+    "Under each question, \"What we know\" lists the facts the answer rests on. Most facts link to the promise, part, design flaw or question they come from, so you can read more before you answer. Only the Decided list at the end records what you have decided.",
+    "Three questions from round 8 live on here under new names: question 17 is the promises question, 18 is folded into question F, and 23 into question C."
   ],
   "groups": [
     {
@@ -18,8 +19,7 @@
             "Each promise says who counts on it, when, and what must happen for them. Every title is new; the earlier wording of each is in the [[page:changes#earlier-wording]].",
             "Each entry on the [[page:promises]] page names the parts that keep it.",
             "Whether running in any setup needs an eleventh promise is [[q:E]].",
-            "Each design flaw mainly breaks exactly one promise. No flaw mainly breaks [[promise:J6|the designer's change-a-value promise]] today; [[flaw:C8|C8]] and [[flaw:C12|C12]] break it beside others.",
-            "This question replaces question 17 of round 8, which asked whether the list of causes was right."
+            "Each design flaw mainly breaks exactly one promise. No flaw mainly breaks [[promise:J6|the designer's change-a-value promise]] today; [[flaw:C8|C8]] and [[flaw:C12|C12]] break it beside others."
           ],
           "options": [],
           "recommendation": "Keep these ten as the base, with these titles, and settle D to G below. In the map every promise is kept by parts of its own, and the one candidate for an eleventh, \"run in any setup\", owns no part (question E).",
@@ -32,7 +32,7 @@
           "status": "applied",
           "decides": "Whether both added clauses stay in the promise.",
           "evidence": [
-            "\"Nothing in the engine assumes ALN\" is now a quality every part must have, named Generic on the [[page:parts]] page. It is carried by [[part:P1]], which takes rules only from the pack, and by [[part:P12]] and [[part:P13]], which take kit names only from the profile and the instance.",
+            "In the candidate, \"Nothing in the engine assumes ALN\" is a quality every part must have, named Generic on the [[page:parts]] page. It is carried by [[part:P1]], which takes rules only from the pack, and by [[part:P12]] and [[part:P13]], which take kit names only from the profile and the instance.",
             "The version every device shows is the stamp [[part:P2]] puts on every copy and every game record, compared whenever a device connects.",
             "Today a tablet running a different pack than the engine is only written to a log, and nothing tells the GM ([[flaw:C12]]).",
             "A second designer's game on the same engine rests on the same part, [[part:P1]], which only calculates and changes nothing."
@@ -48,7 +48,7 @@
           "status": "applied",
           "decides": "Whether the promise keeps its second half: starting, pausing and ending a game and changing scores stay with the GM, and the stored passwords and keys change before outsiders touch the system.",
           "evidence": [
-            "One part, [[part:P7]], holds both the pass and what it allows, and [[part:P4]] checks the rule once, at the one door every request passes.",
+            "In the candidate, one part, [[part:P7]], holds both the pass and what it allows, and [[part:P4]] checks the rule once, at the one door every request passes.",
             "The same rule is a quality every part must have, named \"Only the GM moves the game\" on the [[page:parts]] page.",
             "Today a connection's own word decides what it gets: anyone on the kit network can fetch the whole game state, and the TV connects as if it were a GM tablet ([[flaw:C13]])."
           ],
@@ -61,16 +61,16 @@
           "anchor": "q-c",
           "heading": "\"[[promise:J8]]\" now says a standalone game is a choice the game declares, never mixed.",
           "status": "applied",
-          "decides": "Whether the clause stays, and, folded in from question 23, whether \"[[flaw:N1|nothing declares a game standalone]]\" is a design flaw of its own, with its own rule.",
+          "decides": "Whether the clause stays, and whether \"[[flaw:N1|nothing declares a game standalone]]\" is a design flaw of its own, with its own rule.",
           "evidence": [
             "These are your decision 22's words (2026-10-31): a whole game can run with no engine, as a choice a game declares, and no game mixes networked and standalone devices.",
             "The map supports them: whether a game is standalone is an input every rule takes (the quality \"Who decides when there is no engine\"), and it is declared where the game is fitted to tonight's setup, under [[promise:J8|the venue promise]].",
             "Where the declaration is kept is a step-3 choice: the venue profile, the pack, the game's record or each device. The map favours the profile, because a profile that lists no engine equipment already makes every engine duty read \"not installed tonight\". Whichever is chosen, [[part:P2]] carries the declaration to every device.",
             "Today the declaration is each tablet's own tap, the phone's web address and nothing on the hardware scanner; the pack has no field for it ([[flaw:N1]]).",
-            "[[flaw:N1]] holds eight findings from the standalone pass. If it is not a flaw of its own, they join [[flaw:C9|C9]], [[flaw:C11|C11]] and [[flaw:C14|C14]] and the hardware scanner parity list. On the map [[flaw:N1|N1]] lands on [[part:P2]] and [[part:P12]], or on [[part:P3]] if the declaration is kept there; the answer to 23 does not move it."
+            "[[flaw:N1|N1]], the proposed flaw, holds eight findings from the standalone pass. If it is not a flaw of its own, they join [[flaw:C9|C9]], [[flaw:C11|C11]] and [[flaw:C14|C14]] and the hardware scanner parity list. On the map [[flaw:N1|N1]] lands on [[part:P2]] and [[part:P12]], or on [[part:P3]] if the declaration is kept there; the answer to 23 does not move it."
           ],
           "options": [],
-          "recommendation": "Agree. On question 23, yes: three other rules (game boundaries, one answer per question, how old a copy is) need the declared fact as an input, and would otherwise each invent their own answer.",
+          "recommendation": "Agree. On the second point, yes: three other rules (game boundaries, one answer per question, how old a copy is) need the declared fact as an input, and would otherwise each invent their own answer.",
           "recKind": "Recommendation"
         },
         {
@@ -138,14 +138,14 @@
           "evidence": [
             "The map separates this promise's two moments. Before every change, the developer's tests pass and show the show still works for ALN and for the toy game; that is a quality every part must have (Proof, on the [[page:parts]] page), and checking that joined parts agree is part of it. [[part:P16]] and [[part:P13]] carry it.",
             "On release day, you decide when a new version goes to the venue and can swap back by replugging a machine. That is one small part, [[part:P17]]: what is installed is one described set the engine compares at start, so a rollback moves everything or says what it did not.",
-            "Four flaws mainly break this promise. The pass's fourth design question covers keeping tests away from the live show ([[flaw:C8|C8]]). For the other three none of its nine questions fits: the fifth is only the nearest for the names two parts share ([[flaw:C14|C14]]), and the installed pieces ([[flaw:C15|C15]]) and tests that prove the real path ([[flaw:C16|C16]]) have none.",
+            "Four flaws mainly break this promise. Architecture pass question 4 covers keeping tests away from the live show ([[flaw:C8|C8]]). For the other three none of the architecture pass's nine questions fits: its question 5 is only the nearest for the names two parts share ([[flaw:C14|C14]]), and the installed pieces ([[flaw:C15|C15]]) and tests that prove the real path ([[flaw:C16|C16]]) have none.",
             "Options a, b and c each give [[flaw:C15|C15]] a home in a part; [[flaw:C16|C16]] lands on [[part:P16]] whichever you choose.",
-            "The alternatives table on the [[page:parts#alt-release]] page has this row: release day as its own part beside the developer's proof, or in [[part:P12]]'s deploy chain. This question replaces question 18 of round 8. The earlier recommendation is in the [[page:changes#rec-f]]."
+            "The alternatives table on the [[page:parts#alt-release]] page has this row: release day as its own part beside the developer's proof, or in [[part:P12]]'s deploy chain. The earlier recommendation is in the [[page:changes#rec-f]]."
           ],
           "options": [
             {
               "label": "a. Keep one promise covering both moments, as the title does.",
-              "cost": "One title covers two people at two moments, the developer's proof and your release day; the recommendation gives each its own question in the pass."
+              "cost": "One title covers two people at two moments, the developer's proof and your release day; the recommendation gives each its own architecture pass question."
             },
             {
               "label": "b. Split release day into a promise of its own.",
@@ -160,7 +160,7 @@
               "cost": "The parts fit that too; the cost is that your release day stays unnamed."
             }
           ],
-          "recommendation": "One promise, as the title has it, and give the proof and the release a question each in the pass. Both moments exist so that nothing reaches the live show unproven, or before you say so.",
+          "recommendation": "One promise, as the title has it, and give the proof and the release an architecture pass question each. Both moments exist so that nothing reaches the live show unproven, or before you say so.",
           "recKind": "Recommendation"
         },
         {
@@ -203,7 +203,7 @@
           "anchor": "q-22",
           "heading": "The ESP32 gets a standalone mode matching the web scanner's.",
           "status": "open",
-          "decides": "Whether the hardware scanner, the ESP32, gets a standalone mode matching the phone's as parity work the pass must serve. Your explicit word is asked for.",
+          "decides": "Whether the hardware scanner, the ESP32, gets a standalone mode matching the web scanner's on the phone, as parity work the pass must serve. Your explicit word is asked for.",
           "evidence": [
             "Decision 22 (2026-10-31) recorded the hardware scanner's missing standalone mode as a parity gap, not a new feature, because the two player scanners keep feature parity wherever possible.",
             "The parity table on the [[page:flaws#standalone]] page compares 24 abilities; with no engine the hardware scanner trails the phone in seven of them.",
@@ -317,7 +317,7 @@
           "evidence": [
             "The test rig is the automated test machine with real video, music, audio and lighting stand-ins. On it a problem can be made to happen for real instead of read off the code. It is step 2 of phase 1 and follows your answers here.",
             "The program document names four reproductions for the rig: the deleted token still refused ([[flaw:C1]]), the music panel behind live music ([[flaw:C2]]), the ended game returning after a restart ([[flaw:C4]]) and the reset that leaves music out ([[flaw:C5]]).",
-            "Eight flaws already carry a \"seen live\" note on their cards on the [[page:flaws]] page, among them [[flaw:C8]] (a unit test killed the live video player), [[flaw:C10]] (a greyed music card went unnoticed at the venue), [[flaw:C15]] (a half-applied rollback) and [[flaw:C16]] (62 skipped tests).",
+            "Six flaws already carry a \"seen live\" note on their cards on the [[page:flaws]] page, among them [[flaw:C8]] (a unit test killed the live video player), [[flaw:C10]] (a greyed music card went unnoticed at the venue), [[flaw:C15]] (a half-applied rollback) and [[flaw:C16]] (62 skipped tests). Two more, [[flaw:C5|C5]] and [[flaw:C11|C11]], were reproduced in a test.",
             "Phase 2 proves each problem anyway, because every area starts with its test failing on today's engine.",
             "The rig needs stand-ins for the room's equipment; [[part:P8]] plans one software stand-in per capability for the preview engine and the test rig."
           ],
@@ -329,25 +329,73 @@
     }
   ],
   "step3": [
-    {"text": "Where \"this game is standalone\" is declared: the venue profile (the map favours it), the pack, the game's record or each device."},
-    {"text": "Getting facts onto screens: one delivery part for every fact, or the parts behind each promise delivering their own facts in a shared shape."},
-    {"text": "The life of a game: one lifecycle part that alone moves the game and resets every part, or a table each part reads and applies itself."},
-    {"text": "The game rules as one shared body of code that the engine and the tablet both run, or two bodies kept equal by tests."},
-    {"text": "The equipment's interface: one per thing the room can do (play a video, light a scene), or one per outside program."},
-    {"text": "The standalone tablet: the same record and lifecycle parts the engine runs, or an engine of its own."},
-    {"text": "The scoreboard: one page in two places, or a view inside the GM app."},
-    {"text": "The config tool: a separate program that talks to the engine by message, or a surface the engine itself serves."},
-    {"text": "When a changed pack may be adopted while the engine runs. That is not built yet; the plan allows it only before a game starts or after it ends."},
-    {"text": "Where the setting lives that says whether the engine starts each outside program or adopts one already running: in the venue technician's profile, as the candidate shape has it, or in a file of its own, as the capability map you approved has it."},
-    {"text": "The order of the work: by part, with the engine's own names and delivery first since most flaws land on them, or by block as the roadmap has it."},
-    {"text": "Whether paper documents join the pack, with \"unlocked\" recorded during play, so the night's record can say which documents the players opened. Decision 28 left this to step 3; today the director marks them by hand after the show."}
+    {
+      "text": "Where \"this game is standalone\" is declared: the venue profile (the map favours it), the pack, the game's record or each device."
+    },
+    {
+      "text": "Getting facts onto screens: one delivery part for every fact, or the parts behind each promise delivering their own facts in a shared shape."
+    },
+    {
+      "text": "The life of a game: one lifecycle part that alone moves the game and resets every part, or a table each part reads and applies itself."
+    },
+    {
+      "text": "The game rules as one shared body of code that the engine and the tablet both run, or two bodies kept equal by tests."
+    },
+    {
+      "text": "The equipment's interface: one per thing the room can do (play a video, light a scene), or one per outside program."
+    },
+    {
+      "text": "The standalone tablet: the same record and lifecycle parts the engine runs, or an engine of its own."
+    },
+    {
+      "text": "The scoreboard: one page in two places, or a view inside the GM app."
+    },
+    {
+      "text": "The config tool: a separate program that talks to the engine by message, or a surface the engine itself serves."
+    },
+    {
+      "text": "When a changed pack may be adopted while the engine runs. That is not built yet; the plan allows it only before a game starts or after it ends."
+    },
+    {
+      "text": "Where the setting lives that says whether the engine starts each outside program or adopts one already running: in the venue technician's profile, as the candidate shape has it, or in a file of its own, as the capability map you approved has it."
+    },
+    {
+      "text": "The order of the work: by part, with the engine's own names and delivery first since most flaws land on them, or by block as the roadmap has it."
+    },
+    {
+      "text": "Whether paper documents join the pack, with \"unlocked\" recorded during play, so the night's record can say which documents the players opened. Decision 28 left this to step 3; today the director marks them by hand after the show."
+    }
   ],
   "decided": [
-    {"n": 20, "date": "2026-10-31", "line": "No rule in the pass for the project's written documents (guides, READMEs, contracts, code comments). They are fixed as we go, always."},
-    {"n": 22, "date": "2026-10-31", "line": "Standalone games join the list every rule must serve: a whole game run with no engine, the GM scanner and the player scanners each working alone, as a choice a game can declare. No game mixes networked and standalone devices. The hardware scanner's missing standalone mode was recorded as a parity gap; your explicit word is question 22 above."},
-    {"n": 26, "date": "2026-10-31", "line": "The pass designs the best engine for the long term, as its use grows beyond ALN. Blue's fixes and findings are clues to where today's design is off, never the driver."},
-    {"n": 27, "date": "2026-11-01", "line": "The page's words: a promise is what a person can count on at a given moment; parts keep promises; design flaws break them; a quality is something every part must have; a moment is when a promise matters. The person who fits a kit to a venue is the venue technician. Promises carry titles only, no numbers."},
-    {"n": 28, "date": "2026-11-01", "line": "The after-game article and emailer: the second half of \"[[promise:J3]]\" names the director and the players after the show; what the players receive is the game's business; the night's record carries the game it ran and the texts the players saw; players' emails stay outside the engine; the Director Console stays a separate program that reads the record, with room to run inside the Review stage later; the two clocks join [[flaw:C9|C9]] as finding X-08."},
-    {"n": 29, "date": "2026-11-01", "line": "The owner page becomes five linked pages built from one set of data (the engine, decisions, promises, parts and design flaws) and a change log for earlier wordings and changes. Nothing in version 7 has to stay as it is."}
+    {
+      "n": 20,
+      "date": "2026-10-31",
+      "line": "No rule in the pass for the project's written documents (guides, READMEs, contracts, code comments). They are fixed as we go, always."
+    },
+    {
+      "n": 22,
+      "date": "2026-10-31",
+      "line": "Standalone games join the list every rule must serve: a whole game run with no engine, the GM scanner and the player scanners each working alone, as a choice a game can declare. No game mixes networked and standalone devices. The hardware scanner's missing standalone mode was recorded as a parity gap; your explicit word is question 22 above."
+    },
+    {
+      "n": 26,
+      "date": "2026-10-31",
+      "line": "The pass designs the best engine for the long term, as its use grows beyond ALN. Blue's fixes and findings are clues to where today's design is off, never the driver."
+    },
+    {
+      "n": 27,
+      "date": "2026-11-01",
+      "line": "The page's words: a promise is what a person can count on at a given moment; parts keep promises; design flaws break them; a quality is something every part must have; a moment is when a promise matters. The person who fits a kit to a venue is the venue technician. Promises carry titles only, no numbers."
+    },
+    {
+      "n": 28,
+      "date": "2026-11-01",
+      "line": "The after-game article and emailer: the [[promise:J3|night's-record half of the tap promise]] names the director and the players after the show; what the players receive is the game's business; the night's record carries the game it ran and the texts the players saw; players' emails stay outside the engine; the Director Console stays a separate program that reads the record, with room to run inside the Review stage later; the two clocks join [[flaw:C9|C9]] as finding X-08."
+    },
+    {
+      "n": 29,
+      "date": "2026-11-01",
+      "line": "The owner page becomes five linked pages built from one set of data (the engine, decisions, promises, parts and design flaws) and a change log for earlier wordings and changes. Nothing in version 7 has to stay as it is."
+    }
   ]
 }

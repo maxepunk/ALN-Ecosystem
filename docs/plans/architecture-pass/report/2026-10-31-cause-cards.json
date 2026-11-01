@@ -296,7 +296,8 @@
         6
       ],
       "findings": 7,
-      "seenLive": "The review reproduced the red Display row after a reset by running the engine's code in a test.",
+      "seenLive": "The review ran the engine's reset code, and the Display row turned red.",
+      "reproducedInTest": true,
       "parts": [
         "P11",
         "P13"
@@ -684,7 +685,8 @@
         5
       ],
       "findings": 29,
-      "seenLive": "The review reproduced, by running the engine's code in a test, Check Now reporting the display healthy when it had never launched.",
+      "seenLive": "The review ran the engine's code, and Check Now reported the display healthy when it had never launched.",
+      "reproducedInTest": true,
       "parts": [
         "P8",
         "P9",

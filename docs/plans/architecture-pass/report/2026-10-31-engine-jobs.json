@@ -185,7 +185,7 @@
         "the owner, who reviews and reports the night",
         "the designer, whose Review stage tells the story of the night"
       ],
-      "goal": "Every request gets one reply in the same form: which request it answers, the outcome, whether it is final, whether anything was stored. At the end, one record of the night is written from the facts decided and the roster, notes, accusation and photos captured during play, stamped with the game it ran and the texts the players saw. The tablet's report and the game's own telling both read it; for ALN that telling is the Director Console, a separate program, and the record leaves room for it to run inside the engine's Review stage later. Whether refused scans are recorded stays open.",
+      "goal": "Every request gets one reply in the same form: which request it answers, the outcome, whether it is final, whether anything was stored. At the end, one record of the night is written from the facts decided and the roster, notes, accusation and photos captured during play. It carries the game it ran and the texts the players saw. The tablet's report and the game's own telling both read it; for ALN that telling is the Director Console, a separate program, and the record leaves room for it to run inside the engine's Review stage later. Whether refused scans are recorded stays open.",
       "goalOpen": false,
       "needs": [
         "Interaction primitives (capability 36): multi-tap actions are requests with the same reply shape.",
@@ -264,7 +264,7 @@
         "The supervisor (capability 9): each program gets one restart rule with bounded tries and then a red row, and the engine tells its own video or music player from a stranger's. Today four different restart shapes exist and the TV's browser has none.",
         "The start-or-adopt setting (capability 10): a plain setting for whether the engine starts a program itself or adopts a running one, read once at start. The capability map gives it a file of its own; the candidate shape keeps it in the venue technician's profile. Step 3 settles which.",
         "Self-heal (capability 11): the engine fixes a crashed program silently and raises a red row only for what it cannot fix.",
-        "Dormancy (capability 8): a not-installed-tonight verdict that sticks, silences the cues that depend on it and is never restarted, plus a decision about what a reset and a restart do to the GM's out-of-service latch.",
+        "Dormancy (capability 8): a not-installed-tonight verdict that sticks, silences the cues that depend on it and is never restarted, plus a decision about what a reset and a restart do to a service the GM has taken out of service.",
         "Service domains (capability 15): no service keeps a private 'connected' note beside the shared health list, and one store for hold expiry instead of two.",
         "Remote displays (capability 39) and the media bundle (capability 40): the engine knows whether a second screen is alive and whether the named video files exist on its disk."
       ],
@@ -332,7 +332,7 @@
       "goal": "One Lifecycle moves a game between its moments and alone resets anything; engine start, Reset System and tests run the same steps. Its table says what each fact keeps, clears or carries, and every screen is told of the change. Pack changes land only between games; a new engine version only between events. Open: rows, and standing cues in setup.",
       "goalOpen": true,
       "needs": [
-        "No capability exists mainly for this promise, but thirteen list it as a secondary promise , dormancy (capability 8) and the second game's modules (capability 38) among them; together they ask for one table of every fact against every moment.",
+        "No capability exists mainly for this promise, but thirteen list it as a secondary promise, dormancy (capability 8) and the second game's modules (capability 38) among them; together they ask for one table of every fact against every moment.",
         "Hot-apply (capability 16): refused while a game is active or paused; the setup, ended and no-game cases defined.",
         "Self-heal (capability 11): the scanner's pack copy replaced at a game boundary, once per connection and engine version.",
         "Dormancy (capability 8) and the preflight (capability 7): verdicts recomputed at reset, at game create and at restore, and the display's health not falsely red after a reset.",
@@ -468,7 +468,7 @@
           "how": "A client's own word or a route's default decides whether a credential is asked for and what the station is called, so every connection gets everything and the engine cannot tell two tablets or a display from a GM."
         }
       ],
-      "standalone": "In a standalone game: no engine, pass or connection exists, so nothing fails; a tablet never set up for the network is called 001, known to nobody. In the candidate shape a Connections and roles stand-in knows one connection, itself, so the same door runs with no pass to check.",
+      "standalone": "In a standalone game: no engine, pass or connection exists, so nothing fails; a tablet never set up for the network is called 001, known to nobody. In the candidate shape a Connections and roles stand-in knows one connection, itself, so Answering runs the same rights check with no pass to verify.",
       "questions": [
         7,
         1
