@@ -472,7 +472,7 @@ def shape_svg():
     for x, label in ((44, 'GM tablets'), (218, 'Phones and scanners'), (392, 'TV and Pi 4')):
         out.append(f'<rect x="{x}" y="78" width="164" height="32" rx="5" fill="none" stroke="currentColor" stroke-opacity=".45"/>')
         text(x + 82, 99, label, size=12.5, anchor='middle')
-    text(44, 124, 'each keeps its own stamped copy of the pack and the game rules', size=11, op='.75')
+    text(44, 124, 'tablets and scanners also keep a stamped copy of the pack and the game rules', size=11, op='.75')
     box(580, 50, 128, 80, 'Design studio', ('the config tool,', 'talks by message'))
     box(716, 50, 116, 80, 'Release', ('what each', 'machine carries'))
     box(840, 50, 136, 80, 'Joins and proofs', ('the tests, on an', 'engine of their own'), name_size=13)
@@ -498,13 +498,13 @@ def shape_svg():
     box(36, 390, 250, 60, 'Game record', ('decides teams, claims,', 'scores and the phase'))
     box(36, 500, 250, 60, "The night's record", ('written at the end of a game',))
     box(376, 390, 250, 60, 'Lifecycle', ('moves the game,', 'resets every part'))
-    box(436, 500, 190, 60, 'Verdict', ("the game's needs against", "tonight's kit: go or no-go"))
+    box(436, 500, 190, 60, 'Verdict', ("the needs against tonight's kit:", 'go, no-go or not tonight'))
     box(716, 390, 250, 60, 'Show runner', ('cues, clock, video queue,', 'held items'))
     box(716, 500, 250, 60, 'Equipment', ('video, music, sound,', 'lights, displays'))
     box(716, 585, 250, 50, 'Outside programs', ('VLC, the music player, lights',), dashed=True, name_size=12.5)
     arrow([(376, 420), (286, 420)], 'keeps, clears', (331, 412), anchor='middle')
     arrow([(626, 420), (716, 420)], 'resets', (671, 412), anchor='middle')
-    arrow([(520, 450), (520, 500)], 'asks: go or no-go', (528, 480), both=True)
+    arrow([(520, 450), (520, 500)], 'asks', (528, 480), both=True)
     arrow([(841, 450), (841, 500)], 'drives', (849, 480))
     arrow([(716, 515), (650, 515), (650, 440), (626, 440)], 'what runs', (656, 480))
     arrow([(161, 450), (161, 500)], "the night's facts", (169, 480))
@@ -516,7 +516,7 @@ def shape_svg():
     box(330, 728, 170, 52, 'Venue fit', ("tonight's kit and", 'its bindings'))
     box(540, 728, 170, 52, 'Engine instance', ('its own names',))
     box(740, 728, 180, 52, 'Pack channel', ('one pack, stamped,', 'on every copy'))
-    arrow([(121, 728), (121, 650)], 'the rules', (129, 690))
+    arrow([(121, 728), (121, 650)], 'the rules, from the pack in use', (129, 690))
     arrow([(400, 728), (400, 450)], "tonight's profile", (392, 640), anchor='end')
     arrow([(920, 754), (990, 754), (990, 241), (980, 241)], 'the pack version', (982, 676), anchor='end')
 
@@ -572,7 +572,7 @@ WALKS = [
     E-->>D: video player down, as of now
     D->>S: what changed?
     S-->>D: one cue held, waiting for the video
-    D-->>T: red: player down, cue held, release or discard
+    D-->>T: red: video player down, cue held, release or discard
   end"""),
     ('The GM ends the game', ['J5', 'J3'], """sequenceDiagram
   participant T as GM tablet
@@ -608,14 +608,14 @@ WALKS = [
   L->>X: the needs, the profile, what runs
   X-->>L: go, two lights grey: not tonight
   L-->>A: go
-  A-->>V: go, every line checked live in the room"""),
+  A-->>V: go, checked live, two lights not tonight"""),
     ('The designer publishes a change', ['J6', 'J1'], """sequenceDiagram
   participant G as Design studio
   participant A as Answering
   participant L as Lifecycle
   participant P as Pack channel
   participant D as Delivery
-  participant V as Every device
+  participant V as Tablets and scoreboards
   G->>A: publish and apply this pack
   A->>L: may a new pack be taken up now?
   alt between games
@@ -626,9 +626,10 @@ WALKS = [
     P-->>D: the pack is now version 7
     D-->>V: version 7
     V->>P: fetch version 7
+    Note over P: phones and scanners fetch it when they next check
   else a game is on, running or paused
     L-->>A: not during a game
-    A-->>G: refused: try again after this game ends
+    A-->>G: refused until this game ends
   end"""),
 ]
 
@@ -687,7 +688,7 @@ def fit_html(shape, jobs):
     <figure class="dia whole">
       <figcaption>The candidate engine, whole</figcaption>
       <div class="scroll"><div class="svgwrap">{shape_svg()}</div></div>
-      <p class="figkey">Every request comes in through Answering and gets one reply; every fact goes out to the screens through Delivery, with its label (how old, how sure). Delivery reads what changed in each part; no part sends to it. Behind the two doors sit the game's facts, the life of a game and the room; the parts above build on the foundations, directly or through another part. The arrows show what passes at a show. Before a start, the lifecycle hands the verdict tonight's profile and what is running, and asks for go or no-go. The two doors are outlined in green; the dashed box is an outside program, not a part. The rows group the parts by what they do; they are not the layers of use, which the list further down gives. In a standalone game the GM tablet runs its own small copy of the doors, the game's facts and the lifecycle, with stand-ins for the room. The moments below follow single steps through the parts.</p>
+      <p class="figkey">Every request comes in through Answering and gets one reply; every fact goes out to the screens through Delivery, with its label (how old, how sure). Delivery reads what changed in the game record, the lifecycle, the room and the pack channel; no part sends to it. Behind the two doors sit the game's facts, the life of a game and the room; the parts above build on the foundations, directly or through another part. The arrows show what passes at a show. Before a start, the lifecycle hands the verdict tonight's profile and what is running, and asks for go, no-go or not installed tonight; it also takes up a new pack from the pack channel, only between games. The two doors and their arrows are drawn in teal; the dashed box is an outside program, not a part. The rows group the parts by what they do; they are not the layers of use, which the list further down gives. In a standalone game the GM tablet runs the same doors, game record and lifecycle itself, with small stand-ins for connections, the room, the verdict and the engine's names. The moments below follow single steps through the parts.</p>
     </figure>
     <h3>{len(WALKS)} moments, part by part</h3>
     <p>Each moment follows one thing that happens at a show through the parts that handle it, in order. Solid arrows are requests; dashed arrows are answers. Delivery always asks what changed; nothing pushes facts to it. Each screen asked Delivery, when it connected, to keep it up to date; Delivery's dashed arrows to screens answer that standing request.</p>
