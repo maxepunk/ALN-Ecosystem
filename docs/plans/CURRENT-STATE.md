@@ -121,7 +121,13 @@ before acting.
   tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
   worktrees, no test rig.
 - **The owner's page.** "What the Engine Promises"
-  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL, version 6 live,
+  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL, version 7 live,
+  published 2026-11-01 after the owner said the 17-part shape was never
+  diagrammed and the page did not show how everything comes together:
+  the candidate shape now opens with one hand-drawn picture of the
+  whole engine and five moments followed through its parts, checked
+  against the shape twice (`wf_ef6158a7-f16`, `wf_6b57ff3f-3f3`).
+  Version 6 was
   published 2026-11-01 in the words of decision 27: ten promises named
   by title, "How the promises fit together", part cards that say which
   promises each part mainly keeps and how its work is done today.
