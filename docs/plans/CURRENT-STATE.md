@@ -75,45 +75,53 @@ before acting.
   from the next session. The owner added a plugin-install line to the
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
-- **Live state** (2026-11-01): running, at the owner's request, the
-  map of how the ten jobs relate and where each lives today, at both
-  levels (the big components and the modules inside them), with a
-  candidate shape for the engine's parts: workflow `wf_5f2445a0-bac`
-  (script `docs/agents/workflow-scripts/engine-shape.js`), four
-  readers (`docs/plans/architecture-pass/relationships/`), a shape
-  writer, a check and a fold, writing
-  `docs/plans/architecture-pass/2026-11-01-engine-shape.md`. The owner
-  also said J8 and J9 read as mechanics, not what they do for people;
-  every job gets a functional restatement. No worktrees, no test
-  rig. The owner-facing page, "What the Engine Must Do"
-  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL, version 4;
+- **Live state** (2026-11-01): the relationship map is done and the
+  page is being brought into line with it. The owner asked how the ten
+  jobs relate, at both levels (the big components and the modules
+  inside them), and said J8 and J9 read as mechanics, not what they do
+  for people. Workflow `wf_5f2445a0-bac`
+  (`docs/agents/workflow-scripts/engine-shape.js`) wrote four maps
+  (`docs/plans/architecture-pass/relationships/`) and
+  `docs/plans/architecture-pass/2026-11-01-engine-shape.md`: every job
+  restated from the side of the people it serves, eleven shared
+  mechanisms, thirteen tangles, and a candidate shape of 17 parts with
+  one direction of dependency (52 edges, no cycle). Its check
+  (`2026-11-01-engine-shape-check.md`) held 122 claims and corrected
+  78; the fold applied them (section 8). Running now: workflow
+  `wf_b02b162e-653` (`docs/agents/workflow-scripts/reconcile-shape.js`)
+  brings each flaw card's candidate design, design-terms line and
+  standalone line, and each job's title, need, goal and standalone line,
+  into line with the shape, three card groups and the jobs, each checked
+  on its own; its overlays land in
+  `docs/plans/architecture-pass/report/2026-11-01-*-shape*.json` and are
+  merged into the page data by hand. Then a page-wide consistency check
+  (`docs/agents/workflow-scripts/page-consistency.js`), a rebuild and a
+  republish. The page builder already carries the new section "How the
+  jobs fit together" and the map's changed recommendations (E: rename
+  J8 rather than split; F: widen J10; G: change neither sentence, one
+  delivery part keeps both promises), each question with both sides'
+  costs. No worktrees, no test rig.
+- **The owner's page.** "What the Engine Must Do"
+  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL, version 4 live;
   source `docs/plans/architecture-pass/report/`, built by
-  `build_report.py`), leads with the engine's ten jobs
+  `build_report.py`) leads with the engine's ten jobs
   (`docs/plans/architecture-pass/2026-10-31-engine-jobs.md`, workflow
   `wf_f3c1ef9e-a97`), with the design flaws under each job, the
-  standalone pass, and the evidence at the back. The consistency check
-  the owner asked for ran as `wf_4e810a25-00f` (the first run,
-  `wf_1dea6411-991`, stalled and was lost): 39 conflicts across the
-  list of design flaws, the standalone pass, the jobs document, the
-  page data and the page, all settled and applied; section 8 of the
-  analysis lists them. The questions are regrouped: the jobs (is the
-  list right; A to G), the standalone questions (22's ESP32 reading,
-  24, 25), 19 and 21; 18 is folded into F and 23 into C. The visual cause report, version 2, is published for the
-  owner (a private page: https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL;
-  source `docs/plans/architecture-pass/report/`, rebuilt by
-  `build_report.py`). Version 2 adds decision 22's standalone pass
-  (`docs/plans/architecture-pass/2026-10-31-standalone-pass.md`,
-  workflow `wf_d1152165-580`; cause analysis §7): a standalone line per
-  card, the ESP32 parity table and questions 23 to 25. The doc-drift
-  fixes merged at `4fc04790` (ALNScanner `b521774`). The cause-analysis workflow `wf_5b8300fe-cb6` finished
-  on 2026-10-30 (8 agents, about 3.6 million helper tokens). Three read-only mapping runs finished earlier
-  on 2026-10-30 (`wf_7bc41460-e87`, `wf_dfeaf164-afd`,
-  `wf_3f365994-ba6`; about 4.2 million helper tokens). Their nine
-  files are the pass's evidence, all committed in
+  standalone pass (`2026-10-31-standalone-pass.md`, workflow
+  `wf_d1152165-580`) and the evidence at the back. The consistency check
+  the owner asked for ran as `wf_4e810a25-00f`: 39 conflicts, all
+  applied (cause analysis section 8). Questions: the jobs (is the list
+  right; A to G), the standalone questions (22's ESP32 reading, 24,
+  25), 19 and 21; 18 is folded into F and 23 into C.
+- **Earlier runs.** The doc-drift fixes merged at `4fc04790` (ALNScanner
+  `b521774`). The cause-analysis workflow `wf_5b8300fe-cb6` finished on
+  2026-10-30. Three read-only mapping runs finished earlier on
+  2026-10-30 (`wf_7bc41460-e87`, `wf_dfeaf164-afd`,
+  `wf_3f365994-ba6`); their nine files are the pass's evidence in
   `docs/plans/architecture-pass/`: start with
-  `2026-10-30-map-runtime-state.md` §0 (corrections) and §1. The last
-  code merge, `089dd527` (green's follow-ups), passed CI run 305 on
-  2026-10-30, after `04578a40` pinned the jobs that install
+  `2026-10-30-map-runtime-state.md` section 0 (corrections) and section
+  1. The last code merge, `089dd527` (green's follow-ups), passed CI run
+  305 on 2026-10-30, after `04578a40` pinned the jobs that install
   Playwright's Chromium to ubuntu-24.04 (GitHub's default image moved
   to 26.04, which Playwright 1.57 refuses).
 
