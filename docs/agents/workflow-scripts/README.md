@@ -25,6 +25,7 @@ source of requirements for any task they run.
 | `site-content.js` | For the owner site (decision 29): three writers draft the front page, the Decisions page and the change log as JSON overlays, and a reader lists every element of version 7 with its home on the site; each output is checked refute-by-default, then corrected | First run 2026-11-01, `wf_d5c8c6db-981`: 12 agents, 41 conflicts, 40 applied |
 | `site-build.js` | One builder writes `report/build_site.py` and `report/site_smoke.js` from the site plan, the inventory and the overlays, builds the six pages and smoke-tests them at two widths in both themes | First run 2026-11-01, `wf_c3df370d-0dc` |
 | `site-check.js` | Six refute-by-default readers check the built site page by page; one editor applies every conflict, rebuilds and smoke-tests; two readers verify each fix. Pass `args.base`, the commit the checks read | First run 2026-11-01, `wf_73d06a3f-69f` |
+| `site-fix-verify.js` | One editor settles the partly-resolved and new rows of the site checks' verification with the orchestrator's rulings on the judgment calls, rebuilds and smoke-tests; two readers verify and read the pages whole. Pass `args.base` | First run 2026-11-01, `wf_88aa92da-12e` |
 | `cut-lane-worktree.sh` | Cuts and provisions one lane worktree from the designated branch, with an ALNScanner branch of the same name when the lane edits the scanner | Proven on 2026-09-12. Pass `scanner` for every lane that edits the scanner; one lane was cut without it by mistake. |
 
 How to run the workflow scripts: pass the script file to the
