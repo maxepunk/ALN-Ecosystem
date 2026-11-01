@@ -407,6 +407,10 @@ architecture pass's question.
 
 ## 5. Venue, kit, and installation
 
+- **Venue technician.** The person who fits a kit to a venue: they
+  satisfy the pack's tech rider, bind the installation profile and run
+  the preflight (§5b, Deploy). Use this name, not "installer" or
+  "venue installer" (owner, 2026-11-01, decision 27).
 - **Install tier.** How much of the kit is deployed for one event,
   from the minimum (player scanners and tokens only) to the full rig.
   Every tier must run a legitimate game. Tiers are normal
@@ -683,6 +687,25 @@ the GM scanner, and a game's own post-show tooling)
   and findings are clues to where today's design is off, never the
   driver (owner, 2026-10-31, decision 26). (Owner-ratified wording,
   2026-10-30; decision record: `docs/plans/2026-10-30-architecture-pass.md`, Appendix A.)
+- **Promise.** What a person can count on at a given moment, for
+  example "One game, the same on every screen". The architecture pass
+  states the engine's requirements as ten promises, each named by its
+  title alone, with no number. Parts keep promises; design flaws break
+  them. It replaces "job", the pass's word for the same list from
+  2026-10-31 (owner, 2026-11-01, decision 27).
+- **Moment.** When a promise matters: a production stage (§5b:
+  Author, Rehearse, Run, Review), a point inside a show (doors open,
+  mid-show, the end of a game, a restart), or release day.
+- **Part.** One piece of the engine's candidate design in the
+  architecture pass (17 in the shape of 2026-11-01). A part keeps
+  promises and runs on the engine or on a device. A part is not a
+  device: a device is hardware (§6).
+- **Quality.** Something every part must have so that a promise holds
+  everywhere, not in one place; for example, every fact on a screen
+  says how old and how sure it is. A quality keeps promises. It is
+  never a promise or a part.
+- **Design flaw.** Something in today's design that breaks a promise
+  (C1 to C16 in the architecture pass; N1 is proposed).
 - **Truth sweep.** The roadmap's Block 3 as chartered on 2026-09-05:
   audit the routes by which service status reaches the GM's admin
   panel, and fix each false display with a rig test per fix. The

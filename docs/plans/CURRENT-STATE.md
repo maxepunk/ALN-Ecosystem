@@ -51,6 +51,22 @@ before acting.
       owner expects the frame to change the approach and how the
       design and the roadmap are discussed more than the fixes
       themselves.
+  27. The pass's vocabulary (owner, 2026-11-01, answering no
+      question; the owner found "job" forced once the jobs were
+      restated from people's side and the map split them into
+      promises, qualities and parts). A **promise** is what a person
+      can count on at a given moment; the page is organized around
+      the ten promises, and "job" is retired. Parts keep promises;
+      design flaws break them; a **quality** is something every part
+      must have so a promise holds everywhere, never a promise
+      itself; a **moment** is when a promise matters (a production
+      stage, a point in a show, release day). The person who fits a
+      kit to a venue is the **venue technician**, not "installer".
+      Promises carry **titles only**, no numbers, so a card reads
+      without memorizing ids. The seventh title becomes a promise:
+      "The game fits the venue it is in tonight". Shared work several
+      promises depend on needs no word of its own: each piece becomes
+      one part. Glossary: `CONTEXT.md` section 7.
   Open in round 8, all on the report page or in the chat: 17 (is the
   cause list right), 18 (the three causes no question covers), 19
   (record every scan attempt's outcome: the owner's yes to the

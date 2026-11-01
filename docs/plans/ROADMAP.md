@@ -52,7 +52,7 @@ What the finished platform looks like, for each person:
   it, play, observe, repeat. Tuning ALN's economy and tuning a
   contagion game's spread rate are the same action, because both are
   just pack values.
-- **A venue installer** receives a kit (production-owned hardware plus
+- **A venue technician** receives a kit (production-owned hardware plus
   the pack). They fill in an *installation profile*: which speakers,
   which lights, which network. On one page they connect the pack's
   abstract names to the real instruments in the room. Then they run a
