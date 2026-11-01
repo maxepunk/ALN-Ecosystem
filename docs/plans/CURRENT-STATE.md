@@ -92,7 +92,9 @@ before acting.
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
 - **Live state** (2026-11-01): the relationship map is done and on the
-  owner's page; waiting for the owner's answers. The owner asked how the
+  owner's page, now in the owner's words (decision 27: workflows
+  `wf_d5b390ac-27a`, `wf_81c41f8d-ec0` and `wf_b5ed9f35-493`, 28
+  conflicts applied); waiting for the owner's answers. The owner asked how the
   ten jobs relate, at both levels (the big components and the modules
   inside them), and said J8 and J9 read as mechanics, not what they do
   for people. Workflow `wf_5f2445a0-bac`
@@ -118,9 +120,12 @@ before acting.
   shape is silent on a short offline claim list on a disconnected
   tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
   worktrees, no test rig.
-- **The owner's page.** "What the Engine Must Do"
-  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL, version 5 live,
-  published 2026-11-01 with "How the jobs fit together";
+- **The owner's page.** "What the Engine Promises"
+  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL, version 6 live,
+  published 2026-11-01 in the words of decision 27: ten promises named
+  by title, "How the promises fit together", part cards that say which
+  promises each part mainly keeps and how its work is done today.
+  Version 5 carried "How the jobs fit together";
   source `docs/plans/architecture-pass/report/`, built by
   `build_report.py`) leads with the engine's ten jobs
   (`docs/plans/architecture-pass/2026-10-31-engine-jobs.md`, workflow
