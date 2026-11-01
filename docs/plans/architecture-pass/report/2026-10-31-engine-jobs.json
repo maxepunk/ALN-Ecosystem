@@ -74,7 +74,7 @@
         "need": "The whole kit plays that game, that version, with no code change: the engine scores by it, the TV shows its words, every tablet and scanner holds the same copy, and the GM can see at a glance that they match, or a mismatched device is refused. A second designer's game runs on the same engine.",
         "proposedTitle": "The designer's game is the game the whole kit plays"
       },
-      "shapeChange": "Before, this job said the engine plays any pack, proven by the toy pack. Now it says every device plays one version, checked when a device connects, because a mismatch is only logged today; the toy-pack proof moves to J10."
+      "shapeChange": "Before, this job said the engine plays any pack, proven by the toy pack. Now it says every device plays one version, checked when a device connects, because a mismatch is only logged today; the two-pack proof is now also J10's."
     },
     {
       "id": "J2",
@@ -257,7 +257,7 @@
         "the venue installer, whose profile says what is installed tonight",
         "players, whose video tokens start a video"
       ],
-      "goal": "The engine reaches each outside program through one interface and keeps a dated picture of it, checked against the program. One supervisor restarts a crashed program a few times, then shows a red row with a Restart button. The profile says whether the engine starts or adopts each program. The Show runner keeps held cues and videos in one place.",
+      "goal": "The engine reaches each outside program through one interface and keeps a dated picture of it, checked against the program. One supervisor restarts a crashed program a few times, then shows a red row with a Restart button. A setting, in the profile as the candidate shape has it, says whether the engine starts or adopts each program. The Show runner keeps held cues and videos in one place.",
       "goalOpen": false,
       "needs": [
         "The supervisor (capability 9): each program gets one restart rule with bounded tries and then a red row, and the engine tells its own video or music player from a stranger's. Today four different restart shapes exist and the TV's browser has none.",
@@ -316,7 +316,7 @@
         "need": "The room does what the designer cued and what the GM asked; the GM sees it happen, or sees at once that it did not and what to press; a dead program comes back by itself before anyone notices.",
         "proposedTitle": "The room does what the designer cued and the GM asked"
       },
-      "shapeChange": "Before, this job also asked the engine to know each program's true state. Now that belongs to J9 and this job rests on two parts, Equipment and the Show runner, because running the room and labelling a screen differ."
+      "shapeChange": "Before, the title also asked the engine to know each program's true state. Now Equipment keeps that dated picture here, beside the Show runner, and showing it on a screen is J9's label, because running the room and labelling a screen differ."
     },
     {
       "id": "J5",
@@ -367,7 +367,7 @@
           "how": "A slow reset reports failure and the new game is skipped."
         }
       ],
-      "standalone": "In a standalone game: the tablet decides each game's start and end by separate steps; it opens a game it cannot name, pause or replace; player devices' lists and queues outlive every game. In the candidate shape it runs the engine's Lifecycle or its own, kept equal by tests.",
+      "standalone": "In a standalone game: the tablet decides each moment (start, pause, end, a reload, a new day, a pack change) by its own steps; it opens a game it cannot name, pause or replace; player devices' lists and queues outlive every game. In the candidate shape it runs the engine's Lifecycle or its own, kept equal by tests.",
       "questions": [
         6
       ],
@@ -386,7 +386,7 @@
         "need": "Each act does exactly what its name says: an ended game stays ended and no scan lands in it, the next game starts clean, a restart during a show loses nothing, a pause blocks scans, and a between-games edit never reaches the game in progress.",
         "proposedTitle": "Each lifecycle button does exactly what its name says"
       },
-      "shapeChange": "Before, this job was a developer's table of facts against moments. Now it is the GM's trust in each button, carried by one Lifecycle part that alone moves and resets the game, because start and Reset System follow different lists."
+      "shapeChange": "Before, this job was said as a developer's table of facts against moments. Now it is the GM's trust in each button; the table stays, held by one Lifecycle part that alone moves and resets the game, since start and Reset System differ today."
     },
     {
       "id": "J6",
@@ -397,7 +397,7 @@
         "the owner, who designs the second game at his own pace",
         "the venue installer, who receives the handoff"
       ],
-      "goal": "Edit, apply, play, repeat. The Design studio talks to the engine only by message; the engine applies a change at a moment the Lifecycle allows, never mid-game, or refuses and says why. A preview engine is a second Engine instance, so it touches nothing live, and on a laptop the equipment reads as not installed. Where it runs is open.",
+      "goal": "Edit, apply, play, repeat; the rules editor and applying a change to a running engine are built together. The Design studio talks to the engine only by message; the engine applies a change at a moment the Lifecycle allows, never mid-game, or refuses and says why. A preview engine is a second Engine instance, so it touches nothing live, and on a laptop the equipment reads as not installed. Where it runs is open.",
       "goalOpen": false,
       "needs": [
         "The five Design pages (capability 17) and the draft and publish store (capability 4): edits touch a draft only, with the live engine's adopted version shown beside it.",
@@ -499,7 +499,7 @@
         "players on standalone devices",
         "a future operator with a second kit"
       ],
-      "goal": "The installer fills a profile, binds each pack name to an instrument and runs one preflight. Kit names live only in the profile and Engine instance, so new kits and machines need no code. Release checks what each machine carries at start. Phones and hardware scanners stay equal. Standalone is declared, never mixed; where, and how many tablets, stays open.",
+      "goal": "The installer picks the pack and the profile by name, fills the profile, binds each pack name to an instrument and runs one preflight. Kit names live only in the profile and Engine instance, so new kits and machines need no code. Release checks what each machine carries at start. Phones and hardware scanners stay equal. Standalone is declared, never mixed; where, and how many tablets, stays open.",
       "goalOpen": false,
       "needs": [
         "Installation profiles (capability 5), the bindings page (capability 23), the hardware editor and rider (capability 24) and the Deploy stage (capability 22): the profile is read once at start, and the design says what a profile change ends in, since the pack side will have hot-apply and the profile side will not.",
@@ -540,7 +540,7 @@
           "how": "Program names and install commands are fixed to one operating-system release, so a new machine logs warnings or refuses its install."
         }
       ],
-      "standalone": "In a standalone game: the tablet's mode is a tap, the phone's is its web address, the hardware scanner has none: it treats a missing engine as an outage and trails the phone in seven of 24 abilities. In the candidate shape the declaration reaches every device with its pack.",
+      "standalone": "In a standalone game: the tablet's mode is a tap, the phone's is its web address, the hardware scanner has none: it treats a missing engine as an outage and trails the phone in seven of 24 abilities. In the candidate shape the declaration, wherever it is kept, reaches every device with its pack, and the tablet says standalone.",
       "questions": [
         1,
         6
@@ -561,7 +561,7 @@
         "need": "The installer states what the kit brings tonight, binds the pack's names to real instruments and gets one go or no-go. A game declared standalone knows it is standalone instead of showing a lost connection all night. A second kit or a new machine needs no change to engine code.",
         "proposedTitle": "Fit the game to the venue it is in tonight"
       },
-      "shapeChange": "Before, this job covered every setup, engine or none. Now the installer fits the game to tonight's venue, declares a standalone game and Release checks each machine, because running anywhere is a quality every part carries; question E stays open."
+      "shapeChange": "Before, this job covered every setup, engine or none. Now it is the installer fitting the game to tonight's venue, with a standalone game declared here (where it is kept is a step-3 choice) and Release checking each machine; running anywhere became a quality."
     },
     {
       "id": "J9",
@@ -604,7 +604,7 @@
           "how": "No screen can tell 'standalone by choice' from 'engine down'."
         }
       ],
-      "standalone": "In a standalone game: the phone says Offline all night, the hardware scanner shows a red Disconnected and a growing queue, a video token says Rescan later, which never works; nothing says a standalone tablet is ready. In the candidate shape the tablet's Verdict marks every engine duty dormant: grey.",
+      "standalone": "In a standalone game: the phone says Offline all night, the hardware scanner shows a red Disconnected and a growing queue, a video token says Rescan later, which never works; nothing says a standalone tablet is ready. In the candidate shape a small Verdict stand-in on the tablet marks every engine duty dormant: grey.",
       "questions": [
         8,
         2
@@ -638,7 +638,7 @@
         "the people building the engine, whose green run must mean something",
         "the GM, whose live show no test may touch"
       ],
-      "goal": "Tests run the real engine with stand-in equipment. Each test run, preview and second kit gets its own names, so none reaches a live show. Every shape two parts share is written once; every stand-in is checked against the real thing. Every change runs on two packs. The owner alone sends a checked machine and can replug the old one.",
+      "goal": "Tests climb in levels, from the real engine with stand-in equipment to the real programs. Each test run, preview and second kit has its own names, so none reaches a live show. Shared shapes are written once; stand-ins are checked against the real thing; every change runs on two packs. The owner alone sends a checked machine, and can replug the old one.",
       "goalOpen": false,
       "needs": [
         "The test environment (capability 46): tests cannot touch the live machine's tracking files, the TV or its players; they skip loudly with a reason. Today nothing stops a test copy of the engine from starting the sound system; in the candidate shape a test engine runs as an engine of its own, with a stand-in for sound, so no switch is needed.",
@@ -670,7 +670,7 @@
           "how": "Hand-written fakes are never checked against the real classes, skips and silent passes count as green, and coverage is counted per file, so a green run does not show the real path works."
         }
       ],
-      "standalone": "In a standalone game: nothing tests a player device with no engine; the phone's pack test checks a file the deployed site lacks; the one test comparing both modes skips its group case. In the candidate shape the same proofs cover the tablet, or, with its own engine, a cross-check.",
+      "standalone": "In a standalone game: nothing tests a player device with no engine; the phone's pack test passes on a file the deployed site lacks; the one test comparing both modes skips its group case. In the candidate shape the same proofs cover the tablet, or, with its own engine, a cross-check.",
       "questions": [
         4,
         5

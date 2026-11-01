@@ -249,7 +249,7 @@ def job_html(j, by_id, home):
     <span class="tag">Where today's design falls short</span>
     <ul>{"".join(shorts) or '<li class="muted">No flaw has this as its main job yet: its planned parts are not built.</li>'}</ul>
   </div>
-  <p class="standalone"><span class="tag">In a standalone game</span> {e(j["standalone"])}</p>
+  <p class="standalone"><span class="tag">In a standalone game</span> {e(re.sub(r"^In a standalone game:\s*", "", j["standalone"]))}</p>
   <details><summary>What the planned capabilities need from it ({len(j["needs"])})</summary><ul class="examples">{needs}</ul></details>
   <details><summary>Test cases from the shows ({len(j["tests"])}); {e(qtext)}</summary><ol class="examples">{tests}</ol></details>
   {cards}
@@ -326,22 +326,16 @@ FIT_SUMMARY = [
 # The relationship map at a glance, drawn from the shape's section 2.1: the spine, the ring,
 # and the two jobs that reach the show from outside. The full diagram (25 dependencies) follows it.
 OVERVIEW = """flowchart TD
-  subgraph spine["At every tap"]
-    J1["J1 The designer's game is what plays"]
-    J2["J2 One game on every screen"]
-    J3["J3 Every tap answered, the night told"]
-    J7["J7 Each person sees and does their part"]
-  end
-  subgraph ring["The engine's own machinery"]
-    J4["J4 The room does what was cued and asked"]
-    J8["J8 Fit to tonight's venue"]
-    J9["J9 Screens you can act on at a glance"]
-    J5["J5 Each button does what it says"]
-  end
-  subgraph outside["From outside the show"]
-    J6["J6 Designers change and try safely"]
-    J10["J10 Proven before it reaches the show"]
-  end
+  J1["@J1@"]
+  J2["@J2@"]
+  J3["@J3@"]
+  J7["@J7@"]
+  J4["@J4@"]
+  J8["@J8@"]
+  J9["@J9@"]
+  J5["@J5@"]
+  J6["@J6@"]
+  J10["@J10@"]
   J1 -->|"the rules"| J2
   J2 -->|"what a tap is judged against"| J3
   J3 -->|"accepted taps"| J2
@@ -356,6 +350,12 @@ OVERVIEW = """flowchart TD
   J9 -.->|"a label on every fact"| J2
   J6 -->|"a published pack"| J1
   J10 -->|"each engine's own names"| J8
+  classDef tap stroke:#0f766e,stroke-width:3px;
+  classDef machine stroke:#b45309,stroke-width:3px;
+  classDef outside stroke:#6b7280,stroke-width:2px,stroke-dasharray:5 4;
+  class J1,J2,J3,J7 tap;
+  class J4,J8,J9,J5 machine;
+  class J6,J10 outside;
 """
 
 # Which parts run where (the shape's section 4.3), one line per device.
@@ -370,7 +370,22 @@ FIT_DEVICES = [
 ]
 
 
-def fit_html(shape):
+def wrap_label(text, per_line=4):
+    words = text.split()
+    return '<br/>'.join(' '.join(words[i:i + per_line]) for i in range(0, len(words), per_line))
+
+
+def overview_src(jobs):
+    """The at-a-glance diagram with each node labelled by its job's title, as the headings show it."""
+    src = OVERVIEW
+    for j in jobs:
+        title = (j.get('functional') or {}).get('proposedTitle') or j['title']
+        src = src.replace(f'@{j["id"]}@', wrap_label(f'{j["id"]} {title}'))
+    assert '@' not in src, 'a job in the overview has no title'
+    return src
+
+
+def fit_html(shape, jobs):
     names = {p['id']: p['name'] for p in shape['parts']}
     summary = ''.join(f'<p><strong>{e(h)}</strong> {e(t)}</p>' for h, t in FIT_SUMMARY)
     mech = ''.join(f'<tr><th scope="row">{e(m["name"])}</th><td>{e(m["plain"])}</td><td class="idcell">{job_links(m["jobs"])}</td></tr>' for m in shape['mechanisms'])
@@ -390,8 +405,9 @@ def fit_html(shape):
   <p class="intro">You asked how the ten jobs relate, so that the design serves all of them at once and stays easy to keep building. This section answers at two levels: the big pieces (the engine, the tablets, the scanners, the scoreboards, the config tool) and the smaller parts inside them. It shows how the jobs depend on each other, where they sit in today's code, and one candidate shape for the whole engine. Every card further down now follows that shape, and each says what changed.</p>
   <div class="fit-summary">{summary}</div>
   <figure class="dia wide">
-    <figcaption>The jobs at a glance. An arrow runs from the job that produces something to the job that uses it; the label says what passes. The dashed line is a label every fact carries, not a dependency.</figcaption>
-    <div class="scroll"><pre class="mermaid">{e(present(OVERVIEW))}</pre></div>
+    <figcaption>The jobs at a glance</figcaption>
+    <p class="figkey"><span class="key tap"></span>what happens at every tap <span class="key machine"></span>the engine's own machinery <span class="key outside"></span>from outside the show. Each arrow runs from the job that produces something to the job that uses it, and says what passes. The dotted line is a label every fact carries, not a dependency.</p>
+    <div class="scroll"><pre class="mermaid">{e(present(overview_src(jobs)).replace('"useMaxWidth": false}, "sequence"', '"useMaxWidth": false, "nodeSpacing": 20}, "sequence"', 1))}</pre></div>
     <details>
       <summary>The {len(re.findall(r"-\.?->", shape["relationsMermaid"]))} main links between the jobs</summary>
       <p class="muted" style="margin:10px 0">{len(re.findall(r"[^.]-->", shape["relationsMermaid"]))} are dependencies: without them, the job that uses them breaks at a show. One is a quality and one is a shared piece; they are drawn dashed.</p>
@@ -476,7 +492,7 @@ def build():
     purpose = ''.join(f'<p>{e(x)}</p>' for x in data['purpose'])
     page = TEMPLATE.format(
         total=total, total_all=total + aside_n, aside_n=aside_n, purpose=purpose,
-        glance=glance_html(jobs), fit=fit_html(shape), jobs=''.join(job_html(j, by_id, home) for j in jobs),
+        glance=glance_html(jobs), fit=fit_html(shape, jobs), jobs=''.join(job_html(j, by_id, home) for j in jobs),
         grid=grid_html(sorted(cards, key=lambda c: int(c['id'][1:]))),
         aside=aside, parity=parity_html(), parity_n=len(parity_rows()))
     OUT.write_text(page)
@@ -632,6 +648,12 @@ ol.layers .lvl {{ font-family: var(--font-label); text-transform: uppercase; let
 .pmeta .tag {{ margin-right: 6px; }}
 ul.devices {{ margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 80ch; }}
 figure.dia.wide {{ padding: 12px; }}
+.figkey {{ font-size: 14px; color: var(--muted); max-width: 80ch; }}
+.figkey .key {{ display: inline-block; width: 18px; height: 12px; border-radius: 3px; border: 3px solid; vertical-align: -1px; margin: 0 6px 0 10px; }}
+.figkey .key:first-child {{ margin-left: 0; }}
+.figkey .key.tap {{ border-color: #0f766e; }}
+.figkey .key.machine {{ border-color: #b45309; }}
+.figkey .key.outside {{ border: 2px dashed #6b7280; }}
 @media (prefers-reduced-motion: reduce) {{ * {{ scroll-behavior: auto; }} }}
 </style>
 <div class="wrap">

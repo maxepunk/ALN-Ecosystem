@@ -20,8 +20,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  rec[\"Game record<br/>decides claims from the transactions\"]\n  life[\"Lifecycle<br/>announces a reset or new game\"]\n  del[\"Delivery<br/>one route per fact<br/>live or after a reconnect<br/>each fact labelled\"]\n  tabA[\"Tablet A<br/>draws the claim fact<br/>keeps no list\"]\n  tabB[\"Tablet B<br/>draws the claim fact<br/>keeps no list\"]\n  ans[\"Answering<br/>one reply per tap\"]\n  gm[\"GM rescan<br/>accepted\"]\n  rec -->|\"delete frees the token\"| del\n  life -->|\"reset, restart\"| del\n  del -->|\"replace the drawn fact\"| tabA\n  del -->|\"replace the drawn fact\"| tabB\n  tabB -->|\"tap on the freed token\"| ans\n  ans -->|\"asks the record\"| rec\n  ans -->|\"accepted\"| gm\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rec owner;\n",
-        "note": "Only the Game record decides which tokens are claimed, from the transactions. Delivery sends it by one route, live or on reconnect; Lifecycle announces resets. The tablet keeps no list: it draws the fact and asks at each tap. Or: each job sends its own."
+        "mermaid": "flowchart LR\n  rec[\"Game record<br/>decides claims from the transactions\"]\n  life[\"Lifecycle<br/>announces a reset or new game<br/>with a version\"]\n  del[\"Delivery<br/>one route per fact<br/>live or after a reconnect<br/>each fact labelled\"]\n  tabA[\"Tablet A<br/>draws the claim fact<br/>keeps no list\"]\n  tabB[\"Tablet B<br/>draws the claim fact<br/>keeps no list\"]\n  ans[\"Answering<br/>one reply per tap\"]\n  gm[\"GM rescan<br/>accepted\"]\n  rec -->|\"delete frees the token\"| del\n  life -->|\"reset, restart\"| del\n  del -->|\"replace the drawn fact\"| tabA\n  del -->|\"replace the drawn fact\"| tabB\n  tabB -->|\"tap on the freed token\"| ans\n  ans -->|\"asks the record\"| rec\n  ans -->|\"accepted\"| gm\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rec owner;\n",
+        "note": "Only the Game record decides which tokens are claimed, from the transactions. Delivery sends it by one route, live or on reconnect; Lifecycle announces resets with a version every tablet compares. The tablet keeps no list: it draws the fact and asks at each tap. Or: each job sends its own."
       },
       "examples": [
         {
@@ -62,7 +62,7 @@
         "P3",
         "P11"
       ],
-      "shapeChange": "Before, the card let each tablet keep a list of claimed tokens. Now only the Game record holds it; a tablet draws what it is sent and asks at each tap, so a delete or reset leaves no stale list."
+      "shapeChange": "Before, the card let each tablet keep a list of claimed tokens. Now only the Game record decides claims, from the transactions; a tablet draws what it is sent and asks at each tap, so a delete or reset leaves no stale list."
     },
     {
       "id": "C2",
@@ -254,7 +254,7 @@
       "id": "C5",
       "title": "Boot and Reset System wire the engine differently",
       "atAShow": "The GM presses Reset System to recover mid-show. The music panel goes dead until someone restarts the engine. Later, Reset All Scores sends every tablet and the TV the old transaction list, so cleared evidence comes back on the wall. The cues now hear each video and clock event twice, and the Display row stays red until Check Now.",
-      "whyItHappens": "Starting the engine and rebuilding it after a reset are two separate hand-written lists. The start connects the parts in one order with one set of programs; the reset connects them in the other order with a shorter set, and connects some a second time.",
+      "whyItHappens": "Starting the engine and rebuilding it after a reset are two separate hand-written lists. The start connects the parts in one order with one set of the engine's services; the reset connects them in the other order with a shorter set, and connects some a second time.",
       "designTerms": "Lifecycle should own the one path engine start and Reset System share, and alone call each part's reset; a starting point above every part should own the one list the engine is built from, under Engine instance's names. Today both do it by hand, each knowing every part and the order: no locality.",
       "modules": [
         "backend/src/app.js",
@@ -370,7 +370,7 @@
       "title": "A reply never says which request, final or stored",
       "atAShow": "Player devices upload their queued scans while no game exists. The engine answers \"processed\", stores nothing, and both devices delete the scans. A GM's scan that can never succeed comes back as a vague error, so the tablet resends it at every reconnect with a pop-up message each time. A slow Reset System reports failure and the new game is skipped.",
       "whyItHappens": "The engine answers before, or without, saving the fact it reports; calls an unsaved batch processed; returns some failures as a named outcome and others as a vague error; and confirms a command by the command's name alone, so two quick presses cannot be told apart. Each device then decides for itself what a reply means.",
-      "designTerms": "Answering should own one interface, one request in and one reply out, web requests and the live connection its two adapters; the outcome words are one closed list every device reads as data; the Game record answers after the save. Today three reply shapes leave each device its own rule: no locality.",
+      "designTerms": "Answering should own one interface, one request in and one reply out, web requests and the live connection its two adapters; the outcome words are one closed list every device reads as data; the Game record saves, then gives Answering the outcome. Today three reply shapes leave each device its own rule: no locality.",
       "modules": [
         "backend/src/websocket/adminEvents.js",
         "backend/src/routes/scanRoutes.js",
@@ -386,7 +386,7 @@
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart LR\n  dev[\"Player device<br/>queued scans\"]\n  tab[\"Tablet<br/>GM scan or command\"]\n  ans[\"Answering<br/>one door, every way in<br/>knows request and device<br/>GM rights checked once\"]\n  rec[\"Game record<br/>apply, save, then the outcome\"]\n  reply[\"One reply shape<br/>which request, outcome word, final, stored\"]\n  words[\"Reply words<br/>one closed list<br/>made for every device\"]\n  scr[\"Screens<br/>delete only if stored<br/>final means stop\"]\n  dev -->|\"batch\"| ans\n  tab -->|\"scan, command\"| ans\n  ans -->|\"action\"| rec\n  rec -->|\"after the save\"| ans\n  ans -->|\"answers\"| reply\n  words -->|\"read as data\"| scr\n  reply -->|\"matched to its request\"| scr\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class ans owner;\n",
-        "note": "Every reply names its request and says whether it is final and whether anything was stored. The Game record saves first, then answers through Answering: one door and one list of outcome words for every device. Or: each device asks which scans are stored."
+        "note": "Every reply names its request and says whether it is final and whether anything was stored. The Game record saves, then gives Answering the outcome: one door and one list of outcome words for every device. Or: each device asks which scans are stored."
       },
       "examples": [
         {
@@ -515,7 +515,7 @@
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart LR\n  gm[\"GM scans token\"]\n  tab[\"Tablet Screens<br/>shows pending, judges nothing\"]\n  ans[\"Answering<br/>one reply per tap\"]\n  rec[\"Game record on the engine<br/>decides claim and points,<br/>and whether a scan is allowed\"]\n  rules[\"Game rules<br/>one body of code<br/>that only calculates\"]\n  res[\"Result screen<br/>draws the reply with its points\"]\n  sans[\"Answering on the tablet<br/>standalone, local reply\"]\n  srec[\"Game record on the tablet<br/>standalone, the same rules\"]\n  phone[\"Player phone and hardware scanner<br/>Screens, rules as data tables\"]\n  gm -->|\"networked\"| tab\n  tab -->|\"request\"| ans\n  ans -->|\"apply, outcome back\"| rec\n  ans -->|\"reply with points\"| res\n  rules -->|\"loaded by\"| rec\n  gm -->|\"standalone\"| sans\n  sans -->|\"apply, outcome back\"| srec\n  sans -->|\"reply with points\"| res\n  rules -->|\"loaded by\"| srec\n  rules -->|\"tables generated\"| phone\n  phone -->|\"scan, the reply<br/>says new or seen\"| ans\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rec owner;",
-        "note": "The Game record decides what a tap gets. The tablet shows pending, then Answering's reply. Game rules is one body the engine and a standalone tablet both run; player devices get data tables and judge nothing. Or: two rule copies kept equal by tests."
+        "note": "The Game record decides what a tap gets. The tablet shows pending, then Answering's reply. Game rules is one body the engine and a standalone tablet both run; player devices get data tables and judge nothing while the engine is there. Or: two rule copies kept equal by tests."
       },
       "examples": [
         {
@@ -555,7 +555,7 @@
         "P1",
         "P14"
       ],
-      "shapeChange": "Before, the card left the phone alone and had the standalone tablet load shared rules. Now one Game record judges every tap, even with no engine, and every other device only draws the reply, so a rule change lands once."
+      "shapeChange": "Before, the card left the phone alone and had the standalone tablet load shared rules. Now one Game record judges every GM tap, on the engine or on a standalone tablet, and player devices draw the engine's reply, so a rule change lands once."
     },
     {
       "id": "C10",
@@ -578,7 +578,7 @@
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart LR\n  prof[\"Venue fit<br/>profile fails to load\"]\n  life[\"Lifecycle<br/>asks the Verdict at start\"]\n  ver[\"Verdict<br/>profile failed, no-go<br/>(on paper, not a live check)\"]\n  eq[\"Equipment<br/>state with health and age\"]\n  con[\"Connections and roles<br/>one rule for whether<br/>a device is still there\"]\n  del[\"Delivery<br/>every fact labelled:<br/>what, how old, how sure\"]\n  panel[\"Health panel<br/>red profile row,<br/>with the time it was checked\"]\n  tv[\"TV clock<br/>drawn as old past its limit\"]\n  music[\"Music card<br/>down, not a calm grey\"]\n  prof -->|\"missing or invalid\"| life\n  life -->|\"profile and inventory\"| ver\n  ver -->|\"a failed check, never no equipment\"| life\n  life -->|\"verdicts\"| del\n  eq -->|\"dated picture\"| del\n  con -->|\"connection state\"| del\n  del -->|\"label drawn\"| panel\n  del -->|\"label drawn\"| tv\n  del -->|\"label drawn\"| music\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class del owner;",
-        "note": "Every delivered fact carries a label: what, how old, how sure, and Screens draw unknown, old and down as such. The Verdict, asked by Lifecycle at start, calls a failed profile no-go, not no equipment. Or: each part sends its own facts in one shape."
+        "note": "Every delivered fact carries a label: what, how old, how sure, and Screens draw unknown, old and down as such. The Verdict, asked by Lifecycle at start, calls a failed profile no-go, not no equipment. Or: each job sends its own facts."
       },
       "examples": [
         {
@@ -752,7 +752,7 @@
         "P2",
         "P15"
       ],
-      "shapeChange": "Before, the design tool wrote the engine's files and the TV got its own notice. Now the Design studio applies a pack by message, Lifecycle says when, and Delivery tells every screen the version, so no screen runs another pack."
+      "shapeChange": "Before, the design tool wrote the engine's files and the TV got its own notice. Now the Design studio applies a pack by message, Lifecycle says when, and Delivery tells every screen the version, so a tablet on another pack is told, not just logged."
     },
     {
       "id": "C13",
@@ -837,7 +837,7 @@
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart LR\n  del[\"Delivery<br/>one builder per fact,<br/>the shape written once\"]\n  ans[\"Answering<br/>reply words, a closed list\"]\n  joins[\"Joins and proofs<br/>contracts built from those shapes,<br/>both sides checked\"]\n  eng[\"Engine<br/>sends only the generated shapes\"]\n  scr[\"Screens on the tablet<br/>draw the delivered shape,<br/>keep no copy\"]\n  td[\"Team Details and Game Activity<br/>draw the facts as delivered\"]\n  badge[\"Video badge<br/>drawn from the video fact,<br/>or the check fails\"]\n  dead[\"A message with no sender<br/>or no reader<br/>fails the proof, not the show\"]\n  del -->|\"fact shapes\"| joins\n  ans -->|\"reply words\"| joins\n  joins -->|\"checks\"| eng\n  joins -->|\"checks\"| scr\n  del -->|\"delivered facts\"| scr\n  scr -->|\"draws\"| td\n  scr -->|\"draws\"| badge\n  joins -->|\"lists\"| dead\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;",
-        "note": "Every shape is written once, facts by Delivery, replies by Answering, and Joins and proofs checks both sides against them. Screens keep no copy; Team Details draws only delivered facts. Unsent messages fail the proof. Or: each part delivers its own facts in one shape."
+        "note": "Every shape is written once, facts by Delivery, replies by Answering, and Joins and proofs checks both sides against them. Screens keep no copy; Team Details draws only delivered facts. Unsent messages fail the proof. Or: each job sends its own facts."
       },
       "examples": [
         {
@@ -942,7 +942,7 @@
     {
       "id": "C16",
       "title": "A green test run proves nothing about the show",
-      "atAShow": "Nothing shows at the show; this is why the other fifteen reached one. The small tests stayed green while Team Details showed the wrong score, because their stand-in had a field the real part lacks. A delete step in a full run-through test had been silently skipped, because it looked for a button under a name the page never used. Blue's last full run skipped 62 tests, and group completion has no test on real content.",
+      "atAShow": "Nothing shows at the show; this is why the other fifteen reached one. The small tests stayed green while Team Details showed the wrong score, because their stand-in had a field the real part lacks. A delete step in a full run-through test had been silently skipped, because it looked for the Team Details cards under a name the page never used. Blue's last full run skipped 62 tests, and group completion has no test on real content.",
       "whyItHappens": "Fakes are written by hand, and nothing compares them to the real parts they stand for. A test step that finds nothing on the page, or checks only that no error appeared, passes. Every test engine runs with a switch that changes what Reset System does, so no test runs the reset the show runs.",
       "designTerms": "Joins and proofs should own every proof: each part's interface is its test surface, a fake is an adapter checked against the real part at the same seam, and one proof per fact runs from authority to screen on its own Engine instance. Today fakes are checked against nothing and no test crosses that path.",
       "modules": [

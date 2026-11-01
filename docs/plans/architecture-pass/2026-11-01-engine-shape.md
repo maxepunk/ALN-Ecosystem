@@ -282,6 +282,8 @@ flowchart TD
   P16 --> P6
   P16 --> P13
   P16 --> P1
+  P16 --> P14
+  P16 --> P11
   P16 --> P8
   P17 --> P2
   P17 --> P13
@@ -289,7 +291,7 @@ flowchart TD
   P17 --> P12
 ```
 
-An arrow means "depends on". With 52 edges a topological order exists (P1, P13, P2, P12, P3, P10, P8, P9, P11, P7, P4, P5, P6, P14, P15, P16, P17), so there is no cycle; the script in section 7 checked it. The standalone fact reaches P3, P4, P11 and P14 as a parameter from the composition root, not by an edge. Three of today's upward edges are gone by construction: services no longer reach into `websocket/` (BM §5.2) because P6 is above every authority; routes hold no game logic (BM §5.4) because P4 is one door above P3; and the record no longer calls the show from five places (BM §5.1) because P11 is the only mover and sits above both.
+An arrow means "depends on". With 54 edges a topological order exists (P1, P13, P2, P12, P3, P10, P8, P9, P11, P7, P4, P5, P6, P14, P15, P16, P17), so there is no cycle; the script in section 7 checked it. The standalone fact reaches P3, P4, P11 and P14 as a parameter from the composition root, not by an edge. Three of today's upward edges are gone by construction: services no longer reach into `websocket/` (BM §5.2) because P6 is above every authority; routes hold no game logic (BM §5.4) because P4 is one door above P3; and the record no longer calls the show from five places (BM §5.1) because P11 is the only mover and sits above both.
 
 What each seam gives, in design words. **Leverage:** one P1 implementation pays back across the engine, the standalone tablet and the data tables for the hardware scanner, and across every test of scoring; one P6 builder per fact pays back across the live push, the snapshot, every renderer and the contract. **Locality:** a change to how a fact reaches a screen lands in P6 alone; a change to a boundary's fate lands in P11's table alone; a change to a reply's meaning lands in P4's word list and every classifier regenerates. **Testability:** each part's interface is its test surface; P1 and P10 are pure; P3, P9 and P11 accept their collaborators; P8's stand-ins are adapters at a real seam (two adapters, the program and the stand-in, so the seam is real by the skill's rule); P13 makes every test run its own engine. The deletion test holds for every part: delete P6 and a route per fact reappears in six jobs; delete P11 and nineteen resets and the boot and Reset System lists reappear; delete P4 and three reply shapes reappear; delete P13 and sixteen fixed names reappear.
 
@@ -379,7 +381,7 @@ Each answer names what the parts map favours and what the other choice costs. No
 - **Every job placed:** ten rows in section 1; each job named in section 3.1's matrix and 3.2's module table; each landing on at least one part in section 4.1 (the list after P17).
 - **Every shared mechanism placed:** M-A to M-K in section 2.3, each on one part (or, for M-K, declared as a parameter with its declaring part) in section 4.1.
 - **Every flaw placed:** C1 to C16 and N1 each tied to at least one tangle in section 3.3 and to at least one part in section 4.1 (the list after P17). Checked by the script below.
-- **The parts' dependency diagram has no cycle:** 17 nodes, 52 edges; a topological order is given under the diagram; checked by a script that parsed the Mermaid edges and ran a depth-first cycle search (no cycle found). The composition root sits above every part and is not a node.
+- **The parts' dependency diagram has no cycle:** 17 nodes, 54 edges; a topological order is given under the diagram; checked by a script that parsed the Mermaid edges and ran a depth-first cycle search (no cycle found). The composition root sits above every part and is not a node.
 - **Mermaid rules:** both diagrams in this document and the three in the JSON start with `flowchart TD` or `flowchart LR`, use node ids of letters and digits only, quote every label, carry no semicolon or `#` inside a label, and have at most 20 nodes. Checked by the same script.
 - **The JSON** (`docs/plans/architecture-pass/report/2026-11-01-engine-shape.json`) parses, and its owner-facing strings carry no file names or finding ids except C1 to C16, N1 and J1 to J10; the parts drawing's labels carry the part ids P1 to P17, which the page's part list also shows. Checked by the script.
 - **Not done.** No test, build, server or device was run. The depth words are the sibling sheets' judgements and mine. The parts are candidates: their names, their count and their interfaces are offered for step 3, not fixed. Line numbers written bare were re-read today; those marked "via" were carried from the named record.
@@ -452,4 +454,5 @@ Applied from `docs/plans/architecture-pass/2026-11-01-engine-shape-check.md` on 
 - JSON alternatives[4], [5], [6]: costs on both sides.
 - JSON questionNotes D, E, F, G, A, C: as rows 5-D to 5-C; E no longer names a J11.
 - JSON ownerChoices[10]: hot-apply as planned, not set.
+- Page check (`consistency/2026-11-01-page-jobs-and-cards.md`, row 23), 2026-11-01: two edges added, P16 → P14 (screen baselines, coverage to the screen) and P16 → P11 (the reset path tested as the show runs it); 54 edges, the same topological order holds, no cycle.
 - Orchestrator, at commit (same rows 0.5 and P12): the sources line describes the direction map's four users; the flaw-landing list's N1 entry and the mechanism-landing list's M-K entry follow P12's hedge and row 4.2b's composition root.
