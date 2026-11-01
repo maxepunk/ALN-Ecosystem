@@ -26,7 +26,7 @@
         "The pack (capability 1) and the activation gate (capability 2): every part of the engine takes the game's tokens, rules, modes and cues from the pack, never from code; the engine refuses to start on a pack that fails the check and keeps the pack it adopted for the whole of a game; a new pack is taken up only between games, at a moment the lifecycle allows.",
         "The second game's modules (capability 38), interaction primitives (capability 36) and the entity-field migration (capability 37): scoring models, hidden facts, multi-tap actions and even the word for a score-holder come from the pack.",
         "The media bundle (capability 40) and the ledger retirements (capability 50): the pack names its files by a fingerprint of their contents and carries no venue-hardware name.",
-        "Hot-apply (capability 16) and the pack channel (capability 3): one complete list of every part that holds a copy of the pack. No document has this list today.",
+        "Hot-apply (capability 16) and the pack channel (capability 3): one complete list of every place that holds a copy of the pack. No document has this list today.",
         "Content tooling (capability 41): a replacement for Notion feeds the same pack through the same gate.",
         "Hardware-scanner parity (capability 49): a mechanic that needs a fleet re-flash breaks the designer's loop, so everything a designer changes is pack data."
       ],
@@ -115,7 +115,7 @@
         {
           "id": "C11",
           "primary": true,
-          "how": "One question has several answerers inside one part of the engine or one tablet, so 'is a video playing', 'which teams exist' and 'may I scan' get different answers in different places."
+          "how": "One question has several answerers inside the engine or on one tablet, so 'is a video playing', 'which teams exist' and 'may I scan' get different answers in different places."
         },
         {
           "id": "C2",
@@ -135,7 +135,7 @@
         {
           "id": "C7",
           "primary": false,
-          "how": "A reply does not say which request it answers, so a tablet's copy and the engine's record part ways."
+          "how": "A reply does not say which request it answers, so a tablet's copy and the engine's record stop matching."
         },
         {
           "id": "C12",
@@ -316,7 +316,7 @@
         "need": "The room does what the designer cued and what the GM asked; the GM sees it happen, or sees at once that it did not and what to press; a dead program comes back by itself before anyone notices.",
         "proposedTitle": "The room does what the designer cued and the GM asked"
       },
-      "shapeChange": "Before, the title also asked the engine to know each program's true state. Now Equipment keeps that dated picture here, beside the Show runner, and showing it on a screen is the label every fact carries, because running the room and labelling a screen differ."
+      "shapeChange": "Before, the title also asked the engine to know each program's true state. Now Equipment keeps that dated picture here, beside the Show runner, and showing it on a screen falls to the label every fact carries, which keeps \"Anyone reading a screen can act on it without a second question\", because running the room and labelling a screen differ."
     },
     {
       "id": "J5",
@@ -331,7 +331,7 @@
       "goal": "One Lifecycle moves a game between its moments and alone resets anything; engine start, Reset System and tests run the same steps. Its table says what each fact keeps, clears or carries, and every screen is told of the change. Pack changes land only between games; a new engine version only between events. Open: rows, and standing cues in setup.",
       "goalOpen": true,
       "needs": [
-        "No capability exists mainly for this promise, but thirteen list it as a second promise they keep (the eleven in the capabilities sheet's table, plus dormancy (capability 8) and the second game's modules (capability 38), which that sheet's section 3 places here); together they ask for one table of every fact against every moment.",
+        "No capability exists mainly for this promise, but thirteen list it as a secondary promise (the eleven in the capabilities sheet's table, plus dormancy (capability 8) and the second game's modules (capability 38), which that sheet's section 3 places here); together they ask for one table of every fact against every moment.",
         "Hot-apply (capability 16): refused while a game is active or paused; the setup, ended and no-game cases defined.",
         "Self-heal (capability 11): the scanner's pack copy replaced at a game boundary, once per connection and engine version.",
         "Dormancy (capability 8) and the preflight (capability 7): verdicts recomputed at reset, at game create and at restore, and the display's health not falsely red after a reset.",
@@ -627,7 +627,7 @@
         "need": "Anyone can tell whether a screen is current and whether to act: red means act now, grey means absent on purpose, old looks old, the venue technician's go is a go and a desk check never passes for a room check, the TV's clock never counts on its own, and the editor and the show use the same words.",
         "proposedTitle": "Anyone reading a screen can act on it without a second question"
       },
-      "shapeChange": "Before, this promise asked the engine to tell the truth. Now it is a label on every fact and reply, carried by Delivery and Answering, with one part of its own, the Verdict, because today the verdict reaches no screen."
+      "shapeChange": "Before, this promise asked the engine to tell the truth. Now a label on every fact and reply keeps it, carried by Delivery and Answering, and so does one part of its own, the Verdict, because today the verdict reaches no screen."
     },
     {
       "id": "J10",

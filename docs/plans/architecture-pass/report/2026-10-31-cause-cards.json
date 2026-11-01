@@ -254,7 +254,7 @@
       "id": "C5",
       "title": "Boot and Reset System wire the engine differently",
       "atAShow": "The GM presses Reset System to recover mid-show. The music panel goes dead until someone restarts the engine. Later, Reset All Scores sends every tablet and the TV the old transaction list, so cleared evidence comes back on the wall. The cues now hear each video and clock event twice, and the Display row stays red until Check Now.",
-      "whyItHappens": "Starting the engine and rebuilding it after a reset are two separate hand-written lists. The start connects the parts in one order with one set of the engine's services; the reset connects them in the other order with a shorter set, and connects some a second time.",
+      "whyItHappens": "Starting the engine and rebuilding it after a reset are two separate hand-written lists. The start connects storage, broadcasts and cue forwarding in one order with one set of the engine's services; the reset connects them in the other order with a shorter set, and connects some a second time.",
       "designTerms": "Lifecycle should own the one path engine start and Reset System share, and alone call each part's reset; a starting point above every part should own the one list the engine is built from, under Engine instance's names. Today both do it by hand, each knowing every part and the order: no locality.",
       "modules": [
         "backend/src/app.js",
@@ -271,7 +271,7 @@
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart TD\n  boot[\"Engine start\"]\n  reset[\"Reset System\"]\n  test[\"A test's setup\"]\n  root[\"Starting point<br/>builds every part once<br/>from one list<br/>under the engine's own names\"]\n  lc[\"Lifecycle<br/>start and reset are one path<br/>the only caller of every reset\"]\n  rec[\"Game record<br/>cleared, then read\"]\n  eq[\"Equipment and Show runner<br/>music included, cue events sent once\"]\n  ver[\"Verdict<br/>recomputed from the fresh picture\"]\n  del[\"Delivery<br/>the catch-up built after the move\"]\n  boot -->|\"calls\"| root\n  reset -->|\"calls\"| root\n  test -->|\"calls, with its own names\"| root\n  root -->|\"hands the parts to\"| lc\n  lc -->|\"moves\"| rec\n  lc -->|\"resets\"| eq\n  lc -->|\"asks\"| ver\n  lc -->|\"the moment\"| del\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class lc owner;\n",
-        "note": "One routine for start and reset, in two parts. A starting point builds every part once, from one list. Lifecycle runs start and reset as one path and alone calls every reset. Or: each part reads the table itself; only a test checks all did."
+        "note": "One routine for start and reset, split in two. A starting point builds every part once, from one list. Lifecycle runs start and reset as one path and alone calls every reset. Or: each part reads the table itself; only a test checks all did."
       },
       "examples": [
         {
@@ -693,7 +693,7 @@
     },
     {
       "id": "C12",
-      "title": "Pack edits reach each part of the kit differently",
+      "title": "Pack edits reach each copy of the pack differently",
       "atAShow": "A designer publishes a pack change and does not restart. The TV shows evidence by the new rules while the engine scores by the old. The file the engine hands out no longer matches the fingerprint in the engine's own pack list, so a scanner that checks rejects it. A tablet running a different pack is only noted in the engine's log; nothing tells the GM. The publish tells the running engine nothing.",
       "whyItHappens": "The engine freezes one pack at start, yet the files it hands out are whatever is on disk now, and it re-reads the token list from disk at every request. The TV, tablet and hardware scanner each load the pack at their own moment and keep it; the phone reads its own copy. No message says it changed.",
       "designTerms": "The Pack channel should own one adopted pack behind one interface: adopt, say which is current, fetch a file, announce a change. Each source is an adapter at its seam, and the Design studio reaches the engine's copy by message. Today the engine's frozen list and the live disk both cross the seam: no locality.",
@@ -820,8 +820,8 @@
       "id": "C14",
       "title": "Names joining two places are kept by hand",
       "atAShow": "A GM opens Team Details: the score box is wrong, GM adjustments never appear, completed groups read In Progress with a $0 bonus, while the scoreboard screen on the same tablet shows the real total. Game Activity shows Unknown, no stars, $0 for a token no player scanned first. The video Playing badge never appears, because the page never had a place to draw it.",
-      "whyItHappens": "A screen reads a field the fact never carries; a screen looks for a spot the page never had; a part waits for a message nothing sends; the written contract lists messages nobody sends. Each name is written on both sides, and a wrong side yields nothing instead of an error.",
-      "designTerms": "Joins and proofs should own the check that both sides of every shared name agree; Delivery and Answering own the shapes, written once, and Screens read them, so a missing side fails the proof before the show. Today the tablet's inner seam leaks: Team Details silently reads a field the outer layer never passes on.",
+      "whyItHappens": "A screen reads a field the fact never carries; a screen looks for a spot the page never had; a module waits for a message nothing sends; the written contract lists messages nobody sends. Each name is written on both sides, and a wrong side yields nothing instead of an error.",
+      "designTerms": "Joins and proofs should own the check that both sides of every shared name agree; Delivery and Answering own the shapes, written once, and Screens read them, so a missing side fails the proof before the show. Today nothing checks the tablet's inner seam: Team Details silently reads a field the outer layer never passes on.",
       "modules": [
         "ALNScanner/src/ui/renderers/GameOpsRenderer.js",
         "ALNScanner/src/core/unifiedDataManager.js",
@@ -942,8 +942,8 @@
     {
       "id": "C16",
       "title": "A green test run proves nothing about the show",
-      "atAShow": "Nothing shows at the show; this is why the other fifteen reached one. The small tests stayed green while Team Details showed the wrong score, because their stand-in had a field the real part lacks. A delete step in a full run-through test had been silently skipped, because it looked for the Team Details cards under a name the page never used. Blue's last full run skipped 62 tests, and group completion has no test on real content.",
-      "whyItHappens": "Fakes are written by hand, and nothing compares them to the real parts they stand for. A test step that finds nothing on the page, or checks only that no error appeared, passes. Every test engine runs with a switch that changes what Reset System does, so no test runs the reset the show runs.",
+      "atAShow": "This flaw shows nothing at a show; it is why the other fifteen flaws reached one. The small tests stayed green while Team Details showed the wrong score, because their stand-in had a field the real code lacks. A delete step in a full run-through test had been silently skipped, because it looked for the Team Details cards under a name the page never used. Blue's last full run skipped 62 tests, and group completion has no test on real content.",
+      "whyItHappens": "Fakes are written by hand, and nothing compares them to the real code they stand for. A test step that finds nothing on the page, or checks only that no error appeared, passes. Every test engine runs with a switch that changes what Reset System does, so no test runs the reset the show runs.",
       "designTerms": "Joins and proofs should own every proof: each part's interface is its test surface, a fake is an adapter checked against the real part at the same seam, and one proof per fact runs from authority to screen on its own Engine instance. Today fakes are checked against nothing and no test crosses that path.",
       "modules": [
         "ALNScanner/tests/unit/ui/uiManager.test.js",

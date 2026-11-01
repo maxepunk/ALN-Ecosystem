@@ -317,22 +317,25 @@ TODAY = {}   # part id -> how its work is done today, from the shared work it ta
 
 
 def today_of(plain):
-    """A shared-work entry is its definition, then how it is done today: keep what follows the first sentence."""
-    first, _, rest = plain.partition('. ')
-    rest = rest.strip() or plain
+    """A shared-work entry is its definition, then how it is done today: keep the first sentence after the
+    definition that speaks of today, alone."""
+    sentences = [x.strip() for x in re.split(r'(?<=[.;])\s+(?=[A-Z])', plain) if x.strip()]
+    rest = next((x for x in sentences[1:] if re.search(r'\btoday\b', x, re.I)), sentences[-1])
     if rest.startswith('Today '):   # the card's label already says "Today"
         rest = rest[6].upper() + rest[7:]
     return rest
 
 
 def part_html(p):
+    also = [j for j in p.get('jobs', []) if j not in KEEPS.get(p['id'], [])]
     runs = ', '.join(RUNS_ON.get(r, r) for r in p['runsOn'] if r != 'gm-tablet-standin')
     if 'gm-tablet-standin' in p['runsOn']:
         runs += '; in a standalone game, a small stand-in on the GM tablet'
     return f'''<article class="part" id="{p["id"].lower()}">
   <h4>{e(p["name"])}</h4>
   <p>{e(p["plain"])}</p>
-  <p class="pmeta"><span class="tag">Keeps</span> {promise_links(KEEPS.get(p["id"], []))}</p>
+  <p class="pmeta"><span class="tag">Mainly keeps</span> {promise_links(KEEPS.get(p["id"], []))}</p>
+  {f'<p class="pmeta muted"><span class="tag">Also needed by</span> {promise_links(also)}</p>' if also else ''}
   {f'<p class="pmeta"><span class="tag">Today</span> {e(TODAY[p["id"]])}</p>' if p["id"] in TODAY else ''}
   <p class="pmeta"><span class="tag">Removes</span> {flaw_links(p["flaws"])}</p>
   <p class="pmeta"><span class="tag">Runs on</span> {e(runs)}</p>
@@ -452,14 +455,14 @@ def fit_html(shape, jobs):
   </div>
 
   <details>
-    <summary>Where today's code keeps the promises: {len(shape["today"]["tangles"])} tangles</summary>
+    <summary>Where the promises' work sits in today's code: {len(shape["today"]["tangles"])} tangles</summary>
     <p class="muted" style="margin:10px 0">A tangle is one piece of work spread over many places with nothing joining them, one place doing many kinds of work, or a dependency running the wrong way. Each causes some of the design flaws below.</p>
     <ul class="examples">{tangles}</ul>
   </details>
 
   <div class="fit-block">
     <h3>A candidate shape: {len(shape["parts"])} parts</h3>
-    <p>Most of today's problems sit in work several promises depend on: getting a fact onto a screen, answering a request, knowing who is connected, the boundary between one game and the next. Each is done several times today, in different places. In the candidate shape each such piece of work becomes one part, and each part's card says how it is done today. Each part uses only the parts in the rows below it, so nothing loops back. A change low down can affect the parts above it; nothing above can break what sits below. The parts that are already well built today (the game rules, the verdict, the health words) are the pattern for the rest.</p>
+    <p>Most of today's problems sit in work several promises depend on: getting a fact onto a screen, answering a request, knowing who is connected, the boundary between one game and the next. Each is done several times today, in different places. In the candidate shape each such piece of work becomes one part, and that part's card says how the work is done today. Each part uses only the parts in the rows below it, so nothing loops back. A change low down can affect the parts above it; nothing above can break what sits below. The parts that are already well built today (the game rules, the verdict, the health words) are the pattern for the rest.</p>
     <figure class="layers-fig">
       <figcaption>The parts in layers, top row first. Tap a part to read it.</figcaption>
       <ol class="layers">{layers}</ol>
@@ -565,6 +568,7 @@ a:focus-visible, summary:focus-visible {{ outline: 2px solid var(--accent); outl
 header.top {{ display: grid; gap: 14px; }}
 .decide {{ border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--surface); border-radius: 6px; padding: 18px 20px; display: grid; gap: 10px; }}
 .decide p {{ max-width: 72ch; }}
+.decided-note {{ font-size: 15px; max-width: 78ch; color: var(--muted); border-left: 3px solid var(--line); padding-left: 12px; }}
 .howto {{ display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }}
 .howto > div {{ display: grid; gap: 8px; align-content: start; }}
 .legend {{ display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: 14px; }}
@@ -696,11 +700,12 @@ figure.dia.wide {{ padding: 12px; }}
 
 <section class="decide" aria-labelledby="deciding">
   <h2 id="deciding">What you are deciding</h2>
-  <p><strong>The promises.</strong> Are these the right ten promises, each said from the side of the people who count on it, and is one missing? Seven small questions, A to G, ask about their wording and whether some should split. The relationship map changed three of those recommendations: E, F and G.</p>
-  <p><strong>Your new words.</strong> As you decided: a promise is what a person can count on at a given moment, and "job" is gone. Parts keep promises; design flaws break them; a quality is something every part must have. Promises go by their titles, with no numbers, and the person who fits a kit to a venue is the venue technician.</p>
+  <p><strong>The promises.</strong> Are these the right ten promises, each said from the side of the people who count on it, and is one missing? Seven small questions, A to G, ask about their wording and whether three of them should split. The relationship map changed three of those recommendations: E, F and G.</p>
   <p><strong>How the promises fit together.</strong> <a href="#fit">A map</a> of how the promises depend on each other and on the pieces of the engine, and one candidate shape for the whole engine. The design on each card follows that shape, and a note at the top of each card says what changed. Nothing in the shape is decided; it is where step 3 starts.</p>
   <p><strong>Standalone games, the game's record, the next step.</strong> Three questions about games with no engine, one about recording refused scans, and one about how much the test rig proves before design starts. Everything is <a href="#your-questions">at the end</a>, each with a recommendation or a suggestion; the step-3 preview there needs no answer yet.</p>
 </section>
+
+<p class="decided-note"><strong>Already decided: your words.</strong> A promise is what a person can count on at a given moment, and "job" is gone. Parts keep promises; design flaws break them; a quality is something every part must have. Promises go by their titles, with no numbers, and the person who fits a kit to a venue is the venue technician (decision 27). The words box below defines each.</p>
 
 <section class="sa-box" aria-labelledby="purpose">
   <h2 id="purpose">What the engine is for</h2>
@@ -721,18 +726,18 @@ figure.dia.wide {{ padding: 12px; }}
       <dt>Promise</dt><dd>What a person can count on at a given moment. Parts keep promises; design flaws break them.</dd>
       <dt>Moment</dt><dd>When a promise matters: a production stage (Author, Rehearse, Run, Review), a point in a show, or release day.</dd>
       <dt>Design flaw</dt><dd>Something in today's design that breaks a promise.</dd>
-      <dt>Module</dt><dd>Any part with an inside and an outside, from one function to the whole backend.</dd>
-      <dt>Interface</dt><dd>Everything another part must know to use it.</dd>
-      <dt>Seam</dt><dd>Where one part meets another, and where behaviour can be swapped.</dd>
-      <dt>Deep, shallow</dt><dd>A deep module does a lot behind a small interface. A shallow one makes its callers know almost as much as it does.</dd>
-      <dt>Locality</dt><dd>A fix in one place fixes it everywhere.</dd>
-      <dt>Leverage</dt><dd>One module serving many callers.</dd>
-      <dt>Adapter</dt><dd>The real thing plugged in at a seam, like VLC behind "play a video".</dd>
       <dt>Part</dt><dd>One of the 17 pieces of the candidate design. It runs on the engine or on a device.</dd>
       <dt>Quality</dt><dd>Something every part must have so a promise holds everywhere, like honest or proven. It keeps promises; it is never a promise or a part.</dd>
       <dt>Paper or live</dt><dd>Checked from the files only, or checked against the equipment in the room.</dd>
       <dt>Pass</dt><dd>What a device shows when it connects: who it is and what it may do.</dd>
       <dt>Not installed tonight</dt><dd>Grey, absent on purpose, never a fault. The code calls it dormant.</dd>
+      <dt>Module</dt><dd>Any piece of code with an inside and an outside, from one function to the whole backend.</dd>
+      <dt>Interface</dt><dd>Everything other code must know to use a module.</dd>
+      <dt>Seam</dt><dd>Where one module meets another, and where behaviour can be swapped.</dd>
+      <dt>Deep, shallow</dt><dd>A deep module does a lot behind a small interface. A shallow one makes its callers know almost as much as it does.</dd>
+      <dt>Locality</dt><dd>A fix in one place fixes it everywhere.</dd>
+      <dt>Leverage</dt><dd>One module serving many callers.</dd>
+      <dt>Adapter</dt><dd>The real thing plugged in at a seam, like VLC behind "play a video".</dd>
     </dl>
   </div>
 </section>
@@ -775,7 +780,7 @@ figure.dia.wide {{ padding: 12px; }}
   <div class="qgroup">
     <h3>About the promises</h3>
     <div class="q">
-      <h3>Are these the right ten promises?</h3>
+      <h3>Are these the right ten promises, and does each read from the side of the people who count on it?</h3>
       <p>Is something the engine must promise, for any game, missing? Are two of them really one? Each promise says who counts on it, when, and what must happen for them. Each title is new; the earlier wording, written as a job, shows under each. This replaces question 17.</p>
       <p class="rec">Recommendation: keep these ten as the base, with these titles, and settle D to G below. In the map every promise is kept by parts of its own, and the one candidate for an eleventh, "run in any setup", owns no part (question E).</p>
     </div>
@@ -800,7 +805,7 @@ figure.dia.wide {{ padding: 12px; }}
     </div>
     <div class="q">
       <h3>D. Split "Every tap gets its answer, and the night can be told afterwards" into two promises?</h3>
-      <p>Answering happens at the tap, for the GM or the player. The night's record is for you and the designer after the show: what is captured during play, the session bundle, the review. The map confirms the two share no part. Answering sits in the middle of the engine and helps keep five promises. The night's record is written once, at the end of a game, and read by the designer's review. The parts are the same either way.</p>
+      <p>Answering happens at the tap, for the GM or the player. The night's record is for you and the designer after the show: what is captured during play, the session bundle, the review. The map confirms the two share no part. Answering sits in the middle of the engine, and six promises depend on it. The night's record is written once, at the end of a game, and read by the designer's review. The parts are the same either way.</p>
       <p>Keeping one promise means the GM at the tap and you after the show look for what they count on in one sentence. Splitting makes a promise that no design flaw mainly breaks yet, because the night's record is mostly planned work.</p>
       <p class="rec">Recommendation: split, into "Every tap gets its answer" and "The night can be told afterwards". The two halves serve two people at two moments and share no part, so two sentences let each find theirs.</p>
     </div>
@@ -890,7 +895,7 @@ figure.dia.wide {{ padding: 12px; }}
       </ol>
     </div>
   </div>
-  <p class="muted">Decided so far: 20 (no rule for documents; documents are fixed as we go), 22 (standalone games join the requirements; never mixed) and 26 (the pass designs the best engine for the long term; blue's problems are clues, not the plan).</p>
+  <p class="muted">Decided so far: 20 (no rule for documents; documents are fixed as we go), 22 (standalone games join the requirements; never mixed), 26 (the pass designs the best engine for the long term; blue's problems are clues, not the plan) and 27 (the page's words: promises, parts, qualities, design flaws, the venue technician; promises named by title).</p>
 </section>
 
 <footer>
