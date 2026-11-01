@@ -68,7 +68,7 @@ Entry shape: what it is and who uses it; a table of the jobs it serves (how, whe
 | J9 | Keeps one health entry per service with three words (healthy, down, dormant), dormancy, the preflight and `/health` | Decides the health words. The state of a service and its health travel on different routes | `backend/src/services/serviceHealthRegistry.js:288`; `backend/src/services/preflightService.js:83`; RS R46 to R50, section 8 Q2 |
 | J10 | Owns the contracts (`backend/contracts/openapi.yaml`, `asyncapi.yaml`, `session-bundle.schema.json`) and the backend test layers | The contracts are the written joins; the tests prove some of them (section 7) | `ls backend/contracts`; CT section 3 |
 
-**Crossings.** J1: P4, P5, S1 to S3, H8 to H10, E4 to E6, V1 (carries pack identity). J2: W5, V1 to V12, V17. J3: W3, W4, P1, P2, E1, E2, V2, V13 to V17. J4: 1b rows 7 to 20 and 25 to 55 and 57 to 58, C2 to C4, X1, V12, V19 to V22, O1 to O11. J5: 1b rows 1 to 6, 24, H6, H7. J7: W1, W2, H2, H4, P3, E3, C1, V9, V10, V18, V23. J8: H1, H3, P6. J9: 1b row 56, H5, V22. J10: T1 to T5. Ids are defined in section 4.
+**Crossings.** J1: P4, P5, S1 to S3, H8 to H10, E4 to E6, V1 (carries pack identity). J2: W5, V1 to V12, V17. J3: W3, W4, P1, P2, E1, E2, V2, V13 to V17. J4: 1b rows 7 to 20 and 25 to 55 and 57 to 58, K2 to K4, X1, V12, V19 to V22, O1 to O11. J5: 1b rows 1 to 6, 24, H6, H7. J7: W1, W2, H2, H4, P3, E3, K1, V9, V10, V18, V23. J8: H1, H3, P6. J9: 1b row 56, H5, V22. J10: T1 to T5. Ids are defined in section 4.
 
 **Where it does another part's job, or nothing joins it.** It decides the hardware scanner's type for the device list because a route defaults to `player` (`healthRoutes.js:54`); a read endpoint registers a device (`healthRoutes.js:51-93` via IN conclusion 9b). It serves the scoreboard page and mints the page's credential in the same call (`resourceRoutes.js:204-205,225`). It serves live disk bytes of the pack under a frozen inventory (J1 split). It launches and kills the TV's browser by process pattern machine-wide (`displayDriver.js:127`; RS section 7).
 
@@ -225,7 +225,7 @@ The same mapping one level down. Groups are by what the files do (BG and BS file
 | J10 | Its 16 unit tests and one browser smoke test; CI installs the backend's dependencies first because the tool imports engine code | The import is the only code join between a client and the engine | `.github/workflows/test.yml` via CT section 2 "Coupling" |
 | J2, J3, J5, J9 | None. It receives no runtime state | | CT conclusion 2 |
 
-**Crossings.** J7: C1. J4: C2, C3, C4, X1. J1 and J6: files (the pack folder in `ALN-TokenData`, drafts under `config-tool/data/drafts`), the child process `validate-pack.js`, in-process imports. J8: `backend/.env`, `backend/config/environment/routing.json`, presets under `config-tool/presets`. J4: `backend/public/audio`, `backend/public/videos`. These file crossings are listed in section 4 as F1 to F8.
+**Crossings.** J7: K1. J4: K2, K3, K4, X1. J1 and J6: files (the pack folder in `ALN-TokenData`, drafts under `config-tool/data/drafts`), the child process `validate-pack.js`, in-process imports. J8: `backend/.env`, `backend/config/environment/routing.json`, presets under `config-tool/presets`. J4: `backend/public/audio`, `backend/public/videos`. These file crossings are listed in section 4 as F1 to F8.
 
 **Where it does another part's job, or nothing joins it.** It writes the engine's environment and media folders itself, work the engine's own panels and bundle plan would carry (J8, J4, J1). Its README says cue edits apply on "restart or system:reset", but a reset reloads the same frozen snapshot, so only a restart works (CT conclusion 12; `systemReset.js:231-239` via CT). It holds a login that differs from the engine's whenever the password was edited but the engine not restarted.
 
@@ -282,7 +282,7 @@ Docker, `xdotool` and `wmctrl` are tools the engine calls, not programs it reads
 
 A crossing is one message, request, file, event or process call that goes from one part to another. This section places every crossing in IN (inbound catalog, sections 1a to 1d) and every row of RS (R1 to R61, plus its outside-program and machine-sharing sections) under one primary job, with secondary jobs in brackets. The placement is mine.
 
-**Id key.** `W1` to `W5`: socket messages other than commands (IN 1a). `1b-N`: gm:command action number N (IN 1b; `1b-T1` to `1b-T4` are the four verbs that exist only in a table). `H1` to `H10`: the tablet's HTTP calls; `P1` to `P6`: the phone's; `E1` to `E6`: the hardware scanner's; `S1` to `S3`: the scoreboard's; `C1` to `C4` and `X1`: the config tool's (IN 1c). `A1` to `A5`: route files and doors with no client in IN (A1 `GET /api/admin/logs`, A2 `GET /api/vocabulary`, A3 the static mounts and symlinks, A4 UDP discovery on port 8888, A5 the service workers' pass-through). `V1` to `V23`: the 23 event names the backend emits (section 4.12). `O1` to `O11`: how the backend reads each outside program (RS section 6, in its order). `T1` to `T5`: how tests and a second engine reach the live machine (RS section 7, in its order). `F1` to `F12`: file, process and import crossings (defined at the head of section 4.7). `R1` to `R61`: RS rows (section 4.11). IN's own acknowledgement races are cited as "IN section 3, R1" to avoid a clash with RS ids.
+**Id key.** `W1` to `W5`: socket messages other than commands (IN 1a). `1b-N`: gm:command action number N (IN 1b; `1b-T1` to `1b-T4` are the four verbs that exist only in a table). `H1` to `H10`: the tablet's HTTP calls; `P1` to `P6`: the phone's; `E1` to `E6`: the hardware scanner's; `S1` to `S3`: the scoreboard's; `K1` to `K4` and `X1`: the config tool's (IN 1c numbers the first four C1 to C4; they are renamed here because C1 to C16 name the flaws). `A1` to `A5`: route files and doors with no client in IN (A1 `GET /api/admin/logs`, A2 `GET /api/vocabulary`, A3 the static mounts and symlinks, A4 UDP discovery on port 8888, A5 the service workers' pass-through). `V1` to `V23`: the 23 event names the backend emits (section 4.12). `O1` to `O11`: how the backend reads each outside program (RS section 6, in its order). `T1` to `T5`: how tests and a second engine reach the live machine (RS section 7, in its order). `F1` to `F12`: file, process and import crossings (defined at the head of section 4.7). `R1` to `R61`: RS rows (section 4.11). IN's own acknowledgement races are cited as "IN section 3, R1" to avoid a clash with RS ids.
 
 ### 4.1 J1: Run any game from its pack
 
@@ -346,7 +346,7 @@ A crossing is one message, request, file, event or process call that goes from o
 | 1b-57, 1b-58 | Cue to backend | `music:seek`, `video:seek` (cues only; no scanner sends them) | | `commandExecutor.js:868,367` via IN 1b |
 | 1b-T1, 1b-T2, 1b-T3 | None | `service:restart`, `service:out-of-service`, `service:in-service`: in the payload table and floor list, no case, so "Unknown action" | J9 (dormancy door) | `commandExecutor.js:98-101,963` (re-read 98, 963) |
 | Cue-sourced dispatch | Cue engine to executor | `executeCommand` with `source:'cue'`, no ack; failure shows as `cue:error`; 24 actions allowed, 22 also GM-sendable | | IN 1b, 2d |
-| C2, C3, C4 | Config tool to backend | `GET /api/music/tracks`, `GET /api/music/playlists`, `PUT /api/music/playlists` (writes the playlist file, bearer with show-control) | J6 | `config-tool/lib/routes.js:399,411,428` via IN 1c |
+| K2, K3, K4 | Config tool to backend | `GET /api/music/tracks`, `GET /api/music/playlists`, `PUT /api/music/playlists` (writes the playlist file, bearer with show-control) | J6 | `config-tool/lib/routes.js:399,411,428` via IN 1c |
 | X1 | Config tool to Home Assistant | `GET {HOME_ASSISTANT_URL}/api/states` for scene names | J6 | `config-tool/lib/routes.js:299` via IN 1c |
 | V12, V19, V20, V21, V22 | Backend to tablets, scoreboards | `display:mode`; `cue:fired`, `cue:completed`, `cue:error`; `service:state` across ten domains | J9 (health domain), J7 | section 4.12 |
 | O1 to O10 | Backend to each outside program | How each program is read and driven (section 4.9) | J9 | section 4.9 |
@@ -363,7 +363,7 @@ A crossing is one message, request, file, event or process call that goes from o
 
 ### 4.6 J6: Let designers build, change and try games safely
 
-There is no message from the config tool to the running engine: no reload, restart or apply call (CT section 2, "How the running orchestrator sees an edit"). The crossings are files, a child process and imports, listed in 4.7 (F1, F2, F7, F8). The one HTTP path is C4 under J4 (music playlists) and the login-time C1 under J7.
+There is no message from the config tool to the running engine: no reload, restart or apply call (CT section 2, "How the running orchestrator sees an edit"). The crossings are files, a child process and imports, listed in 4.7 (F1, F2, F7, F8). The one HTTP path is K4 under J4 (music playlists) and the login-time K1 under J7.
 
 ### 4.7 J8, and the file crossings
 
@@ -404,7 +404,7 @@ J8 crossings:
 | W2 | Scoreboard to backend | Handshake with an observe token and `deviceType:'gm'` asserted; no device record; ids starting `SCOREBOARD_` skip the duplicate-id check | | `scoreboard.html:1559`; `socketServer.js:85-88`; `gmAuth.js:54-66` |
 | H2 | Tablet to backend | `GET /api/state`: full snapshot, no login; the tablet picks the next station name from its device list | J2 | `ALNScanner/src/ui/connectionWizard.js:204` via IN 1c; `backend/src/app.js:116` via RS section 0 |
 | H4 | Tablet to backend | `POST /api/admin/auth {password}`: mints a 24 hour operator token in the engine's memory | | `backend/src/routes/adminRoutes.js:17` via IN 1c |
-| C1 | Config tool to backend | `POST /api/admin/auth` at tool login with the same password; the engine token kept in the tool's memory | J4 | `config-tool/lib/toolAuth.js:86` via IN 1c |
+| K1 | Config tool to backend | `POST /api/admin/auth` at tool login with the same password; the engine token kept in the tool's memory | J4 | `config-tool/lib/toolAuth.js:86` via IN 1c |
 | S1 (minting half) | Browser to backend | `GET /scoreboard` mints an observe token into the page; any browser that loads the page gets one | J1 | `backend/src/routes/resourceRoutes.js:204-205,225` |
 | P3 | Phone to backend | `GET /health?deviceId&type=player`: the only thing that registers the phone as a device; no credential | J9 | `backend/src/routes/healthRoutes.js:51-93`; `orchestratorIntegration.js:426` via IN 1c |
 | E3 | Hardware scanner to backend | `GET /health?deviceId` with no type: the route defaults to `player`, so the device list records the hardware scanner as a phone | J9 | `healthRoutes.js:54` |
@@ -475,7 +475,7 @@ Each row is a runtime fact that has an authority and copies in other parts (RS s
 | R15 | Active pack and its identity | J1 | backend to every client; config tool to the backend's folder | H8, H9, P4, P5, E4, S1, S3, F1 |
 | R16 | Token catalog | J1 | backend to phone, hardware scanner, scoreboard, tablet | H9, P4, E4, S2 |
 | R17 | Media assets | J1 (J8) | backend folders to hardware scanner, phone cache; config tool to folders | E5, E6, F5 |
-| R18 | Credentials | J7 | backend to tablet, scoreboard, config tool | H4, C1, S1, W1, W2 |
+| R18 | Credentials | J7 | backend to tablet, scoreboard, config tool | H4, K1, S1, W1, W2 |
 | R19 | Transient delivery state | J2 | inside the backend | none crosses |
 | R20 | Dead or derived session fields | J2 | backend to tablet inside metadata | V7, V1 |
 | R21 | Game clock | J2 (J4) | backend to tablet, scoreboard | V22 (gameclock), V1 |
@@ -496,7 +496,7 @@ Each row is a runtime fact that has an authority and copies in other parts (RS s
 | R36 | Ducking | J4 | backend to tablet | V22 (audio) |
 | R37 | Music playback | J4 | MPD to backend to tablet | O5, V22 (music) |
 | R38 | Music playlist, shuffle, loop | J4 | tablet to backend to MPD | 1b-53 to 1b-55, V22 (music) |
-| R39 | Playlist catalog | J4 (J6) | config tool to backend to file; backend to tablet | C4, V22 (music) |
+| R39 | Playlist catalog | J4 (J6) | config tool to backend to file; backend to tablet | K4, V22 (music) |
 | R40 | Sounds playing | J4 | tablet to backend to `pw-play` | 1b-35, 1b-36, O7, V22 (sound) |
 | R41 | Bluetooth devices | J4 | BlueZ to backend to tablet | O4, O8, V22 (bluetooth) |
 | R42 | Bluetooth scan and pair in progress | J4 | tablet to backend to BlueZ | 1b-25 to 1b-30, V22 (bluetooth) |
@@ -518,7 +518,7 @@ Each row is a runtime fact that has an authority and copies in other parts (RS s
 | R58 | Standalone game record | J8 (J2) | none crosses | none |
 | R59 | Phone's scanned token ids | J2 (J5) | none crosses | none |
 | R60 | Scoreboard page position and evidence cycling | J7 (J2) | tablet to backend to scoreboard | 1b-18 to 1b-20, V18 |
-| R61 | Config tool state (drafts, publish log, tokens) | J6 | config tool to files; to backend by C1, C4 only | F1, F2, C1, C4 |
+| R61 | Config tool state (drafts, publish log, tokens) | J6 | config tool to files; to backend by K1, K4 only | F1, F2, K1, K4 |
 
 ### 4.12 The 23 events the backend emits
 
@@ -598,8 +598,8 @@ Reading across the table:
 - **J3, J5, J8 and J9 each have five deciders, and J2 and J1 four.** A job with that many deciders is carried by parts that each make their own call. J2 and J3 are split between the backend and the clients that judge for themselves; J5 between the backend, two tablet modes and two scoreboard deployments; J8 between five parts that each pick their own mode; J9 between the backend and four clients that each draw their own word.
 - **J4 has seven deciders, and six of them are programs outside the engine.** The backend is the only decider of intent. That fits the job's wording, in which the outside programs decide what they are doing (EJ J4). The risk in J4 is in how the backend reads them, not in who decides.
 - **J6 and J10 each have exactly one decider, and neither decider can reach the part it affects.** The config tool decides what is published but sends the engine nothing; the test layer decides green or red but shares the live machine's files (sections 4.6, 4.10).
-- **J7 has two deciders that do not agree on a door.** The backend and the config tool each run their own login against one password file (CT conclusion 13).
-- **No part is a decider for J5 by design.** The five D marks in J5 are each a part deciding its own piece of a life it was not told about.
+- **J7 has two deciders that do not agree on a door.** The backend and the config tool each run their own login against one password file (CT conclusions 11, 13).
+- **J5 is not meant to have a decider of its own** (EJ J5: it is a table other jobs read). The five D marks in J5 are each a part deciding its own piece of a life that nothing states.
 
 ### 5.2 Notes on cells a reader may question
 
@@ -626,7 +626,7 @@ Each split names the job, the parts that each hold a piece, what would have to j
 4. **J4, equipment state, reaches screens by two routes and is read by seven.** A service's state and its health arrive as separate pushes; the scoreboard reads one domain of ten; a player learns a video was not started only from a scan reply; the engine's picture of each program is parsed text with no age (RS R46, section 8 Q2, Q3; CT section 1.1). The restart rule is a different shape for four programs and absent for the TV's browser (EJ J4, "the supervisor"). Flaws: C2, C3, C5, C10, C11.
 5. **J5, the life of a game, is carried in at least six places.** Boot and Reset System in the backend (two lists), the tablet's boundary inference, the scoreboard's, the phone's seen set and queue, the hardware scanner's queue and token list, the standalone tablet's six code paths. Nothing says what a boundary does to each fact and no boundary message is sent to a player device (RS section 8 Q6; SP section 2 C4). Flaws: C4, C5, C1, C6, C7.
 6. **J6, design safely, splits authoring from adoption with only an import between them.** The config tool authors and publishes; the engine adopts at start; the clients re-read at their own moments. The tool imports the engine's cue vocabulary, grants and manifest builder and runs the engine's pack check as a child process (F7, F8): that is the one place a client part and the engine share code. No apply step, no preview engine, no statement of where one would run (RS R15; EJ J6; MD "Gap" at lines 40-41). Flaws: C12, C8.
-7. **J7, roles, is enforced by the engine's credential check and bent by the client's word.** A socket that does not call itself `gm` is never asked for a credential; the scoreboard asserts `gm`; the phone and the hardware scanner carry no credential; `sync:request` and `GET /api/state` return the snapshot to anyone; the config tool runs a second login against the same password file; the floor on commands is a granted-function check while `transaction:submit` checks the tier (`socketServer.js:53`; `server.js:75`; IN section 6 Q11; CT conclusion 13). Flaw: C13.
+7. **J7, roles, is enforced by the engine's credential check and bent by the client's word.** A socket that does not call itself `gm` is never asked for a credential; the scoreboard asserts `gm`; the phone and the hardware scanner carry no credential; `sync:request` and `GET /api/state` return the snapshot to anyone; the config tool runs a second login against the same password file; the floor on commands is a granted-function check while `transaction:submit` checks the tier (`socketServer.js:53`; `server.js:75`; IN section 6 Q11; CT conclusions 11, 13). Flaw: C13.
 8. **J8, any setup, is chosen four different ways by four parts and declared nowhere.** The tablet by a tap, the phone by its URL path, the hardware scanner not at all, the pack by no field; the engine's own equipment verdict comes from the profile, the environment flags and the probes, which nothing reconciles (SP section 1; RS section 5 "Is equipment X installed?"). Flaws: N1, C8, C15.
 9. **J9, honest words, are drawn separately by each client.** Reachability has five answers (RS R54); health words render on the tablet only; the preflight result reaches no screen except as a stamp and ack text (RS R50); a standalone game reads as an outage on every player device (SP section 2 C10). Flaws: C10, C2, C3.
 10. **J10, trust, is organised per part, and the joins between parts are tested in a few places.** Twelve test configurations by part (CT section 3.1); three contract tests pin joins (section 7); tests reach the live machine's files and programs (RS section 7). Flaws: C8, C14, C15, C16.
@@ -648,6 +648,18 @@ Each split names the job, the parts that each hold a piece, what would have to j
 | M8 | Phone scanner's repository | The hardware scanner's media store (J1) | Holds the images, audio and asset manifest the hardware scanner syncs, served by the backend's asset routes | `resourceRoutes.js:19-46,71-83` via CT conclusion 6; RS R17 |
 | M9 | Backend scoreboard route | Audience screen delivery (J7) | Serves the page that decides evidence, paging and countdown on the audience's screen | `resourceRoutes.js:225`; `scoreboard.html:1115-1341` via CT section 1.1 |
 
+### 6.3 The same gaps in design words
+
+Observations, not candidates; step 3 chooses. Terms are the `codebase-design` skill's.
+
+- **The pack has no module of its own at the component level.** Nine readers each implement their own read of the same files (split 1), so a change to the pack's shape lands in up to nine places and no one place answers "which pack is running" (low locality; RS R15, section 5).
+- **The rules have one interface and two implementations with no shared code.** `backend/src/gameRules/` is the surface the standalone tablet's hand-kept copy must match (CLAUDE.md root, "CRITICAL"; SP section 1). Two implementations at one seam is the case where the seam is real, but today nothing makes both satisfy one interface except a single end-to-end test that skips its group case on the real pack (section 7).
+- **Command dispatch is the deepest join in the engine.** One `executeCommand` serves tablets and cues for 59 actions behind one small interface, with the operator floor and the service-health gate inside it (`commandExecutor.js:120,152`; IN sections 2b, 2d). That is leverage across two callers and locality for the gate.
+- **The catch-up snapshot and the live event are two implementations of one idea.** For seven facts the two builders are separate code (RS section 4.2), so a change to a fact's shape is made twice and the tablet adapts each differently (three router paths, RS section 4.1).
+- **Each outside program has its own adapter and there is no shared interface for "state of a program, with its age".** Five parsers read text (RS section 6), and the one place that gathers them, the health registry, carries a word and a time that no client reads (RS section 0, "Ages exist but no client reads them").
+- **The test seams that exist are the ones the engine already has.** `PACK_PATH`, `PROFILE_PATH` and the memory storage under `NODE_ENV=test` work; the seams for process files, the display, audio and the machine's ports do not exist, so tests cross to the live machine (RS section 7).
+- **The config tool depends on the engine's implementation, not an interface.** It imports `cueValidation`, `grants` and `build-pack-manifest` by relative path (F8), so a rename inside the engine breaks the tool's build (CT section 2, "Coupling").
+
 ## 7. Joins that exist today
 
 Where one part's behaviour is checked against another's. These are the places a change in one part is caught by a test or a check in another. All are in the repository now (listed with `ls` and the file headers, 2026-11-01).
@@ -658,7 +670,7 @@ Where one part's behaviour is checked against another's. These are the places a 
 | The phone's and hardware scanner's request payloads against the contract | Phone, hardware scanner, backend contract | Payloads validated against the OpenAPI request schemas | `backend/tests/contract/scanner/request-schema-validation.test.js` (file exists; root CLAUDE.md "Scanner contract validation") |
 | Pack files against their schemas | Pack data, backend, config tool | Schema tests for pack, tokens and installation profile; a session-bundle schema | `backend/tests/contract/pack/pack-schemas.test.js`; `token-data/tokens-schema.test.js`; `profile/installation-profile-schema.test.js`; `session-bundle.schema.test.js` |
 | The scoreboard's socket events | Scoreboard, backend | Contract tests for `scoreboard:page` and display events; a unit test of the observe token | `backend/tests/contract/websocket/scoreboard-page-events.test.js`, `display-events.test.js`; `backend/tests/unit/middleware/observeToken.test.js` |
-| The pack on the wire | Backend, tablet, hardware scanner | Per-file sha1 against the manifest on download; the manifest's freshness check | `ALN-TokenData/CLAUDE.md` ("Scoring Values", manifest); `AssetService.h:207-219` via CT section 1.3 |
+| The pack on the wire | Backend, tablet, hardware scanner | Per-file sha1 against the manifest on download; the manifest's freshness check | `ALN-TokenData/CLAUDE.md` ("Scoring Values", manifest); `OrchestratorService.h:692-845` via RS R17 |
 | Handshake pack hash | Tablet, backend | The backend compares and logs a mismatch; nothing acts on it | `backend/src/websocket/socketServer.js:139` |
 | Config tool and the engine's code | Config tool, backend | In-process imports and a child process; CI installs backend dependencies before the tool's tests | F7, F8; `.github/workflows/test.yml` via CT section 2 |
 | The same suite on two packs | Engine, pack data | The Tier L matrix runs the production pack and the toy packs | `.github/workflows/test.yml:225-235` |
@@ -666,3 +678,14 @@ Where one part's behaviour is checked against another's. These are the places a 
 
 Not joined by any check found in this sheet's sources: the hardware scanner's token-file shape against the pack's flat file (SP section 4 row 4); a hand-written fake against the real class (AN C16); the scoreboard page's use of the catch-up snapshot (it ignores display status; CT conclusion 3); the phone's nested token file against the active pack in production (CT conclusion 5); the media folders against the pack's named files (AN C15); the standalone tablet's group-completion logic against the engine's (SP section 1).
 
+
+## 8. Completion check
+
+Done when: every component has an entry, every crossing in IN and in RS is placed under a job, and the matrix has a row per component. Checked as follows (2026-11-01).
+
+- **Components with an entry.** Eleven entries in section 3: the backend (3.1, with its inner module groups in 3.1b), the GM scanner networked (3.2, with 3.2b) and standalone (3.3), the web player scanner (3.4), the hardware player scanner (3.5), the TV scoreboard (3.6), the Pi 4 scoreboard (3.7), the config tool (3.8), the pack data and its sync tools (3.9), the tests, CI and rung-1 rig (3.10), and the outside programs (3.11, six rows: VLC, MPD, the audio system, Home Assistant, Bluetooth, the TV's browser).
+- **Matrix rows.** 16, one per component or outside program, counted from the table in section 5 by script. Each of the ten jobs has a column.
+- **Crossings placed.** A script read section 4 and checked that each of these ids appears under a job: W1 to W5 (5); gm:command actions 1b-1 to 1b-59 (59) and the four table-only verbs 1b-T1 to 1b-T4 (4); H1 to H10 (10); P1 to P6 (6); E1 to E6 (6); S1 to S3 (3); K1 to K4 (4, IN's C1 to C4) and X1 (1); A1 to A5 (5); V1 to V23 (23); O1 to O11 (11); T1 to T5 (5); F1 to F12 (12); R1 to R61 (61). 215 ids needed, 0 missing. Every R row and every V row has its own table row. IN section 1d's route files are covered by their handlers (adminRoutes by H4, K1, A1; healthRoutes by H1, H3, H5, P3, E3; musicRoutes by K2 to K4; packRoutes by H8, H9, P5; resourceRoutes by E4 to E6, S1, S2, A2; scanRoutes by P1, P2, E1, E2; sessionRoutes by H7; stateRoutes by H2). IN sections 3 (acknowledgement races) and 6 (questions with several answers) are placed in 4.2 and 4.3; IN section 4 (connections and identity) is carried by W1, W2, P3, E3, H4, K1; IN section 5 (contract check) by section 7. RS section 3.1 (facts with more than one authority) is placed in the splits of section 6 (1 to 5 and 11), section 3.2 (copies that only grow) is detail of the R rows and is not repeated, section 4 (delivery paths) is in 4.12 and 4.11, section 5 (questions with several answers) is in 4.2, 4.3 and 4.9, section 6 (outside programs) is in 4.9 and 3.11, and section 7 (machine sharing) is in 4.10; RS section 8's six questions are cited where they bear (3.1, 4.4, 4.5, 6).
+- **Splits and misplaced work.** 13 splits and 9 misplaced-work rows in section 6, each with a citation.
+- **Not checked.** No server, test, build or device was run. The ESP32's hardware-abstraction and screen layers, the GM scanner's service worker and the 26 end-to-end flow bodies were not read by the source records, so nothing here rests on them. The Pi 4's setup is not in the repository; its row rests on the deployment guide's text and on the page's own code. Where a line says "inference" it was reasoned from code order. Line numbers marked "via" were carried from the maps and not re-read; the GM scanner's are subject to the few-line drift noted in the header. Placements of crossings and cells are mine. The two kinds of flaw id in this sheet do not clash: C1 to C16 are flaws only, and the config tool's crossings are K1 to K4.
+- **Files written:** this document only.
