@@ -149,7 +149,7 @@
           "how": "Team Details reads the score from a place the tablet never fills, so it shows the wrong score while the scoreboard screen shows the right one."
         }
       ],
-      "standalone": "In a standalone game: one tablet holds the only copy, so tablets cannot disagree, but not every screen refreshes; two tablets are two games, one per game undecided.",
+      "standalone": "In a standalone game: one tablet holds the only copy, so tablets cannot disagree, but not every screen refreshes. Two tablets are two separate games; whether a game may have only one tablet is your open question [[q:M]]",
       "standaloneCandidate": "In the earlier candidate the tablet runs the engine's Game record and Delivery, or its own engine kept equal by tests.",
       "questions": [
         1,

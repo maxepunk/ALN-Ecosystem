@@ -41,7 +41,7 @@
         "Every tap gets its answer, and the night can be told afterwards",
         "Anyone reading a screen can act on it without a second question"
       ],
-      "status": "proposed (the promises' tests, which the owner has not ruled on one by one; the pass's question on how copies update and whether a screen shows their age). Open: what a disconnected tablet does with a scan, for the design round on where authority lives across devices, offline included.",
+      "status": "proposed (the promises' tests, which you have not ruled on one by one; the pass's question on how copies update and whether a screen shows their age). Open: what a disconnected tablet does with a scan, for the design round on where authority lives across devices, offline included.",
       "statusKind": "proposed",
       "why": "Venue wifi is weak and tablets roam; a reconnect that shows different facts is the kind of silent error that costs a GM's trust for good."
     },
@@ -83,7 +83,7 @@
         "The game fits the venue it is in tonight",
         "The room does what the designer cued and the GM asked"
       ],
-      "status": "settled by the owner (the glossary's entries on not installed tonight versus a fault, and on the rule that red is shown only for a real fault, ratified 2026-09-04; the preflight entry's refusal on a broken profile, ruled 2026-09-12; the promise's tests)",
+      "status": "settled by the owner (the glossary's entries on not installed tonight versus a fault, and on the rule that red is shown only for a real fault, ratified 2026-09-04; the glossary's entry on the preflight, which refuses a broken profile, ruled 2026-09-12; the promise's tests)",
       "statusKind": "settled",
       "why": "Red that is always red trains GMs to ignore red; the one night something really breaks, the red light must still be believed."
     },
@@ -97,7 +97,7 @@
         "Every tap gets its answer, and the night can be told afterwards",
         "One game, the same on every screen"
       ],
-      "status": "settled by the owner for the standalone case (the owner's decision \"Standalone games: declared, never mixed\"); the rest is proposed (the promises' tests, which the owner has not ruled on one by one; the pass's question on who decides each fact)",
+      "status": "settled by the owner for the standalone case (your decision \"Standalone games: declared, never mixed\"); the rest is proposed (the promises' tests, which you have not ruled on one by one; the pass's question on who decides each fact)",
       "statusKind": "partly settled",
       "why": "A device that judges for itself will one day disagree with the engine, and the GM will have told a team something untrue."
     },
@@ -112,7 +112,7 @@
         "Anyone reading a screen can act on it without a second question",
         "The designer changes a value and plays it within minutes, and the live show never notices"
       ],
-      "status": "settled by the owner (the roadmap's hardening block: the owner's ruling that the preflight states its own limits; the glossary's preflight and paper versus live entries; the rule that every screen quotes one verdict, ratified 2026-09-04)",
+      "status": "settled by the owner (the roadmap's hardening block: your ruling that the preflight states its own limits; the glossary's entries on the preflight and on paper versus live checks; the rule that every screen quotes one verdict, ratified 2026-09-04)",
       "statusKind": "settled",
       "why": "A go that overstates what was checked is the most expensive lie a tool can tell, because it is believed on opening night."
     },
@@ -127,7 +127,7 @@
         "The designer's game is the game the whole kit plays",
         "Each lifecycle button does exactly what its name says"
       ],
-      "status": "settled by the owner (the roadmap's design-iteration loop; the promise's need and test; the owner's ratification of the design tool's pages, that applying a change refuses a running or paused game)",
+      "status": "settled by the owner (the roadmap's design-iteration loop; the promise's need and test; your ratification of the design tool's pages, that applying a change refuses a running or paused game)",
       "statusKind": "settled",
       "why": "Making games playtestable without code is the point of the engine work; a restart per change makes designers stop iterating."
     },
@@ -141,7 +141,7 @@
         "The designer changes a value and plays it within minutes, and the live show never notices",
         "The designer's game is the game the whole kit plays"
       ],
-      "status": "settled by the owner (the glossary's entry on the check that refuses a broken pack, with its two refusal kinds; the glossary's draft and publish entry; the rule that every screen quotes one verdict, so mistakes are caught at the desk)",
+      "status": "settled by the owner (the glossary's entry on the check that refuses a broken pack, with its two refusal kinds; its entry on drafting and publishing a pack; the rule that every screen quotes one verdict, so mistakes are caught at the desk)",
       "statusKind": "settled",
       "why": "A mistake caught at the desk costs a minute; the same mistake found by the GM on show night costs the show."
     },
@@ -155,7 +155,7 @@
         "The designer changes a value and plays it within minutes, and the live show never notices",
         "A change is proven before it reaches anyone, and the owner alone sends it to the show"
       ],
-      "status": "settled by the owner (the roadmap's preview block; the owner's ratification of the design tool's pages, that the trial copy ships with its own profile; the promise's test; the pass's question on whether anything but the live engine can touch the live show)",
+      "status": "settled by the owner (the roadmap's preview block; your ratification of the design tool's pages, that the trial copy ships with its own profile; the promise's test; the pass's question on whether anything but the live engine can touch the live show)",
       "statusKind": "settled",
       "why": "Rehearsal that can hurt the live show is rehearsal nobody dares to do."
     },
@@ -197,7 +197,7 @@
         "The room does what the designer cued and the GM asked",
         "Anyone reading a screen can act on it without a second question"
       ],
-      "status": "settled by the owner (the roadmap's boot pain and the owner's ruling that the machine powers on straight into a running show)",
+      "status": "settled by the owner (the roadmap's boot pain and your ruling that the machine powers on straight into a running show)",
       "statusKind": "settled",
       "why": "The owner's ask was 'a bit more plug and play'; a show that needs a technician to boot cannot be handed to anyone else."
     },
@@ -224,7 +224,7 @@
       "promises": [
         "Every tap gets its answer, and the night can be told afterwards"
       ],
-      "status": "settled by the owner (the owner's decision \"The night's record and the after-game article\": the record carries the pack and the texts the players saw, the console stays a separate program that reads the record, and the two clocks join the flaw \"Tablets and phones decide facts the engine owns\" as a finding; the roadmap's final outcome, the post-game report builds itself; the roadmap's capture block; the glossary's Review entry)",
+      "status": "settled by the owner (your decision \"The night's record and the after-game article\": the record carries the pack and the texts the players saw, the console stays a separate program that reads the record, and the two clocks join the flaw \"Tablets and phones decide facts the engine owns\" as a finding; the roadmap's final outcome, the post-game report builds itself; the roadmap's capture block; the glossary's entry on the Review stage, where the night is told afterwards)",
       "statusKind": "settled",
       "why": "The record of the night is what the director and the players are told from, and a platform others run must write it by itself, with one clock, so that nobody reconstructs a night from pasted text or corrects times by hand. Today the console has to shift the times back in two recorded games."
     },
@@ -253,7 +253,7 @@
         "A change is proven before it reaches anyone, and the owner alone sends it to the show",
         "The designer's game is the game the whole kit plays"
       ],
-      "status": "settled by the owner (the owner's decision \"One published protocol and an outside test bench\"; the project's guide for developers and its rule that the written list of messages between the engine and the devices changes first; the promise's need: shared formats are written once)",
+      "status": "settled by the owner (your decision \"One published protocol and an outside test bench\"; the project's guide for developers and its rule that the written list of messages between the engine and the devices changes first; the promise's need: shared formats are written once)",
       "statusKind": "settled",
       "why": "Names kept by hand on two sides drift silently; a single published list is what lets a stranger, or an agent, add a device without reading the engine."
     },
@@ -266,7 +266,7 @@
       "promises": [
         "A change is proven before it reaches anyone, and the owner alone sends it to the show"
       ],
-      "status": "settled by the owner for keeping documents true (the owner's decision \"No rule for documents: fix as we go\"; the process rules' writing standard; the roadmap's documentation system); the page per piece of the engine and the newcomer measure are proposed",
+      "status": "settled by the owner for keeping documents true (your decision \"No rule for documents: fix as we go\"; the process rules' writing standard; the roadmap's documentation system); the page per piece of the engine and the newcomer measure are proposed",
       "statusKind": "partly settled",
       "why": "The owner's goal is an engine that is intuitive and easy to maintain and extend, and most of the people who will touch it, human and agent, have not seen it yet."
     },
@@ -293,7 +293,7 @@
         "The designer's game is the game the whole kit plays",
         "A change is proven before it reaches anyone, and the owner alone sends it to the show"
       ],
-      "status": "settled by the owner (the roadmap's second game's modules block, each module taking its parameters from the pack; the roadmap's players' phones block, multi-tap actions for both platforms; the glossary's entry on the abilities a pack requires (its Capability entry): ids are only ever added, never removed, and the pack lists what it needs)",
+      "status": "settled by the owner (the roadmap's second game's modules block, each module taking its parameters from the pack; the roadmap's players' phones block, multi-tap actions for both platforms; the glossary's entry on the abilities a pack requires: an ability is only ever added, never removed, and the pack lists what it needs)",
       "statusKind": "settled",
       "why": "The business is one kit and many games; a game that needs an engine fork is not a pack."
     },
@@ -308,7 +308,7 @@
         "The game fits the venue it is in tonight",
         "One game, the same on every screen"
       ],
-      "status": "settled by the owner (the roadmap's platform parity rule; the hardening block's rulings that every connection presents a password or pass and the device's own type word is retired, 2026-09-12; the glossary's entries on remote displays and the watch-only pass, ruled 2026-09-12); a general way to add new kinds of display is room left beyond the constellation screen, with no slot yet (the roadmap's second game's modules block and the roadmap's row for deferred work on new kinds of screen defined by the pack)",
+      "status": "settled by the owner (the roadmap's platform parity rule; the hardening block's rulings that every connection presents a password or pass and the device's own word for what kind of device it is no longer counts, 2026-09-12; the glossary's entries on remote displays and the watch-only pass, ruled 2026-09-12); a general way to add new kinds of display is room left beyond the constellation screen, with no slot yet (the roadmap's second game's modules block and the roadmap's row for deferred work on new kinds of screen defined by the pack)",
       "statusKind": "partly settled",
       "why": "Devices and screens are the part of a kit that multiplies fastest, and a platform others run will meet kinds nobody planned; each new one must cost a pass and a count, never an engine change. Today a connection's own word decides what it gets."
     },
@@ -324,7 +324,7 @@
         "The designer's game is the game the whole kit plays",
         "Every tap gets its answer, and the night can be told afterwards"
       ],
-      "status": "settled by the owner (the promise's goal; the hardening block's ruling that the engine starts a program or uses one already running, 2026-09-12; the glossary's program watcher entry: how a program restarts is a setting on the show machine; the pass's question on how the engine reads the programs it runs; the roadmap's content tooling block, Notion as one replaceable source; the owner's decision \"The night's record and the after-game article\": the console stays a separate program reading the record, and the record is shaped so the console could later run inside Review)",
+      "status": "settled by the owner (the promise's goal; the hardening block's ruling that the engine starts a program or uses one already running, 2026-09-12; the glossary's entry on the program watcher: how a program restarts is a setting on the show machine; the pass's question on how the engine reads the programs it runs; the roadmap's content tooling block, Notion as one replaceable source; your decision \"The night's record and the after-game article\": the console stays a separate program reading the record, and the record is shaped so the console could later run inside Review)",
       "statusKind": "settled",
       "why": "Venues and years change the programs around the engine; the engine should change in one place only, and what outside programs read and write must be published and stable."
     },
@@ -353,7 +353,7 @@
         "The room does what the designer cued and the GM asked",
         "The designer changes a value and plays it within minutes, and the live show never notices"
       ],
-      "status": "settled by the owner (the glossary's entry on the test levels (the environment ladder) and its witness lights entry, ratified 2026-09-04 with every level as early as possible; the glossary's Rehearse and Simulation entries, ruled 2026-09-04; the owner's decision \"Name each step by what it does\", that test levels go by name; the promise's goal: tests run in levels)",
+      "status": "settled by the owner (the glossary's entries on the test levels and on the stand-in lights the tests use, ratified 2026-09-04 with every level as early as possible; its entries on rehearsing the show without the venue and on running it on software stand-ins, ruled 2026-09-04; your decision \"Name each step by what it does\", that test levels go by name; the promise's goal: tests run in levels)",
       "statusKind": "settled",
       "why": "The show runs a few nights a month; everything that can only be proven at the venue is proven almost never, and a rehearsal that is a special mode drifts from the show."
     },
@@ -409,7 +409,7 @@
         "Every tap gets its answer, and the night can be told afterwards",
         "Each person sees their part and can do only their part"
       ],
-      "status": "settled by the owner (the roadmap's rules on identity and player data, that game data stays on the kit and that retention is the owner's decision per game; the roadmap's capture block, its photo store under the privacy defaults; the owner's decision \"The night's record and the after-game article\", that players' emails stay outside the engine)",
+      "status": "settled by the owner (the roadmap's rules on identity and player data, that game data stays on the kit and that retention is your decision per game; the roadmap's capture block, its photo store under the privacy defaults; your decision \"The night's record and the after-game article\", that players' emails stay outside the engine)",
       "statusKind": "settled",
       "why": "Person-level data on a kit that strangers will one day run must have a home, a mover and an end date from the first design."
     },
@@ -423,7 +423,7 @@
         "Each person sees their part and can do only their part",
         "A change is proven before it reaches anyone, and the owner alone sends it to the show"
       ],
-      "status": "settled by the owner (the glossary's entry on the staff-only limit (starting, pausing and ending the game, show control and score changes stay with staff who log in, such as the GM), owner-fixed 2026-07-09; the roadmap's rules on identity and player data; the hardening block's ruling that every connection presents a password or pass, 2026-09-12; the roadmap's readiness states, the owner's ruling that the committed secrets rotate before the first outside person touches the system; the promise's tests); the automatic secret check is proposed",
+      "status": "settled by the owner (the glossary's entry on the staff-only limit (starting, pausing and ending the game, show control and score changes stay with staff who log in, such as the GM), fixed by you on 2026-07-09; the roadmap's rules on identity and player data; the hardening block's ruling that every connection presents a password or pass, 2026-09-12; the roadmap's readiness states, your ruling that the committed secrets rotate before the first outside person touches the system; the promise's tests); the automatic secret check is proposed",
       "statusKind": "partly settled",
       "why": "A platform released to the public will sit on wifi it does not control and be run by strangers; every request must be checked, and the first outsider must not hold the owner's passwords."
     },
@@ -452,7 +452,7 @@
         "The room does what the designer cued and the GM asked",
         "The game fits the venue it is in tonight"
       ],
-      "status": "settled by the owner for tonight's kit (the owner's account of how the venue runs, 2026-09-12), for the scale of a few dozen devices (the owner's decision \"What the architects' panel sees, and when\") and for the preflight's checks of the show machine (the glossary's preflight entry); the sizes and limits are proposed, and so is a preflight that refuses a start over a load limit",
+      "status": "settled by the owner for tonight's kit (your account of how the venue runs, 2026-09-12), for the scale of a few dozen devices (your decision \"What the architects' panel sees, and when\") and for the preflight's checks of the show machine (the glossary's entry on the preflight); the sizes and limits are proposed, and so is a preflight that refuses a start over a load limit",
       "statusKind": "partly settled",
       "why": "The show machine is small and the show is live; the engine must be sized to it on purpose, not found out on the night."
     },
@@ -466,7 +466,7 @@
         "Each person sees their part and can do only their part",
         "Every tap gets its answer, and the night can be told afterwards"
       ],
-      "status": "settled by the owner in direction (the roadmap's players' phones block: kit capacity work precedes phone load); that the profile declares the number and the preflight counts phones against it is proposed, modeled on remote displays; no source gives the number",
+      "status": "settled by the owner on the direction (the roadmap's players' phones block: kit capacity work precedes phone load); that the profile declares the number and the preflight counts phones against it is proposed, modeled on remote displays; no source gives the number",
       "statusKind": "partly settled",
       "why": "Phones are the first load the kit has never carried; a number guessed on the night is a show that stalls."
     },
@@ -480,7 +480,7 @@
         "The designer's game is the game the whole kit plays",
         "The game fits the venue it is in tonight"
       ],
-      "status": "settled by the owner (the roadmap's media model; the glossary's pack entry; the project's guide for developers, its first-boot expectation for the hardware scanner)",
+      "status": "settled by the owner (the roadmap's media model; the glossary's entry on the pack; the project's guide for developers, its first-boot expectation for the hardware scanner)",
       "statusKind": "settled",
       "why": "Media is the heaviest thing the kit carries; a pack that is light and a bundle that is checked are what let a game move between machines."
     },
@@ -494,7 +494,7 @@
         "The game fits the venue it is in tonight",
         "The room does what the designer cued and the GM asked"
       ],
-      "status": "settled by the owner (the glossary's kit network entry; the roadmap's visible-change list, the wall scoreboard's typefaces served from the kit)",
+      "status": "settled by the owner (the glossary's entry on the kit's network; the roadmap's visible-change list, the wall scoreboard's typefaces served from the kit)",
       "statusKind": "settled",
       "why": "The kit brings its own network because venues cannot be trusted to; one hidden dependence on the internet is a blank TV at the venue."
     },
@@ -510,7 +510,7 @@
         "Each lifecycle button does exactly what its name says",
         "One game, the same on every screen"
       ],
-      "status": "settled by the owner (the owner's decision \"Standalone games: declared, never mixed\": a whole game run with no engine, as a choice a game can declare; the promises' tests; the glossary's entry on the rules the engine and a standalone tablet share); open: how many tablets one standalone game may have, and where the standalone fact is kept",
+      "status": "settled by the owner (your decision \"Standalone games: declared, never mixed\": a whole game run with no engine, as a choice a game can declare; the promises' tests; the glossary's entry on the rules the engine and a standalone tablet share); open: how many tablets one standalone game may have, and where the standalone fact is kept",
       "statusKind": "partly settled",
       "why": "A game with no engine is a choice a game may declare, and a platform that will run in rooms with no network must treat that choice as normal, never as a fault. Today every device reads it as an outage all night."
     },
@@ -524,7 +524,7 @@
         "The game fits the venue it is in tonight",
         "One game, the same on every screen"
       ],
-      "status": "settled by the owner (the owner's decision \"Standalone games: declared, never mixed\": no game mixes networked and standalone devices)",
+      "status": "settled by the owner (your decision \"Standalone games: declared, never mixed\": no game mixes networked and standalone devices)",
       "statusKind": "settled",
       "why": "A mixed game has two deciders and no way to reconcile them; refusing the mix is cheaper than every later fix."
     },
@@ -538,7 +538,7 @@
         "Every tap gets its answer, and the night can be told afterwards",
         "The designer's game is the game the whole kit plays"
       ],
-      "status": "settled by the owner in part (the owner's decision \"Standalone games: declared, never mixed\"; the pack promise's goal: the game's record carries the pack's version); open: the hardware scanner's reading, recorded as a parity gap on the owner's parity rule and still waiting for the owner's explicit word (the owner's open question \"The hardware scanner's standalone mode\"); whether a standalone game's record holds what the players found at all (the owner's open question \"One GM tablet per standalone game?\"), and how exposure and video tokens behave with no engine",
+      "status": "settled by the owner in part (your decision \"Standalone games: declared, never mixed\"; the pack promise's goal: the game's record carries the pack's version); open: the hardware scanner's reading, recorded as a parity gap on your parity rule and still waiting for your explicit word (your open question \"The hardware scanner's standalone mode\"); whether a standalone game's record holds what the players found at all (your open question \"One GM tablet per standalone game?\"), and how exposure and video tokens behave with no engine",
       "statusKind": "partly settled",
       "why": "Standalone games are on the list every design must serve; a record that exists only in networked games makes them second-class."
     },
@@ -560,7 +560,7 @@
       "id": "QT41",
       "title": "The machine matches what it should carry",
       "quality": "Safe release and rollback",
-      "situation": "The owner sends a new version to the venue. The show machine carries one written list of what it should hold: the engine's version, the tablet and phone apps, the pack, the media and the venue profile. A status check at start compares the machine with that list and names any piece that differs; a mismatch between an engine and a tablet shows on the GM's screen when the tablet connects. Rolling back moves every piece, and the check lists any that did not.",
+      "situation": "The owner sends a new version to the venue. The show machine keeps one written list of what it should carry: the engine's version, the tablet and phone apps, the pack, the media and the venue profile. A status check at start compares the machine with that list and names any piece that differs; a mismatch between an engine and a tablet shows on the GM's screen when the tablet connects. Rolling back moves every piece, and the check lists any that did not.",
       "numberToSet": "",
       "promises": [
         "A change is proven before it reaches anyone, and the owner alone sends it to the show",
@@ -594,9 +594,9 @@
         "A change is proven before it reaches anyone, and the owner alone sends it to the show",
         "The designer's game is the game the whole kit plays"
       ],
-      "status": "settled by the owner (the roadmap's rule on growth without corners; the roadmap's operations era and release block, multi-game kits; the owner's decision \"Design top-down, hardest-to-reverse choices first\", whose list of design rounds names how one engine runs as many separate copies)",
+      "status": "settled by the owner (the roadmap's rule on growth without corners; the roadmap's operations era and release block, multi-game kits; your decision \"Design top-down, hardest-to-reverse choices first\", whose list of design rounds names how one engine runs as many separate copies)",
       "statusKind": "settled",
-      "why": "The trial copy, the test run and the second kit all need the same thing, one copy that keeps to itself; built once, it serves all three."
+      "why": "The trial copy, the test run and the second kit all need the same thing: a copy of the engine that stays separate from the others; built once, it serves all three."
     }
   ]
 }

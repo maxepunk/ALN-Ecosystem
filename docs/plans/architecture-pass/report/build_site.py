@@ -80,9 +80,9 @@ BUILT = {
 # The pieces already well built (plan v2 section 3.5 item 2), from the decision record: "Corrections to the
 # readers and the hardening pieces" and "Blue's fixes are evidence of design causes".
 WELL_BUILT = [
-    'Three pieces finished in the hardening block, the roadmap\'s work to make the show machine safer, stay in the '
-    'engine and change only where a design choice requires: the list of kinds of equipment a pack says it needs, '
-    'the code that marks equipment not installed tonight, and the smallest test set-up '
+    'Three pieces finished in the hardening block (the engine checks itself and restarts what crashes) stay in the '
+    'engine and change only where a design choice requires: the kinds of equipment a pack can ask for and a venue '
+    'profile can name, the code that marks equipment not installed tonight, and the smallest test set-up '
     '([[dec:corrections-to-the-readers-and-the-hardening-pieces]]).',
 ]
 
@@ -362,7 +362,7 @@ OVERVIEW = """flowchart TD
 FIT_DEVICES = [
     ('The engine', 'would decide every fact of a networked game, serve the pack, admit every connection, answer every request through one door and send every fact to the screens through one route.'),
     ('A GM tablet in a networked game', 'would draw what it is sent, with each fact\'s label, and send requests in one shared format. It would keep no list of its own and decide nothing before the engine answers. Today it decides before the engine answers.'),
-    ('A GM tablet in a standalone game', 'would be the same app with its standalone setting on. In the candidate it runs the same record, lifecycle, answering and delivery parts the engine runs, with small stand-ins that report every service the engine runs (video, music, lights) as not installed tonight. The other way is an engine of its own, kept equal by tests.'),
+    ('A GM tablet in a standalone game', 'would be the same app with its standalone setting on. In the earlier candidate it runs the same record, lifecycle, answering and delivery parts the engine runs, with small stand-ins that report every service the engine runs (video, music, lights) as not installed tonight. The other way is an engine of its own, kept equal by tests.'),
     ('The phone and the hardware scanner', 'would draw, send scans in one shared format, and read the reply words and the few rules they need as data made from the one source. They would stay equal by sharing that data.'),
     ('The scoreboards', 'would be one page in two places, the TV and the Pi 4, drawing what they are sent and deciding nothing. Today the page decides which modes count as evidence. One page or a view inside the GM app is an open choice for the design rounds.'),
     ('The config tool', 'would hold the design studio and the venue technician\'s profile editor, and talk to the running engine only by sending it requests. Today it writes the engine\'s files. A separate program or pages the engine itself serves is an open choice for the design rounds.'),
@@ -812,7 +812,7 @@ def part_row(pids, label):
         return ''
     note = ''
     if JOINS in pids:   # replaced by the decision "One published protocol and an outside test bench"
-        note = (f'<p class="replaced muted">{e(NAMES[JOINS])} is since replaced by '
+        note = (f'<p class="replaced muted">{e(NAMES[JOINS])} has since been replaced by '
                 f'<a href="{href("design", "decided-the-published-protocol")}">the published protocol</a> and '
                 f'<a href="{href("design", "decided-the-test-bench-outside-the-engine")}">the test bench outside the engine</a>.</p>')
     return f'<div class="partrow"><span class="tag">{e(label)}</span>{"".join(part_link(p) for p in pids)}</div>{note}'
@@ -1739,7 +1739,8 @@ def state_html(item):
 
 def status_grounds(s):
     """The status sentence without the word its tag already shows (requirements check row 16): "settled by the
-    owner (X)" reads "On: X"; a qualified "settled by the owner in part (X); ..." reads "Your word in part (X); ..."."""
+    owner (X)" reads "Rests on: X"; a qualified "settled by the owner in part (X); ..." reads "Your word in part (X); ..."
+    (requirements check row 16, as ruled: "Rests on:", never "On:")."""
     for lead in ('settled by the owner', 'proposed'):
         if not s.startswith(lead):
             continue
@@ -1755,7 +1756,7 @@ def status_grounds(s):
         inner, rest = s[open_at + 1:i], s[i + 1:]
         if qual:
             return f'Your word {qual} ({inner}){rest}'
-        return f'On: {inner}{rest}'
+        return f'Rests on: {inner}{rest}'
     return cap1(s)
 
 
@@ -1818,7 +1819,7 @@ def promise_html(j, D):
     <span class="tag">Where today's engine falls short</span>
     {"".join(shorts) or '<ul><li class="muted">No design flaw breaks this promise mainly: its planned capabilities are not built yet.</li></ul>'}
   </div>
-  <p class="standalone"><span class="tag">In a standalone game</span> {e(standalone)}</p>
+  <p class="standalone"><span class="tag">In a standalone game</span> {rich(standalone)}</p>
   <details><summary>What the planned capabilities need from it ({len(j["needs"])})</summary><ul class="examples">{needs}</ul></details>
   <details><summary>Test situations from the shows ({len(j["tests"])}); {e(qtext)}</summary><ul class="examples">{tests}</ul></details>
 </section>'''
@@ -1954,8 +1955,8 @@ def part_html(p, D):
     if p['id'] == JOINS:
         cls = 'part is-replaced'
         dirs = D['design_decided']
-        replaced = (f'<p class="replaced">Replaced by the published protocol and the test bench: '
-                    f'<a href="{href("design", "decided-" + dirs["protocol"])}">the published protocol</a>, '
+        replaced = (f'<p class="replaced">Replaced by '
+                    f'<a href="{href("design", "decided-" + dirs["protocol"])}">the published protocol</a> and '
                     f'<a href="{href("design", "decided-" + dirs["bench"])}">the test bench outside the engine</a>.</p>')
     return f'''<article class="{cls}" id="{part_anchor(p["name"])}">
   <h4>{e(p["name"])}</h4>
@@ -2089,7 +2090,7 @@ def earlier_html(D):
 <section class="fit-block" id="alternatives" aria-labelledby="alternatives-h">
   <h3 id="alternatives-h">Where a real alternative exists</h3>
   <p>{e(ALTS_INTRO)}</p>
-  <div class="tablewrap"><table class="alts"><thead><tr><th>Choice</th><th>The candidate</th><th>The other way</th><th>What each costs</th></tr></thead><tbody>{alts}</tbody></table></div>
+  <div class="tablewrap"><table class="alts"><thead><tr><th>Choice</th><th>The earlier candidate</th><th>The other way</th><th>What each costs</th></tr></thead><tbody>{alts}</tbody></table></div>
 </section>
     </div>
   </details>'''
@@ -2662,7 +2663,8 @@ def check(pages, D):
     # The earlier candidate: one <details>, closed, its summary carrying the plan's label.
     if not re.search(r'<section id="earlier"[^>]*>\s*<h2[^>]*>[^<]*</h2>\s*<details class="earlier">', pages['design']):
         fails.append('design.html: the earlier candidate is not one closed <details> under its heading')
-    if 'Replaced by the published protocol and the test bench' not in pages['design']:
+    if not re.search(r'<p class="replaced">Replaced by <a [^>]+>the published protocol</a> and <a [^>]+>the test bench '
+                     r'outside the engine</a>\.</p>', pages['design']):
         fails.append('design.html: Joins and proofs is not marked as replaced')
     # Every diagram placed once, as an inline SVG inside its .dia-svg box.
     for k, s in pages.items():

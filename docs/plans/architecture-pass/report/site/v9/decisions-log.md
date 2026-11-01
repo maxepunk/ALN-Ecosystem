@@ -447,7 +447,10 @@ have"; "the owner's question on one GM tablet per standalone game").
 Lines 2 to 5 are v8's lines 1 to 4, "in the earlier candidate" added to
 line 5 and the alternatives row pointed at
 `[[page:design#alt-standalone-tablet]]`. Options and recommendation:
-v8's.
+v8's. Second fix round (2026-11-01, verify B's note on question M):
+EX12 now calls the count an open question, not a number to set, so line
+1 says the extension case and QT37 both name it open, with QT39's
+second point after.
 
 ### N. Exposed evidence and video with no engine (v8 25, open)
 
@@ -467,6 +470,40 @@ and not whether an attempt is kept): QT7 `situation`, QT16 `situation`.
 Lines 2 to 5 are v8's lines 1 to 4 with D36 and D37 applied. Options
 and recommendation: v8's; the record ("Still open") confirms the
 orchestrator's view is yes.
+
+### P, Q and R: the panel (new, open)
+
+Source: the panel's brief (`panel/2026-11-01-panel-brief.md`, 2026-11-01),
+its section "Questions for the owner", with the decision "What the
+architects' panel sees, and when" in `DECISIONS.md`. Recorded 2026-11-01
+in the second fix round (`checks/v9-apply-log-2.md`, ruling 6); until
+then this log stopped at question O.
+
+- **P. The panel's three lenses.** The brief's first question ("The
+  three lenses: are these the right ones?"): the three draft lenses
+  (state and authority; growth and extension; living with it, from the
+  brief's "Who is on the panel"), the brief's two other choices (a
+  fourth architect on live-show reliability; a lens on the smallest
+  possible engine in place of "Living with it") and its recommendation
+  (the three, since live-show reliability sits inside the state lens
+  and a fourth architect adds cost and a longer synthesis). The agent
+  count with a fourth architect (ten in place of eight) is from the
+  brief's "Size and cost".
+- **Q. What the panel gets in the blind round.** The brief's second
+  question: whether the blind round also gets the decisions that bind
+  any design and the six decisions ahead as its agenda; the record's
+  decision lists only the goal, the requirements and the setting. The
+  recommendation (yes, with the panel told it may change the agenda)
+  is the brief's. The lines on the last decision ahead waiting for the
+  second round and on the panel running only after you approve the
+  brief and confirm the requirements are from the brief's opening and
+  "The second round"; the closing line folds in the brief's fourth
+  question ("Anything else").
+- **R. The second round reads today's code.** The brief's third
+  question; the recommendation (a fact sheet first, then the code, to
+  read only) and its cost (the code can pull a design toward small
+  changes, so the architects revise their own blind proposals) are the
+  brief's.
 
 ## Coming in the design rounds (`designRounds`)
 

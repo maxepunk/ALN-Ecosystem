@@ -248,8 +248,8 @@
           "status": "changed",
           "decides": "Whether the developer's tests, which show a change to the engine works before it reaches a show, and your release day stay in one promise, \"[[promise:J10]]\", split, move release day under the venue technician, or go back to a sentence about tests alone. This holds the earlier question \"Flaws none of the pass's questions covers\".",
           "evidence": [
-            "The requirements test the two moments apart. Every change runs the full set of tests twice, once with ALN's pack and once with the toy game's, and a skipped test never counts as a pass ([[qt:QT26]]). On release day the show machine carries one written list of what it should hold, and rolling back moves every piece ([[qt:QT41]], [[ex:EX17]]).",
-            "You have since decided that the tests become a test bench outside the engine, with Proof kept as a quality every part must meet ([[dec:one-published-protocol-and-an-outside-test-bench]]).",
+            "The requirements test the two moments apart. Every change runs the full set of tests twice, once with ALN's pack and once with the toy game's, and a skipped test never counts as a pass ([[qt:QT26]]). On release day the show machine keeps one written list of what it should carry, and rolling back moves every piece ([[qt:QT41]], [[ex:EX17]]).",
+            "You have since decided that the tests become a test bench outside the engine, with proving each change before it reaches a show kept as a quality every part must meet ([[dec:one-published-protocol-and-an-outside-test-bench]]).",
             "The earlier candidate separates this promise's two moments. Before every change, the developer's tests pass and show the show still works for ALN and for the toy game, the small second game kept for tests; that is a quality every part must have (Proof, on [[page:design]]), and checking that parts which pass things to each other agree is part of it. In the earlier candidate, [[part:P16]] (since replaced by the published protocol and the outside test bench) and [[part:P13]] carried it.",
             "On release day, you decide when a new version goes to the venue and can swap back by replugging a machine. That is one small part, [[part:P17]]: what is installed is one written list of what the machine should carry, which the engine compares at start, so a rollback moves everything or says what it did not.",
             "Four flaws mainly break this promise. The pass's question \"Only the live engine touches the show\" covers keeping tests away from it ([[flaw:C8]]). For the other three none of the nine questions fits: \"One question gets one answer\" is only the nearest for the names two parts share ([[flaw:C14]]), and the installed pieces ([[flaw:C15]]) and tests that prove the real path ([[flaw:C16]]) have none ([[dec:the-nine-questions-the-pass-answers]]).",
@@ -346,7 +346,7 @@
           "status": "open",
           "decides": "Whether one tablet decides everything in a standalone game, and whether a standalone tablet's record of the night can hold player scans.",
           "evidence": [
-            "The requirements leave the count to you: [[ex:EX12]] carries the number of GM tablets one standalone game may run as a number to set; [[qt:QT37]] names the count open, and [[qt:QT39]] names the second point open: whether a standalone game's record holds what the players found.",
+            "The requirements leave the count to you, as this open question: the extension case \"[[ex:EX12]]\" and the quality target \"[[qt:QT37]]\" both name it open. The quality target \"[[qt:QT39]]\" names the second point open: whether a standalone game's record holds what the players found.",
             "Today two standalone tablets are two separate games: each holds its own claim list, so one token can be sold on both, and each holds its own score table ([[flaw:C1]]).",
             "A standalone tablet's record of the night ([[part:P5]]) can hold player scans only if the standalone player scanners hand their scans to that tablet.",
             "Player devices need to learn each new game: a game id from the tablet that they check, if they are joined to it, or a reset of their own ([[flaw:C4]]).",
@@ -407,7 +407,7 @@
             "Today a refused GM scan is told to the tablet that scanned and recorded nowhere else. The review that named the design flaws set this aside as a product choice no design flaw decides.",
             "In the earlier candidate [[part:P3]] is where the game's facts are decided and the answer goes back through [[part:P4]].",
             "Where [[promise:J3]] lists [[flaw:C9]] among its flaws, it leaves this to you: whether refused scans belong in the night's record is your open question, not that flaw's.",
-            "A standalone tablet records refused duplicates and unknown tokens nowhere either; a yes needs the same on a standalone tablet; the design choice that removes the flaw [[flaw:C7]] would carry it."
+            "A standalone tablet records refused duplicates and unknown tokens nowhere either; a yes needs the same on a standalone tablet, carried by the design choice that removes the flaw [[flaw:C7]]."
           ],
           "options": [
             {
@@ -653,7 +653,7 @@
           "slug": "one-published-protocol-and-an-outside-test-bench",
           "title": "One published protocol and an outside test bench",
           "date": "2026-11-01",
-          "line": "One published, versioned protocol defines everything that crosses the engine's edge, the files that carry a game or a night included, and is designed in an early design round; the tests become a test bench outside the engine, with Proof kept as a quality. Together they replace the earlier candidate's part [[part:P16]]."
+          "line": "One published, versioned protocol defines everything that crosses the engine's edge, the files that carry a game or a night included, and is designed in an early design round; the tests become a test bench outside the engine; proving each change before it reaches a show stays a quality every part must meet. Together they replace the earlier candidate's part \"Joins and proofs\"."
         }
       ]
     },
@@ -701,7 +701,7 @@
           "slug": "corrections-to-the-readers-and-the-hardening-pieces",
           "title": "Corrections to the readers and the hardening pieces",
           "date": "2026-10-30",
-          "line": "The pieces of the hardening block already built (the kinds of equipment a pack can ask for and a venue profile can name, the code that marks equipment not installed tonight, the smallest test set-up) stay in the engine and change only where a design choice requires; the review's reading of today's code was split by source, merged by cause and checked, and that work is done."
+          "line": "The pieces of the hardening block already built (the kinds of equipment a pack can ask for and a venue profile can name, the code that marks equipment not installed tonight, and the smallest test set-up) stay in the engine and change only where a design choice requires; the review's reading of today's code was split by source, merged by cause and checked, and that work is done."
         },
         {
           "slug": "build-the-test-rig-when-building-starts",
@@ -737,7 +737,7 @@
           "slug": "the-owner-s-site-five-linked-pages",
           "title": "The owner's site: five linked pages",
           "date": "2026-11-01",
-          "line": "Your site is a set of linked pages built from one set of data, with earlier wordings and changes kept in a change log; nothing in the single page it replaced had to stay. The same decision asks for the site to take the long-term frame and to use titles in place of numbers."
+          "line": "Your site was five linked pages built from one set of data (the engine, decisions, promises, parts and design flaws), with earlier wordings and changes kept in a change log; nothing in the single page it replaced had to stay. The same decision asks for the site to take the long-term frame and to use titles in place of numbers."
         }
       ]
     },

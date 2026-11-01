@@ -148,7 +148,7 @@
     {
       "name": "Who decides when there is no engine",
       "jobs": ["J1", "J2", "J3", "J5", "J9"],
-      "plain": "Every design choice says who decides when there is no engine, and a standalone game is a declared fact, never mixed. Carried by hosting the same record, lifecycle and answering modules on the tablet, with the declaration held wherever the owner places it; the venue technician's profile is the candidate favoured here."
+      "plain": "Every design choice says who decides when there is no engine, and a standalone game is a declared fact, never mixed. Carried by hosting the same record, lifecycle and answering modules on the tablet, with the declaration held wherever the design rounds place it; the venue technician's profile is the candidate favoured here."
     },
     {
       "name": "Only the GM moves the game",
@@ -339,7 +339,7 @@
     {
       "id": "P12",
       "name": "Venue fit",
-      "plain": "The venue technician's profile: what the kit brings tonight, which real piece of equipment each name in the pack means tonight, whether the engine starts each program or uses one already running, how many GM tablets and scoreboard screens to expect; and, if the owner places it here, the declared fact that a game runs with no engine.",
+      "plain": "The venue technician's profile: what the kit brings tonight, which real piece of equipment each name in the pack means tonight, whether the engine starts each program or uses one already running, how many GM tablets and scoreboard screens to expect; and, if the design rounds place it here, the declared fact that a game runs with no engine.",
       "level": "module",
       "runsOn": ["backend", "config-tool", "gm-tablet", "player-devices"],
       "jobs": ["J8", "J4", "J9", "J2", "J5"],
@@ -404,25 +404,25 @@
       "title": "Getting state onto screens: one part or a delivery per promise",
       "a": "One delivery part, with one piece of code per fact building the live change and the catch-up, carrying the label and filtered by role.",
       "b": "The parts behind each promise deliver their own facts: the game record keeps its own live messages and catch-up, equipment keeps its own messages, with only a shared format.",
-      "cost": "The candidate needs every part that decides a fact to offer it in one format, and one store on every screen that holds any fact; it is the only form in which [[flaw:C2]], [[flaw:C6]] and [[flaw:C10]] are removed once. The other way needs less agreement and keeps each promise's delivery local, but [[flaw:C6]] and [[flaw:C2]] recur per promise and the check that every screen shows each fact's label stays one that someone repeats by hand."
+      "cost": "The earlier candidate needs every part that decides a fact to offer it in one format, and one store on every screen that holds any fact; it is the only form in which [[flaw:C2]], [[flaw:C6]] and [[flaw:C10]] are removed once. The other way needs less agreement and keeps each promise's delivery local, but [[flaw:C6]] and [[flaw:C2]] recur per promise and the check that every screen shows each fact's label stays one that someone repeats by hand."
     },
     {
       "title": "The rules: shared code, or two bodies of code held to one agreement",
       "a": "One rules module loaded by the engine and the tablet, with generated tables for the hardware scanner.",
       "b": "Two bodies of code, one in the engine and one on the tablet, held equal by a test that runs the same inputs through both.",
-      "cost": "The candidate needs the engine's rules packaged so a browser can run them, and a generator for the tables; it removes [[flaw:C9]] for the tablet because of how it is built. The other way keeps today's two bodies and relies on a test that runs both and compares them; it notices when the copies come to differ and never stops it."
+      "cost": "The earlier candidate needs the engine's rules packaged so a browser can run them, and a generator for the tables; it removes [[flaw:C9]] for the tablet because of how it is built. The other way keeps today's two bodies and relies on a test that runs both and compares them; it notices when the copies come to differ and never stops it."
     },
     {
       "title": "Equipment: an interface per kind of thing the room can do, or per program",
       "a": "Per kind of thing the room can do (play a video, set a volume, light a scene), with the programs, or software stand-ins, plugged in beneath.",
       "b": "Per program (a program the engine keeps running, with its own commands), as today's seven adapters under one rule for keeping them running.",
-      "cost": "The candidate gives the trial copy of the engine and the test rig a real second thing to plug in and lets the show runner ask one place whether a video is playing; it costs one interface over programs that work differently (a video queue is not a music playlist). The other way is nearer today's code and cheaper first, but leaves the stand-ins on paper only and the questions about several programs at once spread out."
+      "cost": "The earlier candidate gives the trial copy of the engine and the test rig a real second thing to plug in and lets the show runner ask one place whether a video is playing; it costs one interface over programs that work differently (a video queue is not a music playlist). The other way is nearer today's code and cheaper first, but leaves the stand-ins on paper only and the questions about several programs at once spread out."
     },
     {
       "title": "The standalone tablet: the same modules as the engine, or its own engine",
       "a": "The same game record, lifecycle, answering and delivery hosted on the tablet, with a switch that says the game is standalone.",
       "b": "An engine of the tablet's own, kept equal by tests, as today but improved.",
-      "cost": "The candidate needs the record, the lifecycle table and answering and delivery to run outside the engine itself, which limits how the engine's code is packaged; the tablet then matches the engine because it runs the same code. The other way keeps the engine free of that constraint and keeps a second body of rules on the tablet, with five rules that nothing keeps equal today as the standing risk."
+      "cost": "The earlier candidate needs the record, the lifecycle table and answering and delivery to run outside the engine itself, which limits how the engine's code is packaged; the tablet then matches the engine because it runs the same code. The other way keeps the engine free of that constraint and keeps a second body of rules on the tablet, with five rules that nothing keeps equal today as the standing risk."
     },
     {
       "title": "The tap's answer and the night's record: one part or two",
@@ -434,19 +434,19 @@
       "title": "The lifecycle: a module or a table each part reads",
       "a": "A lifecycle module, the only mover and the only caller of every reset.",
       "b": "A table every part reads and applies to its own facts, with no central mover.",
-      "cost": "The candidate removes [[flaw:C5]] by construction and breaks today's loop of seven modules; it costs one module that depends on seven others and is told each time a game starts or ends, the engine resets or restarts, or the pack changes, and every part must offer it a reset. The other way keeps each part's reset local and the mover small, but leaves whether every part read the table to a test, the same fault as [[flaw:C5]]: a list kept by hand that a test must check."
+      "cost": "The earlier candidate removes [[flaw:C5]] by construction and breaks today's loop of seven modules; it costs one module that depends on seven others and is told each time a game starts or ends, the engine resets or restarts, or the pack changes, and every part must offer it a reset. The other way keeps each part's reset local and the mover small, but leaves whether every part read the table to a test, the same fault as [[flaw:C5]]: a list kept by hand that a test must check."
     },
     {
       "title": "The scoreboard: one page in two hosts, or a view of the GM app",
       "a": "One page shown in two places, the TV's browser and the Pi 4.",
       "b": "The scoreboard as a view inside the GM app, chosen by the pass.",
-      "cost": "The candidate keeps the audience's page apart from the GM's command center and is the smaller change; it keeps two drawings of the same facts, the GM app's and the page's. The other way gives one drawing per fact on every screen and one app to build, at the cost of a far larger app on a Pi 4 and a pass that must keep the GM's controls off the audience's screen."
+      "cost": "The earlier candidate keeps the audience's page apart from the GM's command center and is the smaller change; it keeps two drawings of the same facts, the GM app's and the page's. The other way gives one drawing per fact on every screen and one app to build, at the cost of a far larger app on a Pi 4 and a pass that must keep the GM's controls off the audience's screen."
     },
     {
       "title": "Release day: its own part beside the developer's tests, or in Venue fit's hand-off from designer to venue technician to GM",
       "a": "Release as its own small part, for release day: the owner alone sends a change to the show.",
       "b": "Release folded into Venue fit's hand-off from designer to venue technician to GM.",
-      "cost": "Both place [[flaw:C15]]. The candidate keeps your decision to swap in the new machine beside the developer's tests, which prove a change to the engine before it reaches a show; the other way puts the check of what is installed where the venue technician already works. It is a wording choice."
+      "cost": "Both place [[flaw:C15]]. The earlier candidate keeps your decision to swap in the new machine beside the developer's tests, which prove a change to the engine before it reaches a show; the other way puts the check of what is installed where the venue technician already works. It is a wording choice."
     }
   ],
   "questionNotes": [

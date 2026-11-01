@@ -1057,7 +1057,7 @@
     },
     {
       "was": "Block 2",
-      "now": "the hardening block: the engine checks itself (the third health word, the program watcher, the preflight)"
+      "now": "the hardening block: the engine checks itself and restarts what crashes (grey \"not installed tonight\", the program watcher, the preflight)"
     },
     {
       "was": "Block 3",
@@ -1073,7 +1073,7 @@
     },
     {
       "was": "Block 6",
-      "now": "the depth-and-close block: the rest of the design pages, then the close"
+      "now": "the depth-and-close block: the rest of the design pages, then a final check that every temporary shortcut has someone to finish it"
     },
     {
       "was": "Block 7; the later blocks by number",
