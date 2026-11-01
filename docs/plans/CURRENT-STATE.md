@@ -144,16 +144,34 @@ before acting.
   shape is silent on a short offline claim list on a disconnected
   tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
   worktrees, no test rig.
-- **In flight** (2026-11-01, after version 7): the owner answered
-  both asks (decisions 28 and 29). The after-game article and emailer
-  are surveyed in
-  `docs/plans/architecture-pass/2026-11-01-after-game-report.md` and
-  their answers are being folded into the promises, the cards, the
-  shape and the glossary. The page is being rebuilt as five linked
-  pages and a change log (decision 29); version 7 stays live until the
-  rebuilt site is checked and published to the same link.
-- **The owner's page.** "What the Engine Promises"
-  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL, version 7 live,
+- **In flight** (2026-11-01): the owner site, version 8, is live and
+  waits for the owner's answers: thirteen questions on its Decisions
+  page (the promises question; A to G; 22, 24, 25; 19; 21). Decisions
+  28 and 29 are folded in. Next after the answers: step 2, the test
+  rig.
+- **The owner's site.** "What the Engine Promises"
+  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), version 8 live
+  (version id 1793525496-560c, 2026-11-01): five linked pages and a
+  change log (decision 29), `index.html` (the engine), `decisions.html`,
+  `promises.html`, `parts.html`, `flaws.html`, `changes.html`, all in
+  `docs/plans/architecture-pass/report/site/`. Built by
+  `report/build_site.py` from the four page-data files in `report/`
+  and three overlays (`site/front.json`, `site/decisions.json`,
+  `site/changes.json`, whose `[[markers]]` become links); every diagram
+  is drawn at build time (`report/render_diagrams.js`, themed by
+  `report/diagram_theme.py`), so no page loads a script. Rebuild:
+  `cd docs/plans/architecture-pass/report && MERMAID_JS=<a local
+  mermaid 11.4.1 mermaid.min.js, optional> python3 -I build_site.py`,
+  then `node site_smoke.js site <shots dir>` (24 loads). Plan:
+  `site/2026-11-01-site-plan.md`; what each element of version 7 became:
+  `site/inventory.md`; checks: `site/checks/`. Workflows
+  `wf_d5c8c6db-981` (content), `wf_c3df370d-0dc` (build),
+  `wf_73d06a3f-69f` (six page checks, 116 applied), `wf_88aa92da-12e`
+  (fix round), `wf_2d4b9ada-f47` (final check). `report/build_report.py`
+  and `report/2026-10-31-cause-report.html` are version 7's builder and
+  page, retired. Version 7 history follows.
+- **Version 7 and before** (the single page): "What the Engine Promises"
+  (same link; version 7 was live until version 8 replaced it;
   published 2026-11-01 after the owner said the 17-part shape was never
   diagrammed and the page did not show how everything comes together:
   the candidate shape now opens with one hand-drawn picture of the
