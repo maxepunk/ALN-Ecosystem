@@ -294,7 +294,12 @@ def part_layers(shape):
     ids = [p['id'] for p in shape['parts']]
     for i in ids:
         lv(i)
-    return [[i for i in ids if level[i] == n] for n in range(max(level.values()), 0, -1)]
+    top = max(level.values())
+    used = {b for bs in deps.values() for b in bs}
+    for i in ids:  # a part nothing uses sits on the top row, with the other outer parts
+        if i not in used:
+            level[i] = top
+    return [[i for i in ids if level[i] == n] for n in range(top, 0, -1)]
 
 
 def part_html(p):
