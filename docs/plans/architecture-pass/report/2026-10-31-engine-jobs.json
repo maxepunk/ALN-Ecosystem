@@ -667,7 +667,7 @@
         {
           "id": "C16",
           "primary": true,
-          "how": "Hand-written fakes are never checked against the real classes, skips and silent passes count as green, and coverage is counted per file, so a green run does not show the real path works."
+          "how": "Hand-written test stand-ins are never checked against the real code, skipped tests and silent passes count as passing, and coverage is counted per file, so a passing run does not show the real path works."
         }
       ],
       "standalone": "In a standalone game: nothing tests a player device with no engine; the phone's pack test passes on a file the deployed site lacks; the one test comparing both modes skips its group case. In the candidate shape the same proofs cover the tablet, or, with its own engine, a cross-check.",

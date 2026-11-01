@@ -611,7 +611,8 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
 .glance tbody th {{ font-weight: 500; min-width: 15em; }}
 .glance a {{ text-decoration: none; }}
 .qgroup {{ display: grid; gap: 14px; }}
-.qgroup h3 {{ font-size: 17px; color: var(--muted); font-weight: 600; }}
+.qgroup > h3 {{ font-size: 17px; color: var(--muted); font-weight: 600; }}
+.q h3 {{ color: var(--fg); }}
 .q .applied {{ font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }}
 .q .changedrec {{ font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fault); }}
 .changed {{ font-size: 15px; max-width: 80ch; background: var(--chip); border-radius: 6px; padding: 10px 14px; }}
@@ -779,7 +780,7 @@ figure.dia.wide {{ padding: 12px; }}
     <div class="q">
       <p class="changedrec">Recommendation changed by the map</p>
       <h3>F. J10: widen it, split it, or leave it?</h3>
-      <p>The map separates J10's two moments. Before every change, the developer's green run shows the show still works for ALN and for the toy game; that is a quality every part must pass, and checking that joined parts agree is part of it. On release day, you decide when a new version goes to the venue and can swap back by replugging a machine; that is one small part, the release, which checks that everything installed matches.</p>
+      <p>The map separates J10's two moments. Before every change, the developer's tests pass and show the show still works for ALN and for the toy game; that is a quality every part must pass, and checking that joined parts agree is part of it. On release day, you decide when a new version goes to the venue and can swap back by replugging a machine; that is one small part, the release, which checks that everything installed matches.</p>
       <ol type="a">
         <li>Widen J10's sentence to include release day. The proposed title does this: "A change is proven before it reaches anyone, and the owner alone sends it to the show".</li>
         <li>Split release day into a job of its own. It gives your release day its own sentence, for a job with one small part.</li>
