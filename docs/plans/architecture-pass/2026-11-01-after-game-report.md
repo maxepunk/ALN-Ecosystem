@@ -6,7 +6,8 @@ join them to the engine in the long run. Source:
 `/home/user/aboutlastnight/reports` (branch
 `claude/eloquent-franklin-r87bmh` at `f82698f`; read, never changed).
 Paths below without a repository name are in that folder. Nothing here
-is decided; the questions at the end go to the owner.
+was decided by the survey; the owner answered its six questions the
+same day (decision 28, below).
 
 ## What it is
 
@@ -107,3 +108,29 @@ not on the flaw list yet.
    the engine gains a plain built-in telling and follow-up for every
    game, with ALN's console as the advanced version?
 6. Add the two clocks to card C9, or as a new flaw?
+
+## The owner's answers (decision 28, 2026-11-01)
+
+1. Yes: the second half of that promise names the director and the
+   players after the show.
+2. What the players receive after the show is the game's business; the
+   engine makes them no promise of their own.
+3. Yes to the first: the night's record carries the pack the game ran
+   and the texts the players saw. Paper documents joining the pack,
+   with "unlocked" recorded during play, was not answered: a question
+   for step 3.
+4. Players' emails stay outside the engine. Later the game's own tools
+   could collect them from the ticketing service's API.
+5. Plan for (a): the console stays separate and reads the engine's
+   record. Design the record so (b), the console as ALN's own part of
+   the engine's Review stage, stays open.
+6. The two clocks join card C9 as finding X-08
+   (`2026-10-30-cause-analysis.md`).
+
+Folded into: the promise's people, need and goal
+(`2026-10-31-engine-jobs.md`, `report/2026-10-31-engine-jobs.json`),
+the night's record (`2026-11-01-engine-shape.md`,
+`report/2026-11-01-engine-shape.json`), card C9
+(`report/2026-10-31-cause-cards.json`), the glossary's Review entry
+(`CONTEXT.md`) and the roadmap's capture block and row 8.10
+(`docs/plans/ROADMAP.md`).

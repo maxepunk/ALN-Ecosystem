@@ -537,7 +537,13 @@ the GM scanner, and a game's own post-show tooling)
   crafting each session's bespoke in-fiction article for its players.
   The platform's built-in story-of-the-night reading must stand
   alone; a per-game console is an advanced instance, never the
-  baseline.
+  baseline. The record carries the game it ran and the texts the
+  players saw, so a telling quotes what they held. ALN's console
+  stays a separate program that reads the record; the record is
+  shaped so a game's telling can later run inside Review. What
+  reaches the players after the show, and their contact details,
+  stay the game's business, outside the engine (decision 28,
+  2026-11-01).
 - **Director.** The Review-stage hat (usually the same human as GM
   or designer): the person who crafts the night's telling and
   harvests design learning back into Author.

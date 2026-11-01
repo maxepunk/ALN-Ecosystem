@@ -184,7 +184,7 @@
         "the owner, who reviews and reports the night",
         "the designer, whose Review stage tells the story of the night"
       ],
-      "goal": "Every request gets one reply in the same form: which request it answers, the outcome, whether it is final, whether anything was stored. At the end, one record of the night is written from the facts decided and the roster, notes, accusation and photos captured during play; the report builds itself from it. Whether refused scans are recorded stays open.",
+      "goal": "Every request gets one reply in the same form: which request it answers, the outcome, whether it is final, whether anything was stored. At the end, one record of the night is written from the facts decided and the roster, notes, accusation and photos captured during play, stamped with the game it ran and the texts the players saw. The tablet's report and the game's own telling both read it; for ALN that telling is the Director Console, a separate program, and the record leaves room for it to run inside the engine's Review stage later. Whether refused scans are recorded stays open.",
       "goalOpen": false,
       "needs": [
         "Two planned capabilities touch the answer: held items (capability 14), where a held cue is an answer the GM sees, and the interaction primitives (capability 36), whose multi-tap actions are requests with the same reply shape.",
@@ -240,9 +240,9 @@
         "P5"
       ],
       "functional": {
-        "people": "The GM at a token or button and the player at a token; the owner and designer after the show",
+        "people": "The GM at a token or button and the player at a token; after the show, the director who tells the night's story, the players it is told to, and the owner and designer",
         "moment": "During play at every tap, and after the game when the night is reviewed",
-        "need": "At a tap on a token or a button they learn at once whether it counted, why not if it did not, or that it is held for later or must be tried again; nothing is silently lost or doubled. Afterwards the night's story is read from what was captured during play, not reconstructed.",
+        "need": "At a tap on a token or a button they learn at once whether it counted, why not if it did not, or that it is held for later or must be tried again; nothing is silently lost or doubled. Afterwards the director tells the players the story of their night from what was captured during play, with the game and the texts they saw, not reconstructed; how that story reaches the players is the game's own business.",
         "proposedTitle": "Every tap gets its answer, and the night can be told afterwards"
       },
       "shapeChange": "Before, the goal spoke only of the report. Now two parts keep it, Answering at the tap and The night's record after the end, because its two people need different things; whether that makes two promises stays question D."

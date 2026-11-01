@@ -371,6 +371,9 @@ not one (dependency audit, claim 1):
 2. **The session-bundle emitter**: the structured bundle contract
    exists and is tested, but nothing in the engine writes bundles —
    the emitter was owned by no document anywhere. It is owned here.
+   It stamps each bundle with the pack the game ran and the texts
+   the players saw, so the night's telling quotes what they held
+   (decision 28, 2026-11-01).
    (Its landing starts the clock on the report pipeline's migration,
    still owner-paced — §8.10.)
 3. **A photo store**: the engine has no binary upload path at all;
@@ -609,7 +612,7 @@ record §6 lists them).
 | 8.7 | The 2026-06-18 documentation audit (81 findings) | **Block 6**, as a bounded triage: classify still-open vs superseded, record the remainder. |
 | 8.8 | Pack-defined NEW display surfaces + the constellation renderer | The second game's modules (§7.2) own the renderer; making the surface *set* extensible stays headroom beyond it. |
 | 8.9 | The source-adapter interface (Notion as the first adapter) | Content-tooling entry (§7.3; it is that block's named foundation). |
-| 8.10 | The report pipeline's migration to the structured bundle | Owner-paced; **the clock starts at the capture block's bundle emitter** (Block 4). Until then, ALN's report markdown stays byte-pinned by the golden master (including its ★ characters, which the pipeline parses). |
+| 8.10 | The report pipeline's migration to the structured bundle | Owner-paced; **the clock starts at the capture block's bundle emitter** (Block 4). Until then, ALN's report markdown stays byte-pinned by the golden master (including its ★ characters, which the pipeline parses). The plan (decision 28, 2026-11-01): the Director Console stays a separate program and reads the bundle; the bundle is shaped so the console can later run as ALN's part of the Review stage. Players' emails stay outside the engine; the game's own tools may later collect them from the ticketing service. |
 | 8.11 | Invisible device-tier tokens: yes or no | An owner decision at the players'-phones entry grill (§7.1), bounded by §2.1. |
 | 8.12 | The tier-ladder roster and scripted capability profiles | The players'-phones entry grill (§7.1; they are the acceptance instrument). |
 | 8.13 | The team/player-management questions; the player-interaction brainstorm | The later blocks' entry grills (§7.1–7.2 absorbed part already). |

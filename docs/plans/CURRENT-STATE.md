@@ -23,7 +23,8 @@ before acting.
   2. Phase 1, step 1, the cause analysis: written and checked,
      waiting for the owner's confirmation (round 8, questions 17 to
      21). `docs/plans/architecture-pass/2026-10-30-cause-analysis.md`:
-     sixteen causes over 357 findings, 21 set aside with reasons; its
+     sixteen causes over 358 findings (one added 2026-11-01 from the
+     after-game survey), 21 set aside with reasons; its
      section 1 is the short list. The four reader sheets and the two
      check files sit beside it. Step 2, the test rig, follows the
      owner's answers.
@@ -67,6 +68,29 @@ before acting.
       "The game fits the venue it is in tonight". Shared work several
       promises depend on needs no word of its own: each piece becomes
       one part. Glossary: `CONTEXT.md` section 7.
+  28. The after-game article and emailer (owner, 2026-11-01,
+      answering the six questions of
+      `docs/plans/architecture-pass/2026-11-01-after-game-report.md`).
+      (1) The second half of "Every tap gets its answer, and the night
+      can be told afterwards" names the director and the players after
+      the show. (2) What the players receive after the show is the
+      game's business: the engine makes them no promise of their own.
+      (3) The night's record carries the pack the game ran and the
+      texts the players saw, so the article quotes what they held.
+      Whether paper documents join the pack, with "unlocked" recorded
+      during play, was not answered: a question for step 3. (4)
+      Players' emails stay outside the engine; later the game's own
+      tools could collect them from the ticketing service's API. (5)
+      Plan for the console staying a separate program that reads the
+      engine's record; design the record so the console can later
+      become ALN's own part of the engine's Review stage. (6) The two
+      clocks (a sale stamped by the tablet, an adjustment by the
+      engine) join "Tablets and phones decide facts the engine owns".
+  29. The owner page becomes five linked pages built from one set of
+      data (owner, 2026-11-01): the engine (the front page),
+      decisions, promises, parts and design flaws; the history of
+      earlier wordings and changes moves to a change log. The owner
+      relies on nothing in version 7, so nothing has to stay as it is.
   Open in round 8, all on the report page or in the chat: 17 (is the
   cause list right), 18 (the three causes no question covers), 19
   (record every scan attempt's outcome: the owner's yes to the
@@ -120,14 +144,14 @@ before acting.
   shape is silent on a short offline claim list on a disconnected
   tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
   worktrees, no test rig.
-- **In flight** (2026-11-01, after version 7): the owner raised two
-  things before going further. (1) Bring the after-game article and
-  emailer (`aboutlastnight/reports`, read only) into the engine map:
-  surveyed in `docs/plans/architecture-pass/2026-11-01-after-game-report.md`,
-  six questions for the owner, nothing decided. (2) The page grew by
-  piecemeal edits and its structure may work against what it must do
-  next: a structure is proposed in conversation, and the page is not
-  rebuilt or republished until the owner agrees one.
+- **In flight** (2026-11-01, after version 7): the owner answered
+  both asks (decisions 28 and 29). The after-game article and emailer
+  are surveyed in
+  `docs/plans/architecture-pass/2026-11-01-after-game-report.md` and
+  their answers are being folded into the promises, the cards, the
+  shape and the glossary. The page is being rebuilt as five linked
+  pages and a change log (decision 29); version 7 stays live until the
+  rebuilt site is checked and published to the same link.
 - **The owner's page.** "What the Engine Promises"
   (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL, version 7 live,
   published 2026-11-01 after the owner said the 17-part shape was never

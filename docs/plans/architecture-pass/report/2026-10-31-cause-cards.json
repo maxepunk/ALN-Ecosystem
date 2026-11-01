@@ -541,6 +541,10 @@
         {
           "ids": "C-58",
           "text": "The tablet matches token ids loosely, the engine exactly; the tablet shows success and the engine refuses."
+        },
+        {
+          "ids": "X-08",
+          "text": "A sale carries the tablet's clock and a manual adjustment the engine's, so the bonus and transfers printed nine hours from the sales; ALN's article writer shifts them back."
         }
       ],
       "blueFixes": [],
@@ -548,7 +552,7 @@
         1,
         5
       ],
-      "findings": 18,
+      "findings": 19,
       "seenLive": "",
       "parts": [
         "P3",

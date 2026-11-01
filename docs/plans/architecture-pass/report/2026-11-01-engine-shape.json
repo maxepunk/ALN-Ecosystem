@@ -16,9 +16,9 @@
     },
     {
       "id": "J3",
-      "people": "The GM at a token or a button and the player at a token; the owner and the designer after the show",
+      "people": "The GM at a token or a button and the player at a token; after the show, the director who tells the night's story, the players it is told to, and the owner and the designer",
       "moment": "During play at every tap, and at the Review stage after the end",
-      "need": "At a tap on a token or a button they learn at once whether it counted and why not if it did not; nothing is silently lost or doubled. Afterwards the night's story is read from what was captured during play, not reconstructed.",
+      "need": "At a tap on a token or a button they learn at once whether it counted and why not if it did not; nothing is silently lost or doubled. Afterwards the director tells the players the story of their night from what was captured during play, with the game and the texts they saw, not reconstructed; how that story reaches the players is the game's own business.",
       "proposedTitle": "Every tap gets its answer, and the night can be told afterwards"
     },
     {
@@ -269,12 +269,12 @@
     {
       "id": "P5",
       "name": "The night's record",
-      "plain": "When a game ends, one structured record of the night is written from the facts the engine decided, with the roster, notes, accusation and later photos captured into it during play. The owner and the designer read the night from it.",
+      "plain": "When a game ends, one structured record of the night is written from the facts the engine decided, with the roster, notes, accusation and later photos captured into it during play, stamped with the game it ran and the texts the players saw. The director tells the night from it; the owner and the designer read it too.",
       "level": "module",
       "runsOn": ["backend", "gm-tablet"],
       "jobs": ["J3", "J6", "J5"],
       "flaws": ["C11"],
-      "seams": "The written shape of the record, the session bundle; the designer's Review reads it."
+      "seams": "The written shape of the record, the session bundle; the designer's Review reads it inside the engine, and the game's own telling (for ALN, the Director Console) reads it from outside, with room to move inside the Review stage later."
     },
     {
       "id": "P6",
