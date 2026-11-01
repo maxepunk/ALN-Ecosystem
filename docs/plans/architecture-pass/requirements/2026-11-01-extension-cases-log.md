@@ -1,10 +1,16 @@
 # Extension cases: the sources behind each case
 
-Companion to `2026-11-01-extension-cases.json` (21 cases, drafted
-2026-11-01 for the owner's confirmation under decision 31). Every
-sentence in a case rests on one of the sources below; nothing is
-invented. Where a case is marked `proposed`, the log says which part of
-it rests on the candidate shape rather than on an owner decision.
+Companion to `2026-11-01-extension-cases.json` (24 cases: 21 drafted
+2026-11-01 for the owner's confirmation under decision 31, three added
+the same day by the check `check-extension.md`). Every sentence in a
+case rests on one of the sources below; nothing is invented. No case
+now rests on the candidate shape: the check removed its wording
+(decision 35 withholds the shape from the panel's first round), and
+EX15's status says which of its parts are open for the design rounds.
+
+The section "The check of 2026-11-01, applied" records every change the
+check asked for, with the source each was verified against. The
+per-case sections below were brought into line with the applied text.
 
 Paths are under `/home/user/ALN-Ecosystem/`. Line numbers are the
 branch `claude/nice-curie-hescfv` text read on 2026-11-01.
@@ -45,13 +51,21 @@ Abbreviations used only in this log:
   RM:297 (the hardening block), RM:358 (the capture block), RM:388 (the
   preview block), RM:416 (the depth-and-close block), RM:588 (the
   release block); decision 31 at CS:114-118 forbids bare numbers.
-- "Published interface" (the intro's definition): the contract-first
-  rule and the two written message lists, root `CLAUDE.md` section
-  "Contract-First Architecture"; SHAPE P16 (SHAPE:209, "every shape two
-  parts share is written once and both sides read it"); the owner's
-  pending question on the published protocol, CS:129-132. The
-  definition is the drafter's plain gloss of those three; the owner is
-  asked to confirm it.
+- "The published protocol" (the intro's definition; replaces the
+  drafter's "published interface" gloss on 2026-11-01): decision 33,
+  CS:129-140. One versioned definition of everything that crosses the
+  engine's edge: what a device may ask, what the engine answers, what
+  it tells screens, and the files that carry a game or a night (the
+  pack, the venue profile, the night's record, the media list); every
+  program's code is generated from it or checked against it; settled,
+  designed in an early design round. The intro's sentence is that
+  decision's text, not a gloss.
+- Decision names in place of decision numbers (decision 36, CS:165-173;
+  decision 34, CS:141-149): "the owner's decision on standalone games"
+  (22, CS:36-45), "the owner's frame for the pass" (26, CS:46-54), "the
+  owner's decision on the pass's vocabulary, which names the venue
+  technician" (27, CS:55-70), "the owner's decision on the after-game
+  article" (28, CS:71-88). Numbers stay in this log only.
 
 ## EX1. A new game as a pack
 
@@ -97,6 +111,11 @@ Abbreviations used only in this log:
   block; nothing exists in code).
 - Decision 22, CS:36-45 (hot-apply on the list every rule must serve).
 - Status: RM section 2.4 and row 8.6; decision 22.
+- The "throughWhat" states the need only (applied only between games,
+  or refused with a reason: RM:128-135, CTX:201-205). "A request the
+  engine answers" was the candidate shape's answer to the architecture
+  pass question "can anything but the live engine touch the live
+  show?" (JARGON row 24, question 4) and was removed (check row 17).
 
 ## EX3. A new mode from the flags the engine offers
 
@@ -152,6 +171,9 @@ Abbreviations used only in this log:
 - Root `CLAUDE.md`, "ESP32 Asset Sync Issues" (the hardware scanner
   fetches pictures and sounds at boot from the engine's manifest).
 - Status: RM section 2.3 and row 8.1; CTX Media bundle.
+- EX1's "when" follows the same split (check row 18): CTX:36-42 calls
+  the bundle "the planned carrier"; RM:123-125 puts the checking with
+  the pack-manager page and the upload with content tooling.
 
 ## EX6. New show cues naming roles, not instruments
 
@@ -170,6 +192,21 @@ Abbreviations used only in this log:
   absent equipment).
 - JOBS, "The game fits the venue it is in tonight": `goal` (binds each
   pack name to an instrument).
+- The designer's choice, "skip it" or "block the show" (check row 6):
+  CTX:184-197 (One truth, three loops: `onAbsent: require` = "block the
+  show", `degrade` = "skip it"); CTX:418-430 (Endpoints vs stack: a
+  need marked degrade resolves dormant; marked require it resolves
+  no-go and the preflight refuses the start); CTX:431-443 (Preflight:
+  the typed, logged "start anyway" override).
+- The "when" (check row 7): RM:607 (row 8.2, the last speaker name in
+  pack content retires in the preview block); RM:424-425 (the
+  depth-and-close block owns "the two loud-fallback retirements",
+  ledger rows L7 and L12); `docs/plans/PHASE3-STATUS.md` ledger L7 (the
+  `lightingRoleFallbacks` block, one venue scene id per role, used only
+  when the profile has no binding, deleted with the bindings page);
+  `ALN-TokenData/game.json:165` (`lightingRoleFallbacks`, still present
+  on this branch). The "mustNotNeed" is unchanged: it states the
+  target; the "when" states when the target is met.
 - Status: CTX Cue and Lighting role; RM row 8.2.
 
 ## EX7. A game's own words and look
@@ -205,6 +242,9 @@ Abbreviations used only in this log:
   repository, not the top-level clone), file structure: `game.json`
   carries `gameClock`; RM:711 (Appendix A: "clock phases" was an
   extraction step, so phases are already pack content).
+- The "when" (check row 8) follows RM:622 exactly: the redesign's
+  design opens in the preview block; "build is priced and slotted by
+  its own grill" (its own planning session); no block delivers it.
 - Status: RM row 8.17; the promise's needs.
 
 ## EX9. A new screen or display surface
@@ -227,6 +267,13 @@ Abbreviations used only in this log:
   `goal` (each screen gets only what its role may see).
 - MAP:232 (surfaces receive server-side projections scoped to their
   granted functions).
+- The "when" (check row 9): RM:613 (row 8.8) gives the constellation
+  renderer to the second game's modules and says "making the surface
+  set extensible stays headroom beyond it", so only the constellation
+  screen has a slot. "Renderer" and "seam" were replaced with "the code
+  that draws a new kind of screen" and "the place a new kind of screen
+  plugs in" (CTX:149-159 "surface"; CTX:165 asks for "endpoint" or
+  "contract", never "surface", for interfaces).
 - Status: CTX "surface"; RM section 7.2 and row 8.8.
 
 ## EX10. A new kind of player device and a new interaction
@@ -257,11 +304,13 @@ Abbreviations used only in this log:
   MAP:238-239 (capacity: no number; parity: any new primitive adds
   firmware work).
 - Decision 22, CS:36-45 (phones on the list every rule must serve).
-- The "published interface" wording with reply words and rules as data
-  is settled in substance by RM:137-149 and the promise's goal; the
-  shape of it (SHAPE:185, P4 reply words as a closed list the clients
-  read as data; SHAPE:179, P1 rules as data tables for the hardware
-  scanner) is the candidate shape's and is not a decision.
+- The "throughWhat" names the published protocol (decision 33,
+  CS:129-140) and RM:146-147 ("everything a designer iterates on is
+  pack data, never firmware"). The earlier wording, reply words as a
+  closed list read as data and rules delivered as data tables, was the
+  candidate shape's (SHAPE:185 P4, SHAPE:179 P1) and was removed (check
+  row 2). "Adapter" became "support" for each device kind (RM:140-142:
+  hardware-scanner firmware work is committed platform engineering).
 - Status: RM sections 7.1, 2.1, 2.5; decision 22.
 
 ## EX11. Who may do what on which device; identification moments
@@ -284,6 +333,12 @@ Abbreviations used only in this log:
   `functional.need`, `goal` (players never get accounts; one door checks
   every action once; only the GM moves the game, runs the show or
   changes scores).
+- Wording (check row 15): JARGON row 52 replaces "the floor" with
+  "starting, pausing and ending the game, show control and score
+  changes stay with staff who log in, such as the GM"; the case says
+  "a shared station" (RM:93-95: a station is shared) where "a station
+  on the floor" read two ways; "computes each pass's rights" (how) was
+  replaced by what the pack says, within that limit (CTX:580-582).
 - Status: RM sections 2.1 and 2.6; CTX The floor.
 
 ## EX12. A game that runs with no engine
@@ -314,6 +369,14 @@ Abbreviations used only in this log:
   kept equal by tests is the owner's open choice (SHAPE:364-380, choices
   5 and 7); the case says "the same rules the engine would" without
   choosing.
+- Added by check row 10: the hardware scanner cannot work alone today
+  (root `CLAUDE.md`, deployment modes table: "ESP32 Scanner: Always
+  networked"), which decision 22 (CS:41-45) records as a parity gap
+  with the owner's explicit word still asked for; the open questions of
+  exposure and video tokens with no engine (CS:179-181, questions 24
+  and 25). The "when" says the design must allow it now and nothing
+  builds it yet (JOBS, "The game fits the venue it is in tonight",
+  `needs`: today the pack has no field for it).
 - Status: decision 22; where the declaration lives and how many tablets
   are open.
 
@@ -352,6 +415,13 @@ Abbreviations used only in this log:
   editor, tech rider, capability catalog, reference kit", "Planning
   view").
 - Decision 27, CS:55-70 (the name "venue technician").
+- The "when" (check row 11): RM:183-190 (the hardware-proven state
+  means "today's hand-run preflight checklist document; the in-panel
+  preflight instrument arrives with the hardening block"); CS:287-298
+  (the hardening pieces are rebuilt inside the architecture pass);
+  MAP:85 (row "The preflight": partly built, minimal evaluator only).
+  So the one-button preflight with paper or live on every line is
+  rebuilt inside the pass, not built today.
 - Status: RM section 1; CTX section 5 and 5b; decision 27.
 
 ## EX14. Rehearsing without the venue
@@ -382,42 +452,62 @@ Abbreviations used only in this log:
   engine runs).
 - Decision 22, CS:36-45 (the preview engine on the list every rule must
   serve).
+- Where the trial copy runs (check row 12): JOBS, "The designer changes
+  a value and plays it within minutes, and the live show never
+  notices", `moment` ("on a laptop or on the show machine between
+  games") and `goal` ("Where it runs is open"); MAP:40 (no document
+  says where a preview engine runs). So "the show machine" left the
+  "mustNotNeed"; the live engine's programs and records stay in it.
 - Status: CTX Simulation and Rehearse; RM the preview block; decision
   22.
 
-## EX15. A new outside program the engine drives (proposed)
+## EX15. A new outside program the engine drives
 
-- Settled parts:
-  - CTX:368-372 (Supervisor: bounded restarts, then a red row with a
-    Restart verb; how each service restarts is host configuration);
-    CTX:363-367 (Self-heal).
-  - RM:297-330 (the hardening block: the supervisor; a plain host-config
-    file for restart strategies); CS:313-319 (the hardening pieces are
-    rebuilt inside the architecture pass).
-  - MAP:87-89 (rows "The supervisor", "The host-config file" with modes
-    self and adopt, "Self-heal"); MAP:172 (whether a program runs
-    tonight is the profile's truth, never the host file's).
-  - JOBS, "The room does what the designer cued and the GM asked":
-    `goal` (the engine reaches each outside program through one
-    interface and keeps a dated picture of it; one supervisor; a
-    setting, in the profile as the candidate shape has it, says whether
-    the engine starts or adopts each program), `needs` (the engine tells
-    its own video or music player from a stranger's).
-  - JOBS, "Anyone reading a screen can act on it without a second
-    question": `functional.need` (red means act now; old looks old).
-  - CTX:398-401 (Authority: an outside program the engine drives can be
-    one, for example the video player).
-- Proposed parts (the candidate shape, not a decision):
-  - SHAPE:193 (P8 Equipment: each thing the room can do behind one
-    interface, with the outside program as an adapter beneath it; one
-    adapter per program and one software stand-in per capability).
-  - SHAPE:343 and SHAPE:371 (the owner's open choice 6: one interface
-    per kind of job, or one per program).
-  - SHAPE:163 (tangle T7: seven adapters with no interface above them).
-- The task's own list named this case ("another video player, another
-  lighting system").
-- Status: proposed, with the program watcher and the start-or-use
-  setting settled.
+Rewritten by check rows 4 and 5 (2026-11-01) to say what must be
+possible, never how. The candidate shape's words (an adapter beneath
+the engine's equipment interface, "the few verbs", "a dated picture",
+the owner's open choice between one interface per kind of job and one
+per program, the tangle of seven programs with no interface above
+them) were removed: decision 35 (CS:150-164) withholds the 17-part
+shape and the earlier lists of design choices from the panel's first
+round, and decision 31 (CS:101-118) asks for what is needed, never how
+to build it.
+
+- The need (a developer adds support for a new program once; the pack,
+  the cues, the GM's screens and the other programs' support do not
+  change): JOBS, "The room does what the designer cued and the GM
+  asked", `functional.need` (the room does what the designer cued; a
+  dead program comes back by itself) and `needs` (the engine tells its
+  own video or music player from a stranger's); RM:102-110 (section
+  2.2: no kit-unique identifiers inside engine code); the task's own
+  list ("another video player, another lighting system").
+- The software stand-in for tests and rehearsal: CTX:523-531
+  (Simulation: an ordinary profile whose bindings point at software
+  stand-ins); JOBS, "A change is proven before it reaches anyone, and
+  the owner alone sends it to the show", `goal` (stand-ins are checked
+  against the real thing).
+- The program watcher: CTX:368-372 (Supervisor: bounded restarts, then
+  a red row); CTX:363-367 (Self-heal); RM:297-330 (the hardening
+  block); CS:287-298 (the hardening pieces are rebuilt inside the
+  architecture pass); JARGON row 46 (the program watcher).
+- The start-or-use setting and where it lives (check row 5): MAP:88
+  (row "The host-config file": plain file for restart strategies, modes
+  `self` and `adopt`); MAP:172 (section 3.3: host modes are self and
+  adopt; whether a program runs tonight is the profile's truth, never
+  the host file's); CTX:371-372 (how each service restarts is host
+  configuration, not pack or profile content); CS:221-224 ("Live
+  state": the shape departs from the ratified capability map on where
+  the start-or-adopt setting lives); JOBS, "The room does what the
+  designer cued and the GM asked", `needs` (the capability map gives it
+  a file of its own; the candidate shape keeps it in the profile; the
+  design settles which). So the case no longer puts it in the profile;
+  the wording is JARGON row 13's long form.
+- "Who": the venue technician's part is the profile's truth about what
+  the room has tonight (MAP:172; CTX:48-54 Venue / installation).
+- Status: the need rests on the promise and the glossary; how the
+  engine reaches its programs, and where the setting lives, are
+  design-rounds questions. No part of the case now rests on the
+  candidate shape.
 
 ## EX16. A second kit or another operator
 
@@ -447,6 +537,11 @@ Abbreviations used only in this log:
 - MAP:120-121 (rows "Seams for more kits and packs", "Kit network, DNS
   and certificate"); MAP:32 (a second engine on one machine is unsafe
   today).
+- Wording (check row 14): "the described set" became JARGON row 62's
+  "one written list of what the machine should carry"; "the seams that
+  keep it cheap" became RM:105-110's own checklist (each pack and
+  profile picked by name, no kit's own names inside the engine's code,
+  a network name per kit, media that moves between machines).
 - Status: RM sections 1, 2.2 and 7.4.
 
 ## EX17. A new engine version or a new show machine
@@ -468,8 +563,13 @@ Abbreviations used only in this log:
 - JOBS, "Each lifecycle button does exactly what its name says": `goal`
   (a new engine version only between events).
 - MAP:122 (row "Blue/green cutover": method ratified, green not
-  started). The "described set" wording follows JOBS goal "one matching
-  set"; its form (SHAPE:211, P17 Release) is the candidate shape's.
+  started). The "throughWhat" (check row 13) now states the need, JOBS
+  `functional.need` ("the machine carries one matching set") in JARGON
+  row 62's words ("one written list of what the machine should carry");
+  "which the engine compares at start and reports" was the candidate
+  shape's form (SHAPE:211, P17) and was removed. The "when" splits the
+  swap (ratified, RM:455-470) from the check of one matching set, which
+  nothing builds today (MAP:122: green not started).
 - Status: RM sections 6 and 7.4; CS section 1.
 
 ## EX18. A new source of game content besides Notion
@@ -555,6 +655,10 @@ Abbreviations used only in this log:
   projection, hidden state with a named decider, persistence across
   restart).
 - Decision 26, CS:46-54 (design for use beyond ALN).
+- Wording (check row 16): "the rules library, the interaction engine,
+  the display-surface seam" became "the rules, multi-tap player
+  actions, and the place a new kind of screen plugs in" (JARGON row 57;
+  RM:542-546).
 - Status: RM section 7.2 and row 8.8.
 
 ## EX21. A developer from outside the team
@@ -587,10 +691,80 @@ Abbreviations used only in this log:
   (every change runs on two packs).
 - MAP:125 (row "Open-sourcing and the release block"); MAP:70
   (pre-previewable safety).
-- The adapter seams an outsider would use are those of EX4, EX10, EX15
-  and EX18; the published-interface wording is the intro's gloss (see
-  "Wording sources").
+- The places an outsider adds a device, a program, a scoring model or a
+  content source are those of EX10, EX15, EX4 and EX18. The
+  "throughWhat" (check row 3) names the published protocol by decision
+  33's definition (CS:129-140); the places inside the engine where a
+  developer adds something are not part of the protocol and are named
+  in plain words (JARGON row 39 on "contract", and "seam" is not a word
+  the jargon table allows to stand). "The proof" became "the
+  developer's tests" (JARGON row 9).
 - Status: RM sections 1, 3 and 7.4.
+
+## EX22. What a scan causes (added by check row 20)
+
+- RM:621 (row 8.16, ratified 2026-09-03: the scan-to-video trigger is
+  engine-keyed to player scanners, "a baked ALN opinion"; a
+  GM-scanner-only game cannot declare it directly; it becomes pack
+  content with the interaction primitives, section 7.1; the interim is
+  standing cues, one per token-to-video pairing, "pure pack content").
+- RM:151-154 (section 2.6: the engine holds no opinion).
+- CTX:322-333 (Idle loop vs game-event video: a token names a video
+  file, a player scan triggers it; the GM-scanner-only game reaches
+  video today via standing cues, one per token).
+- Root `CLAUDE.md`, "Contract-First Architecture" notes: "GM scanner
+  token scans do NOT trigger video playback"; video is triggered by a
+  player scan or the admin queue.
+- JOBS, "The room does what the designer cued and the GM asked":
+  `functional.need` (the room does what the designer cued); JOBS, "The
+  designer's game is the game the whole kit plays": `needs` (multi-tap
+  actions come from the pack).
+- RM:527-532 (section 7.1: the interaction primitives, built for both
+  platforms), for the "when".
+- Status: RM section 2.6 and row 8.16; CTX Idle loop vs game-event
+  video.
+
+## EX23. One kit, a different installed game per event (added by check row 21)
+
+- RM:43-44 (section 1, the interim state: "one production (the
+  owner's), one kit, and a growing library of its own games").
+- RM:576-579 (section 7.4 item 1, multi-game kits, "a real
+  requirement": a kit holds a library of installed packs; the operator
+  picks one per event; until the selection UI exists, pack selection at
+  startup through the existing path/id seams).
+- RM:102-110 (section 2.2: the pack is selected by path or id, never
+  assumed to be the only one).
+- RM:71-72 (business shape: one production, one kit, many games on it).
+- CTX:201-205 (Activation: the engine adopts exactly one pack at
+  startup); CTX:228-235 (`PACK_PATH` points the engine at a pack
+  directory), for "at startup by path or id today".
+- JOBS, "The designer's game is the game the whole kit plays":
+  `functional.need` (the whole kit plays that game with no code
+  change); JOBS, "The game fits the venue it is in tonight": `goal`
+  (new kits and machines need no code).
+- EX16 keeps the second operator's library; this case is our own kit's.
+- Status: RM section 1 (interim state), section 7.4 item 1, section
+  2.2.
+
+## EX24. Where a game's records go and how long they stay (added by check row 22)
+
+- RM:96-100 (section 2.1, rules 3 and 4: game data stays on the kit
+  unless the owner moves it; how long old session data is kept is the
+  owner's decision, per game; the four rules are the privacy defaults
+  every future open-source operator inherits). Rule 1 (no player
+  accounts) and rule 2 (person-level identity is game policy) give the
+  "mustNotNeed" and the sentence on a game that names players.
+- RM:595 (section 7.4, the release block: the privacy defaults stated
+  for downstream operators).
+- JOBS, "Every tap gets its answer, and the night can be told
+  afterwards": `needs` (photo capture: data kept on the kit and
+  retention set per game by the owner); `goal` (one record of the
+  night).
+- JOBS, "Each person sees their part and can do only their part":
+  `goal` (players never get accounts).
+- RM:358-387 (the capture block: the photo store under the privacy
+  defaults), for the records named in the case.
+- Status: RM section 2.1 rules 3 and 4.
 
 ## Cases the task named, and where each landed
 
@@ -615,7 +789,11 @@ section 4), EX7 (a game's own words and look, CTX Strings sidecar and
 entity label), EX8 (the GM-written phase, RM row 8.17), EX11 (who may
 do what on which device, RM sections 2.1 and 2.6), EX12 (a standalone
 game, decision 22), EX14 (rehearsing on a simulation profile, CTX
-Simulation), EX17 (a new engine version by machine swap, RM section 6).
+Simulation), EX17 (a new engine version by machine swap, RM section 6);
+and, found missing by the check of 2026-11-01: EX22 (what a scan
+causes, RM row 8.16), EX23 (one kit, a different installed game per
+event, RM section 7.4 item 1), EX24 (where a game's records go and how
+long they stay, RM section 2.1 rules 3 and 4).
 
 ## Numbers left for the owner to set
 
@@ -632,6 +810,58 @@ Simulation), EX17 (a new engine version by machine swap, RM section 6).
   step or block number, and no finding id appears in the JSON (grep for
   the em dash character, `J[0-9]`, `C[0-9]`, `P[0-9]`, `capability [0-9]`,
   `[Pp]hase [0-9]`, `[Ss]tep [0-9]`, `[Bb]lock [0-9]`, `[A-Z]-[0-9][0-9]`).
-- Every `promises` entry equals a `functional.proposedTitle` in JOBS.
-- Decision numbers and roadmap section numbers appear only in `status`
-  and `when`, where the task's own format names them.
+- Every `promises` entry equals a `functional.proposedTitle` in JOBS
+  (re-run 2026-11-01 after the check: 24 cases, 53 references, all
+  match).
+- Since the check of 2026-11-01 no decision number appears in the JSON
+  (grep `decision [0-9]`: none); decisions go by short titles (decision
+  36). Roadmap section numbers appear only in `status` and `when`, as
+  citations beside a block's or a section's name. Also re-run after the
+  check, all none: `seam`, `the floor`, `verb`, `dated picture`,
+  `described set`, `renderer`, `interaction engine`. Three wordings
+  outside the check's rows stand, unchanged because the check did not
+  list them: EX4's "rules library"; EX18's "source adapter", a glossary
+  term (CTX:277-279); and EX18's "a published interface for content
+  sources", the one remaining use of the intro's retired term. Decision
+  33's protocol covers the pack's format, which is what a content source
+  produces, so the owner may want EX18 to say "produces the pack in the
+  published protocol's pack format"; that is a question for the owner,
+  not a change made here.
+
+## The check of 2026-11-01, applied
+
+`check-extension.md` listed 22 conflicts. Each was verified against
+its named source before it was applied. Applied: 22. Rejected: 0.
+
+| # | Where | Verified against | Applied as |
+|---|---|---|---|
+| 1 | intro | CS:129-140 (decision 33) | The intro's last sentences are decision 33's definition of the published protocol, named as the owner's. The term "published interface" now stands in one place only, EX18's "a published interface for content sources", which the check did not list; it is left for the owner (see the note under "Checks run"). |
+| 2 | EX10 throughWhat, case, who | CS:129-140; RM:137-149; the earlier log entry naming SHAPE P1 and P4 | "The published protocol; everything the designer iterates on reaches the device as pack data, never firmware." The reply words as data and the rules as data tables were dropped, not marked proposed, so the case stays settled. "Adapter" became "support" in the case and the "who". |
+| 3 | EX21 throughWhat, case | CS:129-140; JARGON rows 9 and 39 | The protocol by its definition; "the places a developer adds a device, a program, a scoring model or a content source"; "the developer's tests". The case's list of what the stranger builds uses the same plain words. |
+| 4 | EX15 case, throughWhat, status, why | CS:150-164 (decision 35); CS:101-118 (decision 31); CTX:523-531; CTX:368-372 | Rewritten as a need (support added once; pack, cues, GM screens and other programs untouched; a software stand-in; the program watcher). The shape's words and the open choice between interface styles are gone; the "why" no longer describes today's code. Status names what the need rests on and what the design rounds decide. |
+| 5 | EX15 case, throughWhat, when, who | MAP:88, MAP:172; CTX:371-372; CS:221-224; JOBS "The room does what the designer cued and the GM asked" `needs`; JARGON row 13 | "A setting says whether the engine starts the program itself or uses one already running"; where it lives (the venue profile or a settings file on the machine) is open for the design rounds. The venue technician no longer sets it in the profile; their part is what the room has tonight. |
+| 6 | EX6 case | CTX:184-197; CTX:418-430; CTX:431-443 | The designer marks whether the lights are needed: "skip it" shows grey and the siren plays; "block the show" is a no-go, no start without the typed override. |
+| 7 | EX6 when | RM:424-425; RM:607; PHASE3-STATUS ledger L7; `ALN-TokenData/game.json:165` | "now for cues that name roles; the last speaker name leaves the pack in the preview block, and the venue scene ids kept as lighting fallbacks leave it in the depth-and-close block". The "mustNotNeed" stands as the target. |
+| 8 | EX8 when | RM:622 (row 8.17) | The redesign carries it; design opens in the preview block; build priced and slotted by its own planning session; no block delivers it yet. |
+| 9 | EX9 when, status, throughWhat, why, case | RM:613 (row 8.8); CTX:149-165 | "later for the constellation screen (the second game's modules); a general way to add new kinds of screen has no slot yet"; "the code that draws a new kind of screen"; "the place a new kind of screen plugs in". |
+| 10 | EX12 when, case, status | CS:36-45 (decision 22); CS:174-182 (questions 24 and 25, 22's hardware-scanner reading); root `CLAUDE.md` deployment modes table | "the design must allow it now; nothing builds it yet"; the hardware scanner's parity gap with the owner's word still asked for; the open question of exposure and video tokens with no engine. |
+| 11 | EX13 when | RM:183-190; CS:287-298; MAP:85 | "now for the profile and the hand-run checklist; the one-button preflight with paper or live on every line is hardening work rebuilt inside the architecture pass (today only a minimal check exists)"; the rest unchanged. |
+| 12 | EX14 case, mustNotNeed | JOBS "The designer changes a value and plays it within minutes, and the live show never notices" `moment` and `goal`; MAP:40 | "On a laptop ..., or on the show machine between games (where it runs is an open question)"; "the show machine" dropped from mustNotNeed; the live engine's programs and records kept. |
+| 13 | EX17 when, throughWhat | RM:455-470; MAP:122; JOBS "A change is proven before it reaches anyone, and the owner alone sends it to the show" `functional.need`; JARGON row 62 | "One written list of what the machine should carry, so the owner can see that a machine carries one matching set before it goes out"; "now for the swap ...; the check that a machine carries one matching set is new work". |
+| 14 | EX16 throughWhat, when | JARGON row 62; RM:102-110 | "one written list of what the machine should carry"; "what keeps it cheap is built now: each pack and profile picked by name, no kit's own names inside the engine's code, a network name per kit, media that moves between machines". |
+| 15 | EX11 throughWhat, mustNotNeed, when, case, why, status | JARGON row 52; CTX:580-582; RM:93-95 | "the staff-only limit" in the jargon table's words throughout; "a shared station"; "the pack says what each kind of device may do, within that limit". The status cites the glossary entry as "the entry on the staff-only limit". |
+| 16 | EX20 throughWhat | JARGON row 57; RM:542-546 | "the rules, multi-tap player actions, and the place a new kind of screen plugs in". |
+| 17 | EX2 throughWhat | RM:128-135; CTX:201-205; JARGON row 24 (question 4) | "the engine applies the change only between games, or refuses and says why". |
+| 18 | EX1 when | RM:112-126; RM:606 (row 8.1); CTX:36-42 | "now for the pack; checking the media against the pack in the preview block; the media bundle and its upload later (content tooling)". |
+| 19 | status of EX1, EX2, EX10, EX12, EX13, EX14, EX19 | CS:165-173 (decision 36); CS:141-149 (decision 34) | "the owner's frame for the pass" (26), "the owner's decision on standalone games" (22), "the owner's decision on the pass's vocabulary, which names the venue technician" (27), "the owner's decision on the after-game article" (28). |
+| 20 | missing case | RM:621 (row 8.16); RM:151-154; CTX:322-333 | EX22 added: a designer declares what a scan causes; when: later, with multi-tap player actions; until then one standing cue per token. |
+| 21 | missing case | RM:43-44; RM:576-579; RM:102-110 | EX23 added: our own kit runs a different installed game per event; when: now by picking the pack at startup by path or id, a selection page later. |
+| 22 | missing case | RM:96-100 (rules 3 and 4); RM:595 | EX24 added: the owner, or a future operator, sets per game how long records are kept, and no game data leaves the kit unless the owner moves it; when: the design must allow it now. |
+
+Checks after applying: the JSON parses; 24 cases, 53 promise
+references, every title matching JOBS; every case carries the same nine
+fields in the same order; none of the forbidden patterns listed under
+"Checks run" appears, and `decision [0-9]`, `seam`, `the floor`,
+`verb`, `dated picture`, `described set`, `renderer` and `interaction
+engine` appear nowhere in the JSON. `published interface` appears once,
+in EX18, outside the check's rows (noted above).
