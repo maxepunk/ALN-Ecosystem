@@ -126,10 +126,45 @@ before acting.
       design decisions before the first design round (owner,
       2026-11-01). The owner said the context the panel gets is
       critical: its brief comes to the owner before the panel runs.
-  Pending: replacing "Joins and proofs" with two design decisions (the
-  published protocol, and a test bench outside the engine). The owner
-  leans yes and asked first for a careful explanation of the published
-  protocol and where it fits in the big picture.
+  33. The published protocol and the test bench replace "Joins and
+      proofs" (owner, 2026-11-01, after the explanation). The protocol is
+      one versioned definition of everything that crosses the engine's
+      edge: what a device may ask, what the engine answers, what it tells
+      screens, and the files that carry a game or a night (the pack, the
+      venue profile, the night's record, the media list). Every
+      program's code is generated from it or checked against it. It
+      consolidates today's scattered contracts (backend/contracts, the
+      venue-profile schema, the pack schemas in ALN-TokenData), and it is
+      designed in an early design round, not merely collected. The tests
+      become a test bench outside the engine; "Proof" stays a quality
+      every part must meet.
+  34. One set of sequencing names (owner OK, 2026-11-01, except decision
+      numbers, which are under discussion): the architecture pass has a
+      design half and a build half; its steps are named by what they do
+      (requirements, the panel, the design rounds, the build plan, the
+      hostile review, the final questions, the owner's sign-off); the
+      roadmap's blocks go by name only; question rounds by date; test
+      levels by name (logic only; real programs with stand-in hardware;
+      the home test bed; the venue). No page uses a bare phase, step,
+      block or round number.
+  35. The panel's context plan (owner OK, 2026-11-01): first the goal,
+      the requirements (the promises with the owner's answers, the
+      confirmed quality targets and extension cases, the standing
+      constraints) and the setting (one owner and AI agents developing
+      it; the hardware and a local network that can drop; one two-hour
+      show for a few dozen devices); only after the first proposals,
+      today's engine as facts and the sixteen design flaws as test
+      situations. Withheld: the orchestrator's recommendations, the
+      17-part candidate shape (it enters in a second round as one more
+      proposal) and the earlier lists of design choices. Three
+      architects with different lenses propose blind, then critique each
+      other and the candidate shape; a synthesis lists the decisions,
+      options, costs, trial runs and the owner's questions. It runs
+      after the owner confirms the requirements; its brief goes to the
+      owner first.
+  Under discussion: the owner questioned numbering decisions at all
+  ("I've been using them because you've been using them, but they're
+  not necessarily clear or the best approach").
   Open in round 8, all on the report page or in the chat: 17 (is the
   cause list right), 18 (the three causes no question covers), 19
   (record every scan attempt's outcome: the owner's yes to the
