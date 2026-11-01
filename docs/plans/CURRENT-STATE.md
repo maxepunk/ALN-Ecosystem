@@ -107,7 +107,17 @@ before acting.
   frame (version 9: Requirements, Design and Today's engine in place of
   Promises, Parts and Design flaws; titles, not numbers; the sequencing
   names; the jargon table's wordings). Version 8 stays live until it
-  ships.
+  ships. Done: its content (`wf_e076baba-f34`, overlays in
+  `report/site/v9/`, each with a writer's log; 99 conflicts, 95
+  applied). Running: the build (`wf_0a97fbef-eae`: the standing rules
+  in `site/v9/rules.json`, the requirements in plain words with a
+  settled/proposed kind per item, `build_site.py` restructured for the
+  six pages). Next: the panel's brief joins the Design page with three
+  questions on Decisions (its draft:
+  `docs/plans/architecture-pass/panel/2026-11-01-panel-brief.md`; its site
+  content, merged into the overlays once the build lands:
+  `docs/plans/architecture-pass/panel/2026-11-01-panel-site-content.json`), then the page checks
+  (`docs/agents/workflow-scripts/site-v9-check.js`), then publish.
 - **The owner's site.** "What the Engine Promises"
   (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), version 8 live
   (version id 1793525496-560c, 2026-11-01): five linked pages and a
