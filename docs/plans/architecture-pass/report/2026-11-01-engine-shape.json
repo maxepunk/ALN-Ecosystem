@@ -71,84 +71,84 @@
       "proposedTitle": "A change is proven before it reaches anyone, and the owner alone sends it to the show"
     }
   ],
-  "relationsMermaid": "flowchart TD\n  J1[\"J1 The designer's game is the game the whole kit plays\"]\n  J2[\"J2 One game, the same on every screen\"]\n  J3[\"J3 Every tap gets its answer, and the night can be told afterwards\"]\n  J4[\"J4 The room does what the designer cued and the GM asked\"]\n  J5[\"J5 Each lifecycle button does exactly what its name says\"]\n  J6[\"J6 The designer changes a value and plays it within minutes, and the live show never notices\"]\n  J7[\"J7 Each person sees their part and can do only their part\"]\n  J8[\"J8 Fit the game to the venue it is in tonight\"]\n  J9[\"J9 Anyone reading a screen can act on it without a second question\"]\n  J10[\"J10 A change is proven before it reaches anyone, and the owner alone sends it to the show\"]\n  J1 -->|\"the rules of the pack in use\"| J2\n  J1 -->|\"the cues, the clock rules, what each screen shows\"| J4\n  J1 -->|\"what the game needs from the room\"| J8\n  J1 -->|\"what to check, and which version to show\"| J9\n  J1 -->|\"the toy game to test on\"| J10\n  J6 -->|\"a published pack\"| J1\n  J8 -->|\"what is installed, which instrument is which, which programs the engine starts\"| J4\n  J8 -->|\"the venue profile, and whether the game is standalone\"| J9\n  J8 -->|\"who decides when there is no engine\"| J2\n  J4 -->|\"each program's state and health\"| J9\n  J9 -->|\"not installed tonight: no cues, no restarts\"| J4\n  J9 -->|\"go or no-go before the start\"| J5\n  J9 -->|\"the same go and no-go words on the draft\"| J6\n  J9 -.->|\"a quality: a label on every fact, how old and how sure\"| J2\n  J2 -->|\"what a tap is judged against: claims, teams, phase\"| J3\n  J3 -->|\"accepted taps\"| J2\n  J5 -->|\"at each boundary, what the record keeps or clears\"| J2\n  J5 -->|\"at each boundary, which cues, held items and services reset\"| J4\n  J5 -->|\"which moments allow a scan; the end writes the night's record\"| J3\n  J5 -->|\"a change applies only before or after a game\"| J6\n  J7 -->|\"who is connected, and which role sees what\"| J2\n  J7 -->|\"which device acted, and who may command\"| J3\n  J7 -->|\"how many stations and displays to expect\"| J9\n  J10 -.->|\"shared: each engine's own names\"| J6\n  J10 -->|\"each engine's own names, for a second kit\"| J8",
+  "relationsMermaid": "flowchart TD\n  J1[\"J1 The designer's game is the game the whole kit plays\"]\n  J2[\"J2 One game, the same on every screen\"]\n  J3[\"J3 Every tap gets its answer, and the night can be told afterwards\"]\n  J4[\"J4 The room does what the designer cued and the GM asked\"]\n  J5[\"J5 Each lifecycle button does exactly what its name says\"]\n  J6[\"J6 The designer changes a value and plays it within minutes, and the live show never notices\"]\n  J7[\"J7 Each person sees their part and can do only their part\"]\n  J8[\"J8 Fit the game to the venue it is in tonight\"]\n  J9[\"J9 Anyone reading a screen can act on it without a second question\"]\n  J10[\"J10 A change is proven before it reaches anyone, and the owner alone sends it to the show\"]\n  J1 -->|\"the rules of the pack in use\"| J2\n  J1 -->|\"the cues, the clock rules, what each screen shows\"| J4\n  J1 -->|\"what the game needs from the room\"| J8\n  J1 -->|\"what to check, and which version to show\"| J9\n  J1 -->|\"the toy game to test on\"| J10\n  J6 -->|\"a published pack\"| J1\n  J8 -->|\"what is installed, which instrument is which, which programs the engine starts\"| J4\n  J8 -->|\"the venue profile, and whether the game is standalone\"| J9\n  J8 -->|\"who decides when there is no engine\"| J2\n  J4 -->|\"each program's state and health\"| J9\n  J9 -->|\"not installed tonight: no cues, no restarts\"| J4\n  J9 -->|\"go or no-go before the start\"| J5\n  J9 -->|\"the same go and no-go words on the draft\"| J6\n  J9 -.->|\"a quality: a label on every fact, how old and how sure\"| J2\n  J2 -->|\"what a tap is judged against: claims, teams, phase\"| J3\n  J3 -->|\"accepted taps\"| J2\n  J5 -->|\"between games, what the record keeps or clears\"| J2\n  J5 -->|\"between games, which cues, held items and services reset\"| J4\n  J5 -->|\"which moments allow a scan; the end writes the night's record\"| J3\n  J5 -->|\"a change applies only before or after a game\"| J6\n  J7 -->|\"who is connected, and which role sees what\"| J2\n  J7 -->|\"which device acted, and who may command\"| J3\n  J7 -->|\"how many stations and displays to expect\"| J9\n  J10 -.->|\"shared: each engine copy's own files, ports and settings\"| J6\n  J10 -->|\"each engine copy's own files, ports and settings, for a second kit\"| J8",
   "mechanisms": [
     {
       "name": "The rules",
       "jobs": ["J1", "J2", "J3", "J4", "J8", "J9"],
-      "plain": "What a mode means, what a token scores, when a group completes, whether a claim uses the token up, how money is written. Well built in the engine today, in one place that only calculates; hand-copied on the tablet, and read a third time by the TV from its own fetch."
+      "plain": "What a mode means, what a token scores, when a group completes, whether a claim uses the token up, how money is written. Well built in the engine today, in one place that only calculates; hand-copied on the tablet, and read a third time by the TV from its own download of the pack."
     },
     {
       "name": "Getting a fact onto a screen",
       "jobs": ["J2", "J4", "J9", "J1", "J7", "J5", "J3"],
-      "plain": "One route per fact, the same for the live change and the catch-up after a reconnect, carrying the fact's label. Today two builders per fact, four different ways the tablet writes a fact, the TV's own rules, and health on a different route from state."
+      "plain": "One route per fact, the same for the live change and the catch-up after a reconnect, carrying the fact's label. Today two pieces of code build each fact, the tablet takes a fact in four different ways, the TV has its own rules, and a service's health travels on a different route from what it is doing."
     },
     {
       "name": "Knowing who is connected",
       "jobs": ["J7", "J2", "J3", "J4", "J5", "J6", "J8", "J9", "J1"],
-      "plain": "A verified pass on every connection, the device's class and name, whether it is still there. Today spread over six engine modules; a hardware scanner is filed as a phone; only a connection that calls itself a GM is asked for a pass; five clients each show their own word for whether the engine is there."
+      "plain": "A verified pass on every connection, the device's class and name, whether it is still there. Today spread over six engine modules; a hardware scanner is filed as a phone; only a connection that calls itself a GM is asked for a pass; five kinds of device each show their own word for whether the engine is there."
     },
     {
       "name": "The boundary table",
       "jobs": ["J5", "J2", "J3", "J4", "J1", "J6", "J9", "J10"],
-      "plain": "At setup, start, pause, end, reset, restart, the next game and a pack change: what each fact and each copy keeps, clears or carries. Today boot and Reset System are two hand-kept lists, the tablet and the TV guess a boundary from a changed id, and player devices never learn one."
+      "plain": "At setup, start, pause, end, reset, restart, the next game and a pack change: what each fact and each copy keeps, clears or carries. Today boot and Reset System are two hand-kept lists, the tablet and the TV guess that a new game began when the game's id number changes, and player devices are never told."
     },
     {
       "name": "Reading and keeping alive an outside program",
       "jobs": ["J4", "J9", "J8", "J10", "J6"],
-      "plain": "One adapter per program, one supervision rule, the engine's picture of each program dated. Today seven adapters with no shared interface above them, two supervision shapes, and a private connected flag beside the shared health list."
+      "plain": "One adapter per program, one supervision rule, the engine's picture of each program dated. Today seven adapters with no shared interface above them, two different ways of checking that they still run, and the music player's own private note of whether it is connected, beside the shared health list."
     },
     {
       "name": "The verdict",
       "jobs": ["J9", "J8", "J6", "J4", "J5", "J1"],
-      "plain": "What the game needs against what the kit has tonight, one calculation, each line paper or live, three health words. Built and in good shape today; its result reaches no screen except a session stamp and the text of an acknowledgement."
+      "plain": "What the game needs against what the kit has tonight, one calculation, each line paper or live, three health words. Built and in good shape today; its result reaches no screen, only a note stored with the game when it is created and the wording of one reply to the GM."
     },
     {
       "name": "Answering a request",
       "jobs": ["J3", "J2", "J4", "J5", "J7", "J1", "J8", "J9"],
-      "plain": "A reply that says which request it answers, whether it is final, and whether anything was stored. Today three reply shapes at three doors, the tablet matching a reply to its request by the command's name alone, and the phone and the hardware scanner reading one status differently."
+      "plain": "A reply that says which request it answers, whether it is final, and whether anything was stored. Today three reply formats at three doors, the tablet matching a reply to its request by the command's name alone, and the phone and the hardware scanner reading one status differently."
     },
     {
       "name": "Keeping engines apart",
       "jobs": ["J10", "J6", "J8", "J4"],
-      "plain": "Every name an engine owns, its process files, sockets, ports, data folder, passes and the display it drives, is per engine. Today nothing: sixteen fixed temporary names, two machine-wide kills, and tests that adopt the live display and audio."
+      "plain": "Every name an engine owns, its process files, sockets, ports, data folder, passes and the display it drives, is per engine. Today nothing: sixteen temporary files with the same fixed names for every copy, two commands that stop a program across the whole machine, and tests that take over the show machine's real display and audio."
     },
     {
       "name": "Publishing the pack to every holder",
       "jobs": ["J1", "J6", "J5", "J2", "J9"],
-      "plain": "One list of every copy, one way to fetch it, one notice that it changed, every copy showing which version it holds. Today nine holders, no message, and a publish that tells the running engine nothing."
+      "plain": "One list of every copy, one way to fetch it, one notice that it changed, every copy showing which version it holds. Today nine places keep a copy, nothing tells them the pack changed, and a publish tells the running engine nothing."
     },
     {
       "name": "Checking the joins",
       "jobs": ["J10", "J1", "J2", "J3", "J8", "J9"],
-      "plain": "Every name and shape two parts share is checked against both, test stand-ins against the real code, the same suite on two packs. Today three contract tests and the schema tests; the hardware scanner's file shape, the stand-ins, the scoreboard's reading of the snapshot and the media folders are not joined."
+      "plain": "Every name and shape two parts share is checked against both, test stand-ins against the real code, the same suite on two packs. Today three tests that check a format two parts share, and the tests of the pack files' format; nothing checks that both sides match for the hardware scanner's token file, the test stand-ins, how the scoreboard reads the catch-up it gets on connecting, or the media folders."
     },
     {
       "name": "The authority switch",
       "jobs": ["J8", "J2", "J3", "J5", "J9", "J1", "J7"],
-      "plain": "Who decides each fact when there is no engine, and the declared fact that says a game is standalone. Today a tap on the tablet, a URL path on the phone, nothing on the hardware scanner, no field in the pack."
+      "plain": "Who decides each fact when there is no engine, and the declared fact that says a game is standalone. Today a tap on the tablet, the web address the phone's page is opened from, nothing on the hardware scanner, nothing in the pack."
     }
   ],
   "qualities": [
     {
       "name": "Honesty",
       "jobs": ["J1", "J2", "J3", "J4", "J5", "J6"],
-      "plain": "A screen never shows a calm normal value where the truth is unknown, old, broken or not installed tonight. Carried as a label on every delivered fact and every reply, with the three health words from the verdict."
+      "plain": "A screen never shows a calm normal value where the truth is unknown, old, broken or not installed tonight. Carried as a label on every fact sent to a screen and every reply (what it is, how old, how sure), with the verdict's three health words: healthy, down and not installed tonight."
     },
     {
       "name": "Proof",
       "jobs": ["J1", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9"],
-      "plain": "A passing test run means the show works for two games, and no test reaches a live show. Carried by testing each part through its interface, the one everything else uses, and by giving every test run its own engine names."
+      "plain": "A passing test run means the show works for two games, and no test reaches a live show. Carried by testing each part through its interface, the one everything else uses, and by giving every test run its own copy of the engine, with its own files, network ports and settings."
     },
     {
       "name": "Generic",
       "jobs": ["J1", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10"],
-      "plain": "Nothing in the engine assumes ALN, one kit, one pack or one production. Carried by taking rules only from the pack and kit names only from the profile and the engine's own instance."
+      "plain": "Nothing in the engine assumes ALN, one kit, one pack or one production. Carried by taking rules only from the pack, and the equipment's names only from the venue technician's profile and from each running copy of the engine's own settings."
     },
     {
       "name": "Who decides when there is no engine",
       "jobs": ["J1", "J2", "J3", "J5", "J9"],
-      "plain": "Every rule says who decides when there is no engine, and a standalone game is a declared fact, never mixed. Carried by hosting the same record, lifecycle and answering modules on the tablet, with the declaration held wherever the owner places it; the venue technician's profile is the candidate favoured here."
+      "plain": "Every design choice says who decides when there is no engine, and a standalone game is a declared fact, never mixed. Carried by hosting the same record, lifecycle and answering modules on the tablet, with the declaration held wherever the owner places it; the venue technician's profile is the candidate favoured here."
     },
     {
       "name": "Only the GM moves the game",
@@ -160,67 +160,67 @@
     "tangles": [
       {
         "title": "The pack is held in nine places and nothing joins them",
-        "plain": "The engine's frozen snapshot and the live disk bytes under it, the tablet's cache, the phone's own file, the hardware scanner's card, the TV's own fetch, the design tool's working copy, the sync script's output, two nested copies and media in three folders. No message says the pack changed, so after a publish the TV, the engine and a tablet can run three versions of one game.",
+        "plain": "The copy the engine freezes when it starts and the files on disk that can change under it, the tablet's cache, the phone's own file, the hardware scanner's card, the TV's own download, the design tool's working copy, the sync script's output, the copies built into the tablet and phone apps, and media in three folders. No message says the pack changed, so after a publish the TV, the engine and a tablet can run three versions of one game.",
         "flaws": ["C12", "C14", "N1"]
       },
       {
         "title": "The game's facts are decided once and re-decided in five places",
-        "plain": "The tablet marks a token claimed, computes the points and shows complete before the engine answers; the phone and the hardware scanner decide whether a token exists; the TV decides which modes count as evidence; a standalone tablet decides everything from a hand-kept copy of the rules. Eighteen rules are re-decided on clients, and for five of them nothing keeps the copies equal.",
+        "plain": "The tablet marks a token claimed, computes the points and shows complete before the engine answers; the phone and the hardware scanner decide whether a token exists; the TV decides which modes count as evidence; a standalone tablet decides everything from a hand-kept copy of the rules. Eighteen rules are re-decided on the devices, and for five of them nothing keeps the copies equal.",
         "flaws": ["C1", "C9", "C11", "C6"]
       },
       {
-        "title": "One fact, two builders; state and health on two routes",
-        "plain": "For seven facts the snapshot a tablet gets on connect and the live message for the same fact are built by different code. A service's state and its health arrive as separate pushes. No fact carries an age, and no screen reads the ages that exist.",
+        "title": "One fact, two pieces of code; state and health on two routes",
+        "plain": "For seven facts the catch-up a tablet gets when it connects and the live message for the same fact are built by different code. A service's state and its health arrive as separate messages. No fact carries an age, and no screen reads the ages that exist.",
         "flaws": ["C6", "C2", "C10"]
       },
       {
-        "title": "Three doors, three reply shapes, acknowledgements matched by name",
-        "plain": "A player scan, a GM scan and a GM command each get a differently shaped reply. The tablet matches an acknowledgement to a request by the action name alone, so two quick presses cannot be told apart. The phone and the hardware scanner read the same status differently.",
+        "title": "Three doors, three reply formats, replies matched to requests by name",
+        "plain": "A player scan, a GM scan and a GM command each get a differently shaped reply. The tablet matches the engine's reply to a GM command by the command's name alone, so two quick presses cannot be told apart. The phone and the hardware scanner read the same status differently.",
         "flaws": ["C7"]
       },
       {
         "title": "Who is connected has no home",
-        "plain": "The engine asks a pass only of a connection that calls itself a GM; the TV calls itself a GM; the whole game state can be fetched with no pass; a health check registers a device and files a hardware scanner as a phone; the design tool runs a second login against the same password; five clients each draw their own reachability word.",
+        "plain": "The engine asks a pass only of a connection that calls itself a GM; the TV calls itself a GM; anyone can download the whole game with no pass; a device's regular check that the engine is there also signs it in, and files a hardware scanner as a phone; the design tool runs a second login against the same password; five kinds of device each draw their own word for whether the engine can be reached.",
         "flaws": ["C13", "C10"]
       },
       {
         "title": "The life of a game is carried in six places and owned by none",
-        "plain": "Boot and Reset System are two hand-kept lists that differ; nineteen modules each reset themselves and Reset System calls fourteen of them; the record calls into the show from five places and the show calls back, a seven-module loop; the tablet and the TV guess a boundary from a changed id; the player devices' queues outlive every game; the engine undoes its own wiring only under test.",
+        "plain": "Boot and Reset System are two hand-kept lists that differ; nineteen modules each reset themselves and Reset System calls fourteen of them; the record calls into the show from five places and the show calls back, a seven-module loop; the tablet and the TV guess that a new game began when the game's id number changes; the scans a phone or scanner saved to send later outlive every game; the engine undoes the connections between its parts only in tests.",
         "flaws": ["C4", "C5", "C1", "C6"]
       },
       {
-        "title": "Equipment: seven adapters, no shared interface, a cached picture with no age",
-        "plain": "Each program is read by parsing its text or its event stream. Whether a video is playing has several answerers; held cues and held videos live in two stores; the music player keeps a private connected flag beside the shared health list; supervision has two shapes.",
+        "title": "Equipment: seven adapters, no shared interface, a stored picture that does not say how old it is",
+        "plain": "Each program is read from its text output or its stream of messages. Whether a video is playing has several answerers; held cues and held videos live in two stores; the music player keeps its own private note of whether it is connected, beside the shared health list; there are two different ways of checking that the programs still run.",
         "flaws": ["C3", "C11", "C2"]
       },
       {
         "title": "The engine assumes it owns the machine, and tests assume they may use it",
-        "plain": "Sixteen fixed temporary names, two machine-wide kills, media folders in fixed places and kit names in at least twelve files. Tests adopt the live display, audio and Bluetooth and write placeholder videos into the live media folder.",
+        "plain": "Sixteen temporary files with the same fixed names for every copy, two commands that stop a program across the whole machine, media folders in fixed places and the equipment's names written into at least twelve files. Tests take over the show machine's real display, audio and Bluetooth and write placeholder videos into the live media folder.",
         "flaws": ["C8", "C15"]
       },
       {
         "title": "The tablet is a command center and a second engine in one, and the standalone choice is not a seam",
-        "plain": "Four files carry a second copy of the rules; thirty of the tablet's sixty-seven files would carry a standalone game; the one strategy seam covers storage only, and twenty branches in six modules ask the mode directly; the four domain objects reach everything through a back-reference; three layer inversions make dependencies run both ways.",
+        "plain": "Four files carry a second copy of the rules; thirty of the tablet's sixty-seven files would carry a standalone game; the one place built to switch between standalone and networked covers only where data is saved, and twenty places in six modules check the mode themselves; the app's four main sections each reach everything through one shared handle; in three places a lower layer relies on a higher one, so dependencies run both ways.",
         "flaws": ["C9", "N1", "C14", "C11"]
       },
       {
-        "title": "The design tool reaches the engine by file and by import, never by message",
-        "plain": "It writes the engine's settings, routing file and media folders; imports engine modules by path; runs the engine's pack check as a child process. An edit becomes visible at the engine's next restart. There is no apply step, no preview engine and no statement of where one would run.",
+        "title": "The design tool reaches the engine by writing its files and borrowing its code, never by sending it requests",
+        "plain": "It writes the engine's settings, its audio-routing file and its media folders; borrows pieces of the engine's code directly; runs the engine's pack check itself. An edit becomes visible at the engine's next restart. There is no way to apply a change to the running engine, no separate trial copy of the engine and no statement of where one would run.",
         "flaws": ["C12", "C8"]
       },
       {
-        "title": "Joins kept by hand, fakes unchecked, tests by area",
-        "plain": "Twelve test configurations split by area of the code and three contract tests that pin joins. Nothing checks the hardware scanner's token-file shape against the pack, a fake against its class or the scoreboard's reading of the snapshot. The deployed game is several checkouts, a built folder and hand-copied media that nothing compares.",
+        "title": "Joins kept by hand, test stand-ins unchecked, tests by area",
+        "plain": "Twelve separate test setups split by area of the code, and three tests that check a format two parts share. Nothing checks the format of the hardware scanner's token file against the pack, a test stand-in against the real code it imitates, or how the scoreboard reads the catch-up it gets on connecting. The game as installed is several separate copies of the code, a built app folder and hand-copied media that nothing compares.",
         "flaws": ["C14", "C16", "C15"]
       },
       {
-        "title": "Long call chains, and entry points that do too much",
-        "plain": "Skip video crosses five tablet modules to reach one deep one; one command dispatcher serves six promises; the player scan route decides token existence, session existence and video eligibility inline and holds a batch cache lost at restart; the engine's wiring is written by hand at about ten sites, and one of them already left music out.",
+        "title": "Long chains of code, and front doors that do too much",
+        "plain": "The Skip video button passes through five of the tablet's modules to reach the one that does the work; one piece of code that handles every GM command serves six promises; the code that takes a player scan decides, all by itself, whether the token exists, whether a game is on and whether its video may play, and keeps a memory of uploaded batches of offline scans that is lost at restart; the engine's parts are connected by hand in about ten places, and one of them already left music out.",
         "flaws": ["C11", "C5", "C7"]
       },
       {
-        "title": "The scoreboard page is one file, two deployments, and sits on both sides of the engine",
-        "plain": "Nearly two thousand lines with no module boundary; it decides the evidence rule and the money format from a file it fetched; it extrapolates the countdown and keeps counting after a disconnect; the engine launches, shows, hides and kills its browser as an outside program while the page is a client of the engine under a pass minted into the page text.",
+        "title": "The scoreboard page is one file installed in two places, and sits on both sides of the engine",
+        "plain": "Nearly two thousand lines not split into modules; it decides the evidence rule and the money format from a file it fetched; it works out the countdown by itself and keeps counting after a disconnect; the engine launches, shows, hides and kills its browser as an outside program, while the page also connects to the engine with a pass written into the page itself.",
         "flaws": ["C12", "C10", "C13", "C11"]
       }
     ]
@@ -239,12 +239,12 @@
     {
       "id": "P2",
       "name": "Pack channel",
-      "plain": "One list of every holder of the pack, one way to fetch it, one notice that it changed, and a version stamp every copy shows and every game record carries. Each media file is checked against the pack's list by a fingerprint of its content.",
+      "plain": "One list of every place that keeps a copy of the pack, one way to fetch it, one notice that it changed, and a version mark every copy shows and every game record carries. Each media file is checked against the pack's list by a fingerprint of its content.",
       "level": "module",
       "runsOn": ["backend", "gm-tablet", "player-devices", "config-tool"],
       "jobs": ["J1", "J6", "J5", "J2", "J9"],
       "flaws": ["C12", "C15", "N1"],
-      "seams": "The pack source (a folder, the draft store, the toy packs). The lifecycle takes up a new pack once per boundary."
+      "seams": "The pack source (a folder, the draft store, the toy game's pack). The lifecycle takes up a new pack only between games."
     },
     {
       "id": "P3",
@@ -254,12 +254,12 @@
       "runsOn": ["backend", "gm-tablet"],
       "jobs": ["J2", "J3", "J5"],
       "flaws": ["C1", "C11", "C9"],
-      "seams": "Persistence (file or memory); the host (the engine in a networked game, the tablet in a standalone one)."
+      "seams": "Where it is saved (a file, or memory only); the device it runs on (the engine in a networked game, the tablet in a standalone one)."
     },
     {
       "id": "P4",
       "name": "Answering",
-      "plain": "Every request, from a tap or a button, over any transport, gets one reply in one shape: which request it answers, the outcome word, whether it is final, whether anything was stored. The rule that only the GM may start, pause, end or change scores is checked here, once.",
+      "plain": "Every request, from a tap or a button, however it arrives, gets one reply in one format: which request it answers, the outcome word, whether it is final, whether anything was stored. The rule that only the GM may start, pause, end or change scores is checked here, once.",
       "level": "module",
       "runsOn": ["backend", "gm-tablet", "player-devices", "config-tool"],
       "jobs": ["J3", "J2", "J4", "J5", "J7"],
@@ -274,7 +274,7 @@
       "runsOn": ["backend", "gm-tablet"],
       "jobs": ["J3", "J6", "J5"],
       "flaws": ["C11"],
-      "seams": "The written shape of the record, the session bundle; the designer's Review reads it inside the engine, and the game's own telling (for ALN, the Director Console) reads it from outside, with room to move inside the Review stage later."
+      "seams": "The file the record is written as; the designer's Review reads it inside the engine, and the game's own way of telling the story (for ALN, the Director Console) reads it from outside, with room to move inside the Review stage later."
     },
     {
       "id": "P6",
@@ -284,82 +284,82 @@
       "runsOn": ["backend", "gm-tablet"],
       "jobs": ["J2", "J4", "J9", "J1", "J7", "J5"],
       "flaws": ["C6", "C2", "C10", "C14"],
-      "seams": "The transport; the role filter from Connections and roles. One builder per fact serves both the snapshot and the live push."
+      "seams": "How facts travel to the screens; the role filter from Connections and roles. One piece of code per fact builds both the catch-up a screen gets when it connects and each live message."
     },
     {
       "id": "P7",
       "name": "Connections and roles",
-      "plain": "Every connection presents a verified pass; the engine knows what class it is, its name, which role it has and whether it is still there, by one liveness rule. A client's own word decides nothing. This part also says who may move the game and command the room, and gives the design tool and a preview engine their own passes.",
+      "plain": "Every connection presents a verified pass; the engine knows what kind of device it is, its name, which role it has and, by one rule, whether it is still connected. A device's own say-so decides nothing. This part also says who may move the game and command the room, and gives the design tool and a separate trial copy of the engine their own passes.",
       "level": "module",
       "runsOn": ["backend", "gm-tablet-standin"],
       "jobs": ["J7", "J2", "J3", "J8", "J9"],
       "flaws": ["C13", "C10"],
-      "seams": "The kinds of pass (operator, watch-only, device, session) and the ways a connection arrives."
+      "seams": "The kinds of pass (a login for staff such as the GM; watch-only, for screens; a device's own pass, issued automatically; a player's phone pass, with no account) and the two ways a device connects (a web request, or the live connection a tablet keeps open)."
     },
     {
       "id": "P8",
       "name": "Equipment",
-      "plain": "Each thing the room can do (play a video, play music, play a sound, route and set a volume, light a scene, show a display) behind one interface, with the outside program as an adapter beneath it. The engine's picture of each program is dated and reconciled; one supervisor restarts what it can.",
+      "plain": "Each thing the room can do (play a video, play music, play a sound, route and set a volume, light a scene, show a display) behind one interface, with the outside program as an adapter beneath it. The engine's picture of each program is dated and checked again against the program; one program watcher restarts what it can.",
       "level": "module",
       "runsOn": ["backend", "gm-tablet-standin"],
       "jobs": ["J4", "J9", "J8", "J10"],
       "flaws": ["C3", "C2", "C11"],
-      "seams": "One adapter per program and one software stand-in per capability for the preview engine and the test rig."
+      "seams": "One adapter per program, and one software stand-in for each kind of job (play a video, light a scene) for the trial copy of the engine and the test rig."
     },
     {
       "id": "P9",
       "name": "Show runner",
-      "plain": "The designer's cues, the game clock, the video queue and the held items: what the room should be doing now, given the game's events and the GM's commands, and what is parked because a service is down or a video is busy. One held store; it reads equipment's dated picture and keeps none of its own.",
+      "plain": "The designer's cues, the game clock, the video queue and the held items: what the room should be doing now, given the game's events and the GM's commands, and what is parked because a service is down or a video is busy. One list of held items; it reads equipment's dated picture and keeps none of its own.",
       "level": "module",
       "runsOn": ["backend", "gm-tablet-standin"],
       "jobs": ["J4", "J5", "J1"],
       "flaws": ["C11", "C3"],
-      "seams": "The cue vocabulary and clock rules from the pack."
+      "seams": "The kinds of cue and the clock rules the pack declares."
     },
     {
       "id": "P10",
       "name": "Verdict",
-      "plain": "What the game needs against what the kit has tonight, as one calculation whose every line says paper or live and go, no-go or dormant. The editor, the preflight, the start gate and a cue-time refusal all quote it.",
+      "plain": "What the game needs against what the kit has tonight, as one calculation whose every line says paper or live and go, no-go or not installed tonight. The design studio's editor, the preflight, the check before a game starts and a cue refused when it fires all quote it.",
       "level": "module",
       "runsOn": ["backend", "config-tool", "gm-tablet-standin"],
       "jobs": ["J9", "J8", "J6", "J4", "J5"],
       "flaws": ["C10"],
-      "seams": "None needed: data in, data out. The caller gathers the live inventory and passes it in."
+      "seams": "None needed: it only calculates. Whoever asks gathers what is running tonight and hands it over."
     },
     {
       "id": "P11",
       "name": "Lifecycle",
-      "plain": "The table of moments against facts and the only code that moves a game from one moment to the next. Boot and Reset System are the same path; every screen is told the boundary instead of guessing it; it is the only caller of every part's reset.",
+      "plain": "The table of moments against facts and the only code that moves a game from one moment to the next. Boot and Reset System are the same path; every screen is told when one game ends and the next begins instead of guessing it; it is the only thing that tells each part to reset.",
       "level": "module",
       "runsOn": ["backend", "gm-tablet"],
       "jobs": ["J5", "J2", "J3", "J4", "J1", "J6", "J9"],
       "flaws": ["C4", "C5", "C1", "C6"],
-      "seams": "The host (engine or standalone tablet, the same table). The apply window for a pack change is a row of the table."
+      "seams": "The device it runs on (the engine or a standalone tablet, the same table). When a pack change may be applied is a row of the table."
     },
     {
       "id": "P12",
       "name": "Venue fit",
-      "plain": "The venue technician's profile: what the kit brings tonight, which real instrument each of the pack's names binds to, whether the engine starts or adopts each program, how many stations and remote displays to expect; and, if the owner places it here, the declared fact that a game runs with no engine.",
+      "plain": "The venue technician's profile: what the kit brings tonight, which real piece of equipment each name in the pack means tonight, whether the engine starts each program or uses one already running, how many GM tablets and scoreboard screens to expect; and, if the owner places it here, the declared fact that a game runs with no engine.",
       "level": "module",
       "runsOn": ["backend", "config-tool", "gm-tablet", "player-devices"],
       "jobs": ["J8", "J4", "J9", "J2", "J5"],
       "flaws": ["N1", "C10", "C15"],
-      "seams": "The profile file; practice and preview profiles have the same shape."
+      "seams": "The profile file; practice and trial profiles are laid out the same way."
     },
     {
       "id": "P13",
       "name": "Engine instance",
-      "plain": "One engine knows its own names (data folder, process files, sockets, ports, the display it drives, the passes it accepts), so a second engine on the same machine, a test, a preview or a second kit, never touches the first. Its parts are built once from one list, by a starting point that sits above them all.",
+      "plain": "Each running copy of the engine keeps its own files, network ports and settings (its data folder, the display it drives, the passes it accepts), so a second copy on the same machine, a test, a separate trial copy or a second kit never touches the first. Its parts are set up in one place, from one list, when the engine starts.",
       "level": "module",
       "runsOn": ["backend", "config-tool", "tests", "gm-tablet-standin"],
       "jobs": ["J10", "J6", "J8", "J5"],
       "flaws": ["C8", "C5", "C15"],
-      "seams": "The environment (the settings file, a test's overrides, a preview's). The one list of parts is used by boot, by Reset System and by tests alike."
+      "seams": "Its settings: the settings file, or a test's or a trial copy's own settings in its place. The one list of parts is used by boot, by Reset System and by tests alike."
     },
     {
       "id": "P14",
       "name": "Screens",
-      "plain": "A screen draws the facts it is delivered, with their labels, and sends requests in the one envelope; it keeps no rule copy and makes no verdict of its own. The GM's four sections, the scoreboard page, the phone's memory view and the hardware scanner's display are each one of these.",
+      "plain": "A screen draws the facts it is delivered, with their labels, and sends requests in the one shared format; it keeps no rule copy and makes no verdict of its own. The GM's four sections, the scoreboard page, the phone's memory view and the hardware scanner's display are each one of these.",
       "level": "module",
       "runsOn": ["gm-tablet", "player-devices", "scoreboards"],
       "jobs": ["J2", "J4", "J9", "J3", "J7"],
@@ -369,60 +369,60 @@
     {
       "id": "P15",
       "name": "Design studio",
-      "plain": "The designer's drafts, published through the engine's own gate, applied to a running engine at a window the lifecycle allows, rehearsed on a preview engine kept apart from the live one, with verdict badges on the draft. It talks to the engine by message, never by writing its files or borrowing its code.",
+      "plain": "The designer's drafts, published through the engine's own check that refuses a broken pack, applied to the running engine only when the lifecycle allows (between games), rehearsed on a separate trial copy of the engine kept apart from the live one, with verdict badges on the draft. It talks to the engine only by sending it requests, never by writing its files or borrowing its code.",
       "level": "module",
       "runsOn": ["config-tool"],
       "jobs": ["J6", "J1", "J9"],
       "flaws": ["C12", "C8"],
-      "seams": "The draft store; the preview engine as a second engine instance under a preview profile."
+      "seams": "The draft store; the trial copy as a second running copy of the engine, with a trial profile."
     },
     {
       "id": "P16",
       "name": "Joins and proofs",
-      "plain": "Every shape two parts share is written once and both sides read it; every fake is checked against the class it stands for; the same suite runs on two packs; every level of testing runs the real programs it can, under an engine of its own, so no test reaches a live show.",
+      "plain": "Every format two parts share is written once and both sides read it; every test stand-in is checked against the real code it stands in for; the same tests run on two games, ALN and the toy game; every level of testing runs the real programs it can, under an engine of its own, so no test reaches a live show.",
       "level": "module",
       "runsOn": ["tests"],
       "jobs": ["J10", "J1", "J2", "J3", "J8"],
       "flaws": ["C14", "C16", "C8"],
-      "seams": "Shared shapes written once, from the reply words and the facts; a test for each plugged-in program that it does what its part needs of it; every suite run on two packs."
+      "seams": "Shared formats written once, from the reply words and the facts; a test for each plugged-in program that it does what its part needs of it; every set of tests run on two games."
     },
     {
       "id": "P17",
       "name": "Release",
-      "plain": "What is installed on a machine is one described set (engine version, built client folders, pack version, media by fingerprint, profile) that the engine compares at start and reports, so a rollback moves everything or says what it did not.",
+      "plain": "What is installed on a machine is one written list of what it should carry (the engine's version, the tablet and phone apps, the pack's version, the media by fingerprint, the profile), which the engine checks when it starts and reports, so going back to an earlier version moves everything or says what it did not.",
       "level": "module",
       "runsOn": ["backend", "config-tool"],
       "jobs": ["J10", "J8", "J1"],
       "flaws": ["C15"],
-      "seams": "Swapping the blue and green machines as the cutover; one list of what is installed, checked with the verdict's words."
+      "seams": "Swapping the machines, blue for green, on the day the new machine replaces the old one; one list of what is installed, checked with the health words."
     }
   ],
   "partsMermaid": "flowchart TD\n  P1[\"P1 Game rules\"]\n  P2[\"P2 Pack channel\"]\n  P3[\"P3 Game record\"]\n  P4[\"P4 Answering\"]\n  P5[\"P5 The night's record\"]\n  P6[\"P6 Delivery\"]\n  P7[\"P7 Connections and roles\"]\n  P8[\"P8 Equipment\"]\n  P9[\"P9 Show runner\"]\n  P10[\"P10 Verdict\"]\n  P11[\"P11 Lifecycle\"]\n  P12[\"P12 Venue fit\"]\n  P13[\"P13 Engine instance\"]\n  P14[\"P14 Screens\"]\n  P15[\"P15 Design studio\"]\n  P16[\"P16 Joins and proofs\"]\n  P17[\"P17 Release\"]\n  P12 --> P1\n  P2 --> P1\n  P2 --> P13\n  P10 --> P1\n  P10 --> P12\n  P7 --> P13\n  P8 --> P12\n  P8 --> P13\n  P3 --> P1\n  P3 --> P2\n  P9 --> P8\n  P9 --> P3\n  P9 --> P1\n  P9 --> P10\n  P11 --> P3\n  P11 --> P8\n  P11 --> P9\n  P11 --> P2\n  P11 --> P10\n  P11 --> P12\n  P11 --> P13\n  P4 --> P11\n  P4 --> P3\n  P4 --> P9\n  P4 --> P8\n  P4 --> P7\n  P6 --> P3\n  P6 --> P8\n  P6 --> P9\n  P6 --> P7\n  P6 --> P11\n  P6 --> P2\n  P5 --> P3\n  P5 --> P11\n  P14 --> P4\n  P14 --> P6\n  P14 --> P7\n  P15 --> P2\n  P15 --> P10\n  P15 --> P13\n  P15 --> P4\n  P15 --> P12\n  P15 --> P5\n  P16 --> P4\n  P16 --> P6\n  P16 --> P13\n  P16 --> P1\n  P16 --> P14\n  P16 --> P11\n  P16 --> P8\n  P17 --> P2\n  P17 --> P13\n  P17 --> P10\n  P17 --> P12",
-  "componentsMermaid": "flowchart LR\n  BE[\"The engine on the show machine: pack channel serve, game record authority, answering, night's record, delivery, connections, equipment, show runner, verdict, lifecycle, venue fit, engine instance, the release check at start, rules as a library\"]\n  GM[\"GM tablet, networked: screens, rules library, pack client with its stamp, the client side of answering and delivery\"]\n  GS[\"GM tablet, standalone: screens, rules, pack client, game record, lifecycle, local answering, local delivery, a local night's record, the standalone declaration, and small stand-ins for connections, equipment, the show runner, the verdict and the engine's names\"]\n  PH[\"Phone and hardware scanner: screens, pack client with its stamp, reply words as data, rules as data, the standalone declaration read\"]\n  SB[\"Scoreboards, TV and Pi 4: screens under a display pass, and the TV's browser is also an equipment adapter on the engine\"]\n  CT[\"Config tool: design studio, rules for validation, pack publish, verdict badges on paper, the venue technician's profile editor (venue fit), a preview instance, release\"]\n  TS[\"Tests, CI and the rig: joins and proofs on their own engine instance, equipment stand-ins, two packs\"]\n  PK[\"Pack data: rules as data, the published pack, the needs\"]\n  CT -->|\"publish, apply, rehearse by message\"| BE\n  GM -->|\"requests in one envelope, facts out with labels\"| BE\n  PH -->|\"scans in one envelope, replies as words\"| BE\n  SB -->|\"facts with labels, filtered by role\"| BE\n  PK -->|\"adopted through the pack channel\"| BE\n  PK -->|\"the same pack, stamped\"| GS\n  TS -->|\"its own instance, never the live one\"| BE",
+  "componentsMermaid": "flowchart LR\n  BE[\"The engine on the show machine: pack channel (serving the pack), game record (deciding every fact), answering, night's record, delivery, connections, equipment, show runner, verdict, lifecycle, venue fit, engine instance, the release check at start, the game rules as shared code\"]\n  GM[\"GM tablet, networked: screens, the game rules as shared code, its copy of the pack marked with its version, the tablet's end of answering and delivery\"]\n  GS[\"GM tablet, standalone: screens, rules, its copy of the pack, game record, lifecycle, local answering, local delivery, a local night's record, the standalone declaration, and small stand-ins for connections, equipment, the show runner, the verdict and the engine's own files, ports and settings\"]\n  PH[\"Phone and hardware scanner: screens, its copy of the pack marked with its version, reply words as data, rules as data, the standalone declaration read\"]\n  SB[\"Scoreboards, TV and Pi 4: screens under a display pass, and the TV's browser is also an equipment adapter on the engine\"]\n  CT[\"Config tool: design studio, the game rules for checking drafts, pack publish, verdict badges on paper, the venue technician's profile editor (venue fit), a separate trial copy of the engine, release\"]\n  TS[\"Tests, automatic test runs and the test rig: joins and proofs on their own copy of the engine, equipment stand-ins, two games\"]\n  PK[\"Pack data: rules as data, the published pack, what the game needs\"]\n  CT -->|\"publish, apply, rehearse, by request only\"| BE\n  GM -->|\"requests in one shared format, facts out with labels\"| BE\n  PH -->|\"scans in one shared format, replies as words\"| BE\n  SB -->|\"facts with labels, filtered by role\"| BE\n  PK -->|\"loaded through the pack channel\"| BE\n  PK -->|\"the same pack, version marked\"| GS\n  TS -->|\"its own copy of the engine, never the live one\"| BE",
   "alternatives": [
     {
       "title": "Getting state onto screens: one part or a delivery per promise",
-      "a": "One delivery part, with one builder per fact for the live change and the catch-up, carrying the label and filtered by role.",
-      "b": "The parts behind each promise deliver their own facts: the game record keeps its broadcasts and snapshot, equipment keeps its own pushes, with only a shared envelope.",
-      "cost": "The candidate needs every part that decides a fact to offer it in one shape, and one store on every screen that holds any fact; it is the only form in which C2, C6 and C10 are removed once. The other way needs less agreement and keeps each promise's delivery local, but C6 and C2 recur per promise and the check that every screen shows each fact's label stays a repeated audit."
+      "a": "One delivery part, with one piece of code per fact building the live change and the catch-up, carrying the label and filtered by role.",
+      "b": "The parts behind each promise deliver their own facts: the game record keeps its own live messages and catch-up, equipment keeps its own messages, with only a shared format.",
+      "cost": "The candidate needs every part that decides a fact to offer it in one format, and one store on every screen that holds any fact; it is the only form in which [[flaw:C2]], [[flaw:C6]] and [[flaw:C10]] are removed once. The other way needs less agreement and keeps each promise's delivery local, but [[flaw:C6]] and [[flaw:C2]] recur per promise and the check that every screen shows each fact's label stays one that someone repeats by hand."
     },
     {
-      "title": "The rules: shared code or two implementations under one contract",
+      "title": "The rules: shared code, or two bodies of code held to one agreement",
       "a": "One rules module loaded by the engine and the tablet, with generated tables for the hardware scanner.",
       "b": "Two bodies of code, one in the engine and one on the tablet, held equal by a test that runs the same inputs through both.",
-      "cost": "The candidate needs the engine's rules packaged so a browser can run them, and a generator for the tables; it removes C9 for the tablet by construction. The other way keeps today's two bodies and relies on a test that runs both and compares them; it detects drift and never removes it."
+      "cost": "The candidate needs the engine's rules packaged so a browser can run them, and a generator for the tables; it removes [[flaw:C9]] for the tablet because of how it is built. The other way keeps today's two bodies and relies on a test that runs both and compares them; it notices when the copies come to differ and never stops it."
     },
     {
-      "title": "Equipment: an interface per capability or per program",
-      "a": "Per capability (play a video, set a volume, light a scene), with the programs, or software stand-ins, plugged in beneath.",
-      "b": "Per program (a supervised process with its own verbs), as today's seven adapters under one supervision rule.",
-      "cost": "The candidate gives the preview engine and the test rig a real second thing to plug in and lets the show runner ask one object whether a video is playing; it costs one interface over programs that work differently (a video queue is not a music playlist). The other way is nearer today's code and cheaper first, but leaves the stand-ins hypothetical and the cross-program questions spread."
+      "title": "Equipment: an interface per kind of job or per program",
+      "a": "Per kind of job (play a video, set a volume, light a scene), with the programs, or software stand-ins, plugged in beneath.",
+      "b": "Per program (a program the engine keeps running, with its own commands), as today's seven adapters under one rule for keeping them running.",
+      "cost": "The candidate gives the trial copy of the engine and the test rig a real second thing to plug in and lets the show runner ask one place whether a video is playing; it costs one interface over programs that work differently (a video queue is not a music playlist). The other way is nearer today's code and cheaper first, but leaves the stand-ins on paper only and the questions about several programs at once spread out."
     },
     {
       "title": "The standalone tablet: the same modules as the engine, or its own engine",
       "a": "The same game record, lifecycle, answering and delivery hosted on the tablet, with a switch that says the game is standalone.",
-      "b": "A tablet-local engine kept equal by tests, as today but improved.",
-      "cost": "The candidate needs the record, the lifecycle table and answering and delivery to run outside the engine's own runtime, which limits how the engine's code is packaged; it makes parity structural. The other way keeps the engine free of that constraint and keeps a second body of rules on the tablet, with five rules that nothing keeps equal today as the standing risk."
+      "b": "An engine of the tablet's own, kept equal by tests, as today but improved.",
+      "cost": "The candidate needs the record, the lifecycle table and answering and delivery to run outside the engine itself, which limits how the engine's code is packaged; the tablet then matches the engine because it runs the same code. The other way keeps the engine free of that constraint and keeps a second body of rules on the tablet, with five rules that nothing keeps equal today as the standing risk."
     },
     {
       "title": "The tap's answer and the night's record: one part or two",
@@ -434,19 +434,19 @@
       "title": "The lifecycle: a module or a table each part reads",
       "a": "A lifecycle module, the only mover and the only caller of every reset.",
       "b": "A table every part reads and applies to its own facts, with no central mover.",
-      "cost": "The candidate removes C5 by construction and breaks today's loop of seven modules; it costs one module that depends on seven others and receives every boundary change, and every part must offer it a reset. The other way keeps each part's reset local and the mover small, but leaves whether every part read the table to a test, the same fault as C5: a list kept by hand that a test must check."
+      "cost": "The candidate removes [[flaw:C5]] by construction and breaks today's loop of seven modules; it costs one module that depends on seven others and is told each time a game starts or ends, the engine resets or restarts, or the pack changes, and every part must offer it a reset. The other way keeps each part's reset local and the mover small, but leaves whether every part read the table to a test, the same fault as [[flaw:C5]]: a list kept by hand that a test must check."
     },
     {
       "title": "The scoreboard: one page in two hosts, or a view of the GM app",
       "a": "One page shown in two places, the TV's browser and the Pi 4.",
       "b": "The scoreboard as a view inside the GM app, chosen by the pass.",
-      "cost": "The candidate keeps the audience's page apart from the GM's command center and is the smaller change; it keeps two drawings of the same facts, the GM app's and the page's. The other way gives one drawing per fact on every screen and one build, at the cost of a far larger client on a Pi 4 and a pass that must keep the GM's controls off the audience's screen."
+      "cost": "The candidate keeps the audience's page apart from the GM's command center and is the smaller change; it keeps two drawings of the same facts, the GM app's and the page's. The other way gives one drawing per fact on every screen and one app to build, at the cost of a far larger app on a Pi 4 and a pass that must keep the GM's controls off the audience's screen."
     },
     {
-      "title": "Release day: its own part beside the developer's proof, or in venue fit's deploy chain",
+      "title": "Release day: its own part beside the developer's tests, or in Venue fit's hand-off from designer to venue technician to GM",
       "a": "Release as its own small part, for release day: the owner alone sends a change to the show.",
-      "b": "Release folded into venue fit's Deploy stage, the venue technician's handoff.",
-      "cost": "Both place C15. The candidate keeps the owner's cutover decision beside the developer's proof; the other way puts the installed-pieces check where the venue technician already works. It is a wording choice."
+      "b": "Release folded into Venue fit's hand-off from designer to venue technician to GM.",
+      "cost": "Both place [[flaw:C15]]. The candidate keeps your decision to swap in the new machine beside the developer's tests, which prove a change to the engine before it reaches a show; the other way puts the check of what is installed where the venue technician already works. It is a wording choice."
     }
   ],
   "questionNotes": [

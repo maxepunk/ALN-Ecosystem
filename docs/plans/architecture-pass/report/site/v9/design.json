@@ -1,0 +1,144 @@
+{
+  "ahead": [
+    {
+      "slug": "how-the-engine-holds-the-game-s-state",
+      "title": "How the engine holds the game's state",
+      "decides": "Where each fact of a running game lives and is decided, how a fact changes, how it is kept so that a restart loses nothing, and how every screen receives it and catches up after a reconnect. It also settles what each fact and each copy does when a game starts or ends, at a system reset, at a restart and at a pack change. It is the hardest decision to reverse, so it comes first.",
+      "drivers": "The promises [[promise:J2]], [[promise:J5]], [[promise:J3]] and [[promise:J9]]. The quality targets [[qt:QT1]], [[qt:QT3]], [[qt:QT5]], [[qt:QT16]] and [[qt:QT17]]. The extension cases [[ex:EX2]], [[ex:EX8]] and [[ex:EX19]].",
+      "settled": "The four words for the game's live facts stand ([[dec:four-words-for-the-game-s-live-facts]]): runtime state, authority, copy and delivery path, and an outside program can be an authority. They name the facts and decide nothing about how the engine holds them. Five of the nine questions the pass answers ([[dec:the-nine-questions-the-pass-answers]]) bear on this decision: Who decides each fact; One question gets one answer; Each fact at a game boundary; How copies update and show their age; Reconnect snapshot built like live update. Since the design rounds go by decision, the record reads the nine as checks on each design, a reading still to be confirmed with you. The night's record is written from the facts the engine decided and carries the pack the game ran and the texts the players saw ([[dec:the-night-s-record-and-the-after-game-article]]). Whatever is chosen shows up in the published protocol ([[dec:one-published-protocol-and-an-outside-test-bench]]): for example, if facts are numbered in order, a reconnecting screen asks for everything after a given number.",
+      "panel": "The panel proposes two or three ways of holding the state, blind, from the goal, the requirements and the setting; the design round then puts them side by side, each checked against the promises, the quality targets, the extension cases and the sixteen design flaws as test situations. The situations nearest this decision: [[flaw:C1]], [[flaw:C4]], [[flaw:C5]], [[flaw:C6]], [[flaw:C9]] and [[flaw:C11]]. The round also says how each design serves applying a change while the engine runs between games, the separate trial copy of the engine, capturing the night (the roster, the notes, the photos), players' phones and standalone games. No option is proposed here."
+    },
+    {
+      "slug": "the-published-protocol-s-form",
+      "title": "The published protocol's form",
+      "decides": "The protocol itself is decided; this decision settles its form. How each message and each file is defined and versioned, how a device's code is generated from the definition or checked against it, and what every fact and reply carries with it, such as how old it is and how sure the engine is. It also settles the version rules: what an older tablet, scanner or pack does when the engine is newer.",
+      "drivers": "The promises [[promise:J10]], [[promise:J1]], [[promise:J7]] and [[promise:J3]]. The quality targets [[qt:QT18]], [[qt:QT22]], [[qt:QT19]], [[qt:QT7]], [[qt:QT32]], [[qt:QT35]] and [[qt:QT41]]. The extension cases [[ex:EX10]], [[ex:EX17]], [[ex:EX18]], [[ex:EX19]] and [[ex:EX21]].",
+      "settled": "One published, versioned protocol defines everything that crosses the engine's edge, every program's code is generated from it or checked against it, and it is designed in an early design round, not merely collected ([[dec:one-published-protocol-and-an-outside-test-bench]]); the full explanation is under Decided directions below. The components keep their settled roles ([[dec:the-role-question-starts-from-settled-roles]]): the player scanners show token content and report scans, the GM scanner is the command center, the scoreboards show the public results. Two of the nine questions bear on it ([[dec:the-nine-questions-the-pass-answers]]): Service state travels with its health, and Each component gets what its role needs. The night's record is one of the files the protocol defines, read by the Director Console from outside ([[dec:the-night-s-record-and-the-after-game-article]]). The record's reading that the protocol takes the place of the drafted message lists among the design half's handover documents ([[dec:five-documents-the-design-half-hands-over]]) is to be confirmed with you.",
+      "panel": "The panel brings two or three forms side by side, checked against the requirements; the hardware scanner, whose program is written in another language, is the hard case every form must serve. The design flaws nearest this decision, as test situations: [[flaw:C7]], [[flaw:C13]], [[flaw:C14]], [[flaw:C2]] and [[flaw:C12]]. Because the other big decisions show up in the protocol, this round comes early."
+    },
+    {
+      "slug": "where-authority-lives-across-devices-offline-and-standalone-included",
+      "title": "Where authority lives across devices, offline and standalone included",
+      "decides": "For each fact, which device or program decides it: the engine in a networked game, the tablet in a standalone one, an outside program for what it alone knows. What a tablet does with a scan while its connection is down: refuses it with a reason, or keeps it and answers when the connection returns. Where the fact 'this game is standalone' is kept, and how it reaches every device.",
+      "drivers": "The promises [[promise:J2]], [[promise:J3]], [[promise:J8]], [[promise:J9]] and [[promise:J5]]. The quality targets [[qt:QT3]], [[qt:QT7]], [[qt:QT37]], [[qt:QT38]], [[qt:QT39]], [[qt:QT40]] and [[qt:QT17]]. The extension cases [[ex:EX12]], [[ex:EX4]] and [[ex:EX10]].",
+      "settled": "A whole game can run with no engine, as a choice a game declares, and no game mixes networked and standalone devices ([[dec:standalone-games-declared-never-mixed]]); where the declaration is held (the venue profile, the pack, the game's record or each device) is left to this round. An outside program can be an authority ([[dec:four-words-for-the-game-s-live-facts]]). The components keep their settled roles ([[dec:the-role-question-starts-from-settled-roles]]). The question Who decides each fact is the central one of the nine ([[dec:the-nine-questions-the-pass-answers]]). Three of your open questions feed this round: [[q:L]], [[q:M]] and [[q:N]]. [[qt:QT3]] leaves to this round what a disconnected tablet does with a scan.",
+      "panel": "The panel brings two or three placements of authority side by side, each tested against the requirements and against these situations: [[flaw:C9]], [[flaw:C1]], [[flaw:C7]], [[flaw:C13]] and the proposed seventeenth, [[flaw:N1]]. Each design must say who decides when there is no engine, and how the rules stay equal on the engine and on the tablet, with a test that proves it."
+    },
+    {
+      "slug": "how-games-and-venues-extend-the-engine",
+      "title": "How games and venues extend the engine",
+      "decides": "What a pack may declare and what a venue profile may declare, and where the engine leaves room for a developer to add a scoring model, a kind of screen, a device kind, a program it drives or a content source without touching the rest. How the check at publish refuses a pack that contradicts itself or asks for something this engine lacks, naming what is at fault. Where the settings live that are neither pack nor profile, such as whether the engine starts each program itself or uses one already running.",
+      "drivers": "The promises [[promise:J1]], [[promise:J4]], [[promise:J8]] and [[promise:J6]]. The quality targets [[qt:QT9]], [[qt:QT10]], [[qt:QT12]], [[qt:QT20]], [[qt:QT21]], [[qt:QT22]], [[qt:QT23]], [[qt:QT24]] and [[qt:QT6]]. The extension cases [[ex:EX1]], [[ex:EX3]], [[ex:EX4]], [[ex:EX5]], [[ex:EX6]], [[ex:EX7]], [[ex:EX9]], [[ex:EX11]], [[ex:EX13]], [[ex:EX15]], [[ex:EX16]], [[ex:EX18]], [[ex:EX20]] and [[ex:EX22]].",
+      "settled": "The pack, the venue profile, the night's record and the media list are among the files the published protocol defines ([[dec:one-published-protocol-and-an-outside-test-bench]]); for an open-source platform, the protocol and the pack format are what other people build against. The standing rules on [[page:requirements]] hold: the engine holds no opinion about game design, media never lives inside the pack, and nothing in the engine assumes one kit, one pack or one production. Whether paper documents join the pack, with 'unlocked' recorded during play, waits for this round ([[dec:the-night-s-record-and-the-after-game-article]]). The merged hardening pieces (the equipment families, the core that marks equipment not installed tonight, the smallest test set-up) stay in the engine and change only where a design choice requires ([[dec:corrections-to-the-readers-and-the-hardening-pieces]]). [[q:E]] and [[q:I]] touch the clauses added to the pack promise and whether the venue promise stays whole; the panel designs against the promises as you confirm them.",
+      "panel": "The panel brings two or three ways of extending side by side: what the pack declares, what the profile declares, and the places a developer adds to. Each is tested against the extension cases above, with the toy game and the second game's four needs (two-tap actions, hidden facts that spread, a score read off a graph, a constellation screen) as the working examples, and against these situations: [[flaw:C12]], [[flaw:C15]], [[flaw:C3]], [[flaw:C10]] and [[flaw:N1]]."
+    },
+    {
+      "slug": "how-one-engine-runs-as-many-separate-copies",
+      "title": "How one engine runs as many separate copies",
+      "decides": "How the show's copy of the engine, a trial copy, a test copy and a second kit's copy each keep their own files, network ports, settings, programs and passes, so that none can stop another's programs, read its records or accept its passes. How the engine tells its own program from a stranger's copy of the same program on the same machine. What is set per copy and per kit, such as the kit's network name. Where the designer's trial copy runs, a laptop or the show machine between games, is open.",
+      "drivers": "The promises [[promise:J6]], [[promise:J10]] and [[promise:J8]]. The quality targets [[qt:QT11]], [[qt:QT27]], [[qt:QT43]], [[qt:QT24]], [[qt:QT23]] and [[qt:QT36]]. The extension cases [[ex:EX14]], [[ex:EX16]], [[ex:EX21]] and [[ex:EX23]].",
+      "settled": "The question Only the live engine touches the show asks whether anything other than the live engine, tests today and the trial copy later, can touch the live show ([[dec:the-nine-questions-the-pass-answers]]). The tests become a test bench outside the engine ([[dec:one-published-protocol-and-an-outside-test-bench]]), and the test rig is built at the start of building as part of that bench, where a thin first version of the new design runs end to end ([[dec:build-the-test-rig-when-building-starts]]); both need copies that keep to themselves. How a standalone tablet runs its game, with the same parts the engine runs or an engine of its own, is still open (see Later choices). The Director Console stays a separate program on another computer, for now, that reads the record; the record is designed so the console can later become ALN's own part of the engine's Review stage ([[dec:the-night-s-record-and-the-after-game-article]]).",
+      "panel": "The panel brings two or three ways of keeping copies apart, tested against the requirements and against these situations: [[flaw:C8]], [[flaw:C5]] and [[flaw:C15]]. Each design says what a copy owns, what a kit owns and what the machine owns, and how a test run on the show machine during a show is kept from the show."
+    },
+    {
+      "slug": "how-today-s-engine-moves-to-the-new-design",
+      "title": "How today's engine moves to the new design",
+      "decides": "Whether today's engine is changed in place, area by area, or a new engine is built beside it, starting from the thin first version, and the pieces swapped over. How the game keeps running on blue, the show machine in use now, while the new engine is built for green, the new machine this work builds. What the move does with today's tests and with the hardening pieces already merged. This decision feeds the build plan, which follows the design rounds.",
+      "drivers": "The promises [[promise:J10]] and [[promise:J5]]. The quality targets [[qt:QT41]], [[qt:QT42]], [[qt:QT26]] and [[qt:QT19]]. The extension case [[ex:EX17]].",
+      "settled": "The build half changes the engine to follow the design, one area at a time, as the first work in the new roadmap, and starts with a thin first version of the new design running end to end on a new test bench ([[dec:one-program-design-half-then-build-half]]); each area gets its detailed design just before it is built. The game keeps running on blue until the new engine is ready to swap in on green, and no date governs the work ([[dec:the-architecture-pass-is-the-work-now]]). The test rig is built when building starts, not to reproduce today's problems first; if this decision chooses to change today's engine in place, pinning down today's behaviour first comes back ([[dec:build-the-test-rig-when-building-starts]]). The merged hardening pieces stay in the engine ([[dec:corrections-to-the-readers-and-the-hardening-pieces]]), and the truth sweep's purpose, proving that every screen tells the truth, moves into the build work ([[dec:the-truth-sweep-s-charter-is-retired]]). Whether each build area still starts with its test failing on today's engine is read as overtaken unless the move changes the engine in place; that reading is to be confirmed with you ([[dec:one-program-design-half-then-build-half]]).",
+      "panel": "The panel brings two or three ways of moving side by side, each priced by what it needs from today's engine, with [[page:today]] as the evidence of what already works and what is already well built. The situations nearest this decision: [[flaw:C15]], [[flaw:C16]] and [[flaw:C5]]. The round ends by handing the build plan its starting point; the build plan settles the order of the work."
+    }
+  ],
+  "decided": [
+    {
+      "slug": "the-published-protocol",
+      "title": "The published protocol",
+      "paragraphs": [
+        "The published protocol is one written definition of everything that crosses the engine's edge, kept in one place with a version number. It defines what a device may ask ('this team turns in this token', 'start the game', 'play this video'); what the engine answers (done; refused, and why; held for later; try again); what the engine tells screens (the scores, the clock, what is playing, each service's health, each with how old and how sure it is); and the files that carry a game or a night (the pack, the venue profile, the night's record, the list of media files).",
+        "The code on every side is generated from that one definition or checked against it: the engine, the GM tablet, the phone, the TV and the design tool; the hardware scanner gets its names and its test examples from it. A change starts in the definition. Anything that no longer matches fails when the code is built, not during a show. Version rules say what an older tablet, scanner or pack does when the engine is newer.",
+        "It is the line between the engine's inside and everything around it. Inside, the design can be reorganised freely as long as the protocol holds. Outside, everything relies on it: your devices and games, the tools, a future developer, and the Director Console reading the night's record. For an open-source platform, it and the pack format are what other people build against. The other big decisions show up in it. For example, if facts are numbered in order, a reconnecting screen asks for everything after a given number; and if a game is standalone, the tablet speaks the same protocol to whatever runs the game on it. That is why it comes early in the design rounds.",
+        "Today the repository has written lists of what crosses the edge: the engine's written lists of web requests, live messages and the night's record, the venue profile's format and the pack formats, checked by a few tests, while every program copies the names by hand. The protocol consolidates and standardizes them, becomes the source of the code, and is designed rather than only collected.",
+        "It is not a program that runs. It does not replace the outside programs' own protocols: the video player, the music player and the lighting system keep theirs, and the engine adapts to them inside.",
+        "Its cost: generating code for the engine and the web programs, which share one language, and in part for the hardware scanner's program in its own; a version policy; and the discipline that every change starts in the definition. Together with the test bench it replaces the earlier candidate's part [[part:P16]] ([[dec:one-published-protocol-and-an-outside-test-bench]]). Its form is the decision ahead on the protocol's form, above."
+      ]
+    },
+    {
+      "slug": "the-test-bench-outside-the-engine",
+      "title": "The test bench outside the engine",
+      "paragraphs": [
+        "The tests move to a test bench outside the engine ([[dec:one-published-protocol-and-an-outside-test-bench]]). A test is the engine running with a stand-in venue profile: a profile that binds the pack's names to software stand-ins for video, sound, lights and speakers, which can be generated from the pack's own needs so that every need is met. On the bench a developer runs a whole game end to end on a laptop or a cloud machine with no venue hardware: the engine, the GM tablet's app, both player scanners' software and the TV page.",
+        "The same engine, the same pack and the same checks run at every test level (logic only; real programs with stand-in hardware; the home test bed; the venue), and each run records which checks it could not do and why. Every change runs the full set of tests twice, once with ALN's pack and once with the toy game's; a test that cannot run on this machine fails loudly with its reason; every test stand-in is compared with the real thing it stands for. A test run on the show machine keeps its own files, network ports and settings, and cannot stop a program it did not start.",
+        "'Proof' stays a quality every part must meet: a passing test run means the show works for two games, and no test reaches a live show. The newcomer's first demo, the designer's try-my-change loop and the developer's test bench are one kind of rehearsal at different depths. The build half starts with a thin first version of the new design running end to end on this bench ([[dec:one-program-design-half-then-build-half]])."
+      ]
+    },
+    {
+      "slug": "the-test-rig-built-when-building-starts",
+      "title": "The test rig built when building starts",
+      "paragraphs": [
+        "The test rig is an automated machine that runs the real engine with real video, music, audio and lighting stand-ins, so a design flaw can be made to happen for real instead of being read off the code. It was lost when the cloud computer it ran on was wiped.",
+        "It no longer comes before design ([[dec:build-the-test-rig-when-building-starts]]). It is built at the start of building, as part of the new test bench where the thin first version of the new design runs end to end, not to reproduce today's problems first. It had come before the design rounds, right after the review that named the design flaws, meant to reproduce four findings before design (the deleted token still refused, the music panel behind live music, the ended game returning after a restart, the reset that leaves music out), situations under [[flaw:C1]], [[flaw:C2]], [[flaw:C4]] and [[flaw:C5]]. The question of how much the rig proves before design is withdrawn.",
+        "Exception: if the decision on how today's engine moves to the new design chooses to change it in place, pinning down today's behaviour first comes back. The record reads two earlier conditions as overtaken by this decision, that each build area starts with its test failing on today's engine ([[dec:one-program-design-half-then-build-half]]) and that the rig reproduces each finding marked to be shown happening live before the design half ends ([[dec:when-the-design-half-is-finished]]); both readings are to be confirmed with you."
+      ]
+    },
+    {
+      "slug": "the-after-game-boundary",
+      "title": "The after-game boundary",
+      "paragraphs": [
+        "What the players receive after the show, and their contact details, are the game's business, outside the engine; the engine's record is designed so the game's own tools can read it ([[dec:the-night-s-record-and-the-after-game-article]]). The second half of [[promise:J3]] names the director and the players after the show. The engine makes the players no promise of their own for what they receive after the show.",
+        "The night's record carries the pack the game ran and the texts the players saw, so the article quotes what they held. Players' emails stay outside the engine; later, the game's own tools could collect them from the ticketing service. The Director Console stays a separate program, for now, that reads the engine's record; the record is designed so the console can later become ALN's own part of the engine's Review stage.",
+        "The two clocks (a sale is stamped with the tablet's time, a score adjustment with the engine computer's) join [[flaw:C9]] as a finding. Whether paper documents join the pack, with 'unlocked' recorded during play, was not answered and waits for the design rounds."
+      ]
+    }
+  ],
+  "later": [
+    {
+      "text": "Where 'this game is standalone' is declared: the venue profile (the earlier candidate favours it), the pack, the game's record or each device. It is decided in the round on where authority lives.",
+      "alt": ""
+    },
+    {
+      "text": "Getting facts onto screens: one delivery part for every fact, or the parts behind each promise delivering their own facts in one shared format.",
+      "alt": "alt-delivery"
+    },
+    {
+      "text": "The life of a game: one lifecycle part that alone moves the game and resets every part, or a table each part reads and applies itself.",
+      "alt": "alt-lifecycle"
+    },
+    {
+      "text": "The game rules as one shared body of code that the engine and the tablet both run, or two bodies kept equal by tests.",
+      "alt": "alt-rules"
+    },
+    {
+      "text": "The equipment's interface: one per kind of job the room can do (play a video, light a scene), or one per outside program.",
+      "alt": "alt-equipment"
+    },
+    {
+      "text": "The standalone tablet: the same record and lifecycle parts the engine runs, or an engine of its own.",
+      "alt": "alt-standalone-tablet"
+    },
+    {
+      "text": "The scoreboard: one page shown in two places, the TV's browser and the Pi 4, or a view inside the GM app.",
+      "alt": "alt-scoreboard"
+    },
+    {
+      "text": "The config tool, the designer's and venue technician's tool: a separate program that talks to the engine only by sending it requests, never by writing its files, or pages the engine itself serves.",
+      "alt": ""
+    },
+    {
+      "text": "When a changed pack may be loaded while the engine runs. That is not built yet; the plan allows it only before a game starts or after it ends.",
+      "alt": ""
+    },
+    {
+      "text": "Where the setting lives that says whether the engine starts each outside program or uses one already running: in the venue technician's profile, as the earlier candidate has it, or in a file of its own, as the list of planned capabilities you approved has it. It is decided in the round on how games and venues extend the engine.",
+      "alt": ""
+    },
+    {
+      "text": "The order of the work: by part (the earlier candidate put [[part:P13]] and [[part:P6]] first) or by block as the roadmap has it. The build plan, which starts with a thin first version, settles it after the design rounds.",
+      "alt": ""
+    },
+    {
+      "text": "Whether paper documents join the pack, with 'unlocked' recorded during play, so the night's record can say which documents the players opened. Today the director marks them by hand after the show. It is decided in the round on how games and venues extend the engine.",
+      "alt": ""
+    }
+  ],
+  "earlierNote": "An earlier candidate, drawn bottom-up from today's engine: seventeen parts, how they would run on each device, and where a real alternative exists. It is one input among the panel's; the panel compares it with its own proposals in its second round, after proposing blind. Its part [[part:P16]] is replaced by the published protocol and the test bench ([[dec:one-published-protocol-and-an-outside-test-bench]]); nothing else in it is decided."
+}

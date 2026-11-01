@@ -3,6 +3,7 @@
   "cases": [
     {
       "id": "EX1",
+      "title": "A whole second game, as a pack",
       "who": "designer",
       "case": "A designer who did not build ALN makes a whole second game: its tokens and their texts, its modes, scoring, groups, cues, clock, words and look. They publish it, and that night the whole kit plays it: the engine scores by it, the TV shows its words, every tablet and scanner holds the same copy, and the GM can see at a glance that they match. The toy game kept beside ALN is the standing proof that this works for a game that is not ALN.",
       "throughWhat": "A pack, written in the design tool and published through the engine's own check that refuses a broken pack; a media bundle for the files the pack names.",
@@ -17,6 +18,7 @@
     },
     {
       "id": "EX2",
+      "title": "Change one value between shows and play it",
       "who": "designer",
       "case": "Between two shows the designer changes one value, say a token's rating or a group's bonus, applies it to the running engine, and plays a round to feel the change, all within minutes. A game in progress never receives the change: the engine applies it only at a moment its lifecycle allows, between games, or refuses and says why. Every copy of the pack in the kit is told, and the GM sees which version each device runs.",
       "throughWhat": "The pack, edited as a draft in the design tool and published; the engine applies the change only between games, or refuses and says why.",
@@ -32,6 +34,7 @@
     },
     {
       "id": "EX3",
+      "title": "A third way to turn in a token",
       "who": "designer",
       "case": "A designer adds a third thing a team can do with a token, for example 'donate it to the archive': the token is used up, no money moves, and the result lands on the evidence screen. They describe the new mode by its flags, how it scores, whether it uses the token up, where its result shows, and name it on screen in their own words. The engine reads the flags and never the mode's name, so ALN's two modes and this third one are the same kind of thing to it.",
       "throughWhat": "The pack's list of modes, and the pack's strings that name the mode on screen.",
@@ -46,6 +49,7 @@
     },
     {
       "id": "EX4",
+      "title": "A new scoring model added once",
       "who": "developer, then designer",
       "case": "A game needs a way of scoring the engine has never had, for example a score read off a graph of connected tokens instead of a table of values. A developer adds it once as a generic model with its own parameters. A designer selects the model in their pack and tunes its parameters like any other pack value. A pack that asks for a model the engine lacks is refused when published, with the model named, instead of running with the wrong rules.",
       "throughWhat": "A module of the engine's own rules library, selected by the pack by name and listed among the abilities the pack requires; the parameters in the pack.",
@@ -60,6 +64,7 @@
     },
     {
       "id": "EX5",
+      "title": "Adding tokens and their media files",
       "who": "designer",
       "case": "A designer adds twenty tokens with new texts, pictures, sounds and three videos. The texts and the names of the files go into the pack; the files themselves go into the media bundle through the design tool. Before the show, a check says whether every file the pack names is on the show machine, by a fingerprint of its content. The hardware scanners fetch the new pictures and sounds by themselves at their next start.",
       "throughWhat": "The pack (tokens, texts, file names with fingerprints) and the media bundle, uploaded through the design tool and moved as one to the show machine.",
@@ -74,6 +79,7 @@
     },
     {
       "id": "EX6",
+      "title": "A cue names roles, the venue binds them",
       "who": "designer",
       "case": "A designer adds a cue: at the ninety-minute mark the lights go to a 'police arrival' look, a siren plays and the music turns down. They name the look by its role in the show. Which real lamp and which scene make that look is the venue technician's business, bound per venue. The designer also marks whether the lights are needed. In a venue with no lights tonight, marked 'skip it', the cue's lighting shows as not installed tonight, grey, and the siren still plays; marked 'block the show', the preflight says no-go and the game does not start without the typed override.",
       "throughWhat": "The pack's cues, naming lighting roles, sound files and display channels; the venue profile binds each name to an instrument.",
@@ -89,6 +95,7 @@
     },
     {
       "id": "EX7",
+      "title": "Each game's own words, colours and labels",
       "who": "designer",
       "case": "One game calls its score-holders 'Accounts', another 'Crews'; one shows star ratings, another hides them; each has its own colours and its own award message. The designer sets these in the pack, and the GM's tablet, the TV and the phones all use them, with the same words in the editor as at the show. The engine's own fallback words appear only when a pack declares none.",
       "throughWhat": "The pack's strings file, its theme file and its score-holder label.",
@@ -103,6 +110,7 @@
     },
     {
       "id": "EX8",
+      "title": "A game divided into acts",
       "who": "designer",
       "case": "A designer divides the game into acts. A cue fires two minutes into act two, and the GM moves the game from act to act with one button when the room is ready, not by the clock alone. The acts and the timings are the designer's; the button is the engine's, and what it does at pause, end and reset is defined.",
       "throughWhat": "The pack's clock and phases block, and cues timed relative to a phase.",
@@ -117,6 +125,7 @@
     },
     {
       "id": "EX9",
+      "title": "Configuring screens, and a new kind of screen",
       "who": "designer; developer for a new kind of screen",
       "case": "A designer turns the scoreboard off for a game with no public score, or changes how fast the evidence pages turn, in the pack. A game that needs a new kind of public screen, say a constellation of nodes and edges, gets it as code a developer adds once that draws the new kind of screen; the pack selects it and themes it. A screen receives only what it may show: hidden facts are filtered before they leave the engine, never on the screen itself.",
       "throughWhat": "The pack's surfaces block for the built-in screens; for a new kind of screen, the code that draws it, added once at the place a new kind of screen plugs in, selected by the pack and listed among the abilities it requires.",
@@ -132,6 +141,7 @@
     },
     {
       "id": "EX10",
+      "title": "Players' own phones and two-tap actions",
       "who": "designer; developer for each device kind's support",
       "case": "A game lets players use their own phones: tap a token, a web page opens, no account, no login, no app. The same game asks for a two-tap action: a player taps their own token, then another player's, and something happens between them. The designer declares which device kinds its players use, what each may do, and the two-tap action's rules, in the pack. The phone and the hardware scanner both perform the action, each in its own way on its own screen. A developer builds each device kind's support once, as platform work, never per game. number to set: how many phones one kit carries at once.",
       "throughWhat": "The pack (device classes, what each may do, the multi-tap actions); the published protocol; everything the designer iterates on reaches the device as pack data, never firmware.",
@@ -147,6 +157,7 @@
     },
     {
       "id": "EX11",
+      "title": "Who may do what on which device",
       "who": "designer",
       "case": "One game wants players named: a typed name on their own phone, or a scanned band at a shared station. Another wants nobody named. A third lets a shared station make a transaction that only a GM may make today. The designer sets this per game: which device classes exist, what each may do, whether a person is ever identified. In every game, starting, pausing and ending the game, show control and score changes stay with staff who log in, such as the GM.",
       "throughWhat": "The pack (device classes, what each may do, the identification moment); the pack says what each kind of device may do, within the limit that starting, pausing and ending the game, show control and score changes stay with staff who log in, such as the GM.",
@@ -160,6 +171,7 @@
     },
     {
       "id": "EX12",
+      "title": "A small game with no show machine",
       "who": "designer declares it; the GM runs it",
       "case": "A small game runs in a room with no show machine: one GM tablet and the player scanners each work alone. The designer declares the game standalone. The tablet says 'standalone', never 'disconnected', runs the same rules the engine would, and its record names the pack version it played. No game mixes devices on an engine with devices working alone. Today the hardware scanner cannot work alone; the owner reads that as a parity gap between the two player scanners, and the owner's explicit word on it is still asked for. What becomes of exposure and of video tokens in a game with no engine is an open question. Where the declaration lives, and how many tablets a standalone game may have, are the owner's open choices. number to set: how many GM tablets one standalone game may run.",
       "throughWhat": "A declaration carried with the pack, the venue profile or the game's record (the owner chooses where), read by every device; the same rules module on the tablet.",
@@ -175,6 +187,7 @@
     },
     {
       "id": "EX13",
+      "title": "A new venue is a new profile",
       "who": "venue technician",
       "case": "The kit goes to a new venue. The technician reads the pack's tech rider, fills in a profile of what the room has tonight (which speakers, which lights, which network, how many stations and how many extra scoreboard screens), binds each of the pack's names to a real instrument on one page, and runs one preflight that says go or no-go. Each line says what it checked and whether it checked paper or the live room. Equipment left at home shows as not installed tonight, grey, never red. A second venue is a second profile; the pack is the same.",
       "throughWhat": "A venue profile, edited in the venue technician's tool, with its bindings page, its profile manager and the preflight; the tech rider derived from the pack.",
@@ -190,6 +203,7 @@
     },
     {
       "id": "EX14",
+      "title": "Rehearsing the whole show on stand-ins",
       "who": "designer",
       "case": "On a laptop with no lights, speakers or TV, or on the show machine between games (where it runs is an open question), the designer rehearses the whole show: every player action performed in its simulated form, the show reacting for real on software stand-ins. The profile for this is generated from the pack's own needs so that every need is met; every verdict on screen says 'paper', never 'live'. The live engine, its programs and its records are untouched, and nothing the trial engine issues is accepted by the live one.",
       "throughWhat": "A venue profile whose bindings point at software stand-ins, generated from the pack; a separate trial copy of the engine with its own files, ports and settings.",
@@ -205,6 +219,7 @@
     },
     {
       "id": "EX15",
+      "title": "A different lighting system or video player",
       "who": "developer adds the support; the venue technician says in the profile what the room has tonight",
       "case": "A kit uses a different lighting system, or the team replaces the video player. A developer adds support for the new program once. The pack, the cues, the GM's screens and the support for the other programs do not change. The new program has a software stand-in for tests and rehearsal. A setting says whether the engine starts the program itself or uses one already running, and the program watcher restarts it like any other.",
       "throughWhat": "Support for the program, added once inside the engine, with its software stand-in; the setting that says whether the engine starts each program or uses one already running (where that setting lives, in the venue profile or in a settings file on the machine, is open for the design rounds).",
@@ -219,6 +234,7 @@
     },
     {
       "id": "EX16",
+      "title": "A second production takes the platform",
       "who": "operator",
       "case": "A second production takes the platform: another operator with their own kit, their own venue profiles and a library of installed packs, picking one per event. Their kit has its own network name and its own machine; two kits in one building never confuse each other's devices. Nothing in the engine assumes one kit, one pack or one production, so they install the engine and go.",
       "throughWhat": "Their own venue profiles and installed packs; the engine's per-kit settings (its network name, one written list of what the machine should carry); their own copy of the engine with its own files, ports and settings.",
@@ -233,6 +249,7 @@
     },
     {
       "id": "EX17",
+      "title": "A new engine version by swapping machines",
       "who": "operator (the owner)",
       "case": "A new engine version is ready. The owner builds a second machine, checks that it carries one matching set (engine version, tablet and phone apps, pack version, media by fingerprint, venue profile), rehearses on it, and swaps it in between events by replugging. If the night goes wrong, replugging the old machine brings everything back as it was. After the swap, packs may change at any time by publishing; the engine changes only between events.",
       "throughWhat": "One written list of what the machine should carry, so the owner can see that a machine carries one matching set before it goes out; the swap of machines; the pack channel for pack updates.",
@@ -247,6 +264,7 @@
     },
     {
       "id": "EX18",
+      "title": "A different content tool feeds the same pack",
       "who": "developer writes the adapter; the designer uses it",
       "case": "A designer writes their game's corpus in a different tool, or in the platform's own content database once it exists: tokens and characters, timeline, puzzles and lore. A developer writes one source adapter for that tool; it feeds the same pack through the same check that refuses a broken pack. The scanners, the engine and the night's record never notice where the content came from, and the game's own after-game telling reads the record, not the content tool.",
       "throughWhat": "A source adapter behind a published interface for content sources; the pack it produces is the ordinary pack.",
@@ -260,6 +278,7 @@
     },
     {
       "id": "EX19",
+      "title": "The director tells the night from the record",
       "who": "director; the game's own developer builds the telling",
       "case": "The game ends. The engine writes one record of the night: the facts it decided, with the roster, the GM's notes, the accusation and the photos captured during play, the pack the game ran and the texts the players saw. ALN's Director Console, a separate program on the director's computer, reads that record, and the director writes the players' story from it, quoting what they held, with no retyping and no reading of Notion. The record is shaped so that a game's telling can later run inside the engine's Review stage. What reaches the players afterwards, and their emails, stay the game's business outside the engine.",
       "throughWhat": "The night's record, a published file format read from outside the engine; later, if the owner chooses, a module of the game's own inside the Review stage.",
@@ -273,6 +292,7 @@
     },
     {
       "id": "EX20",
+      "title": "The owner's second game needs new modules",
       "who": "developer builds the modules; the designer (the owner) tunes the game",
       "case": "The owner's second game needs four things the engine has never had: two-tap actions between players' objects, hidden per-player and per-token state that spreads on contact, a score read off a graph, and a constellation screen. A developer builds each as a generic module with pack-supplied parameters. The owner then finishes the game's design at his own pace with no further engineering, tuning spread rates and seeds like any other pack values and playtesting them through the edit, apply, play loop. A second toy game proves the modules the way the first toy game proves the engine. The game needs an engine by nature and its pack says so. A hidden fact reaches only its owner's screen.",
       "throughWhat": "Generic modules of the engine's own (the rules, multi-tap player actions, and the place a new kind of screen plugs in), each an ability the pack requires and selects by name; the game's values in its pack.",
@@ -288,6 +308,7 @@
     },
     {
       "id": "EX21",
+      "title": "A stranger extends the platform from the guide",
       "who": "developer from outside the team",
       "case": "A stranger downloads the platform, stands it up from the guide, opens the toy game and builds something new: support for a device, support for a program the engine drives, a scoring model or a content source. They work from the published protocol and the toy game as a worked example, and send their change back with the developer's tests, which show that the show still runs for both games. They never see our secrets, our pack or our venue, and the privacy defaults every operator inherits are written down for them.",
       "throughWhat": "The published protocol (what devices may ask, what the engine answers and tells screens, the pack, the venue profile, the night's record, the media list); the places a developer adds a device, a program, a scoring model or a content source; the human-facing designer and operator guides; the toy game; a license.",
@@ -302,6 +323,7 @@
     },
     {
       "id": "EX22",
+      "title": "The pack says what a scan causes",
       "who": "designer",
       "case": "A designer declares what a scan causes: for example, that a GM's scan of a token plays that token's video, or that a player's scan does nothing on the TV. Today only a player's scan can trigger a video, a rule of ALN's built into the engine; a game played only on GM tablets reaches video through one standing cue per token, which is pack content and works today.",
       "throughWhat": "The pack: what each kind of scan triggers, written beside the token or the mode.",
@@ -316,6 +338,7 @@
     },
     {
       "id": "EX23",
+      "title": "A different installed game each night",
       "who": "operator (the owner)",
       "case": "Our own kit runs a different installed game per event: ALN on Friday, another game on Saturday. The operator picks the installed pack for the night, and the engine, the TV, the tablets and the scanners play it, without copying files or changing code. Both games stay installed; neither is touched by the other's night.",
       "throughWhat": "An installed pack picked by name: at startup by path or id today; a selection page later.",
@@ -330,6 +353,7 @@
     },
     {
       "id": "EX24",
+      "title": "The owner sets how long records are kept",
       "who": "owner, or a future operator",
       "case": "The owner decides, per game, how long old game records (the night's record, the photos, the scans) are kept, and nothing a game captured leaves the kit unless the owner moves it. A game that names players, through an identification moment the designer chose, inherits the same rules. A future operator inherits them too, written down.",
       "throughWhat": "A per-game setting for how long records are kept; the kit as the only home of game data unless the owner moves it.",

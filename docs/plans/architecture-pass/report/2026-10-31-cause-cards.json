@@ -16,7 +16,7 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  eng[\"Engine<br/>decides claims\"]\n  del[\"Delete message<br/>transaction id, one team row\"]\n  snap[\"Reconnect snapshot<br/>this tablet's claims only\"]\n  tabA[\"Tablet A<br/>own claimed list\"]\n  tabB[\"Tablet B<br/>own claimed list\"]\n  gm[\"GM rescan<br/>refused as already scanned\"]\n  eng -->|\"frees the token\"| del\n  del -->|\"removes transaction, keeps claim\"| tabA\n  del -->|\"removes transaction, keeps claim\"| tabB\n  eng -->|\"on reconnect\"| snap\n  snap -->|\"union, never removes\"| tabB\n  tabB -->|\"stale claim\"| gm\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class del,snap,tabA,tabB fault;"
+        "mermaid": "flowchart LR\n  eng[\"Engine<br/>decides claims\"]\n  del[\"Delete message<br/>transaction id, one team row\"]\n  snap[\"Catch-up on reconnect<br/>this tablet's claims only\"]\n  tabA[\"Tablet A<br/>own claimed list\"]\n  tabB[\"Tablet B<br/>own claimed list\"]\n  gm[\"GM rescan<br/>refused as already scanned\"]\n  eng -->|\"frees the token\"| del\n  del -->|\"removes transaction, keeps claim\"| tabA\n  del -->|\"removes transaction, keeps claim\"| tabB\n  eng -->|\"on reconnect\"| snap\n  snap -->|\"adds, never removes\"| tabB\n  tabB -->|\"stale claim\"| gm\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class del,snap,tabA,tabB fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
@@ -38,7 +38,7 @@
         },
         {
           "ids": "B-13",
-          "text": "A delete recomputes every team's score but the message carries one team's row; latent today."
+          "text": "A delete recomputes every team's score but the message carries one team's row; no screen shows the fault yet."
         },
         {
           "ids": "B-19",
@@ -46,7 +46,7 @@
         },
         {
           "ids": "A-25 / C-01",
-          "text": "Session Details freezes Teams and GM Stations at the last full snapshot, because one message merges and one replaces."
+          "text": "Session Details freezes Teams and GM Stations at the last full catch-up, because one message adds to the list and the other replaces it."
         }
       ],
       "blueFixes": [
@@ -69,7 +69,7 @@
       "title": "Service health and service state travel on separate paths",
       "atAShow": "If the lighting system or the music player is down when the engine starts, the lighting and music panels stay disabled until someone reloads the tablet. If the music player dies mid-show, the health row turns red alone while the music card keeps its playing look and the progress bar keeps moving. A volume change on one tablet's audio panel never reaches the other tablets' sliders.",
       "whyItHappens": "Each venue program has two facts about it: its health, in one shared health list, and its state, in its own record. The engine sends the health row when health changes, and sends a program's state only for a hand-written list of that program's events. An outage is on no list.",
-      "designTerms": "Equipment should own one dated record per thing the room does, behind one interface giving value, health and age, with the music player an adapter beneath. Delivery should own the one route: each fact built once for live and catch-up, labelled. Today each program's events are re-listed by hand; callers must know all: no locality.",
+      "designTerms": "Equipment should own one dated record per thing the room does, behind one interface giving value, health and age, with the music player an adapter beneath. Delivery should own the one route: each fact built once for live and catch-up, labelled. Today each program's events are listed again by hand; whoever uses them must know every list: no locality.",
       "modules": [
         "backend/src/websocket/broadcasts.js",
         "backend/src/services/serviceHealthRegistry.js",
@@ -80,7 +80,7 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  mpd[\"MPD<br/>dies mid-show\"]\n  mus[\"Music service<br/>own state record\"]\n  reg[\"Health registry<br/>one row per service\"]\n  healthPush[\"Health row push<br/>on health change\"]\n  lists[\"Push lists<br/>hand-written per service\"]\n  statePush[\"Music state push<br/>on music events only\"]\n  panel[\"GM panel<br/>music card plus health row\"]\n  mpd -->|\"exit\"| mus\n  mus -->|\"reports down\"| reg\n  reg -->|\"health changed\"| healthPush\n  healthPush -->|\"red row\"| panel\n  mus -.->|\"no music event\"| lists\n  lists -.->|\"no push\"| statePush\n  statePush -.->|\"card keeps playing look\"| panel\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class lists,statePush fault;"
+        "mermaid": "flowchart LR\n  mpd[\"Music player<br/>dies mid-show\"]\n  mus[\"Music code<br/>its own record of the player's state\"]\n  reg[\"Health list<br/>one row per service\"]\n  healthPush[\"Health row sent<br/>on health change\"]\n  lists[\"Lists of what is sent<br/>hand-written per service\"]\n  statePush[\"Music state sent<br/>on music events only\"]\n  panel[\"GM panel<br/>music card plus health row\"]\n  mpd -->|\"stops\"| mus\n  mus -->|\"reports down\"| reg\n  reg -->|\"health changed\"| healthPush\n  healthPush -->|\"red row\"| panel\n  mus -.->|\"no music event\"| lists\n  lists -.->|\"nothing sent\"| statePush\n  statePush -.->|\"card keeps playing look\"| panel\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class lists,statePush fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
@@ -94,15 +94,15 @@
         },
         {
           "ids": "A-12 / B-33 / C-43",
-          "text": "Music panel stays disabled if MPD was down at connect; the progress bar keeps moving after MPD dies."
+          "text": "The music panel stays disabled if the music player was down when the tablet connected; the progress bar keeps moving after the music player dies."
         },
         {
           "ids": "A-17",
-          "text": "A per-stream volume change on one tablet never reaches other tablets' sliders; the audio push list names no volume event."
+          "text": "A volume change for one sound stream on one tablet never reaches the other tablets' sliders; the list of audio changes that send a live message names no volume change."
         },
         {
           "ids": "A-102",
-          "text": "Audio and lighting pushes rest on hand-listed events, so a missing event means a stale panel."
+          "text": "Live messages for audio and lighting go out only for events listed by hand, so an unlisted one leaves a panel stale."
         }
       ],
       "blueFixes": [
@@ -114,7 +114,7 @@
         9
       ],
       "findings": 6,
-      "seenLive": "The owner reports the GM panel falling behind live music on blue's line until a refresh.",
+      "seenLive": "The owner reports the GM panel falling behind live music on blue until a refresh.",
       "parts": [
         "P8",
         "P6"
@@ -137,37 +137,37 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>plays the video\"]\n  mon[\"Signal monitor<br/>text stream\"]\n  parser[\"Parser<br/>holds message until next header\"]\n  pic[\"Cached picture<br/>state, no age\"]\n  probe[\"15-second probe<br/>re-reads play state only\"]\n  queue[\"Video queue<br/>two stopped polls end video\"]\n  cue[\"Cue timeline<br/>waits for a progress tick\"]\n  panel[\"GM panel<br/>video stays stopped\"]\n  vlc -->|\"Playing signal\"| mon\n  mon -->|\"lines\"| parser\n  parser -.->|\"late by one message\"| pic\n  probe -->|\"corrects quietly\"| pic\n  probe -.->|\"announcement nobody hears\"| panel\n  pic -->|\"stale stopped\"| queue\n  queue -->|\"false finished\"| cue\n  pic -->|\"stale\"| panel\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class parser,pic,queue fault;"
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>plays the video\"]\n  mon[\"Signal watcher<br/>reads the player's text\"]\n  parser[\"Message reader<br/>holds each message until the next one starts\"]\n  pic[\"Saved picture<br/>state, no age\"]\n  probe[\"15-second check<br/>re-reads play state only\"]\n  queue[\"Video queue<br/>two 'stopped' readings end the video\"]\n  cue[\"Cue timeline<br/>waits for a progress update\"]\n  panel[\"GM panel<br/>video stays stopped\"]\n  vlc -->|\"Playing signal\"| mon\n  mon -->|\"lines\"| parser\n  parser -.->|\"late by one message\"| pic\n  probe -->|\"corrects quietly\"| pic\n  probe -.->|\"announcement nobody hears\"| panel\n  pic -->|\"stale stopped\"| queue\n  queue -->|\"false finished\"| cue\n  pic -->|\"stale\"| panel\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class parser,pic,queue fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>plays the video\"]\n  adp[\"VLC adapter<br/>signals, plus a re-read<br/>on a timer\"]\n  sup[\"One supervisor<br/>restart, then re-read\"]\n  eq[\"Equipment, play a video<br/>one dated picture<br/>checked against the program\"]\n  sr[\"Show runner<br/>queue and cue timeline<br/>read the dated picture, keep none\"]\n  del[\"Delivery<br/>every change, with its age\"]\n  panel[\"GM panel<br/>hears every correction, draws the age\"]\n  vlc -->|\"signals\"| adp\n  adp -->|\"re-read\"| vlc\n  sup -->|\"restarted\"| adp\n  adp -->|\"one path, every change\"| eq\n  eq -->|\"fresh picture\"| sr\n  eq -->|\"picture changed\"| del\n  del -->|\"one fact with its label\"| panel\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eq owner;\n",
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>plays the video\"]\n  adp[\"VLC adapter<br/>signals, plus a re-read<br/>on a timer\"]\n  sup[\"One program watcher<br/>restarts it, then re-reads\"]\n  eq[\"Equipment, play a video<br/>one dated picture<br/>checked against the program\"]\n  sr[\"Show runner<br/>queue and cue timeline<br/>read the dated picture, keep none\"]\n  del[\"Delivery<br/>every change, with its age\"]\n  panel[\"GM panel<br/>hears every correction, draws the age\"]\n  vlc -->|\"signals\"| adp\n  adp -->|\"re-read\"| vlc\n  sup -->|\"restarted\"| adp\n  adp -->|\"one path, every change\"| eq\n  eq -->|\"fresh picture\"| sr\n  eq -->|\"picture changed\"| del\n  del -->|\"one fact with its label\"| panel\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eq owner;\n",
         "note": "The code that reads each program is the adapter beneath Equipment, which owns one dated picture per thing the room does. Show runner keeps no copy. Delivery carries each correction, dated. Or: one interface per program, nearer today's code, scattering questions about several programs."
       },
       "examples": [
         {
           "ids": "A-68",
-          "text": "Video stayed stopped about 28 seconds: the parser holds each message until the next header arrives."
+          "text": "A video stayed stopped about 28 seconds: the code reading the player's messages holds each one until the next one begins."
         },
         {
           "ids": "A-61",
-          "text": "A false video finished can fire two seconds in; display flips back, ducking restores, cues told video ended."
+          "text": "A false 'video finished' can fire two seconds in; the display flips back, music comes back up, and the cues are told the video ended."
         },
         {
           "ids": "A-72",
-          "text": "When MPD dies the engine's picture still says playing with the last track; only the health row goes out."
+          "text": "When the music player dies the engine's picture still says playing with the last track; only the health row goes out."
         },
         {
           "ids": "A-73",
-          "text": "After an MPD crash the controls stay dead up to 20 seconds; the supervisor's restart is ignored."
+          "text": "After the music player crashes the controls stay dead up to 20 seconds; the restart by the program watcher is ignored."
         },
         {
           "ids": "A-48",
-          "text": "A cue whose video ends before its first progress tick never completes and stays on screen."
+          "text": "A cue whose video ends before its first progress update never completes and stays on screen."
         },
         {
           "ids": "X-01",
-          "text": "The 15-second probe corrects the VLC picture but announces it on an event nothing hears for VLC."
+          "text": "The 15-second check corrects the engine's picture of VLC but announces it in a message nothing listens to."
         }
       ],
       "blueFixes": [
@@ -192,7 +192,7 @@
       "id": "C4",
       "title": "Nothing says what a game boundary clears or keeps",
       "atAShow": "The GM ends the game and restarts the engine; the ended game comes back as the current one and player scans keep landing in it. When the game ends, a tablet that reconnects loses its history and the wall scoreboard goes blank. A once-only cue spent in game one stays spent in game two.",
-      "whyItHappens": "Game start, end, reset, engine restart, tablet reload and reconnect, the game's boundaries, each have their own code on each device. No table says, for each fact and each copy, whether a boundary clears it, keeps it or fetches it again, and no message announces one; screens guess a boundary from a changed session id.",
+      "whyItHappens": "Game start, end, reset, engine restart, tablet reload and reconnect: each moment between games has its own code on each device. No table says, for each fact and each copy, whether that moment clears it, keeps it or fetches it again, and no message announces one; screens guess that a new game began when the game's id number changes.",
       "designTerms": "Lifecycle should own the table of moments against facts and the one interface that moves a game from one moment to the next by that table; it alone calls every part's reset, and Delivery sends each moment as a fact. Today the session, cue, reset and tablet modules each hold their own cases: no locality.",
       "modules": [
         "backend/src/services/sessionService.js",
@@ -204,11 +204,11 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  endg[\"Game end<br/>saves ended record, nulls session\"]\n  restart[\"Engine restart<br/>reloads last record\"]\n  cur[\"Current game<br/>the ended game again\"]\n  scans[\"Player scans<br/>accepted\"]\n  cues[\"Cue engine<br/>spent cues kept\"]\n  reset[\"System reset<br/>only clearer, no message\"]\n  tab[\"Tablet<br/>infers boundary from id\"]\n  endg -->|\"status not checked\"| restart\n  restart -->|\"makes current\"| cur\n  cur -->|\"session exists\"| scans\n  endg -.->|\"never touches\"| cues\n  reset -->|\"clears\"| cues\n  reset -.->|\"no snapshot sent\"| tab\n  endg -->|\"null session\"| tab\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class restart,cur,cues,tab fault;"
+        "mermaid": "flowchart LR\n  endg[\"Game end<br/>saves the ended game, clears the current one\"]\n  restart[\"Engine restart<br/>reloads last record\"]\n  cur[\"Current game<br/>the ended game again\"]\n  scans[\"Player scans<br/>accepted\"]\n  cues[\"Cue engine<br/>spent cues kept\"]\n  reset[\"Reset System<br/>the only thing that clears them, tells no one\"]\n  tab[\"Tablet<br/>guesses a new game from its id\"]\n  endg -->|\"ended or not, not checked\"| restart\n  restart -->|\"makes current\"| cur\n  cur -->|\"a game exists\"| scans\n  endg -.->|\"never touches\"| cues\n  reset -->|\"clears\"| cues\n  reset -.->|\"no catch-up sent\"| tab\n  endg -->|\"no current game\"| tab\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class restart,cur,cues,tab fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  endg[\"Game end\"]\n  restart[\"Engine restart\"]\n  reset[\"Reset System\"]\n  lc[\"Lifecycle<br/>the table:<br/>each fact at each moment<br/>one mover<br/>one path for boot and reset\"]\n  rec[\"Game record<br/>phase: ended stays ended, scans refused\"]\n  sr[\"Show runner<br/>spent cues and held items<br/>cleared at game end\"]\n  del[\"Delivery<br/>each moment as a fact<br/>with a version\"]\n  tab[\"Tablet and TV<br/>apply the moment<br/>never guess from an id\"]\n  dev[\"Player devices<br/>told the moment too\"]\n  endg -->|\"a row\"| lc\n  restart -->|\"a row\"| lc\n  reset -->|\"a row\"| lc\n  lc -->|\"applies its row\"| rec\n  lc -->|\"applies its row\"| sr\n  lc -->|\"announces\"| del\n  del -->|\"same fact\"| tab\n  del -->|\"same fact\"| dev\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class lc owner;\n",
+        "mermaid": "flowchart LR\n  endg[\"Game end\"]\n  restart[\"Engine restart\"]\n  reset[\"Reset System\"]\n  lc[\"Lifecycle<br/>the table:<br/>each fact at each moment<br/>the only thing that moves the game on<br/>one path for engine start and reset\"]\n  rec[\"Game record<br/>phase: ended stays ended, scans refused\"]\n  sr[\"Show runner<br/>spent cues and held items<br/>cleared at game end\"]\n  del[\"Delivery<br/>each moment as a fact<br/>with a version\"]\n  tab[\"Tablet and TV<br/>apply the moment<br/>never guess from an id\"]\n  dev[\"Player devices<br/>told the moment too\"]\n  endg -->|\"a row\"| lc\n  restart -->|\"a row\"| lc\n  reset -->|\"a row\"| lc\n  lc -->|\"applies its row\"| rec\n  lc -->|\"applies its row\"| sr\n  lc -->|\"announces\"| del\n  del -->|\"same fact\"| tab\n  del -->|\"same fact\"| dev\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class lc owner;\n",
         "note": "Lifecycle holds one table saying what each moment does to each fact. It alone moves the game and calls every reset. Delivery sends each moment as a versioned fact every screen compares. Or: each part reads the table itself; only a test shows all did."
       },
       "examples": [
@@ -234,7 +234,7 @@
         },
         {
           "ids": "C-36",
-          "text": "A system reset sends no tablet a fresh snapshot; tablets keep the old game's data until a new session id arrives."
+          "text": "Reset System sends no tablet a fresh catch-up; tablets keep the old game's data until a new game id arrives."
         }
       ],
       "blueFixes": [
@@ -254,8 +254,8 @@
       "id": "C5",
       "title": "Boot and Reset System wire the engine differently",
       "atAShow": "The GM presses Reset System to recover mid-show. The music panel goes dead until someone restarts the engine. Later, Reset All Scores sends every tablet and the TV the old transaction list, so cleared evidence comes back on the wall. The cues now hear each video and clock event twice, and the Display row stays red until Check Now.",
-      "whyItHappens": "Starting the engine and rebuilding it after a reset are two separate hand-written lists. The start connects storage, broadcasts and cue forwarding in one order with one set of the engine's services; the reset connects them in the other order with a shorter set, and connects some a second time.",
-      "designTerms": "Lifecycle should own the one path engine start and Reset System share, and alone call each part's reset; a starting point above every part should own the one list the engine is built from, under Engine instance's names. Today both do it by hand, each knowing every part and the order: no locality.",
+      "whyItHappens": "Starting the engine and rebuilding it after a reset are two separate hand-written lists. The start sets up saving, the messages to screens and the passing of events to the cues in one order, with the full list of the engine's services; the reset sets them up in the other order with a shorter list, and sets some up twice.",
+      "designTerms": "Lifecycle should own the one path engine start and Reset System share, and alone reset each part; one start-up step, above every part, should own the one list the engine is built from, using the files, ports and settings Engine instance gives it. Today both do it by hand, each knowing every part and the order: no locality.",
       "modules": [
         "backend/src/app.js",
         "backend/src/server.js",
@@ -266,12 +266,12 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart TD\n  boot[\"Engine start<br/>one service list\"]\n  reset[\"Reset System<br/>shorter list, no music\"]\n  persist[\"Storage listeners<br/>clear transactions\"]\n  bcast[\"Broadcasts<br/>build snapshot\"]\n  cues[\"Cue forwarding\"]\n  music[\"Music panel push\"]\n  boot -->|\"1st\"| persist\n  boot -->|\"2nd\"| bcast\n  boot -->|\"once\"| cues\n  boot -->|\"wires\"| music\n  reset -->|\"1st\"| bcast\n  reset -->|\"2nd\"| persist\n  reset -->|\"again\"| cues\n  reset -.->|\"never\"| music\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class reset,bcast,cues fault;"
+        "mermaid": "flowchart TD\n  boot[\"Engine start<br/>one service list\"]\n  reset[\"Reset System<br/>shorter list, no music\"]\n  persist[\"Saving<br/>clears transactions\"]\n  bcast[\"Messages to screens<br/>build the catch-up\"]\n  cues[\"Passing events to the cues\"]\n  music[\"Music panel updates\"]\n  boot -->|\"1st\"| persist\n  boot -->|\"2nd\"| bcast\n  boot -->|\"once\"| cues\n  boot -->|\"sets up\"| music\n  reset -->|\"1st\"| bcast\n  reset -->|\"2nd\"| persist\n  reset -->|\"again\"| cues\n  reset -.->|\"never\"| music\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class reset,bcast,cues fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart TD\n  boot[\"Engine start\"]\n  reset[\"Reset System\"]\n  test[\"A test's setup\"]\n  root[\"Starting point<br/>builds every part once<br/>from one list<br/>under the engine's own names\"]\n  lc[\"Lifecycle<br/>start and reset are one path<br/>the only caller of every reset\"]\n  rec[\"Game record<br/>cleared, then read\"]\n  eq[\"Equipment and Show runner<br/>music included, cue events sent once\"]\n  ver[\"Verdict<br/>recomputed from the fresh picture\"]\n  del[\"Delivery<br/>the catch-up built after the move\"]\n  boot -->|\"calls\"| root\n  reset -->|\"calls\"| root\n  test -->|\"calls, with its own names\"| root\n  root -->|\"hands the parts to\"| lc\n  lc -->|\"moves\"| rec\n  lc -->|\"resets\"| eq\n  lc -->|\"asks\"| ver\n  lc -->|\"the moment\"| del\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class lc owner;\n",
-        "note": "Two pieces replace today's two lists: a starting point builds every part once, from one list, and Lifecycle runs start and reset as one path and alone calls every reset. Or: each part reads the table itself; only a test checks all did."
+        "mermaid": "flowchart TD\n  boot[\"Engine start\"]\n  reset[\"Reset System\"]\n  test[\"A test's setup\"]\n  root[\"One start-up step<br/>builds every part once<br/>from one list<br/>with this engine's own files, ports and settings\"]\n  lc[\"Lifecycle<br/>start and reset are one path<br/>the only thing that resets each part\"]\n  rec[\"Game record<br/>cleared, then read\"]\n  eq[\"Equipment and Show runner<br/>music included, cue events sent once\"]\n  ver[\"Verdict<br/>recomputed from the fresh picture\"]\n  del[\"Delivery<br/>the catch-up built after the move\"]\n  boot -->|\"calls\"| root\n  reset -->|\"calls\"| root\n  test -->|\"calls, with its own files, ports and settings\"| root\n  root -->|\"hands the parts to\"| lc\n  lc -->|\"moves\"| rec\n  lc -->|\"resets\"| eq\n  lc -->|\"asks\"| ver\n  lc -->|\"the moment\"| del\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class lc owner;\n",
+        "note": "Two pieces replace today's two lists: one start-up step builds every part once, from one list, and Lifecycle runs start and reset as one path and alone resets each part. Or: each part reads the table itself; only a test checks all did."
       },
       "examples": [
         {
@@ -288,7 +288,7 @@
         },
         {
           "ids": "B-53",
-          "text": "After a reset the Display row stays red though the kiosk is alive; Show Scoreboard is refused until Check Now."
+          "text": "After a reset the Display row stays red though the TV's browser is running; Show Scoreboard is refused until Check Now."
         }
       ],
       "blueFixes": [],
@@ -308,8 +308,8 @@
       "id": "C6",
       "title": "Reconnect snapshot and live update are built apart",
       "atAShow": "A GM reloads a tablet mid-game. The History badge stays hidden until the next scan, and a rebuilt admin panel can show the clock as --:-- until the next change. The device list flips between every device ever seen and only those connected now, depending on which message came last.",
-      "whyItHappens": "For each fact the engine has one piece of code that writes the catch-up snapshot a tablet gets on connect and another that writes the live message, and six places send the catch-up with hand-picked contents. The tablet applies each by a different rule, and a restore after a reload sends screens none of the signals they watch for.",
-      "designTerms": "Delivery should own one builder per fact, serving the catch-up snapshot and the live message from each deciding part's changes; Lifecycle's restore sends the same, and Screens draws only what that interface defines. Today the snapshot builder is shallow: a caller hands it every module, and five tablet adapters reshape its output: no locality.",
+      "whyItHappens": "For each fact the engine has one piece of code that writes the catch-up a tablet gets when it connects and another that writes the live message, and six places send the catch-up with hand-picked contents. The tablet applies each by a different rule, and a restore after a reload sends screens none of the notices they wait for before they redraw.",
+      "designTerms": "Delivery should own one piece of code per fact, building the catch-up and the live message from each deciding part's changes; Lifecycle's restore sends the same, and Screens draws only what that interface defines. Today the code that builds the catch-up is shallow: whoever uses it must hand it every module, and five adapters on the tablet reshape what it builds: no locality.",
       "modules": [
         "backend/src/websocket/syncHelpers.js",
         "backend/src/websocket/broadcasts.js",
@@ -320,12 +320,12 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  fact[\"Engine fact<br/>clock, session, devices\"]\n  snapB[\"Snapshot builder<br/>six hand-assembled senders\"]\n  liveB[\"Live message builder<br/>separate code per fact\"]\n  replace[\"Tablet: replace<br/>drops absent keys\"]\n  merge[\"Tablet: merge<br/>skips equal pushes\"]\n  adapter[\"Five adapters<br/>reshape before drawing\"]\n  hist[\"History restore<br/>fires no event\"]\n  screen[\"Screen<br/>stale or blank\"]\n  fact -->|\"on connect\"| snapB\n  fact -->|\"on change\"| liveB\n  snapB -->|\"one shape\"| replace\n  liveB -->|\"another shape\"| merge\n  snapB -->|\"transaction list\"| hist\n  replace -->|\"reshaped\"| adapter\n  merge -->|\"reshaped\"| adapter\n  adapter -->|\"unnamed fields dropped\"| screen\n  hist -.->|\"badge never told\"| screen\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class snapB,liveB,adapter,hist fault;"
+        "mermaid": "flowchart LR\n  fact[\"Engine fact<br/>clock, session, devices\"]\n  snapB[\"Catch-up builder<br/>six places send it, each put together by hand\"]\n  liveB[\"Live messages<br/>separate code per fact\"]\n  replace[\"Tablet: replaces<br/>loses anything missing\"]\n  merge[\"Tablet: merges<br/>ignores a repeat\"]\n  adapter[\"Five adapters<br/>reshape before drawing\"]\n  hist[\"History restore<br/>tells no screen\"]\n  screen[\"Screen<br/>stale or blank\"]\n  fact -->|\"on connect\"| snapB\n  fact -->|\"on change\"| liveB\n  snapB -->|\"one format\"| replace\n  liveB -->|\"another format\"| merge\n  snapB -->|\"transaction list\"| hist\n  replace -->|\"reshaped\"| adapter\n  merge -->|\"reshaped\"| adapter\n  adapter -->|\"values it does not name are lost\"| screen\n  hist -.->|\"badge never told\"| screen\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class snapB,liveB,adapter,hist fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  rec[\"Game record<br/>changes since, dated\"]\n  eq[\"Equipment<br/>state with health and age\"]\n  run[\"Show runner<br/>cues, clock, held items\"]\n  con[\"Connections and roles<br/>who is connected\"]\n  life[\"Lifecycle<br/>new game, reset and restore\"]\n  del[\"Delivery<br/>one builder per fact\"]\n  snap[\"Catch-up on connect<br/>the facts, same shape, labelled\"]\n  live[\"Live message on change<br/>one fact, same shape, labelled\"]\n  scr[\"Screens<br/>one drawing per fact<br/>same signal either way\"]\n  rec -->|\"its changes\"| del\n  eq -->|\"its changes\"| del\n  run -->|\"its changes\"| del\n  con -->|\"device list\"| del\n  life -->|\"a restore sent like a change\"| del\n  del -->|\"on connect\"| snap\n  del -->|\"on change\"| live\n  snap -->|\"same shape\"| scr\n  live -->|\"same shape\"| scr\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class del owner;\n",
-        "note": "Delivery builds each fact once, so the catch-up and the live message carry one fact in one shape, with its label. A restore after a reload is sent like a change. Screens draws each fact one way. Or: the parts keeping each promise send their own facts."
+        "mermaid": "flowchart LR\n  rec[\"Game record<br/>changes since, dated\"]\n  eq[\"Equipment<br/>state with health and age\"]\n  run[\"Show runner<br/>cues, clock, held items\"]\n  con[\"Connections and roles<br/>who is connected\"]\n  life[\"Lifecycle<br/>new game, reset and restore\"]\n  del[\"Delivery<br/>one piece of code per fact\"]\n  snap[\"Catch-up on connect<br/>the facts, same format, labelled\"]\n  live[\"Live message on change<br/>one fact, same format, labelled\"]\n  scr[\"Screens<br/>one drawing per fact<br/>same signal either way\"]\n  rec -->|\"its changes\"| del\n  eq -->|\"its changes\"| del\n  run -->|\"its changes\"| del\n  con -->|\"device list\"| del\n  life -->|\"a restore sent like a change\"| del\n  del -->|\"on connect\"| snap\n  del -->|\"on change\"| live\n  snap -->|\"same format\"| scr\n  live -->|\"same format\"| scr\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class del owner;\n",
+        "note": "Delivery builds each fact once, so the catch-up and the live message carry one fact in one format, with its label. A restore after a reload is sent like a change. Screens draws each fact one way. Or: the parts keeping each promise send their own facts."
       },
       "examples": [
         {
@@ -334,7 +334,7 @@
         },
         {
           "ids": "A-30 / C-46",
-          "text": "After a panel rebuild the first state push can be skipped and the clock shows --:--."
+          "text": "After a panel rebuild the first live message can be missed and the clock shows --:--."
         },
         {
           "ids": "C-23",
@@ -342,15 +342,15 @@
         },
         {
           "ids": "B-31",
-          "text": "Six places send the full snapshot and disagree on which devices to include and which extra keys to add."
+          "text": "Six places send the full catch-up and disagree on which devices to include and which extra items to add."
         },
         {
           "ids": "A-32 / C-44",
-          "text": "Snapshot and live shapes differ for clock and cues; five adapters reshape them, and the clock adapter drops unnamed fields."
+          "text": "The catch-up and the live message come in different formats for the clock and cues; five adapters reshape them, and the clock's adapter loses the values it does not name."
         },
         {
           "ids": "D-01",
-          "text": "A TV reloaded during a video shows its last overlay state, because the snapshot's display status is never read."
+          "text": "A TV reloaded during a video shows its last overlay state, because the catch-up's display state is never read."
         }
       ],
       "blueFixes": [],
@@ -371,7 +371,7 @@
       "title": "A reply never says which request, final or stored",
       "atAShow": "Player devices upload their queued scans while no game exists. The engine answers \"processed\", stores nothing, and both devices delete the scans. A GM's scan that can never succeed comes back as a vague error, so the tablet resends it at every reconnect with a pop-up message each time. A slow Reset System reports failure and the new game is skipped.",
       "whyItHappens": "The engine answers before, or without, saving the fact it reports; calls an unsaved batch processed; returns some failures as a named outcome and others as a vague error; and confirms a command by the command's name alone, so two quick presses cannot be told apart. Each device then decides for itself what a reply means.",
-      "designTerms": "Answering should own one interface, one request in and one reply out, web requests and the live connection its two adapters; the outcome words are one closed list every device reads as data; the Game record saves, then gives Answering the outcome. Today three reply shapes leave each device its own rule: no locality.",
+      "designTerms": "Answering should own one interface, one request in and one reply out, with the two ways a device talks to the engine (a web request, or the live connection a tablet keeps open) as its two adapters; the outcome words are one fixed list every device reads, never written into its code; the Game record saves, then gives Answering the outcome. Today three reply formats leave each device its own rule: no locality.",
       "modules": [
         "backend/src/websocket/adminEvents.js",
         "backend/src/routes/scanRoutes.js",
@@ -382,37 +382,37 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  dev[\"Player device<br/>queued scans\"]\n  tab[\"Tablet<br/>GM scan or command\"]\n  eng[\"Engine<br/>replies before the write\"]\n  ok[\"200 processed<br/>batch stored nowhere\"]\n  err[\"Generic error<br/>no request id, not final\"]\n  ack[\"Command ack<br/>action name only\"]\n  devRule[\"Device rule<br/>200 means delete\"]\n  tabRule[\"Tablet rule<br/>error retries, 5s fails\"]\n  dev -->|\"batch, no game\"| eng\n  tab -->|\"scan, command\"| eng\n  eng -->|\"no game\"| ok\n  ok -->|\"deletes the scans\"| devRule\n  eng -->|\"permanent scan failure\"| err\n  err -->|\"replays every snapshot\"| tabRule\n  eng -->|\"slow reset\"| ack\n  ack -->|\"after the 5s timeout\"| tabRule\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class ok,err,ack,devRule,tabRule fault;"
+        "mermaid": "flowchart LR\n  dev[\"Player device<br/>queued scans\"]\n  tab[\"Tablet<br/>GM scan or command\"]\n  eng[\"Engine<br/>replies before saving\"]\n  ok[\"'Processed'<br/>the scans stored nowhere\"]\n  err[\"Vague error<br/>names no request, not final\"]\n  ack[\"Reply to a command<br/>names the action only\"]\n  devRule[\"Device rule<br/>'processed' means delete\"]\n  tabRule[\"Tablet rule<br/>an error means resend, 5 seconds with no answer means failed\"]\n  dev -->|\"saved scans, no game\"| eng\n  tab -->|\"scan, command\"| eng\n  eng -->|\"no game\"| ok\n  ok -->|\"deletes the scans\"| devRule\n  eng -->|\"permanent scan failure\"| err\n  err -->|\"resent at every catch-up\"| tabRule\n  eng -->|\"slow reset\"| ack\n  ack -->|\"after 5 seconds\"| tabRule\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class ok,err,ack,devRule,tabRule fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  dev[\"Player device<br/>queued scans\"]\n  tab[\"Tablet<br/>GM scan or command\"]\n  ans[\"Answering<br/>every request, one reply<br/>knows request and device<br/>GM rights checked once\"]\n  rec[\"Game record<br/>apply, save, then the outcome\"]\n  reply[\"One reply shape<br/>which request, outcome word, final, stored\"]\n  words[\"Reply words<br/>one closed list<br/>made for every device\"]\n  scr[\"Screens<br/>delete only if stored<br/>final means stop\"]\n  dev -->|\"batch\"| ans\n  tab -->|\"scan, command\"| ans\n  ans -->|\"action\"| rec\n  rec -->|\"after the save\"| ans\n  ans -->|\"answers\"| reply\n  words -->|\"read as data\"| scr\n  reply -->|\"matched to its request\"| scr\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class ans owner;\n",
+        "mermaid": "flowchart LR\n  dev[\"Player device<br/>queued scans\"]\n  tab[\"Tablet<br/>GM scan or command\"]\n  ans[\"Answering<br/>every request, one reply<br/>knows request and device<br/>GM rights checked once\"]\n  rec[\"Game record<br/>apply, save, then the outcome\"]\n  reply[\"One reply format<br/>which request, outcome word, final, stored\"]\n  words[\"Reply words<br/>one fixed list<br/>made for every device\"]\n  scr[\"Screens<br/>delete only if stored<br/>final means stop\"]\n  dev -->|\"saved scans\"| ans\n  tab -->|\"scan, command\"| ans\n  ans -->|\"action\"| rec\n  rec -->|\"after the save\"| ans\n  ans -->|\"answers\"| reply\n  words -->|\"read from the list\"| scr\n  reply -->|\"matched to its request\"| scr\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class ans owner;\n",
         "note": "Every reply names its request and says whether it is final and whether anything was stored. The Game record saves, then gives Answering the outcome: Answering takes every request and replies with one list of outcome words for every device. Or: each device asks which scans are stored."
       },
       "examples": [
         {
           "ids": "B-64 / C-32",
-          "text": "Scan failures like no session or queue full come back as a generic error; the tablet replays them on every snapshot."
+          "text": "Scan failures such as no game or a full queue come back as a vague error; the tablet resends them at every catch-up."
         },
         {
           "ids": "B-22 / D-13 / D-14",
-          "text": "A batch arriving with no game is answered processed but stored nowhere; both player devices delete it."
+          "text": "A batch of saved scans arriving with no game is answered processed but stored nowhere; both player devices delete it."
         },
         {
           "ids": "B-21 / D-15",
-          "text": "A batch retried after an engine restart is stored twice; processed batches are remembered in memory for an hour."
+          "text": "A batch of saved scans sent again after an engine restart is stored twice; the engine remembers the batches it has processed for an hour, and forgets them when it restarts."
         },
         {
           "ids": "B-69 / C-35",
-          "text": "A system reset slower than the tablet's five-second wait reports failure, and the follow-on create session is skipped."
+          "text": "A Reset System slower than the tablet's five-second wait reports failure, and the new game that should follow is never created."
         },
         {
           "ids": "B-65 / C-33",
-          "text": "A command ack carries only action, success and message, so two presses of one action resolve on the first reply."
+          "text": "The engine's reply to a GM command carries only the command's name, success and a message, so two presses of one button are both settled by the first reply."
         },
         {
           "ids": "D-12",
-          "text": "One failed batch is dropped by the web scanner on any 4xx but kept forever by the ESP32."
+          "text": "One failed batch is dropped by the phone's scanner on any refusal but kept forever by the hardware scanner."
         }
       ],
       "blueFixes": [],
@@ -430,9 +430,9 @@
     {
       "id": "C8",
       "title": "Engine and tests both assume they own the machine",
-      "atAShow": "On 2026-09-15 a unit test killed the live show's video player on the blue machine's code. In this code the same test run kills the live engine's watcher for the video player and overwrites the files that say which programs are running. A killed engine leaves a full-screen player behind. Twenty-one groups of tests open a browser on the show TV. The operator's health check says \"VLC not found\" while the player runs.",
+      "atAShow": "On 2026-09-15 a small test stopped the live show's video player on the blue machine's code. In this code the same test run kills the live engine's watcher for the video player and overwrites the files that say which programs are running. A killed engine leaves a full-screen player behind. Twenty-one groups of tests open a browser on the show TV. The health check shown to staff who log in, such as the GM, says \"VLC not found\" while the player runs.",
       "whyItHappens": "The engine finds and ends its helper programs by fixed file names and by searching the whole machine for programs by name, as if it were the only engine on the machine. The tests take over whatever display, sound and Bluetooth exist; that a test is safe is claimed in a note in the code, never checked.",
-      "designTerms": "Engine instance should own every name this engine holds, behind one interface; the settings file, a test's settings and a preview's settings are adapters at its seam, and a starting point builds every part under those names. Today no such seam exists: modules write fixed shared files and kill by machine-wide name search: no locality.",
+      "designTerms": "Engine instance should own every file, network port and setting this engine holds, behind one interface; the settings file, a test's settings and the trial copy's settings are adapters at its seam, and one start-up step builds every part with them. Today no such seam exists: modules write fixed files every engine shares, and stop programs by searching the whole machine for their names: no locality.",
       "modules": [
         "backend/src/utils/processMonitor.js",
         "backend/src/services/vlcMprisService.js",
@@ -443,37 +443,37 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  live[\"Live engine<br/>runs the show\"]\n  pids[\"Fixed process files<br/>shared by every engine\"]\n  vlc[\"Live VLC<br/>on the show TV\"]\n  mon[\"Live signal monitor\"]\n  test[\"Unit test run<br/>builds a real supervisor\"]\n  reaper[\"Leftover reaper<br/>kills the pid on file\"]\n  suites[\"Integration suites<br/>real display, real sound\"]\n  kiosk[\"Show TV browser\"]\n  live -->|\"writes pids\"| pids\n  live -->|\"starts\"| vlc\n  live -->|\"starts\"| mon\n  test -->|\"runs\"| reaper\n  pids -->|\"live pids\"| reaper\n  reaper -->|\"kills\"| mon\n  reaper -.->|\"kills after the name fix\"| vlc\n  test -->|\"overwrites\"| pids\n  suites -->|\"open browser on\"| kiosk\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class pids,reaper,suites fault;"
+        "mermaid": "flowchart LR\n  live[\"Live engine<br/>runs the show\"]\n  pids[\"Fixed files listing running programs<br/>shared by every engine\"]\n  vlc[\"Live VLC<br/>on the show TV\"]\n  mon[\"Live watcher for the video player\"]\n  test[\"Small-test run<br/>builds a real program watcher\"]\n  reaper[\"Leftover cleaner<br/>stops the program the file names\"]\n  suites[\"Larger test groups<br/>real display, real sound\"]\n  kiosk[\"Show TV browser\"]\n  live -->|\"writes the files\"| pids\n  live -->|\"starts\"| vlc\n  live -->|\"starts\"| mon\n  test -->|\"runs\"| reaper\n  pids -->|\"the live engine's entries\"| reaper\n  reaper -->|\"kills\"| mon\n  reaper -.->|\"would stop it once its name is corrected\"| vlc\n  test -->|\"overwrites\"| pids\n  suites -->|\"open browser on\"| kiosk\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class pids,reaper,suites fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  inst[\"Engine instance<br/>one set of names per engine\"]\n  root[\"Starting point<br/>builds every part from one list<br/>under an engine's names\"]\n  live[\"Live engine<br/>live names\"]\n  test[\"Test engine<br/>test names<br/>run by Joins and proofs\"]\n  prev[\"Preview engine<br/>preview names, run by Design studio\"]\n  livePids[\"Live program files, sockets, display\"]\n  testPids[\"Test program files, sockets, display\"]\n  sup[\"Equipment supervisor<br/>ends only what<br/>its own engine started\"]\n  vlc[\"Live VLC<br/>on the show TV\"]\n  health[\"Equipment health<br/>read from the engine's own player<br/>not a machine-wide search\"]\n  inst -->|\"names\"| root\n  root -->|\"builds\"| live\n  root -->|\"builds\"| test\n  root -->|\"builds\"| prev\n  live -->|\"writes under live names\"| livePids\n  test -->|\"writes under test names\"| testPids\n  live -->|\"starts\"| vlc\n  test -->|\"runs\"| sup\n  sup -.->|\"never reaches\"| vlc\n  live -->|\"reports its own player\"| health\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class inst owner;\n",
-        "note": "One Engine instance holds every name an engine owns, and a starting point builds the parts from one list, under those names. A test run and the designer's preview engine are engines too, so each ends only what it started. No machine-wide kill remains."
+        "mermaid": "flowchart LR\n  inst[\"Engine instance<br/>one set of files, ports and settings per engine\"]\n  root[\"One start-up step<br/>builds every part from one list<br/>with an engine's own files, ports and settings\"]\n  live[\"Live engine<br/>live settings\"]\n  test[\"Test engine<br/>test settings<br/>run by Joins and proofs\"]\n  prev[\"Trial copy<br/>its own settings, run by Design studio\"]\n  livePids[\"Live files, network ports, display\"]\n  testPids[\"Test files, network ports, display\"]\n  sup[\"Equipment's program watcher<br/>stops only what<br/>its own engine started\"]\n  vlc[\"Live VLC<br/>on the show TV\"]\n  health[\"Equipment health<br/>read from the engine's own player<br/>not a machine-wide search\"]\n  inst -->|\"settings\"| root\n  root -->|\"builds\"| live\n  root -->|\"builds\"| test\n  root -->|\"builds\"| prev\n  live -->|\"writes into the live engine's files\"| livePids\n  test -->|\"writes into the test engine's files\"| testPids\n  live -->|\"starts\"| vlc\n  test -->|\"runs\"| sup\n  sup -.->|\"never reaches\"| vlc\n  live -->|\"reports its own player\"| health\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class inst owner;\n",
+        "note": "One Engine instance holds each running copy's own files, network ports and settings, and a starting point builds the parts from one list, using them. A test run and the designer's trial copy of the engine are engines too, so each stops only what it started. Nothing stops programs across the whole machine any more."
       },
       "examples": [
         {
           "ids": "A-75 / D-64 / B-63 / D-52",
-          "text": "A unit test killed the live video player on blue's tree; here it kills the signal monitor and overwrites process files."
+          "text": "A small test stopped the live video player on blue's code; in this code it stops the video player's watcher and overwrites the files listing running programs."
         },
         {
           "ids": "A-64 / D-70",
-          "text": "Leftover cleanup looks for cvlc but the process is vlc, so a killed engine leaves a full-screen player."
+          "text": "The leftover cleanup looks for the video player under one name while it runs under another, so a stopped engine leaves a full-screen player behind."
         },
         {
           "ids": "A-79 / D-54 / D-69",
-          "text": "Twenty-one suites start a real full-screen browser on the show TV pointed at the live port."
+          "text": "Twenty-one groups of tests start a real full-screen browser on the show TV, pointed at the live engine."
         },
         {
           "ids": "D-72",
-          "text": "Starting any engine kills every pactl subscribe process of the user, including the live engine's sink monitor."
+          "text": "Starting any engine stops every sound-system watcher on the machine, including the live engine's own."
         },
         {
           "ids": "X-05",
-          "text": "The health script says VLC not found while the player runs, because it looks for cvlc."
+          "text": "The health script says VLC not found while the player runs, because it looks for the wrong program name."
         },
         {
           "ids": "X-07",
-          "text": "Fixing the reaper's name alone brings blue's unit-test kill back; the per-run process folder must land first."
+          "text": "Correcting the leftover cleaner's program name alone brings back blue's small-test kill; each run must first get its own folder for these files."
         }
       ],
       "blueFixes": [
@@ -487,7 +487,7 @@
         4
       ],
       "findings": 41,
-      "seenLive": "A unit test killed the live video player on 2026-09-15; a kill guard logged the show box out on 2026-09-18.",
+      "seenLive": "A small test stopped the live video player on 2026-09-15; a safety check added against such kills logged the show machine's user out on 2026-09-18.",
       "parts": [
         "P13",
         "P16",
@@ -511,12 +511,12 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  gm[\"GM scans token\"]\n  tab[\"Tablet<br/>own copy of rules\"]\n  screen[\"Result screen<br/>Transaction Complete\"]\n  eng[\"Engine<br/>game rules, the authority\"]\n  toast[\"Toast<br/>corrects later\"]\n  local[\"Standalone store<br/>paused checked, ended not\"]\n  phone[\"Player phone<br/>own team, own seen list\"]\n  gm -->|\"scan\"| tab\n  tab -->|\"points, gate, match\"| screen\n  tab -->|\"submit, networked\"| eng\n  eng -.->|\"refused\"| toast\n  tab -->|\"standalone\"| local\n  phone -->|\"team engine discards\"| eng\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class tab,screen,local,phone fault;"
+        "mermaid": "flowchart LR\n  gm[\"GM scans token\"]\n  tab[\"Tablet<br/>own copy of rules\"]\n  screen[\"Result screen<br/>Transaction Complete\"]\n  eng[\"Engine<br/>game rules, the authority\"]\n  toast[\"Pop-up<br/>corrects later\"]\n  local[\"Tablet's standalone record<br/>checks paused, not ended\"]\n  phone[\"Player phone<br/>own team, own seen list\"]\n  gm -->|\"scan\"| tab\n  tab -->|\"works out points, whether allowed, which token\"| screen\n  tab -->|\"sends it, when networked\"| eng\n  eng -.->|\"refused\"| toast\n  tab -->|\"standalone\"| local\n  phone -->|\"team engine discards\"| eng\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class tab,screen,local,phone fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  gm[\"GM scans token\"]\n  tab[\"Tablet Screens<br/>shows pending, judges nothing\"]\n  ans[\"Answering<br/>one reply per tap\"]\n  rec[\"Game record on the engine<br/>decides claim and points,<br/>and whether a scan is allowed\"]\n  rules[\"Game rules<br/>one body of code<br/>that only calculates\"]\n  res[\"Result screen<br/>draws the reply with its points\"]\n  sans[\"Answering on the tablet<br/>standalone, local reply\"]\n  srec[\"Game record on the tablet<br/>standalone, the same rules\"]\n  phone[\"Player phone and hardware scanner<br/>Screens, rules as data tables\"]\n  gm -->|\"networked\"| tab\n  tab -->|\"request\"| ans\n  ans -->|\"apply, outcome back\"| rec\n  ans -->|\"reply with points\"| res\n  rules -->|\"loaded by\"| rec\n  gm -->|\"standalone\"| sans\n  sans -->|\"apply, outcome back\"| srec\n  sans -->|\"reply with points\"| res\n  rules -->|\"loaded by\"| srec\n  rules -->|\"tables generated\"| phone\n  phone -->|\"scan, the reply<br/>says new or seen\"| ans\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rec owner;",
-        "note": "The Game record decides what a tap gets. The tablet shows pending, then Answering's reply. Game rules is one body the engine and a standalone tablet both run; player devices get data tables and judge nothing while the engine is there. Or: two rule copies kept equal by tests."
+        "mermaid": "flowchart LR\n  gm[\"GM scans token\"]\n  tab[\"Tablet Screens<br/>shows pending, judges nothing\"]\n  ans[\"Answering<br/>one reply per tap\"]\n  rec[\"Game record on the engine<br/>decides claim and points,<br/>and whether a scan is allowed\"]\n  rules[\"Game rules<br/>one body of code<br/>that only calculates\"]\n  res[\"Result screen<br/>draws the reply with its points\"]\n  sans[\"Answering on the tablet<br/>standalone, local reply\"]\n  srec[\"Game record on the tablet<br/>standalone, the same rules\"]\n  phone[\"Player phone and hardware scanner<br/>Screens, the rules as tables they read\"]\n  gm -->|\"networked\"| tab\n  tab -->|\"request\"| ans\n  ans -->|\"apply, outcome back\"| rec\n  ans -->|\"reply with points\"| res\n  rules -->|\"loaded by\"| rec\n  gm -->|\"standalone\"| sans\n  sans -->|\"apply, outcome back\"| srec\n  sans -->|\"reply with points\"| res\n  rules -->|\"loaded by\"| srec\n  rules -->|\"tables made from the rules\"| phone\n  phone -->|\"scan, the reply<br/>says new or seen\"| ans\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rec owner;",
+        "note": "The Game record decides what a tap gets. The tablet shows pending, then Answering's reply. Game rules is one body of code the engine and a standalone tablet both run; player devices get the rules as tables and judge nothing while the engine is there. Or: two rule copies kept equal by tests."
       },
       "examples": [
         {
@@ -529,7 +529,7 @@
         },
         {
           "ids": "A-34",
-          "text": "A duplicate scan on the same tablet never names the team that claimed it; the local guard fires first."
+          "text": "A duplicate scan on the same tablet never names the team that claimed it; the tablet's own check refuses it first."
         },
         {
           "ids": "D-09 / B-62",
@@ -567,7 +567,7 @@
       "title": "Screens show a normal value when nothing is known",
       "atAShow": "The venue profile fails to load; six services show as not installed, no video plays, no light cue fires, and the health panel reads a calm green 3 of 9. The GM presses Check Now on a down service and nothing visibly happens. The engine dies; the TV keeps counting down. The music card goes grey with no word that the engine is gone, and nobody at the venue notices.",
       "whyItHappens": "No fact sent to a screen says whether it is known, unknown, stale or partial. The code that builds a tablet's catch-up swallows errors and sends a plausible normal value, a missing profile reads as no equipment, healthy only means a program answered, and the times of the last checks are never shown. The screen draws a normal value.",
-      "designTerms": "Delivery should own the label every fact carries: what it is, how old, how sure. Equipment's dated state feeds it, and Lifecycle passes the Verdict's words. Screens draws the label at Delivery's seam. Today the interface of a sent fact carries neither status nor age, so an error crosses the seam as a normal value.",
+      "designTerms": "Delivery should own the label every fact carries: what it is, how old, how sure. Equipment's dated state feeds it, and Lifecycle passes on the Verdict's go or no-go. Screens draws the label at Delivery's seam. Today the interface of a sent fact carries neither status nor age, so an error crosses the seam as a normal value.",
       "modules": [
         "backend/src/services/serviceHealthRegistry.js",
         "backend/src/websocket/syncHelpers.js",
@@ -578,11 +578,11 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  prof[\"Venue profile<br/>fails to load\"]\n  dorm[\"Dormancy service<br/>reads no equipment\"]\n  reg[\"Health registry<br/>emits on change only\"]\n  snap[\"Snapshot builders<br/>catch error, send default\"]\n  push[\"Push to tablets<br/>no age, no unknown\"]\n  panel[\"Health panel<br/>calm green 3 of 9\"]\n  tv[\"TV clock<br/>keeps counting\"]\n  prof -->|\"missing or invalid\"| dorm\n  dorm -->|\"six not installed\"| reg\n  reg -->|\"check time never shown\"| push\n  snap -->|\"clock stopped, route hdmi\"| push\n  push -->|\"drawn as normal\"| panel\n  push -.->|\"engine gone, no signal\"| tv\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class dorm,snap,push,panel,tv fault;"
+        "mermaid": "flowchart LR\n  prof[\"Venue profile<br/>fails to load\"]\n  dorm[\"Not-installed check<br/>reads no equipment\"]\n  reg[\"Health list<br/>sends only on a change\"]\n  snap[\"Catch-up builders<br/>hide the error, send a normal value\"]\n  push[\"Message to tablets<br/>no age, no unknown\"]\n  panel[\"Health panel<br/>calm green 3 of 9\"]\n  tv[\"TV clock<br/>keeps counting\"]\n  prof -->|\"missing or invalid\"| dorm\n  dorm -->|\"six not installed\"| reg\n  reg -->|\"check time never shown\"| push\n  snap -->|\"clock stopped, sound to the TV\"| push\n  push -->|\"drawn as normal\"| panel\n  push -.->|\"engine gone, no signal\"| tv\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class dorm,snap,push,panel,tv fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  prof[\"Venue fit<br/>profile fails to load\"]\n  life[\"Lifecycle<br/>asks the Verdict at start\"]\n  ver[\"Verdict<br/>profile failed, no-go<br/>(on paper, not a live check)\"]\n  eq[\"Equipment<br/>state with health and age\"]\n  con[\"Connections and roles<br/>one rule for whether<br/>a device is still there\"]\n  del[\"Delivery<br/>every fact labelled:<br/>what, how old, how sure\"]\n  panel[\"Health panel<br/>red profile row,<br/>with the time it was checked\"]\n  tv[\"TV clock<br/>drawn as old past its limit\"]\n  music[\"Music card<br/>down, not a calm grey\"]\n  prof -->|\"missing or invalid\"| life\n  life -->|\"profile and inventory\"| ver\n  ver -->|\"a failed check, never no equipment\"| life\n  life -->|\"verdicts\"| del\n  eq -->|\"dated picture\"| del\n  con -->|\"connection state\"| del\n  del -->|\"label drawn\"| panel\n  del -->|\"label drawn\"| tv\n  del -->|\"label drawn\"| music\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class del owner;",
+        "mermaid": "flowchart LR\n  prof[\"Venue fit<br/>profile fails to load\"]\n  life[\"Lifecycle<br/>asks the Verdict at start\"]\n  ver[\"Verdict<br/>profile failed, no-go<br/>(on paper, not a live check)\"]\n  eq[\"Equipment<br/>state with health and age\"]\n  con[\"Connections and roles<br/>one rule for whether<br/>a device is still there\"]\n  del[\"Delivery<br/>every fact labelled:<br/>what, how old, how sure\"]\n  panel[\"Health panel<br/>red profile row,<br/>with the time it was checked\"]\n  tv[\"TV clock<br/>drawn as old past its limit\"]\n  music[\"Music card<br/>down, not a calm grey\"]\n  prof -->|\"missing or invalid\"| life\n  life -->|\"profile and what is running\"| ver\n  ver -->|\"a failed check, never no equipment\"| life\n  life -->|\"verdicts\"| del\n  eq -->|\"dated picture\"| del\n  con -->|\"connection state\"| del\n  del -->|\"label drawn\"| panel\n  del -->|\"label drawn\"| tv\n  del -->|\"label drawn\"| music\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class del owner;",
         "note": "Every delivered fact carries a label: what, how old, how sure, and Screens draw unknown, old and down as such. The Verdict, asked by Lifecycle at start, calls a failed profile no-go, not no equipment. Or: the parts keeping each promise send their own facts."
       },
       "examples": [
@@ -600,11 +600,11 @@
         },
         {
           "ids": "B-76 / C-47",
-          "text": "A cue with commands on a dormant service skips them quietly and reports a clean finish."
+          "text": "A cue with commands for a service not installed tonight skips them quietly and reports a clean finish."
         },
         {
           "ids": "A-74",
-          "text": "The music panel gives no clear sign MPD is down; a greyed card went unnoticed at the venue."
+          "text": "The music panel gives no clear sign the music player is down; a greyed card went unnoticed at the venue."
         },
         {
           "ids": "D-11",
@@ -632,7 +632,7 @@
       "title": "Several places answer the same question, each differently",
       "atAShow": "Is a video playing has eight answers. A paused video counts as free, so a player is told their video was started while it waits, and releasing a held video plays over the paused one. Release All can stop at the first refused video. Music stays turned down after the queue is cleared. The downloaded report's two totals disagree.",
       "whyItHappens": "Questions such as is a video playing, which teams exist and may the GM scan now are answered by several pieces of code or saved values, each with its own rule and its own way of being updated, so they disagree at the edges. No rule says which answerer every reader must use.",
-      "designTerms": "Each question should have one answerer inside the part that owns it, behind one interface every reader uses: the Game record for teams and whether the GM may scan, Equipment for whether a video plays. Today the video queue, the command check and the music volume rule each answer it alone: no seam, no locality.",
+      "designTerms": "Each question should have one answerer inside the part that owns it, behind one interface every reader uses: the Game record for teams and whether the GM may scan, Equipment for whether a video plays. Today the video queue, the check on GM commands and the music volume rule each answer it alone: no seam, no locality.",
       "modules": [
         "backend/src/services/videoQueueService.js",
         "backend/src/services/commandExecutor.js",
@@ -643,12 +643,12 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>video paused\"]\n  cur[\"Queue current item<br/>paused is not playing\"]\n  accept[\"Can accept a video<br/>reads paused as free\"]\n  run[\"Queue run<br/>plays next over paused\"]\n  duck[\"Ducking<br/>own count of playing videos\"]\n  clear[\"Clear queue<br/>sends no completed\"]\n  player[\"Player scanner<br/>told video triggered\"]\n  music[\"Music<br/>stays ducked\"]\n  vlc -->|\"paused\"| cur\n  cur -->|\"not playing\"| accept\n  accept -->|\"available\"| player\n  cur -->|\"not playing\"| run\n  run -->|\"next video over paused\"| vlc\n  clear -.->|\"no event\"| duck\n  duck -->|\"still counts one\"| music\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class cur,accept,run,duck fault;"
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>video paused\"]\n  cur[\"Queue current item<br/>paused is not playing\"]\n  accept[\"Can accept a video<br/>reads paused as free\"]\n  run[\"Queue run<br/>plays next over paused\"]\n  duck[\"Music turn-down<br/>own count of playing videos\"]\n  clear[\"Clear queue<br/>sends no 'finished'\"]\n  player[\"Player scanner<br/>told its video started\"]\n  music[\"Music<br/>stays turned down\"]\n  vlc -->|\"paused\"| cur\n  cur -->|\"not playing\"| accept\n  accept -->|\"available\"| player\n  cur -->|\"not playing\"| run\n  run -->|\"next video over paused\"| vlc\n  clear -.->|\"no event\"| duck\n  duck -->|\"still counts one\"| music\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class cur,accept,run,duck fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart LR\n  vlc[\"VLC<br/>video paused\"]\n  eq[\"Equipment<br/>one dated answer, busy and paused\"]\n  run[\"Show runner<br/>queue, held items and music volume<br/>all read that answer\"]\n  ans[\"Answering<br/>scans and commands, one reply\"]\n  player[\"Player scanner<br/>told to wait\"]\n  music[\"Music<br/>restored when nothing plays\"]\n  rec[\"Game record<br/>one answer for teams<br/>and whether the GM may scan\"]\n  tab[\"Tablet Screens<br/>draws the reply\"]\n  night[\"The night's record<br/>one total per team\"]\n  vlc -->|\"paused\"| eq\n  eq -->|\"busy, paused\"| run\n  run -->|\"video busy\"| ans\n  ans -->|\"wait\"| player\n  run -->|\"queue cleared, nothing playing\"| music\n  rec -->|\"outcome\"| ans\n  ans -->|\"reply\"| tab\n  rec -->|\"at the end\"| night\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eq owner;",
-        "note": "One answerer per question, inside its owning part: Equipment for whether a video plays, the Show runner for held items, the Game record for teams and scan permission, the night's record for totals. Or: an interface per program, leaving questions across programs spread."
+        "note": "One answerer per question, inside its owning part: Equipment for whether a video plays, the Show runner for held items, the Game record for teams and scan permission, the night's record for totals. Or: an interface per program, leaving each question about several programs answered in several places."
       },
       "examples": [
         {
@@ -657,15 +657,15 @@
         },
         {
           "ids": "B-40",
-          "text": "Held cues and held videos live in two stores; Release All can stop at the first refused video."
+          "text": "Held cues and held videos are kept in two separate lists; Release All can stop at the first refused video."
         },
         {
           "ids": "B-45",
-          "text": "Ducking keeps its own count of playing videos; music stays ducked after the queue is cleared."
+          "text": "The code that turns music down keeps its own count of playing videos; music stays turned down after the queue is cleared."
         },
         {
           "ids": "C-25",
-          "text": "The GM's permission to scan is read from a local copy; after a reload it blocks scans in an active game until the first snapshot arrives."
+          "text": "The GM's permission to scan is read from the tablet's own copy; after a reload it blocks scans in an active game until the first catch-up arrives."
         },
         {
           "ids": "C-24",
@@ -702,7 +702,7 @@
       "title": "Pack edits reach each copy of the pack differently",
       "atAShow": "A designer publishes a pack change and does not restart. The TV shows evidence by the new rules while the engine scores by the old. The file the engine hands out no longer matches the fingerprint in the engine's own pack list, so a scanner that checks rejects it. A tablet running a different pack is only noted in the engine's log; nothing tells the GM. The publish tells the running engine nothing.",
       "whyItHappens": "The engine freezes one pack at start, yet the files it hands out are whatever is on disk now, and it re-reads the token list from disk at every request. The TV, tablet and hardware scanner each load the pack at their own moment and keep it; the phone reads its own copy. No message says it changed.",
-      "designTerms": "The Pack channel should own one adopted pack behind one interface: adopt, say which is current, fetch a file, announce a change. Each source is an adapter at its seam, and the Design studio reaches the engine's copy by message. Today the engine's frozen list and the live disk both cross the seam: no locality.",
+      "designTerms": "The Pack channel should own one loaded pack behind one interface: load, say which is current, hand out a file, announce a change. Each place a pack comes from is an adapter at its seam, and the Design studio reaches the engine's copy only by sending it requests. Today both the copy the engine froze at start and the files on disk under it cross the seam: no locality.",
       "modules": [
         "backend/src/services/packService.js",
         "backend/src/routes/packRoutes.js",
@@ -713,17 +713,17 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  tool[\"Config tool<br/>publishes pack\"]\n  disk[\"Pack on disk<br/>new bytes\"]\n  frozen[\"Engine rules<br/>frozen at start\"]\n  files[\"File endpoint<br/>serves disk bytes\"]\n  tokens[\"Token endpoint<br/>re-reads every call\"]\n  tv[\"TV<br/>loads at page open\"]\n  tab[\"Tablet<br/>loads at app start\"]\n  tool -->|\"writes\"| disk\n  tool -.->|\"no message\"| frozen\n  disk -->|\"read once at start\"| frozen\n  disk -->|\"live bytes\"| files\n  disk -->|\"re-read each call\"| tokens\n  files -->|\"new rules\"| tv\n  files -->|\"manifest old, bytes new\"| tab\n  tab -.->|\"pack mismatch, log only\"| frozen\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class frozen,files,tokens,tv,tab fault;"
+        "mermaid": "flowchart LR\n  tool[\"Config tool<br/>publishes pack\"]\n  disk[\"Pack on disk<br/>new files\"]\n  frozen[\"Engine rules<br/>frozen at start\"]\n  files[\"File download<br/>hands out the files on disk\"]\n  tokens[\"Token list download<br/>re-read at every request\"]\n  tv[\"TV<br/>loads at page open\"]\n  tab[\"Tablet<br/>loads at app start\"]\n  tool -->|\"writes\"| disk\n  tool -.->|\"no message\"| frozen\n  disk -->|\"read once at start\"| frozen\n  disk -->|\"today's files\"| files\n  disk -->|\"re-read at every request\"| tokens\n  files -->|\"new rules\"| tv\n  files -->|\"pack list old, files new\"| tab\n  tab -.->|\"pack mismatch, log only\"| frozen\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class frozen,files,tokens,tv,tab fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  studio[\"Design studio<br/>publishes, then asks<br/>to apply, by message\"]\n  ans[\"Answering<br/>every request, one reply\"]\n  life[\"Lifecycle<br/>allows adopt in setup<br/>or ended, else refuses\"]\n  pack[\"Pack channel<br/>adopts once, one version, one stamp\"]\n  files[\"File fetch<br/>from the adopted copy, fingerprint checked\"]\n  del[\"Delivery<br/>pack stamp on every<br/>catch-up and live change\"]\n  tv[\"TV<br/>draws the facts as delivered,<br/>shows the stamp\"]\n  tab[\"Tablet<br/>stamp compared at connect,<br/>warns when it is behind\"]\n  dev[\"Phone and hardware scanner<br/>stamp shown\"]\n  studio -->|\"apply this version\"| ans\n  ans -->|\"asks if now is allowed\"| life\n  life -->|\"adopt when allowed\"| pack\n  pack -->|\"adopted files\"| files\n  pack -->|\"changed\"| del\n  del -->|\"pack stamp and facts\"| tv\n  del -->|\"pack stamp\"| tab\n  files -->|\"fetch and check\"| dev\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class pack owner;",
-        "note": "One adopted version, one notice, one stamp. The Design studio publishes and applies by message, never by writing the engine's files. Lifecycle allows the change only between games. Delivery sends the pack version to every screen, and the engine compares stamps when a device connects."
+        "mermaid": "flowchart LR\n  studio[\"Design studio<br/>publishes, then asks<br/>the engine to apply it\"]\n  ans[\"Answering<br/>every request, one reply\"]\n  life[\"Lifecycle<br/>allows loading before a game<br/>or after it ends, else refuses\"]\n  pack[\"Pack channel<br/>loads once, one version, one version mark\"]\n  files[\"File download<br/>from the loaded copy, fingerprint checked\"]\n  del[\"Delivery<br/>pack version on every<br/>catch-up and live change\"]\n  tv[\"TV<br/>draws the facts as delivered,<br/>shows the pack version\"]\n  tab[\"Tablet<br/>pack version compared at connect,<br/>warns when it is behind\"]\n  dev[\"Phone and hardware scanner<br/>pack version shown\"]\n  studio -->|\"apply this version\"| ans\n  ans -->|\"asks if now is allowed\"| life\n  life -->|\"load when allowed\"| pack\n  pack -->|\"loaded files\"| files\n  pack -->|\"changed\"| del\n  del -->|\"pack version and facts\"| tv\n  del -->|\"pack version\"| tab\n  files -->|\"fetch and check\"| dev\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class pack owner;",
+        "note": "One loaded version, one notice, one version mark. The Design studio publishes and asks the engine to apply it, never writing the engine's files. Lifecycle allows the change only between games. Delivery sends the pack version to every screen, and the engine compares pack versions when a device connects."
       },
       "examples": [
         {
           "ids": "B-07 / D-04",
-          "text": "After a pack edit with no restart, endpoints serve new bytes while the engine scores from the old pack; hash mismatches."
+          "text": "After a pack edit with no restart, the engine hands out the new files while it scores from the old pack; the files' fingerprints no longer match its list."
         },
         {
           "ids": "B-28 / D-38",
@@ -743,7 +743,7 @@
         },
         {
           "ids": "D-41",
-          "text": "A password changed in the tool's env editor works at once on the tool, only after restart on the engine."
+          "text": "A password changed in the config tool's settings editor works at once on the tool, and on the engine only after a restart."
         }
       ],
       "blueFixes": [],
@@ -776,21 +776,21 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  tab[\"GM tablet<br/>types its name\"]\n  tv[\"TV page<br/>claims to be a GM\"]\n  any[\"Any device<br/>says it is not GM\"]\n  hs[\"Handshake<br/>token asked only of GM\"]\n  http[\"State route<br/>no login asked\"]\n  room[\"GM room<br/>one audience for all\"]\n  all[\"Every transaction<br/>all ten domains\"]\n  whole[\"Whole game state<br/>on request\"]\n  tab -->|\"reads free names\"| http\n  tab -->|\"name plus token\"| hs\n  tv -->|\"token minted per serve\"| hs\n  any -->|\"no token\"| hs\n  hs -->|\"every token holder joins\"| room\n  room -->|\"same snapshot, same pushes\"| all\n  hs -->|\"answers any sync request\"| whole\n  http -->|\"answers anyone\"| any\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class hs,http,room fault;"
+        "mermaid": "flowchart LR\n  tab[\"GM tablet<br/>types its name\"]\n  tv[\"TV page<br/>claims to be a GM\"]\n  any[\"Any device<br/>says it is not GM\"]\n  hs[\"Connecting<br/>a pass asked only of GMs\"]\n  http[\"Game-state address<br/>no login asked\"]\n  room[\"GM group<br/>one audience for all\"]\n  all[\"Every transaction<br/>all ten kinds of service state\"]\n  whole[\"Whole game state<br/>on request\"]\n  tab -->|\"reads free names\"| http\n  tab -->|\"name plus pass\"| hs\n  tv -->|\"a pass made at each page load\"| hs\n  any -->|\"no pass\"| hs\n  hs -->|\"everyone with a pass joins\"| room\n  room -->|\"same catch-up, same live messages\"| all\n  hs -->|\"answers any request for the whole game\"| whole\n  http -->|\"answers anyone\"| any\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class hs,http,room fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  tab[\"GM tablet<br/>operator pass\"]\n  tv[\"TV page<br/>display pass\"]\n  dev[\"Phone and hardware scanner<br/>device pass\"]\n  any[\"Stranger on the wifi<br/>no pass\"]\n  con[\"Connections and roles<br/>admits every connection by its pass<br/>kind, name, rights,<br/>whether it is still there\"]\n  ans[\"Answering<br/>rights checked once per request\"]\n  del[\"Delivery<br/>each fact filtered by role\"]\n  gm[\"GM screens<br/>transactions, equipment, devices\"]\n  disp[\"Display screens<br/>scores, evidence, clock\"]\n  tab -->|\"pass\"| con\n  tv -->|\"pass\"| con\n  dev -->|\"pass\"| con\n  con -.->|\"refused\"| any\n  con -->|\"who may do what\"| ans\n  con -->|\"who may see what\"| del\n  del -->|\"GM facts\"| gm\n  del -->|\"display facts\"| disp\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class con owner;",
+        "mermaid": "flowchart LR\n  tab[\"GM tablet<br/>staff login\"]\n  tv[\"TV page<br/>display pass\"]\n  dev[\"Phone and hardware scanner<br/>device pass\"]\n  any[\"Stranger on the wifi<br/>no pass\"]\n  con[\"Connections and roles<br/>admits every connection by its pass<br/>kind, name, rights,<br/>whether it is still there\"]\n  ans[\"Answering<br/>rights checked once per request\"]\n  del[\"Delivery<br/>each fact filtered by role\"]\n  gm[\"GM screens<br/>transactions, equipment, devices\"]\n  disp[\"Display screens<br/>scores, evidence, clock\"]\n  tab -->|\"pass\"| con\n  tv -->|\"pass\"| con\n  dev -->|\"pass\"| con\n  con -.->|\"refused\"| any\n  con -->|\"who may do what\"| ans\n  con -->|\"who may see what\"| del\n  del -->|\"GM facts\"| gm\n  del -->|\"display facts\"| disp\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class con owner;",
         "note": "Every connection shows a verified pass. Connections and roles admits it by that pass, so a typed name or default decides nothing; Delivery filters each fact by role; Answering checks rights once. Or: two kinds of connection, one public for scoreboards and players, one for the GM."
       },
       "examples": [
         {
           "ids": "B-04 / B-27 / D-27 / C-20",
-          "text": "Anyone on the kit network fetches the whole game state; a socket claiming not to be a GM gets it too."
+          "text": "Anyone on the show's Wi-Fi can fetch the whole game state; a connection claiming not to be a GM gets it too."
         },
         {
           "ids": "B-89 / D-25 / D-26",
-          "text": "The TV sits in the GM room, receives every transaction and all ten service domains, and filters on its own side."
+          "text": "The TV sits in the GM group, receives every transaction and all ten kinds of service state, and throws away what it does not need on its own side."
         },
         {
           "ids": "B-70 / C-19",
@@ -798,15 +798,15 @@
         },
         {
           "ids": "B-24 / C-59",
-          "text": "A tablet that reloads after losing Wi-Fi cannot replace its own stale socket for up to about 85 seconds."
+          "text": "A tablet that reloads after losing Wi-Fi cannot replace its own old connection for up to about 85 seconds."
         },
         {
           "ids": "B-71 / D-32",
-          "text": "An ESP32 is listed as a web player scanner because its health poll sends no type."
+          "text": "A hardware scanner is listed as a phone scanner, because its regular check-in does not say what kind of device it is."
         },
         {
           "ids": "B-90 / D-29",
-          "text": "Displays get no device record and share one id, so the engine cannot count connected TVs."
+          "text": "TVs are not listed as devices and all share one name, so the engine cannot count connected TVs."
         }
       ],
       "blueFixes": [],
@@ -826,8 +826,8 @@
       "id": "C14",
       "title": "Names joining two places are kept by hand",
       "atAShow": "A GM opens Team Details: the score box is wrong, GM adjustments never appear, completed groups read In Progress with a $0 bonus, while the scoreboard screen on the same tablet shows the real total. Game Activity shows Unknown, no stars, $0 for a token no player scanned first. The video Playing badge never appears, because the page never had a place to draw it.",
-      "whyItHappens": "A screen reads a field the fact never carries; a screen looks for a spot the page never had; a module waits for a message nothing sends; the written contract lists messages nobody sends. Each name is written on both sides, and a wrong side yields nothing instead of an error.",
-      "designTerms": "Joins and proofs should own the check that both sides of every shared name agree; Delivery and Answering own the shapes, written once, and Screens read them, so a missing side fails the proof before the show. Today nothing checks the tablet's inner seam: Team Details silently reads a field the outer layer never passes on.",
+      "whyItHappens": "A screen reads a field the fact never carries; a screen looks for a spot the page never had; a module waits for a message nothing sends; the written list of messages between the engine and the devices names messages nobody sends. Each name is written on both sides, and a wrong side yields nothing instead of an error.",
+      "designTerms": "Joins and proofs should own the check that both sides of every shared name agree; Delivery and Answering own the formats, written once, and Screens read them, so a missing side fails the developer's tests before the show. Today nothing checks the seam inside the tablet app: Team Details silently reads a value the layer above it never passes on.",
       "modules": [
         "ALNScanner/src/ui/renderers/GameOpsRenderer.js",
         "ALNScanner/src/core/unifiedDataManager.js",
@@ -838,33 +838,33 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  td[\"Team Details screen<br/>wrong score\"]\n  fac[\"Data facade<br/>no backendScores field\"]\n  strat[\"Networked storage<br/>holds backendScores\"]\n  vr[\"Video renderer<br/>looks up badge id\"]\n  page[\"GM page<br/>no badge element\"]\n  lis[\"Tablet listener<br/>waits for state event\"]\n  eng[\"Engine<br/>never sends it\"]\n  td -->|\"reads field, gets undefined\"| fac\n  fac -.->|\"field never delegated\"| strat\n  vr -->|\"finds nothing, no error\"| page\n  eng -.->|\"no sender\"| lis\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class td,vr,lis fault;"
+        "mermaid": "flowchart LR\n  td[\"Team Details screen<br/>wrong score\"]\n  fac[\"Tablet data layer<br/>no score-box value\"]\n  strat[\"Networked half<br/>holds the score-box value\"]\n  vr[\"Video drawing code<br/>looks for the badge's place\"]\n  page[\"GM page<br/>no place for the badge\"]\n  lis[\"Tablet code<br/>waits for a state message\"]\n  eng[\"Engine<br/>never sends it\"]\n  td -->|\"asks for the value, gets nothing\"| fac\n  fac -.->|\"value never passed on\"| strat\n  vr -->|\"finds nothing, no error\"| page\n  eng -.->|\"no sender\"| lis\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class td,vr,lis fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  del[\"Delivery<br/>one builder per fact,<br/>the shape written once\"]\n  ans[\"Answering<br/>reply words, a closed list\"]\n  joins[\"Joins and proofs<br/>contracts built from those shapes,<br/>both sides checked\"]\n  eng[\"Engine<br/>sends only the generated shapes\"]\n  scr[\"Screens on the tablet<br/>draw the delivered shape,<br/>keep no copy\"]\n  td[\"Team Details and Game Activity<br/>draw the facts as delivered\"]\n  badge[\"Video badge<br/>drawn from the video fact,<br/>or the check fails\"]\n  dead[\"A message with no sender<br/>or no reader<br/>fails the proof, not the show\"]\n  del -->|\"fact shapes\"| joins\n  ans -->|\"reply words\"| joins\n  joins -->|\"checks\"| eng\n  joins -->|\"checks\"| scr\n  del -->|\"delivered facts\"| scr\n  scr -->|\"draws\"| td\n  scr -->|\"draws\"| badge\n  joins -->|\"lists\"| dead\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;",
-        "note": "Every shape is written once, facts by Delivery, replies by Answering, and Joins and proofs checks both sides against them. Screens keep no copy; Team Details draws only delivered facts. Unsent messages fail the proof. Or: the parts keeping each promise send their own facts."
+        "mermaid": "flowchart LR\n  del[\"Delivery<br/>one piece of code per fact,<br/>the format written once\"]\n  ans[\"Answering<br/>reply words, one fixed list\"]\n  joins[\"Joins and proofs<br/>checks built from those formats,<br/>both sides checked\"]\n  eng[\"Engine<br/>sends only those formats\"]\n  scr[\"Screens on the tablet<br/>draw the delivered format,<br/>keep no copy\"]\n  td[\"Team Details and Game Activity<br/>draw the facts as delivered\"]\n  badge[\"Video badge<br/>drawn from the video fact,<br/>or the check fails\"]\n  dead[\"A message with no sender<br/>or no reader<br/>fails the developer's tests, not the show\"]\n  del -->|\"fact formats\"| joins\n  ans -->|\"reply words\"| joins\n  joins -->|\"checks\"| eng\n  joins -->|\"checks\"| scr\n  del -->|\"delivered facts\"| scr\n  scr -->|\"draws\"| td\n  scr -->|\"draws\"| badge\n  joins -->|\"lists\"| dead\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;",
+        "note": "Every format is written once, facts by Delivery, replies by Answering, and Joins and proofs checks both sides against them. Screens keep no copy; Team Details draws only delivered facts. A message nothing sends fails the developer's tests. Or: the parts keeping each promise send their own facts."
       },
       "examples": [
         {
           "ids": "A-03 / A-04 / C-06",
-          "text": "Team Details reads a field the facade lacks and a method no strategy defines; wrong score, groups always In Progress."
+          "text": "Team Details reads a value and asks for a step that the tablet's data layer does not have; wrong score, groups always In Progress."
         },
         {
           "ids": "A-07 / C-15",
-          "text": "Game Activity reads token fields off the lookup's wrapper, so a GM-claimed token shows Unknown, no stars, $0."
+          "text": "Game Activity reads a token's details from the wrong level of the token lookup's answer, so a GM-claimed token shows Unknown, no stars, $0."
         },
         {
           "ids": "A-28",
-          "text": "The video Playing, Paused, Idle badge never renders: its element was never in the page."
+          "text": "The video Playing, Paused, Idle badge never shows: the page never had a place for it."
         },
         {
           "ids": "A-62, A-66",
-          "text": "The cue timeline waits for a skipped field nothing sends and correlates videos by a field the pack lacks."
+          "text": "The cue timeline waits for a value nothing sends, and matches videos by a value the pack does not have."
         },
         {
           "ids": "B-06, B-50, B-67",
-          "text": "The contract lists events nobody sends, misses ones the engine emits, and disagrees with itself on the music push."
+          "text": "The written list of messages names ones nobody sends, misses ones the engine sends, and contradicts itself on the music player's live message."
         }
       ],
       "blueFixes": [
@@ -900,25 +900,25 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart TD\n  roll[\"Rollback<br/>check out older commit\"]\n  parent[\"Parent checkout<br/>moves back\"]\n  subs[\"Four submodules<br/>merge setting, stay forward\"]\n  pm2[\"pm2 restart<br/>no build step\"]\n  dist[\"Scanner build folder<br/>pre-rollback code\"]\n  serve[\"Engine serves<br/>scanner symlink\"]\n  media[\"Media on disk<br/>copied by hand\"]\n  roll -->|\"moves\"| parent\n  roll -.->|\"does not move\"| subs\n  roll -->|\"then\"| pm2\n  pm2 -.->|\"skips build\"| dist\n  dist -->|\"served as is\"| serve\n  media -.->|\"tokens may point at nothing\"| serve\n  parent -.->|\"nothing compares the parts\"| subs\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class subs,dist fault;"
+        "mermaid": "flowchart TD\n  roll[\"Rollback<br/>go back to an older version\"]\n  parent[\"The engine's code<br/>moves back\"]\n  subs[\"Four shared code pieces<br/>stay on the newer version\"]\n  pm2[\"Engine restart<br/>app not rebuilt\"]\n  dist[\"Built tablet app<br/>code from before the rollback\"]\n  serve[\"Engine serves<br/>that built app\"]\n  media[\"Media on disk<br/>copied by hand\"]\n  roll -->|\"moves\"| parent\n  roll -.->|\"does not move\"| subs\n  roll -->|\"then\"| pm2\n  pm2 -.->|\"app not rebuilt\"| dist\n  dist -->|\"served as is\"| serve\n  media -.->|\"tokens may point at nothing\"| serve\n  parent -.->|\"nothing compares the parts\"| subs\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class subs,dist fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart TD\n  rel[\"Release<br/>one described set:<br/>engine, tablet and phone apps,<br/>pack, media, profile\"]\n  cut[\"Cutover<br/>swap the whole set,<br/>blue to green and back\"]\n  pack[\"Pack channel<br/>every named media file<br/>checked by fingerprint\"]\n  fit[\"Venue fit<br/>this machine's program names,<br/>install commands and settings\"]\n  inst[\"Engine instance<br/>this engine's own names\"]\n  verd[\"Verdict<br/>go, no-go, dormant\"]\n  gate[\"Start gate<br/>a mismatch is reported<br/>before the show\"]\n  rel -->|\"installs or rolls back\"| cut\n  rel -->|\"compares at start\"| pack\n  rel -->|\"compares at start\"| fit\n  rel -->|\"compares at start\"| inst\n  rel -->|\"says it in\"| verd\n  verd -->|\"go or no-go\"| gate\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rel owner;",
-        "note": "Release lists the installed set and compares it at start, in the Verdict's words, so a rollback moves everything or says what it did not. Pack channel checks media by fingerprint; Venue fit names each machine's programs. Or: Release folds into Venue fit's Deploy stage."
+        "mermaid": "flowchart TD\n  rel[\"Release<br/>one written list:<br/>engine, tablet and phone apps,<br/>pack, media, profile\"]\n  cut[\"Cutover<br/>swap the whole set,<br/>old machine to new and back\"]\n  pack[\"Pack channel<br/>every named media file<br/>checked by fingerprint\"]\n  fit[\"Venue fit<br/>this machine's program names,<br/>install commands and settings\"]\n  inst[\"Engine instance<br/>this engine's own files, ports and settings\"]\n  verd[\"Verdict<br/>go, no-go, not installed tonight\"]\n  gate[\"Check before a game starts<br/>a mismatch is reported<br/>before the show\"]\n  rel -->|\"installs or rolls back\"| cut\n  rel -->|\"compares at start\"| pack\n  rel -->|\"compares at start\"| fit\n  rel -->|\"compares at start\"| inst\n  rel -->|\"says it in\"| verd\n  verd -->|\"go or no-go\"| gate\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rel owner;",
+        "note": "Release lists the installed set and compares it at start, in the Verdict's words, so a rollback moves everything or says what it did not. Pack channel checks media by fingerprint; Venue fit names each machine's programs. Or: Release becomes part of Venue fit's hand-off from designer to venue technician to GM."
       },
       "examples": [
         {
           "ids": "A-91",
-          "text": "Rolling back with git submodule update --force moves no submodule backwards under the merge setting."
+          "text": "Going back with the usual command moves none of the four shared code pieces back, because of how they are set to update."
         },
         {
           "ids": "A-92",
-          "text": "pm2 restart skips the build, so the GM scanner keeps serving the pre-rollback code."
+          "text": "Restarting the engine does not rebuild the tablet app, so the GM tablets keep getting the code from before the rollback."
         },
         {
           "ids": "A-88 / X-03",
-          "text": "The tree's own documents give the Bluetooth role blue found wrong, so a new machine pairs a silent speaker."
+          "text": "The project's own documents give the Bluetooth setting blue found to be wrong, so a new machine pairs a silent speaker."
         },
         {
           "ids": "A-95",
@@ -926,17 +926,17 @@
         },
         {
           "ids": "B-98, B-100",
-          "text": "Program names and install commands are fixed to one OS release; a new machine logs warnings or refuses pip."
+          "text": "Program names and install commands are fixed to one version of the operating system; a new machine logs warnings or refuses to install Python packages."
         },
         {
           "ids": "D-34",
-          "text": "The ESP32 checks no certificate at all, because the kit's self-signed certificate is pinned and distributed nowhere."
+          "text": "The hardware scanner never checks that it is talking to the real engine, because the engine's security certificate is given to no device."
         }
       ],
       "blueFixes": [],
       "questions": [],
       "findings": 12,
-      "seenLive": "Blue hit a half-applied rollback, a pre-rollback scanner build after pm2 restart, and a speaker with no audio profile.",
+      "seenLive": "Blue hit a half-done rollback, a tablet app from before the rollback still served after a restart, and a speaker paired with no sound set up.",
       "parts": [
         "P17",
         "P2",
@@ -948,9 +948,9 @@
     {
       "id": "C16",
       "title": "A green test run proves nothing about the show",
-      "atAShow": "This flaw shows nothing at a show; it is why the other fifteen flaws reached one. The small tests stayed green while Team Details showed the wrong score, because their stand-in had a field the real code lacks. A delete step in a full run-through test had been silently skipped, because it looked for the Team Details cards under a name the page never used. Blue's last full run skipped 62 tests, and group completion has no test on real content.",
-      "whyItHappens": "Fakes are written by hand, and nothing compares them to the real code they stand for. A test step that finds nothing on the page, or checks only that no error appeared, passes. Every test engine runs with a switch that changes what Reset System does, so no test runs the reset the show runs.",
-      "designTerms": "Joins and proofs should own every proof: each part's interface is its test surface, a fake is an adapter checked against the real part at the same seam, and one proof per fact runs from authority to screen on its own Engine instance. Today fakes are checked against nothing and no test crosses that path.",
+      "atAShow": "This flaw shows nothing at a show; it is why the other fifteen flaws reached one. The small tests kept passing while Team Details showed the wrong score, because their stand-in had a value the real code lacks. A delete step in a full run-through test had been silently skipped, because it looked for the Team Details cards under a name the page never used. Blue's last full run skipped 62 tests, and group completion has no test on real content.",
+      "whyItHappens": "Test stand-ins are written by hand, and nothing compares them to the real code they stand for. A test step that finds nothing on the page, or checks only that no error appeared, passes. Every test engine runs with a switch that changes what Reset System does, so no test runs the reset the show runs.",
+      "designTerms": "Joins and proofs should own every test: each part is tested through its interface, a test stand-in is an adapter checked against the real part at the same seam, and one test per fact runs from the part that decides it to a screen, on its own running copy of the engine. Today stand-ins are checked against nothing and no test crosses that path.",
       "modules": [
         "ALNScanner/tests/unit/ui/uiManager.test.js",
         "ALNScanner/tests/unit/core/gameActivityBuilder.test.js",
@@ -961,43 +961,43 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  real[\"Real facade<br/>no backendScores field\"]\n  fake[\"Hand-written fake<br/>has backendScores\"]\n  unit[\"Unit test<br/>green\"]\n  screen[\"Team Details screen<br/>wrong score\"]\n  sel[\"Page object selector<br/>never matches\"]\n  e2e[\"End-to-end flow<br/>delete step skips, green\"]\n  flag[\"Test flag on every engine<br/>reset removes listeners\"]\n  prod[\"Show machine<br/>reset removes nothing\"]\n  fake -->|\"stands in for\"| real\n  unit -->|\"tests against\"| fake\n  unit -.->|\"nothing compares\"| real\n  real -->|\"renders\"| screen\n  sel -->|\"finds no card, no failure\"| e2e\n  flag -.->|\"never tested as run\"| prod\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class fake,sel,flag fault;"
+        "mermaid": "flowchart LR\n  real[\"Real tablet data layer<br/>no score-box value\"]\n  fake[\"Hand-written stand-in<br/>has the score-box value\"]\n  unit[\"Small test<br/>passes\"]\n  screen[\"Team Details screen<br/>wrong score\"]\n  sel[\"Test's search for the cards<br/>never matches\"]\n  e2e[\"Full run-through test<br/>delete step skipped, passes\"]\n  flag[\"Test switch on every test engine<br/>reset clears the engine's connections\"]\n  prod[\"Show machine<br/>reset clears none\"]\n  fake -->|\"stands in for\"| real\n  unit -->|\"tests against\"| fake\n  unit -.->|\"nothing compares\"| real\n  real -->|\"renders\"| screen\n  sel -->|\"finds no card, reports no failure\"| e2e\n  flag -.->|\"never tested as run\"| prod\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class fake,sel,flag fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  joins[\"Joins and proofs<br/>every interface is its test surface\"]\n  real[\"Real part<br/>declares its surface\"]\n  fake[\"Fake<br/>an adapter at the same seam,<br/>checked against the real part\"]\n  path[\"One proof per fact<br/>from its authority to a screen,<br/>on the test rig\"]\n  inst[\"Engine instance<br/>each run under its own names\"]\n  stand[\"Equipment stand-ins<br/>real second adapters\"]\n  life[\"Lifecycle<br/>one reset path,<br/>tested as the show runs it\"]\n  packs[\"Two packs<br/>the same suite on each\"]\n  skips[\"Skips<br/>listed loudly, never counted green\"]\n  joins -->|\"checks\"| fake\n  real -->|\"surface\"| fake\n  joins -->|\"runs\"| path\n  path -->|\"on\"| inst\n  path -->|\"with\"| stand\n  path -->|\"through\"| life\n  joins -->|\"runs on\"| packs\n  joins -->|\"prints\"| skips\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;",
-        "note": "Joins and proofs checks every fake against the real part, prints every skip, and runs one proof per fact from authority to screen, under its own Engine instance, with Equipment stand-ins and the show's own reset path. Or: an interface per program, leaving stand-ins unbuilt."
+        "mermaid": "flowchart LR\n  joins[\"Joins and proofs<br/>each part is tested through its interface\"]\n  real[\"Real part<br/>declares its interface\"]\n  fake[\"Stand-in<br/>an adapter at the same seam,<br/>checked against the real part\"]\n  path[\"One test per fact<br/>from the part that decides it to a screen,<br/>on the test rig\"]\n  inst[\"Engine instance<br/>each run with its own files, ports and settings\"]\n  stand[\"Equipment stand-ins<br/>real second adapters\"]\n  life[\"Lifecycle<br/>one reset path,<br/>tested as the show runs it\"]\n  packs[\"Two packs<br/>the same tests on each\"]\n  skips[\"Skipped tests<br/>listed loudly, never counted as passing\"]\n  joins -->|\"checks\"| fake\n  real -->|\"its interface\"| fake\n  joins -->|\"runs\"| path\n  path -->|\"on\"| inst\n  path -->|\"with\"| stand\n  path -->|\"through\"| life\n  joins -->|\"runs on\"| packs\n  joins -->|\"lists\"| skips\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;",
+        "note": "Joins and proofs checks every test stand-in against the real part, lists every skipped test, and runs one test per fact from the part that decides it to a screen, on its own running copy of the engine, with Equipment stand-ins and the show's own reset path. Or: an interface per program, leaving stand-ins unbuilt."
       },
       "examples": [
         {
           "ids": "A-51",
-          "text": "Unit-test fakes drifted from the real classes, so tests stayed green while Team Details and Game Activity were wrong."
+          "text": "The small tests' stand-ins drifted from the real code, so the tests kept passing while Team Details and Game Activity were wrong."
         },
         {
           "ids": "A-83",
-          "text": "A page-object selector never matched the Team Details cards, so a delete step had been silently skipping."
+          "text": "The test's search for the Team Details cards never matched them, so a delete step had been silently skipping."
         },
         {
           "ids": "A-82",
-          "text": "Blue's last full run skipped 62 tests; group completion has no end-to-end test on real content."
+          "text": "Blue's last full run skipped 62 tests; group completion has no full run-through test on the real game."
         },
         {
           "ids": "X-04",
-          "text": "The listener registry removes listeners only under the test flag, so no layer runs the Reset System the show runs."
+          "text": "Reset System clears the engine's connections between its parts only when the test switch is on, so no test runs the Reset System the show runs."
         },
         {
           "ids": "D-87",
-          "text": "Not one screen image is checked in either end-to-end suite; no baseline exists to compare against."
+          "text": "Neither group of full run-through tests compares a picture of the screen; no reference picture exists."
         },
         {
           "ids": "D-47",
-          "text": "Parent CI never runs several suites; the config tool's own workflow never runs from this repository."
+          "text": "The automatic test runs skip several groups of tests, and the config tool's own automatic tests never run at all."
         }
       ],
       "blueFixes": [],
       "questions": [],
       "findings": 23,
-      "seenLive": "Blue's last full run skipped 62 tests; a delete step had been skipping silently in blue's end-to-end runs.",
+      "seenLive": "Blue's last full run skipped 62 tests; a delete step had been skipping silently in blue's full run-through tests.",
       "parts": [
         "P16"
       ],
