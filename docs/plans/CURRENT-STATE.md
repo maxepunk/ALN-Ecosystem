@@ -120,6 +120,14 @@ before acting.
   shape is silent on a short offline claim list on a disconnected
   tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
   worktrees, no test rig.
+- **In flight** (2026-11-01, after version 7): the owner raised two
+  things before going further. (1) Bring the after-game article and
+  emailer (`aboutlastnight/reports`, read only) into the engine map:
+  surveyed in `docs/plans/architecture-pass/2026-11-01-after-game-report.md`,
+  six questions for the owner, nothing decided. (2) The page grew by
+  piecemeal edits and its structure may work against what it must do
+  next: a structure is proposed in conversation, and the page is not
+  rebuilt or republished until the owner agrees one.
 - **The owner's page.** "What the Engine Promises"
   (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL, version 7 live,
   published 2026-11-01 after the owner said the 17-part shape was never

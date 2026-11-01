@@ -20,6 +20,8 @@ source of requirements for any task they run.
 | `page-fix-verify.js` | One refute-by-default reader confirms each conflict the page checks found is resolved on the rebuilt page, and lists any new conflict the fixes introduced | First run 2026-11-01, `wf_206a51c3-758` |
 | `vocab-promises.js` | Applies the owner's vocabulary decision 27 to the owner page's data: three editors (the cards and standalone lines; the promises; the shape's page data), each rewriting its files' owner-facing strings into promise words, exact titles and "venue technician", with a log per file | First run 2026-11-01, `wf_d5b390ac-27a`: 3 agents, 46 strings changed |
 | `vocab-check.js` | Two refute-by-default readers check the rebuilt page against decision 27 and for meaning kept (the top, the section and the questions; the promises and the cards). Pass `args.base`, the commit before the vocabulary edits | First run 2026-11-01, `wf_81c41f8d-ec0`: 15 and 13 conflicts, all applied |
+| `shape-picture-check.js` | Two refute-by-default readers check the page's whole-engine picture and its five walkthroughs against the candidate shape (one reader each) | First run 2026-11-01, `wf_ef6158a7-f16` |
+| `picture-fix-verify.js` | One refute-by-default reader confirms the picture and walkthrough fixes on the rebuilt page against the shape | First run 2026-11-01, `wf_6b57ff3f-3f3` |
 | `cut-lane-worktree.sh` | Cuts and provisions one lane worktree from the designated branch, with an ALNScanner branch of the same name when the lane edits the scanner | Proven on 2026-09-12. Pass `scanner` for every lane that edits the scanner; one lane was cut without it by mistake. |
 
 How to run the workflow scripts: pass the script file to the
