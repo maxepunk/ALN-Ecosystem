@@ -116,6 +116,11 @@ before acting.
       sequencing words are made unambiguous: the owner asked "which
       phase 1?", so no page uses a bare phase, step, round or block
       number again.
+      The owner's words for the goal (2026-11-01): "design a long-term
+      optimal architecture for our engine that makes it intuitive and
+      easy to maintain, continue development on, and extend
+      (proactive)", in place of "fixing issues seen / fixed on blue to
+      run ALN (reactive)".
   32. An independent panel of architects, who have not seen the
       orchestrator's reasoning, proposes and stress-tests the top-level
       design decisions before the first design round (owner,
