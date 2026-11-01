@@ -75,26 +75,21 @@ before acting.
   from the next session. The owner added a plugin-install line to the
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
-- **Live state** (2026-10-31): running, the consistency check the
-  owner asked for: workflow `wf_4e810a25-00f` (the first run,
-  `wf_1dea6411-991`, stalled at 23:52Z and was lost; the rerun also
-  covers the engine-jobs document and the rebuilt page; script
-  `docs/agents/workflow-scripts/cause-list-consistency.js`), four
-  checkers and a fold, reports in
-  `docs/plans/architecture-pass/consistency/`. Also running, at the
-  owner's yes (2026-10-31): step 1 restructured around the engine's
-  jobs (decision 26's frame), workflow `wf_f3c1ef9e-a97` (script
-  `docs/agents/workflow-scripts/engine-jobs.js`): two mappers (the 52
-  capabilities, the design flaws) test the orchestrator's draft of ten
-  jobs, then a writer, a check and a fold produce
-  `docs/plans/architecture-pass/2026-10-31-engine-jobs.md` and the
-  page's data; done, and the page rebuilt around the jobs is published
-  as version 3 (same link, now titled "What the Engine Must Do"). The
-  questions are regrouped: the jobs (is the list right; A to G), three
-  standalone questions (22's ESP32 reading, 24, 25), 19 and 21; 18 is
-  folded into F and 23 into C. Vocabulary: "design flaws" for C1 to C16 in owner-facing
-  text (the owner said "cause analysis" does not land). No worktrees,
-  no test rig. The visual cause report, version 2, is published for the
+- **Live state** (2026-11-01): nothing running, no worktrees, no
+  test rig. The owner-facing page, "What the Engine Must Do"
+  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL, version 4;
+  source `docs/plans/architecture-pass/report/`, built by
+  `build_report.py`), leads with the engine's ten jobs
+  (`docs/plans/architecture-pass/2026-10-31-engine-jobs.md`, workflow
+  `wf_f3c1ef9e-a97`), with the design flaws under each job, the
+  standalone pass, and the evidence at the back. The consistency check
+  the owner asked for ran as `wf_4e810a25-00f` (the first run,
+  `wf_1dea6411-991`, stalled and was lost): 39 conflicts across the
+  list of design flaws, the standalone pass, the jobs document, the
+  page data and the page, all settled and applied; section 8 of the
+  analysis lists them. The questions are regrouped: the jobs (is the
+  list right; A to G), the standalone questions (22's ESP32 reading,
+  24, 25), 19 and 21; 18 is folded into F and 23 into C. The visual cause report, version 2, is published for the
   owner (a private page: https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL;
   source `docs/plans/architecture-pass/report/`, rebuilt by
   `build_report.py`). Version 2 adds decision 22's standalone pass
