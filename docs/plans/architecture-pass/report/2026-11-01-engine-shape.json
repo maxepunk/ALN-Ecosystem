@@ -289,7 +289,7 @@
     {
       "id": "P7",
       "name": "Connections and roles",
-      "plain": "Every connection presents a verified pass; the engine knows what class it is, its name, which role it has and whether it is still there, by one liveness rule. A client's own word decides nothing. It also says who may move the game and command the room, and gives the design tool and a preview engine their own passes.",
+      "plain": "Every connection presents a verified pass; the engine knows what class it is, its name, which role it has and whether it is still there, by one liveness rule. A client's own word decides nothing. This part also says who may move the game and command the room, and gives the design tool and a preview engine their own passes.",
       "level": "module",
       "runsOn": ["backend", "gm-tablet-standin"],
       "jobs": ["J7", "J2", "J3", "J8", "J9"],

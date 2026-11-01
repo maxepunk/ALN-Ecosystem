@@ -316,7 +316,7 @@
         "need": "The room does what the designer cued and what the GM asked; the GM sees it happen, or sees at once that it did not and what to press; a dead program comes back by itself before anyone notices.",
         "proposedTitle": "The room does what the designer cued and the GM asked"
       },
-      "shapeChange": "Before, the title also asked the engine to know each program's true state. Now Equipment keeps that dated picture here, beside the Show runner, and showing it on a screen falls to the label every fact carries, which keeps \"Anyone reading a screen can act on it without a second question\", because running the room and labelling a screen differ."
+      "shapeChange": "Before, the title also asked the engine to know each program's true state. Now Equipment keeps that dated picture here, beside the Show runner. Showing it truly on a screen belongs to another promise, \"Anyone reading a screen can act on it without a second question\", which the label on every fact keeps. Running the room and labelling a screen are different work."
     },
     {
       "id": "J5",
@@ -627,7 +627,7 @@
         "need": "Anyone can tell whether a screen is current and whether to act: red means act now, grey means absent on purpose, old looks old, the venue technician's go is a go and a desk check never passes for a room check, the TV's clock never counts on its own, and the editor and the show use the same words.",
         "proposedTitle": "Anyone reading a screen can act on it without a second question"
       },
-      "shapeChange": "Before, this promise asked the engine to tell the truth. Now a label on every fact and reply keeps it, carried by Delivery and Answering, and so does one part of its own, the Verdict, because today the verdict reaches no screen."
+      "shapeChange": "Before, this promise asked the engine to tell the truth. Now a label on every fact and reply keeps it, and Delivery and Answering carry that label. One part of its own keeps it too: the Verdict, whose answer reaches no screen today."
     },
     {
       "id": "J10",
