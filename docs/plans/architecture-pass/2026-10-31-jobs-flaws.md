@@ -112,7 +112,7 @@ At a show: video, music, sound, lights, displays and speakers do what the GM and
   - A-11 (line 113): if Home Assistant was down when the engine started, the lighting panel stays unavailable all night.
 - **Tests.**
   1. Play a video: the engine reports "started" within half a second every time, whichever order the player sends its signals (A-68; analysis line 183).
-  2. Kill MPD during play: the next push says stopped with no track, and the controls return within about ten seconds with no reload (A-72 / A-73; line 183).
+  2. Kill MPD during play: the next push says stopped with no track, and the controls return within about ten seconds with no reload (A-72, A-73; line 183).
   3. Stop Home Assistant, then start it: the lighting panel shows "unavailable", then its scene tiles, with no reload (A-11; line 131).
   4. Pause a video, then run the queue: the paused video is not replaced, and a player's scan while a video is paused is not told the video was triggered (B-39; line 587).
 - **Standalone shortfalls.** None. C2 and C3 do not apply with no engine (standalone pass lines 33, 41). Service panels are hidden on the standalone tablet.

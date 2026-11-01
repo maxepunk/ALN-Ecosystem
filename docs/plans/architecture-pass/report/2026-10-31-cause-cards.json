@@ -62,7 +62,7 @@
     {
       "id": "C2",
       "title": "Service health and service state travel on separate paths",
-      "atAShow": "If Home Assistant or MPD is down when the engine starts, the lighting and music panels stay disabled all night. If MPD dies mid-show, the health row turns red alone while the music card keeps its playing look and the progress bar keeps moving. A volume change on one tablet's audio panel never reaches the other tablets' sliders.",
+      "atAShow": "If Home Assistant or MPD is down when the engine starts, the lighting and music panels stay disabled until someone reloads the tablet. If MPD dies mid-show, the health row turns red alone while the music card keeps its playing look and the progress bar keeps moving. A volume change on one tablet's audio panel never reaches the other tablets' sliders.",
       "whyItHappens": "Each venue service keeps two facts: its health in a central registry and its own state in its own record. The engine pushes the health row when health changes, and pushes a service's state only on a hand-written list of that service's events. An outage is on no list.",
       "designTerms": "Each service module should own one record carrying health and state. Today the seam leaks: the broadcast module re-implements each service's change set as a per-domain event list, so the interface callers must know is the full event list, and locality is lost.",
       "modules": [
@@ -85,7 +85,7 @@
       "examples": [
         {
           "ids": "A-11",
-          "text": "Lighting panel stays unavailable all night if Home Assistant was down at engine start; nothing re-sends its state."
+          "text": "Lighting panel stays unavailable until a reload if Home Assistant was down at engine start; nothing re-sends its state."
         },
         {
           "ids": "A-12 / B-33 / C-43",
@@ -485,7 +485,7 @@
         },
         {
           "ids": "A-02 / C-09",
-          "text": "Standalone: a scan into a paused game shows complete, records nothing and uses up the token; an ended game still accepts."
+          "text": "Standalone: a scan into a paused game shows complete, records nothing and locks the token until a reload; an ended game still accepts."
         },
         {
           "ids": "A-34",
@@ -572,7 +572,7 @@
     {
       "id": "C11",
       "title": "Several places answer the same question, each differently",
-      "atAShow": "Is a video playing has seven answers. A paused video counts as free, so a player is told their video was triggered while it waits, and releasing a held video plays over the paused one. Release All can stop at the first refused video. Music stays ducked after the queue is cleared. The downloaded report's two totals disagree.",
+      "atAShow": "Is a video playing has eight answers. A paused video counts as free, so a player is told their video was triggered while it waits, and releasing a held video plays over the paused one. Release All can stop at the first refused video. Music stays ducked after the queue is cleared. The downloaded report's two totals disagree.",
       "whyItHappens": "Questions such as is a video playing, which teams exist and may the GM scan now are answered by several functions or stored values, each with its own rule and write path, so they disagree at the edges. No rule says which answerer every reader must use.",
       "designTerms": "One resolver module per question should own the verdict behind a one-call interface. Today there is no such seam: the queue, the command gate and the ducking count each implement 'is a video playing' by their own rule, so that knowledge has no locality.",
       "modules": [
@@ -595,7 +595,7 @@
       "examples": [
         {
           "ids": "B-39",
-          "text": "Is a video playing has seven answers; a paused video counts as not playing for four of them."
+          "text": "Seven of those answers are in the video code; a paused video counts as not playing for four of them."
         },
         {
           "ids": "B-40",
@@ -607,7 +607,7 @@
         },
         {
           "ids": "C-25",
-          "text": "The GM's permission to scan is read from a local copy; after a reload it blocks scans in an active game."
+          "text": "The GM's permission to scan is read from a local copy; after a reload it blocks scans in an active game until the first snapshot arrives."
         },
         {
           "ids": "C-24",
@@ -659,7 +659,7 @@
         },
         {
           "ids": "B-28 / D-38",
-          "text": "Publishing a pack from the config tool tells the running engine nothing; the edit shows only after a restart."
+          "text": "Publishing a pack from the config tool tells the running engine nothing; the engine scores by the edit only after a restart."
         },
         {
           "ids": "B-20 / C-08 / D-18",

@@ -4,7 +4,7 @@
 
 - **What changed, and why.** Step 1 was built from the problems up: every known problem was grouped into sixteen design flaws, C1 to C16 (`docs/plans/architecture-pass/2026-10-30-cause-analysis.md`), and checked against standalone games (`docs/plans/architecture-pass/2026-10-31-standalone-pass.md`, which proposes a seventeenth flaw, N1). The owner found that hard to follow and asked to restructure step 1 around the engine's jobs first. The owner's decision 26 sets the frame (`docs/plans/CURRENT-STATE.md` section 0, item 26, lines 45-53): design the best architecture for the next iteration of the engine, for long-term use and future development as its use grows beyond ALN; blue's fixes and findings are clues to where today's design is off, never the driver. So the jobs come first here, the flaws sit under the jobs as where today's design falls short, and blue's problems are the clues and the test cases.
 - **Date:** 2026-10-31. **Tree:** `/home/user/ALN-Ecosystem`, branch `claude/nice-curie-hescfv`. Nothing was run except `sed` and `grep` to re-check cited lines. The stale clones beside the repository were not read. `backend/.env` was not opened.
-- **Sources and citation keys.** JC = `docs/plans/architecture-pass/2026-10-31-jobs-capabilities.md` (the 52 capabilities against the draft jobs); JF = `docs/plans/architecture-pass/2026-10-31-jobs-flaws.md` (the 17 flaws against the draft jobs); AN = `docs/plans/architecture-pass/2026-10-30-cause-analysis.md`; SP = `docs/plans/architecture-pass/2026-10-31-standalone-pass.md`; MD = `docs/plans/architecture-pass/2026-10-30-map-direction.md` (section 1 is the engine's purpose and standing rules, lines 48-71; section 2 is the capability table, lines 79-130; section 3 is what each capability asks of the design, lines 140-260); PD = `docs/plans/2026-10-30-architecture-pass.md` (its section 3, lines 96-106, holds the nine questions); CS = `docs/plans/CURRENT-STATE.md`; CTX = `CONTEXT.md`. RM, PGS, HP, C23, PRG, BILL, CMD and BCM are the direction map's own keys (MD:7-20); where a roadmap or plan line is cited "via MD:N", the direction map quotes it at that line. A citation `KEY:N` is line N of that file.
+- **Sources and citation keys.** JC = `docs/plans/architecture-pass/2026-10-31-jobs-capabilities.md` (the 52 capabilities against the draft jobs); JF = `docs/plans/architecture-pass/2026-10-31-jobs-flaws.md` (the sixteen flaws and the proposed N1 against the draft jobs); AN = `docs/plans/architecture-pass/2026-10-30-cause-analysis.md`; SP = `docs/plans/architecture-pass/2026-10-31-standalone-pass.md`; MD = `docs/plans/architecture-pass/2026-10-30-map-direction.md` (section 1 is the engine's purpose and standing rules, lines 48-71; section 2 is the capability table, lines 79-130; section 3 is what each capability asks of the design, lines 140-260); PD = `docs/plans/2026-10-30-architecture-pass.md` (its section 3, lines 96-106, holds the nine questions); CS = `docs/plans/CURRENT-STATE.md`; CTX = `CONTEXT.md`. RM, PGS, HP, C23, PRG, BILL, CMD and BCM are the direction map's own keys (MD:7-20); where a roadmap or plan line is cited "via MD:N", the direction map quotes it at that line. A citation `KEY:N` is line N of that file.
 - **Ids.** A capability is called by its name with its number in brackets, for example hot-apply (capability 16); the direction map's table numbers them 1 to 52. C1 to C16 and N1 name the design flaws only. J1 to J10 are the jobs. The nine questions are the program document's.
 - **Words.** Authority, copy and delivery path are CTX section 4b (lines 383-407): the authority is the place that decides a runtime fact, a copy is that fact held anywhere else, and the delivery path is its route to a screen. "Game" means one played game, a game session (CTX:67-73). "Standalone" and "networked" are deployment modes (CTX:88). A verdict is one truth's answer to what the show needs against what the kit has (CTX:198). In owner-facing text below, "the engine" is the backend plus everything it drives, "the tablet" is a GM scanner, "the phone" is the web player scanner and "the hardware scanner" is the ESP32.
 - **How to read a job.** Each entry says what the job means for any game, who relies on it, where the roadmap and the owner's decisions already point it (or that the goal is open for step 3), what the planned capabilities need from it, where today's design falls short (the flaws, primary first), what a standalone game adds, which of the nine questions it answers, and two to four test cases drawn from the shows. No entry decides a design.
@@ -93,7 +93,7 @@ The orchestrator's draft, written for any game. Three lines carry a change the m
 - Hot-apply (capability 16): every client is told that the pack changed. [JC:116; MD:184]
 
 **Where today's design falls short.** Primary flaws first, then the flaws that touch this job from another home. [JF:75; JF:86]
-- **C1** (primary). Every tablet keeps its own list of claimed tokens that only grows, so after a delete every connected tablet keeps refusing the token the engine has freed, and a tablet that was offline during a Reset All Scores keeps the old claims when it reconnects.
+- **C1** (primary). Every tablet keeps its own list of claimed tokens that only grows, so after a delete every connected tablet keeps refusing the token the engine has freed, and a tablet that lost its connection during a Reset All Scores, and did not reload, keeps the old claims when it reconnects.
 - **C6** (primary). What a tablet gets when it connects and what it gets live for the same fact come from different code, so a tablet that reloaded can differ from one that watched everything happen.
 - **C9** (primary). Tablets and phones work out claims, points and 'seen before' from their own copy of the rules, so the result screen shows a verdict the engine has not given.
 - **C11** (primary). One question has several answerers inside one part of the engine or one tablet, so 'is a video playing', 'which teams exist' and 'may I scan' get different answers in different places.
@@ -104,7 +104,7 @@ The orchestrator's draft, written for any game. Three lines carry a change the m
 - C12 (secondary). A tablet running a different pack than the engine is only written to a log.
 - C14 (secondary). Team Details reads the score from a place the tablet never fills, so it shows the wrong score while the scoreboard screen shows the right one.
 
-**In a standalone game.** One GM tablet holds the only copy, so tablets cannot drift, but it keeps a claim list beside its transactions and refreshes screens only on wired events. Two standalone tablets are two separate games, and whether a standalone game means one tablet is undecided. [SP:27-31; SG-06 at SP:170; SP:251, question 2]
+**In a standalone game.** One GM tablet holds the only copy, so tablets cannot drift, but it refreshes screens only on wired events. Two standalone tablets are two separate games, and whether a standalone game means one tablet is undecided. [SP:27-31; SG-06 at SP:170; SP:251, question 2]
 
 **The pass's questions it answers.** 1 (Who decides each fact the GM sees?), 5 (Does one question get one answer?), 8 (How may a copy be updated, and can a screen tell how old it is?), 9 (Is each fact's reconnect snapshot built the same way as its live update?). Question 1 is the pass's central question and lives here; 5, 8 and 9 come with C11, C1 and C6.
 
@@ -175,7 +175,7 @@ The orchestrator's draft, written for any game. Three lines carry a change the m
 
 **Test cases from the shows.** What to do, and what must happen.
 1. Play a video: the engine reports 'started' within half a second every time, whichever order the player sends its signals. [AN:183 (A-68)]
-2. Kill the music player during play: the next push says stopped with no track, and the controls come back within about ten seconds with no reload. [AN:183 (A-72 / A-73)]
+2. Kill the music player during play: the next push says stopped with no track, and the controls come back within about ten seconds with no reload. [AN:183 (A-72, A-73)]
 3. Stop the lighting system, then start it again: the lighting panel shows 'unavailable', then its scene tiles, with no reload. [AN:131 (A-11)]
 4. Pause a video, then run the queue: the paused video is not replaced, and a player who scans while a video is paused is not told the video was triggered. [AN:587 (B-39)]
 
@@ -200,7 +200,7 @@ The orchestrator's draft, written for any game. Three lines carry a change the m
 **Where today's design falls short.** Primary flaws first, then the flaws that touch this job from another home. [JF:124]
 - **C4** (primary). Nothing says what a game boundary clears or keeps, so an ended game returns after a restart and a once-only cue stays spent into the next game.
 - **C5** (primary). Starting the engine and rebuilding it after Reset System are two hand-kept lists of steps that differ, so a reset leaves out the music feed and brings old data back to the TV.
-- C1 (secondary). A tablet that was disconnected during a reset keeps its old claims.
+- C1 (secondary). A tablet that lost its connection during a Reset All Scores, and did not reload, keeps its old claims when it reconnects.
 - C6 (secondary). A reload restores the saved game without firing the events a live change would.
 - C7 (secondary). A slow reset reports failure and the new game is skipped.
 
@@ -232,7 +232,7 @@ The orchestrator's draft, written for any game. Three lines carry a change the m
 **Where today's design falls short.** Primary flaws first, then the flaws that touch this job from another home. [JF:140 (why no flaw is primary: hot-apply, the loop and the preview engine are not built; the direction map's rows for capabilities 16, 18 and 20, MD:94, MD:96, MD:98)]
 - *No flaw has this job as its main home.* Hot-apply (capability 16), the design-iteration loop (capability 18) and the preview engine (capability 20) are planned, not built; today's flaws describe the ground they will stand on.
 - C8 (secondary). A second engine on the same machine kills some of the live engine's helpers (the sound system's watcher, the TV's browser and the music player); the design-tool plan warns that a preview engine would also write into the live engine's saved records and issue passes the live engine accepts.
-- C12 (secondary). Publishing a pack from the config tool tells the running engine nothing; the change shows only after a restart.
+- C12 (secondary). Publishing a pack from the config tool tells the running engine nothing; the engine scores by the change only after a restart, while a reloaded TV already shows it.
 
 **In a standalone game.** No standalone shortfall of its own: a standalone tablet runs no engine to rehearse against. The one standalone finding nearby, a tablet adopting a newer pack on a mid-game reload, is filed under J1. [JF:149; SP:167]
 
@@ -492,7 +492,7 @@ Primary counts: J1 8, J2 2, J3 5, J4 4, J5 0, J6 10, J7 6, J8 10, J9 2, J10 5; t
 | C16 | A green test run proves nothing about the show | J10 | none |
 | N1 | Nobody declares that a game is standalone (proposed; the owner's question 23) | J8 | J1, J9, J3 |
 
-Primary counts: J1 1, J2 4, J3 1, J4 2, J5 2, J6 0, J7 1, J8 1, J9 1, J10 4; total 17, counting the proposed N1 (JF:47). The standalone pass's 35 new findings are filed by job in JF:248: J1 7, J2 4, J3 4, J5 2, J8 8, J9 8, J10 2. J4, J6 and J7 have none, because their flaws produce no fault with no engine.
+Primary counts: J1 1, J2 4, J3 1, J4 2, J5 2, J6 0, J7 1, J8 1, J9 1, J10 4; total 17, counting the proposed N1 (JF:47). The standalone pass's 35 new findings are filed by job in JF:248: J1 7, J2 4, J3 4, J5 2, J8 8, J9 8, J10 2. J4, J6 and J7 have none: the main flaws of J4 and J7 (C2, C3, C13) produce no fault with no engine, and J6 has no standalone shortfall of its own (a standalone tablet runs no engine to rehearse against; the nearby SG-03 is filed under J1).
 
 ## 6. Completion check
 
@@ -550,5 +550,12 @@ Applied 2026-11-01 from `docs/plans/architecture-pass/2026-10-31-engine-jobs-che
 42. Flaw row C6 name: the card's title, "Reconnect snapshot and live update are built apart" (CK:313).
 43. Flaw row N1 name: marked "(proposed; the owner's question 23)" (CK:324).
 44. Section 5.2 counts: "total 17" is now "total 17, counting the proposed N1" (CK:218).
+45. J2 C1 and J5 C1: "offline" and "disconnected during a reset" are now "lost its connection during a Reset All Scores, and did not reload", as analysis §6 C1-3 narrowed them (consistency check K1; also JSON).
+46. JSON `jobChanges[2]`: the missing declaration has a home under J8; whether it is a seventeenth flaw stays question 23 (as item 32; consistency check X5).
+47. J2 standalone line: the claim list beside the transactions is no longer named, the analysis filing it under C11 (check 1, C1-24; consistency check X3; also JSON).
+48. J4 test 2: "(A-72 / A-73)" is now "(A-72, A-73)", two findings, not one (consistency check K6).
+49. J6 C12: the engine scores by the change only after a restart, while a reloaded TV already shows it (consistency check causes 9 to 16, K10; also JSON).
+50. Section 5.2: why J4, J6 and J7 have no standalone finding, with J6's own reason (consistency check X4).
+51. Sources line: JF holds "the sixteen flaws and the proposed N1", not "the 17 flaws" (consistency check X8).
 
-Not changed, by the check's own verdicts: the JSON's `jobChanges` and `purpose` strings (CK:240-241), every other job field, and section 6.
+Not changed, by the check's own verdicts: the JSON's `jobChanges` (apart from `[2]`, item 46) and `purpose` strings (CK:240-241), every other job field, and section 6.

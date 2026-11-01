@@ -89,7 +89,7 @@
         {
           "id": "C1",
           "primary": true,
-          "how": "Every tablet keeps its own list of claimed tokens that only grows, so after a delete every connected tablet keeps refusing the token the engine has freed, and a tablet that was offline during a Reset All Scores keeps the old claims when it reconnects."
+          "how": "Every tablet keeps its own list of claimed tokens that only grows, so after a delete every connected tablet keeps refusing the token the engine has freed, and a tablet that lost its connection during a Reset All Scores, and did not reload, keeps the old claims when it reconnects."
         },
         {
           "id": "C6",
@@ -137,7 +137,7 @@
           "how": "Team Details reads the score from a place the tablet never fills, so it shows the wrong score while the scoreboard screen shows the right one."
         }
       ],
-      "standalone": "One GM tablet holds the only copy, so tablets cannot drift, but it keeps a claim list beside its transactions and refreshes screens only on wired events. Two standalone tablets are two separate games, and whether a standalone game means one tablet is undecided.",
+      "standalone": "One GM tablet holds the only copy, so tablets cannot drift, but it refreshes screens only on wired events. Two standalone tablets are two separate games, and whether a standalone game means one tablet is undecided.",
       "questions": [
         1,
         5,
@@ -309,7 +309,7 @@
         {
           "id": "C1",
           "primary": false,
-          "how": "A tablet that was disconnected during a reset keeps its old claims."
+          "how": "A tablet that lost its connection during a Reset All Scores, and did not reload, keeps its old claims when it reconnects."
         },
         {
           "id": "C6",
@@ -360,7 +360,7 @@
         {
           "id": "C12",
           "primary": false,
-          "how": "Publishing a pack from the config tool tells the running engine nothing; the change shows only after a restart."
+          "how": "Publishing a pack from the config tool tells the running engine nothing; the engine scores by the change only after a restart, while a reloaded TV already shows it."
         }
       ],
       "standalone": "No standalone shortfall of its own: a standalone tablet runs no engine to rehearse against. The one standalone finding nearby, a tablet adopting a newer pack on a mid-game reload, is filed under J1.",
@@ -587,7 +587,7 @@
   "jobChanges": [
     "J1 now says that nothing in the engine assumes ALN, and that every part of the kit runs the same version of the pack and can say which. Both mapping sheets asked for one of these. Keep both?",
     "J7 now also covers who may do what: starting, pausing, ending and score changes stay with the GM, and the stored secrets rotate before outsiders arrive. Both sheets put these rules under J7. Agree?",
-    "J8 now says a game runs with or without an engine as a choice the game declares, which are the owner's own words from decision 22. The missing declaration then sits under J8 as a shortfall rather than as a seventeenth flaw. Agree?",
+    "J8 now says a game runs with or without an engine as a choice the game declares, which are the owner's own words from decision 22. The missing declaration then has a home under J8; whether it is also a seventeenth flaw stays question 23. Agree?",
     "J3 holds two things: answering every tap at once, and keeping the night's history for review and reporting. They have different problems and different tests. Should they be two jobs?",
     "J8 covers two audiences: the installer who fits a game to a venue, and anyone who runs the engine in another setup, with no engine, on another kit, or in the open. Should it be two jobs?",
     "J10 carries four kinds of work: tests that cannot hurt the live show, tests that prove the real path, checks that joined parts agree, and checks that what is installed matches. Widen its sentence to include shipping a new version, split it in two, or leave it?",
