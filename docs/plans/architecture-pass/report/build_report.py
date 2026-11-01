@@ -312,7 +312,7 @@ def part_html(p):
 # The plain summary of the relationship map (the shape's section 2.1 and the end of its section 1).
 FIT_SUMMARY = [
     ('A spine.', 'At every tap in a networked game, the designer\'s pack (J1) sets the rules, the game\'s record (J2) is what the tap is judged against, the answer (J3) comes back and the accepted tap joins the record, and the roles (J7) say who tapped and who may see the result.'),
-    ('A ring.', 'The equipment (J4) reports what it is doing, the installer\'s profile (J8) says what the room has tonight, the verdict (J9) turns both into go, no-go or "not installed tonight", and the life of a game (J5) says when to check again and what to reset, which feeds back into the equipment. In today\'s code this ring is a circle of seven backend modules that all call each other, with the game\'s record caught inside it.'),
+    ('A ring.', 'The equipment (J4) reports what it is doing, the verdict (J9) turns that and the installer\'s profile (J8) into go, no-go or "not installed tonight", and the life of a game (J5) says when to check again and what to reset, which feeds back into the equipment. The profile feeds this loop from outside. In today\'s code the loop is also a chain of seven backend modules that depend on each other in a circle, with the game\'s record caught inside it.'),
     ('Two jobs reach the show from outside.', 'The designer\'s week (J6) and the developer\'s proof (J10) reach a live show only through the pack and through each engine having its own names, so a test or a preview never touches the live show.'),
     ('Not all ten are the same kind.', 'Seven jobs each produce something a person uses. J9 and J10 are qualities every other job must have: they become a label every fact carries (how sure, how old) and a proof every part must pass, not parts of their own. J5 is a table of moments (setup, start, pause, end, reset, restart, the next game) that every other job reads.'),
 ]
@@ -326,7 +326,7 @@ OVERVIEW = """flowchart TD
     J3["J3 Every tap answered, the night told"]
     J7["J7 Each person sees and does their part"]
   end
-  subgraph ring["The ring: the engine's own machinery"]
+  subgraph ring["The ring: the machinery"]
     J4["J4 The room does what was cued and asked"]
     J8["J8 Fit to tonight's venue"]
     J9["J9 Screens you can act on at a glance"]
@@ -347,9 +347,9 @@ OVERVIEW = """flowchart TD
   J9 -->|"go or no-go"| J5
   J5 -->|"what to reset"| J4
   J5 -->|"what the record keeps or clears"| J2
-  J9 -->|"how sure, how old"| J2
+  J9 -.->|"a label on every fact"| J2
   J6 -->|"a published pack"| J1
-  J10 -->|"each engine's own names"| J6
+  J10 -->|"each engine's own names"| J8
 """
 
 # Which parts run where (the shape's section 4.3), one line per device.
@@ -383,7 +383,7 @@ def fit_html(shape):
   <p class="intro">You asked how the ten jobs relate, so that the design serves all of them at once and stays easy to keep building. This section answers at two levels: the jobs against each other, and the jobs against the pieces of the engine. It ends in one candidate shape for the whole engine. Every card further down now follows that shape, and each says what changed.</p>
   <div class="fit-summary">{summary}</div>
   <figure class="dia wide">
-    <figcaption>The jobs at a glance. An arrow runs from the job that produces something to the job that uses it; the label says what passes.</figcaption>
+    <figcaption>The jobs at a glance. An arrow runs from the job that produces something to the job that uses it; the label says what passes. The dashed line is a label every fact carries, not a dependency.</figcaption>
     <div class="scroll"><pre class="mermaid">{e(present(OVERVIEW))}</pre></div>
     <details>
       <summary>Every dependency between the jobs ({len(re.findall(r"-->", shape["relationsMermaid"]))})</summary>
@@ -725,20 +725,22 @@ figure.dia.wide {{ padding: 12px; }}
     <div class="q">
       <p class="applied">Applied, please confirm</p>
       <h3>C. J8 now says a standalone game is a choice the game declares, never mixed.</h3>
-      <p>These are your decision 22's words. The map adds where the declaration could live: the venue profile, which already says what the kit brings tonight. The other homes are the pack, the game's record or each device; step 3 asks you to pick.</p>
+      <p>These are your decision 22's words, and the map supports them: whether a game is standalone is an input every rule takes, and J8, the job that fits the game to tonight's setup, is where it is declared. Where the declaration is kept is a step-3 choice: the venue profile (the map's favourite, since it already says what the kit brings tonight), the pack, the game's record or each device.</p>
       <p>Question 23 is folded in here: is "nothing declares a game standalone" a design flaw of its own, with its own rule? If not, its eight problems join C9, C11 and C14 and the ESP32 parity list. On the map it lands on the same two parts either way.</p>
       <p class="rec">Recommendation: agree. On question 23, yes: three other rules (game boundaries, one answer per question, how old a copy is) need the declared fact as an input, and would otherwise each invent their own answer.</p>
     </div>
     <div class="q">
       <h3>D. Split J3 into "every tap gets its answer" and "the night can be told afterwards"?</h3>
-      <p>Answering happens at the tap, for the GM or the player. The night's record is for you and the designer after the show: what is captured during play, the session bundle, the review. The map confirms the two share no part. Answering sits in the middle of the engine and serves five jobs. The night's record is written once, at the end of a game, and read by the designer's review.</p>
-      <p class="rec">Recommendation: split. Keeping one job also works, with the night's record filed as the end-of-game step of the lifecycle; the parts are the same either way. Question 19 belongs with the night's record.</p>
+      <p>Answering happens at the tap, for the GM or the player. The night's record is for you and the designer after the show: what is captured during play, the session bundle, the review. The map confirms the two share no part. Answering sits in the middle of the engine and serves five jobs. The night's record is written once, at the end of a game, and read by the designer's review. The parts are the same either way.</p>
+      <p>Keeping one job means the GM at the tap and you after the show look for their need in one sentence. Splitting makes a job that no design flaw has as its main home yet, because the night's record is mostly planned work.</p>
+      <p class="rec">Recommendation: split. Question 19 belongs with the night's record.</p>
     </div>
     <div class="q">
       <p class="changedrec">Recommendation changed by the map</p>
       <h3>E. Rename J8 rather than split it?</h3>
-      <p>Fitting the game to tonight's venue is one part with an output of its own: the installer's profile, which says what the kit brings, binds each of the pack's names to a real instrument, and gives one go or no-go. The map found that "run in any setup" has no part of its own. Running with no engine is a switch every rule takes, declared in the venue profile. Running on another kit is each engine knowing its own names, which the developer's job owns. A separate job for it would own nothing.</p>
-      <p class="rec">Recommendation: rename J8 to "Fit the game to the venue it is in tonight", keep the standalone declaration in it, and treat "nothing assumes one kit" as a quality of every job. This replaces the earlier recommendation to split.</p>
+      <p>Fitting the game to tonight's venue is one part with an output of its own: the installer's profile, which says what the kit brings, binds each of the pack's names to a real instrument, and gives one go or no-go. The map found that "run in any setup" has no part of its own. Running with no engine is a switch every rule takes, declared as part of fitting the game. Running on another kit is each engine knowing its own names, which J10 owns. So a separate job for it would own nothing.</p>
+      <p>Two new titles fit the map. "Fit the game to the venue, whatever the setup" keeps standalone games and other kits in the title. "Fit the game to the venue it is in tonight" names the installer's moment, and leaves standalone games to the job's first sentences and other kits to a quality of every job. The cost of not splitting: the GM running a standalone game and a future operator with another kit are named in a sentence, not in a title.</p>
+      <p class="rec">Recommendation: rename rather than split, to "Fit the game to the venue it is in tonight", with standalone games kept in the job's first sentences. This replaces the earlier recommendation to split.</p>
     </div>
     <div class="q">
       <p class="changedrec">Recommendation changed by the map</p>
@@ -748,6 +750,7 @@ figure.dia.wide {{ padding: 12px; }}
         <li>Widen J10's sentence to include release day. The proposed title does this: "A change is proven before it reaches anyone, and the owner alone sends it to the show".</li>
         <li>Split release day into a job of its own.</li>
         <li>File release day with the installer's deploy work under J8.</li>
+        <li>Leave J10 as drafted. The parts fit that too; the cost is that your release day stays unnamed in a sentence about tests.</li>
       </ol>
       <p>Question 4 covers keeping tests away from the live show (C8). For the other three flaws under this job no question of the nine fits: question 5 is only the nearest for the names two parts share (C14), and the installed pieces (C15) and tests that prove the real path (C16) have none. This replaces question 18.</p>
       <p class="rec">Recommendation: widen, as the proposed title does, and give the proof and the release a question each in the pass. The earlier split into "prove it works" and "keep every part in step" does not match the map, because keeping joined parts in step is part of the proof.</p>
@@ -755,8 +758,9 @@ figure.dia.wide {{ padding: 12px; }}
     <div class="q">
       <p class="changedrec">Recommendation changed by the map</p>
       <h3>G. Which job carries the equipment's state to every screen?</h3>
-      <p>The map's answer: neither job's sentence should carry the route. One part, delivery, carries every fact to every screen, game facts and equipment alike, each with its label (how sure, how old). The equipment decides its own state and health as one dated fact; delivery carries it; the screens draw it.</p>
-      <p class="rec">Recommendation: let J2's "one game, the same on every screen" cover the equipment panels too, since the game's running state already includes the video queue, music, held items, the clock and each service's health. J4 keeps "the room does what was cued and asked", and delivery makes its "the GM sees it happen, or sees at once that it did not" true. This replaces the earlier recommendation of J4. If you agree, C2's card moves under J2.</p>
+      <p>The map's answer: neither job needs to carry the route. One part, delivery, carries every fact to every screen, game facts and equipment alike, each with its label (how sure, how old). The equipment decides its own state and health as one dated fact; delivery carries it; the screens draw it.</p>
+      <p>The restated jobs already promise their halves. J4: the GM makes the room do a thing and sees it happen, or sees at once that it did not. J2: every screen agrees, also after a tablet comes back. If you still want one job to hold the words: in J4 they sit with the equipment whose state it is, but J4 then names a route J2 also needs; in J2 they match how the game's running state is already defined (the video queue, music, held items, the clock, each service's health), but J2's sentence then carries the equipment beside the game's record.</p>
+      <p class="rec">Recommendation: change neither sentence. Both promises hold through the one delivery part, and C2's card stays under J4, where its moment at a show is felt. This replaces the earlier answer "J4", which put the route itself in J4.</p>
     </div>
   </div>
 
@@ -808,7 +812,7 @@ figure.dia.wide {{ padding: 12px; }}
         <li>The standalone tablet: the same record and lifecycle parts the engine runs, or an engine of its own.</li>
         <li>The scoreboard: one page in two places, or a view inside the GM app.</li>
         <li>The config tool: a separate program that talks to the engine by message, or a surface the engine itself serves.</li>
-        <li>When a changed pack may be adopted while the engine runs: today, only before a game starts or after it ends.</li>
+        <li>When a changed pack may be adopted while the engine runs. That is not built yet; the plan allows it only before a game starts or after it ends.</li>
         <li>The order of the work: by part, with the engine's own names and delivery first since most flaws land on them, or by block as the roadmap has it.</li>
       </ol>
     </div>
