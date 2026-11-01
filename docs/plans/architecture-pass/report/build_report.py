@@ -85,8 +85,15 @@ def chips(card):
 INIT = '%%{init: {"flowchart": {"useMaxWidth": false}, "sequence": {"useMaxWidth": false}}}%%'
 
 
+SEQ_INIT = ('%%{init: {"sequence": {"useMaxWidth": true, "mirrorActors": false, "actorMargin": 22, "width": 112, '
+            '"boxMargin": 6, "messageMargin": 26, "messageFontSize": 13, "noteFontSize": 12.5, "actorFontSize": 13}}}%%')
+
+
 def present(src):
-    """Draw flowcharts top-down at natural size; the card scrolls a wide one in its own box."""
+    """Draw flowcharts top-down at natural size; the card scrolls a wide one in its own box.
+    Sequence diagrams are drawn compact, with no repeated row of participants at the bottom."""
+    if src.strip().startswith('sequenceDiagram'):
+        return SEQ_INIT + '\n' + src.strip()
     lines = src.strip().split('\n')
     if lines[0].strip() == 'flowchart LR':
         lines[0] = 'flowchart TD'
@@ -417,6 +424,206 @@ def relations_src(shape):
     return re.sub(r'^(\s*)(J\d+)\["[^"]*"\]', lambda m: f'{m.group(1)}{m.group(2)}["{wrap_label(TITLES[m.group(2)])}"]', shape['relationsMermaid'], flags=re.M)
 
 
+# The candidate engine drawn whole (the shape's sections 4.1 to 4.3): devices and tools on top, the two
+# doors, the game's facts, the life of a game and the room behind them, the foundations below. Arrows show
+# what passes at a show; the walkthroughs below follow single moments. Hand-drawn SVG on a 1000 x 800 grid.
+def shape_svg():
+    out = []
+
+    def text(x, y, t, size=11.5, anchor='start', weight=None, op=None):
+        w = f' font-weight="{weight}"' if weight else ''
+        o = f' opacity="{op}"' if op else ''
+        out.append(f'<text x="{x}" y="{y}" font-size="{size}" text-anchor="{anchor}"{w}{o} fill="currentColor">{e(t)}</text>')
+
+    def box(x, y, w, h, name, sub=(), accent=False, dashed=False, name_size=14):
+        stroke = 'var(--accent)' if accent else 'currentColor'
+        sw = 2.4 if accent else 1.2
+        dash = ' stroke-dasharray="5 4"' if dashed else ''
+        out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="6" style="fill: var(--surface); stroke: {stroke}" stroke-width="{sw}"{dash}/>')
+        lines = [name] + list(sub)
+        top = y + h / 2 - (len(lines) - 1) * 7.5 + 4.5
+        for i, t in enumerate(lines):
+            text(x + w / 2, round(top + i * 15, 1), t, size=name_size if i == 0 else 11.5, anchor='middle',
+                 weight='600' if i == 0 else None, op=None if i == 0 else '.8')
+
+    def band(x, y, w, h, label=None):
+        out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8" style="fill: var(--chip)" fill-opacity=".6"/>')
+        if label:
+            text(x + 16, y + 20, label.upper(), size=10.5, weight='600', op='.7')
+
+    def arrow(points, label=None, at=None, anchor='start', accent=False, both=False):
+        d = 'M' + ' L'.join(f'{px},{py}' for px, py in points)
+        mk = 'shpA' if accent else 'shp'
+        start = f' marker-start="url(#{mk})"' if both else ''
+        stroke = 'var(--accent)' if accent else 'currentColor'
+        out.append(f'<path d="{d}" fill="none" style="stroke: {stroke}" stroke-width="1.6" marker-end="url(#{mk})"{start}/>')
+        if label:
+            text(at[0], at[1], label, anchor=anchor, op='.9')
+
+    # who
+    text(20, 26, 'PEOPLE', size=10.5, weight='600', op='.7')
+    text(84, 26, 'Designer · Venue technician · GM · Players · Audience · Developer · You', size=12.5)
+    # devices and tools
+    band(20, 40, 960, 100)
+    out.append('<rect x="30" y="50" width="540" height="80" rx="6" style="fill: var(--surface); stroke: currentColor" stroke-width="1.2"/>')
+    text(44, 71, 'Screens', size=14, weight='600')
+    text(108, 71, 'on every device: they draw what they are sent, decide nothing', op='.8')
+    for x, label in ((44, 'GM tablets'), (218, 'Phones and ESP32'), (392, 'TV and Pi 4')):
+        out.append(f'<rect x="{x}" y="82" width="164" height="38" rx="5" fill="none" stroke="currentColor" stroke-opacity=".45"/>')
+        text(x + 82, 105, label, size=12.5, anchor='middle')
+    box(580, 50, 128, 80, 'Design studio', ('the config tool,', 'talks by message'))
+    box(716, 50, 116, 80, 'Release', ('what each', 'machine carries'))
+    box(840, 50, 136, 80, 'Joins and proofs', ('the tests, on an', 'engine of their own'), name_size=13)
+    # the doors
+    arrow([(150, 140), (150, 210)], 'requests and replies', (158, 180), accent=True, both=True)
+    arrow([(500, 140), (500, 210)], 'a pass at every connection', (492, 196), anchor='end')
+    arrow([(760, 210), (760, 175), (545, 175), (545, 130)], 'every fact, labelled', (652, 168), anchor='middle', accent=True)
+    box(20, 210, 270, 62, 'Answering', ('the one door in:', 'one reply per request'), accent=True)
+    box(345, 210, 310, 62, 'Connections and roles', ('who is connected,', 'who may do or see what'))
+    box(710, 210, 270, 62, 'Delivery', ('the one door out:', 'every fact, with its label'), accent=True)
+    arrow([(345, 241), (290, 241)], 'may do', (317, 233), anchor='middle')
+    arrow([(655, 241), (710, 241)], 'may see', (682, 233), anchor='middle')
+    # from the doors to what sits behind them (the band first, so the arrows sit on top)
+    band(20, 350, 960, 300)
+    arrow([(200, 272), (200, 390)], 'game actions', (192, 330), anchor='end')
+    arrow([(240, 272), (240, 330), (560, 330), (560, 390)], 'start, pause, end, reset', (400, 347), anchor='middle')
+    arrow([(275, 272), (275, 310), (800, 310), (800, 390)], 'room commands', (660, 303), anchor='middle')
+    arrow([(900, 350), (900, 272)], 'every change', (892, 318), anchor='end')
+    # behind the doors
+    text(36, 372, "THE GAME'S FACTS", size=10.5, weight='600', op='.7')
+    text(376, 372, 'THE LIFE OF A GAME', size=10.5, weight='600', op='.7')
+    text(716, 372, 'THE ROOM', size=10.5, weight='600', op='.7')
+    box(36, 390, 250, 60, 'Game record', ('decides teams, claims,', 'scores and the phase'))
+    box(36, 500, 250, 60, "The night's record", ('written at the end of a game',))
+    box(376, 390, 250, 60, 'Lifecycle', ('moves the game,', 'resets every part'))
+    box(376, 500, 250, 60, 'Verdict', ('go, no-go,', 'not installed tonight'))
+    box(716, 390, 250, 60, 'Show runner', ('cues, clock, video queue,', 'held items'))
+    box(716, 500, 250, 60, 'Equipment', ('video, music, sound,', 'lights, displays'))
+    box(716, 585, 250, 50, 'Outside programs', ('VLC, the music player, lights',), dashed=True, name_size=12.5)
+    arrow([(376, 420), (286, 420)], 'keeps, clears', (331, 412), anchor='middle')
+    arrow([(626, 420), (716, 420)], 'resets', (671, 412), anchor='middle')
+    arrow([(501, 500), (501, 450)], 'go, no-go', (509, 480))
+    arrow([(841, 450), (841, 500)], 'drives', (849, 480))
+    arrow([(716, 530), (626, 530)], 'what runs', (671, 522), anchor='middle')
+    arrow([(161, 450), (161, 500)], 'at the end', (169, 480))
+    arrow([(841, 560), (841, 585)])
+    # the foundations
+    band(20, 700, 960, 92, 'Foundations: every part above uses these')
+    box(36, 728, 160, 52, 'Game rules', ('one calculation',))
+    box(216, 728, 180, 52, 'Pack channel', ('one pack, stamped',))
+    box(421, 728, 160, 52, 'Venue fit', ('set by the venue technician',))
+    box(606, 728, 180, 52, 'Engine instance', ('its own names',))
+    arrow([(501, 728), (501, 560)], "tonight's profile", (509, 690))
+    arrow([(206, 700), (206, 650)], 'the rules, the pack', (214, 682))
+
+    defs = ('<defs>'
+            '<marker id="shp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>'
+            '<marker id="shpA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent)"/></marker>'
+            '</defs>')
+    label = ('The candidate engine as a whole: devices and tools on top; Answering, the one door in, and Delivery, the one door out; '
+             "behind them the game's facts, the life of a game and the room; the foundations below.")
+    return (f'<svg class="shape-svg" viewBox="0 0 1000 800" role="img" aria-label="{e(label)}" '
+            f'font-family="IBM Plex Sans, system-ui, sans-serif">{defs}{"".join(out)}</svg>')
+
+
+# Five moments followed through the parts, each with the promises it keeps (titles by promise id).
+WALKS = [
+    ('A GM taps a token', ['J3', 'J2', 'J7'], """sequenceDiagram
+  participant T as GM tablet
+  participant A as Answering
+  participant C as Connections and roles
+  participant R as Game record
+  participant D as Delivery
+  participant S as Every other screen
+  T->>A: Team X scans this token
+  A->>C: may this tablet do that?
+  C-->>A: yes, it is a GM
+  A->>R: claim the token for Team X
+  R-->>A: accepted and saved
+  A-->>T: accepted, final, stored
+  D->>R: what changed?
+  R-->>D: the claim and the new score
+  D-->>T: the new score, fresh
+  D-->>S: the new score, fresh"""),
+    ('A cue plays, or cannot', ['J4', 'J9'], """sequenceDiagram
+  participant S as Show runner
+  participant E as Equipment
+  participant P as Video player
+  participant D as Delivery
+  participant T as GM tablet
+  Note over S: the game clock reaches the cue
+  S->>E: play the opening video
+  E->>P: play
+  alt the player answers
+    P-->>E: playing
+    E-->>S: playing
+    D->>E: what changed?
+    E-->>D: playing, healthy, as of now
+    D-->>T: now playing
+  else no answer
+    E-->>S: failed: the player is down
+    S->>S: hold the cue
+    D->>S: what changed?
+    S-->>D: one cue held, video down
+    D-->>T: red row, held cue, try again
+  end"""),
+    ('The GM ends the game', ['J5', 'J3'], """sequenceDiagram
+  participant T as GM tablet
+  participant A as Answering
+  participant L as Lifecycle
+  participant R as Game record
+  participant S as Show runner
+  participant N as The night's record
+  T->>A: end the game
+  A->>L: move the game to ended
+  L->>R: close the game, no more scans
+  L->>S: stop the cues, clear held items
+  L->>N: write the night's record
+  N->>R: read the night's facts
+  L-->>A: ended
+  A-->>T: ended, final
+  Note over T,L: Delivery then tells every screen the game ended"""),
+    ('Doors open: the preflight', ['J8', 'J9', 'J5'], """sequenceDiagram
+  participant V as Venue technician
+  participant A as Answering
+  participant L as Lifecycle
+  participant F as Venue fit
+  participant E as Equipment
+  participant X as Verdict
+  V->>A: run the preflight
+  A->>L: may this game start tonight?
+  L->>F: tonight's profile
+  F-->>L: what the kit brought tonight
+  L->>E: what is running?
+  E-->>L: what runs, dated
+  L->>X: the needs, the profile, what runs
+  X-->>L: go, two lights grey: not tonight
+  L-->>A: go
+  A-->>V: go, every line traceable"""),
+    ('The designer publishes a change', ['J6', 'J1'], """sequenceDiagram
+  participant G as Design studio
+  participant A as Answering
+  participant L as Lifecycle
+  participant P as Pack channel
+  participant D as Delivery
+  participant V as Every device
+  G->>A: publish and apply this pack
+  A->>L: may a new pack be taken up now?
+  alt between games
+    L->>P: take up the new pack
+    L-->>A: taken up
+    A-->>G: applied, version 7 is live
+    D->>P: what changed?
+    P-->>D: the pack is now version 7
+    D-->>V: version 7
+    V->>P: fetch version 7
+  else a game is running
+    L-->>A: not during a game
+    A-->>G: refused: after this game ends
+  end"""),
+]
+
+
 def fit_html(shape, jobs):
     names = {p['id']: p['name'] for p in shape['parts']}
     summary = ''.join(f'<p><strong>{e(h)}</strong> {e(t)}</p>' for h, t in FIT_SUMMARY)
@@ -431,6 +638,11 @@ def fit_html(shape, jobs):
     by_id = {p['id']: p for p in shape['parts']}
     parts = ''.join(part_html(by_id[i]) for i in order)
     devices = ''.join(f'<li><strong>{e(h)}</strong> {e(t)}</li>' for h, t in FIT_DEVICES)
+    walks = ''.join(f'''<figure class="dia walk">
+      <figcaption>{e(title)}</figcaption>
+      <p class="figkey">Keeps {"; ".join(promise_link(j) for j in keeps)}.</p>
+      <div class="scroll"><pre class="mermaid">{e(present(src))}</pre></div>
+    </figure>''' for title, keeps, src in WALKS)
     alts = ''.join(f'<tr><th scope="row">{e(a["title"])}</th><td>{e(a["a"])}</td><td>{e(a["b"])}</td><td>{e(a["cost"])}</td></tr>' for a in shape['alternatives'])
     return f'''
 <section class="fit" id="fit" aria-labelledby="fit-h">
@@ -463,14 +675,22 @@ def fit_html(shape, jobs):
   <div class="fit-block">
     <h3>A candidate shape: {len(shape["parts"])} parts</h3>
     <p>Most of today's problems sit in work several promises depend on: getting a fact onto a screen, answering a request, knowing who is connected, the boundary between one game and the next. Each is done several times today, in different places. In the candidate shape each such piece of work becomes one part, and that part's card says how the work is done today. Each part uses only the parts in the rows below it, so nothing loops back. A change low down can affect the parts above it; nothing above can break what sits below. The parts that are already well built today (the game rules, the verdict, the health words) are the pattern for the rest.</p>
+    <figure class="dia whole">
+      <figcaption>The candidate engine, whole</figcaption>
+      <div class="scroll"><div class="svgwrap">{shape_svg()}</div></div>
+      <p class="figkey">Every request comes in through Answering and gets one reply; every fact goes out to the screens through Delivery, with its label (how old, how sure). Behind the two doors sit the game's facts, the life of a game and the room. The foundations are used by every part above them. The arrows show what passes at a show. The lifecycle hands the verdict tonight's profile and what is running before a start; the moments below follow each step.</p>
+    </figure>
+    <h3>{len(WALKS)} moments, part by part</h3>
+    <p>Each moment follows one thing that happens at a show through the parts that handle it, in order. Solid arrows are requests; dashed arrows are answers. Delivery always asks what changed; nothing pushes facts to it.</p>
+    <div class="walks">{walks}</div>
     <figure class="layers-fig">
-      <figcaption>The parts in layers, top row first. Tap a part to read it.</figcaption>
+      <figcaption>The parts in layers, top row first: each uses only the rows below it. Tap a part to read it.</figcaption>
       <ol class="layers">{layers}</ol>
     </figure>
     <div class="parts">{parts}</div>
     <details>
-      <summary>The same parts as a diagram</summary>
-      <p class="muted" style="margin:10px 0">An arrow means "uses".</p>
+      <summary>Which part uses which: {len(re.findall(r"-->", shape["partsMermaid"]))} links</summary>
+      <p class="muted" style="margin:10px 0">An arrow means "uses". No arrow loops back.</p>
       <div class="scroll"><pre class="mermaid">{e(present(shape["partsMermaid"]))}</pre></div>
     </details>
   </div>
@@ -683,6 +903,12 @@ ol.layers .lvl {{ font-family: var(--font-label); text-transform: uppercase; let
 .pmeta .tag {{ margin-right: 6px; }}
 ul.devices {{ margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 80ch; }}
 figure.dia.wide {{ padding: 12px; }}
+figure.dia.whole {{ padding: 14px; }}
+.svgwrap {{ min-width: 760px; }}
+.shape-svg {{ display: block; width: 100%; height: auto; color: var(--fg); }}
+.walks {{ display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }}
+figure.dia.walk {{ padding: 12px; }}
+figure.dia.walk pre.mermaid svg {{ min-width: 720px; }}
 .figkey {{ font-size: 14px; color: var(--muted); max-width: 80ch; }}
 .figkey .key {{ display: inline-block; width: 18px; height: 12px; border-radius: 3px; border: 3px solid; vertical-align: -1px; margin: 0 6px 0 10px; }}
 .figkey .key:first-child {{ margin-left: 0; }}
@@ -701,7 +927,7 @@ figure.dia.wide {{ padding: 12px; }}
 <section class="decide" aria-labelledby="deciding">
   <h2 id="deciding">What you are deciding</h2>
   <p><strong>The promises.</strong> Are these the right ten promises, each said from the side of the people who count on it, and is one missing? Seven small questions, A to G, ask about their wording and whether three of them should split. The relationship map changed three of those recommendations: E, F and G.</p>
-  <p><strong>How the promises fit together.</strong> <a href="#fit">A map</a> of how the promises depend on each other and on the pieces of the engine, and one candidate shape for the whole engine. The design on each card follows that shape, and a note at the top of each card says what changed. Nothing in the shape is decided; it is where step 3 starts.</p>
+  <p><strong>How the promises fit together.</strong> <a href="#fit">A map</a> of how the promises depend on each other and on the pieces of the engine, and one candidate shape for the whole engine, drawn whole with five moments followed through it. The design on each card follows that shape, and a note at the top of each card says what changed. Nothing in the shape is decided; it is where step 3 starts.</p>
   <p><strong>Standalone games, the game's record, the next step.</strong> Three questions about games with no engine, one about recording refused scans, and one about how much the test rig proves before design starts. Everything is <a href="#your-questions">at the end</a>, each with a recommendation or a suggestion; the step-3 preview there needs no answer yet.</p>
 </section>
 
