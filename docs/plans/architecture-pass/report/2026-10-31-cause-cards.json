@@ -4,8 +4,8 @@
       "id": "C1",
       "title": "Each tablet keeps its own list of claimed tokens",
       "atAShow": "A GM deletes a transaction. The engine frees the token, but every tablet that stays connected keeps refusing it as already scanned until someone reloads. A tablet that drops its connection during Reset All Scores comes back still holding the old claims, and refuses tokens the engine has cleared.",
-      "whyItHappens": "The engine decides which tokens are claimed, but each tablet holds a copy that only grows: added on scan, merged on reconnect, removed only when a scan fails. The engine's own messages also skip facts changed by another path, such as a team created by a scan.",
-      "designTerms": "The Game record should own the claimed-token fact and derive it from the transactions. Delivery's interface is the one seam a claim crosses to reach a screen, and each tablet is a Screens adapter that draws it. Today the tablet's networked storage module updates its copy through one hand-wired handler per message, so the seam leaks: any path without a handler leaves the copy stale. No locality.",
+      "whyItHappens": "The engine decides which tokens are claimed, but each tablet holds a copy that only grows: added on scan, merged on reconnect, removed only when a scan fails. The engine's own messages also skip facts that change as a side effect of something else, such as a team created by a scan.",
+      "designTerms": "The Game record should own which tokens are claimed, read from the transactions. Delivery's interface is the one seam between a claim and a screen; each tablet is a Screens adapter drawing it. Today the tablet updates its copy with one hand-written step per message; a message with no step leaves it stale: no locality.",
       "modules": [
         "backend/src/services/transactionService.js",
         "backend/src/websocket/broadcasts.js",
@@ -20,8 +20,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  rec[\"Game record<br/>decides claims from the transactions\"]\n  life[\"Lifecycle<br/>tells the boundary with a version\"]\n  del[\"Delivery<br/>one route per fact, live and catch-up, labelled\"]\n  tabA[\"Tablet A<br/>draws the claim fact, keeps no list\"]\n  tabB[\"Tablet B<br/>draws the claim fact, keeps no list\"]\n  ans[\"Answering<br/>one reply per tap\"]\n  gm[\"GM rescan<br/>accepted\"]\n  rec -->|\"delete frees the token\"| del\n  life -->|\"reset, restart\"| del\n  del -->|\"replace the drawn fact\"| tabA\n  del -->|\"replace the drawn fact\"| tabB\n  tabB -->|\"tap on the freed token\"| ans\n  ans -->|\"asks the record\"| rec\n  ans -->|\"accepted\"| gm\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rec owner;",
-        "note": "The Game record decides claims from the transactions, not a list beside them. Delivery carries it by one route, live or catch-up. Lifecycle tells the boundary with a version. The tablet keeps no claim list, the card's third design: it draws the fact and asks at each tap. Or: each job delivers its own facts under a shared envelope."
+        "mermaid": "flowchart LR\n  rec[\"Game record<br/>decides claims from the transactions\"]\n  life[\"Lifecycle<br/>announces a reset or new game\"]\n  del[\"Delivery<br/>one route per fact<br/>live or after a reconnect<br/>each fact labelled\"]\n  tabA[\"Tablet A<br/>draws the claim fact<br/>keeps no list\"]\n  tabB[\"Tablet B<br/>draws the claim fact<br/>keeps no list\"]\n  ans[\"Answering<br/>one reply per tap\"]\n  gm[\"GM rescan<br/>accepted\"]\n  rec -->|\"delete frees the token\"| del\n  life -->|\"reset, restart\"| del\n  del -->|\"replace the drawn fact\"| tabA\n  del -->|\"replace the drawn fact\"| tabB\n  tabB -->|\"tap on the freed token\"| ans\n  ans -->|\"asks the record\"| rec\n  ans -->|\"accepted\"| gm\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rec owner;\n",
+        "note": "Only the Game record decides which tokens are claimed, from the transactions. Delivery sends it by one route, live or on reconnect; Lifecycle announces resets. The tablet keeps no list: it draws the fact and asks at each tap. Or: each job sends its own."
       },
       "examples": [
         {
@@ -62,14 +62,14 @@
         "P3",
         "P11"
       ],
-      "shapeChange": "The card's candidate let every tablet keep a claim list and replace it by one function. The map puts claims in the Game record alone, derived from the transactions. Delivery carries the fact and Lifecycle tells the boundary. A tablet draws what it is delivered and asks at each tap, so a delete or a reset leaves no stale list anywhere. The card's competing designs give way to the map's alternative for delivery. The standalone line now says what the tablet hosts under each candidate."
+      "shapeChange": "Before, the card let each tablet keep a list of claimed tokens. Now only the Game record holds it; a tablet draws what it is sent and asks at each tap, so a delete or reset leaves no stale list."
     },
     {
       "id": "C2",
       "title": "Service health and service state travel on separate paths",
-      "atAShow": "If Home Assistant or MPD is down when the engine starts, the lighting and music panels stay disabled until someone reloads the tablet. If MPD dies mid-show, the health row turns red alone while the music card keeps its playing look and the progress bar keeps moving. A volume change on one tablet's audio panel never reaches the other tablets' sliders.",
-      "whyItHappens": "Each venue service keeps two facts: its health in a central registry and its own state in its own record. The engine pushes the health row when health changes, and pushes a service's state only on a hand-written list of that service's events. An outage is on no list.",
-      "designTerms": "Equipment should own one dated record per capability behind one interface that reports value, health and age, with MPD an adapter beneath; Delivery should own the single route, one builder per fact for live and catch-up, carrying the label. Today the seam leaks: the broadcast module re-implements each service's change set as a per-domain event list, so the interface callers must know is the full event list, and locality is lost.",
+      "atAShow": "If the lighting system or the music player is down when the engine starts, the lighting and music panels stay disabled until someone reloads the tablet. If the music player dies mid-show, the health row turns red alone while the music card keeps its playing look and the progress bar keeps moving. A volume change on one tablet's audio panel never reaches the other tablets' sliders.",
+      "whyItHappens": "Each venue program has two facts about it: its health, in one shared health list, and its state, in its own record. The engine sends the health row when health changes, and sends a program's state only for a hand-written list of that program's events. An outage is on no list.",
+      "designTerms": "Equipment should own one dated record per thing the room does, behind one interface giving value, health and age, with the music player an adapter beneath. Delivery should own the one route: each fact built once for live and catch-up, labelled. Today each program's events are re-listed by hand; callers must know all: no locality.",
       "modules": [
         "backend/src/websocket/broadcasts.js",
         "backend/src/services/serviceHealthRegistry.js",
@@ -84,8 +84,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  mpd[\"MPD<br/>dies mid-show\"]\n  eq[\"Equipment, play music<br/>one dated picture: value, health, age\"]\n  del[\"Delivery<br/>one builder per fact, live and catch-up alike\"]\n  panel[\"GM panel<br/>card and row from one fact, age shown\"]\n  other[\"Other tablets and a late reconnect<br/>same fact, same route\"]\n  mpd -->|\"exit\"| eq\n  eq -->|\"picture changed\"| del\n  del -->|\"one fact with its label\"| panel\n  del -->|\"the same fact\"| other\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eq owner;",
-        "note": "One dated record per thing the room can do, carrying health and state, is the shape's choice. Equipment keeps it. Delivery, not the service, carries it on one route for the live change and the catch-up. So every panel sees a service go down or come back, and a panel opened late sees the same. Or: each job keeps its own pushes under a shared envelope, and this fault comes back in each job."
+        "mermaid": "flowchart LR\n  mpd[\"Music player<br/>dies mid-show\"]\n  eq[\"Equipment, play music<br/>one dated picture: value, health, age\"]\n  del[\"Delivery<br/>one route per fact<br/>live and catch-up alike\"]\n  panel[\"GM panel<br/>card and row from one fact<br/>age shown\"]\n  other[\"Other tablets and a late reconnect<br/>same fact, same route\"]\n  mpd -->|\"dies\"| eq\n  eq -->|\"picture changed\"| del\n  del -->|\"one fact with its label\"| panel\n  del -->|\"the same fact\"| other\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eq owner;\n",
+        "note": "Equipment keeps one dated record per thing the room does, health and state together. Delivery sends it by one route, live or on reconnect, so every panel, even one opened late, sees outages and recoveries. Or: each job sends its own facts; this fault returns."
       },
       "examples": [
         {
@@ -119,14 +119,14 @@
         "P8",
         "P6"
       ],
-      "shapeChange": "The record moved from the music service to Equipment, which dates it. The push moved to Delivery, which reads every change and sends it on one route. So when Home Assistant or MPD goes down or comes back, every panel changes with no reload, and a tablet that connects late sees the same. The panel now shows the record's age. The other option is now the shape's: each job keeps its own pushes."
+      "shapeChange": "Before, the card left the record and updates with the music service. Now Equipment keeps one dated record of each thing the room does and Delivery sends each change by one route, so every panel sees outages and recoveries."
     },
     {
       "id": "C3",
       "title": "Engine trusts its stale picture of outside programs",
-      "atAShow": "A video stayed stopped for about 28 seconds because the parser held each player message until the next one arrived. A false video finished can fire two seconds in, flipping the display back and restoring music. When MPD dies the engine still says playing and the controls stay dead until the next 15-second sweep. A cue with a 2-second video never completes.",
-      "whyItHappens": "The engine learns what VLC, MPD and the other programs are doing by parsing their text or event streams into a cached copy that starts from a default and carries no age. Re-reads are partial, and the video queue, cue timelines and health rows treat the copy as the program.",
-      "designTerms": "Equipment should own the engine's picture of each capability behind one interface that returns value, health and age, reconciled with the program at the seam where VLC, MPD and a software stand-in are adapters; Show runner reads that dated picture and keeps none. Today the seam leaks: the video queue, cue timeline and health rows read each service's ageless cache directly, so locality is lost.",
+      "atAShow": "A video stayed stopped for about 28 seconds because the engine held each message from the video player until the next one arrived. A false \"video finished\" can fire two seconds in, flipping the display back and restoring music. When the music player dies the engine still says playing and the controls stay dead until the next 15-second check. A cue with a 2-second video never completes.",
+      "whyItHappens": "The engine learns what VLC, the music player and the other programs are doing by reading their text or their stream of events into a saved copy that starts from a guess and carries no age. Re-reads are partial, and the video queue, cue timelines and health rows treat the copy as the program itself.",
+      "designTerms": "Equipment should own one picture per thing the room does, behind one interface giving value, health and age, checked against the program; VLC, the music player and a software stand-in are adapters at that seam. Show runner keeps none. Today the queue, timelines and health rows read each program's ageless copy directly: no locality.",
       "modules": [
         "backend/src/utils/dbusSignalParser.js",
         "backend/src/services/mprisPlayerBase.js",
@@ -141,8 +141,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>plays the video\"]\n  adp[\"VLC adapter<br/>signals plus a re-read on a timer\"]\n  sup[\"One supervisor<br/>restart, then re-read\"]\n  eq[\"Equipment, play a video<br/>one dated picture, reconciled with the program\"]\n  sr[\"Show runner<br/>queue and cue timeline read the dated picture, keep none\"]\n  del[\"Delivery<br/>every change, with its age\"]\n  panel[\"GM panel<br/>hears every correction, draws the age\"]\n  vlc -->|\"signals\"| adp\n  adp -->|\"re-read\"| vlc\n  sup -->|\"restarted\"| adp\n  adp -->|\"one path, every change\"| eq\n  eq -->|\"fresh picture\"| sr\n  eq -->|\"picture changed\"| del\n  del -->|\"one fact with its label\"| panel\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eq owner;",
-        "note": "One reader per program with its own timed re-read is the shape's choice. It is the adapter beneath Equipment. Equipment owns one dated picture per thing the room can do, checked against the program. Show runner reads that picture and keeps none. Delivery carries every correction with its age. Or: an interface per program, nearer today's adapters, which leaves questions that span programs spread out."
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>plays the video\"]\n  adp[\"VLC adapter<br/>signals, plus a re-read<br/>on a timer\"]\n  sup[\"One supervisor<br/>restart, then re-read\"]\n  eq[\"Equipment, play a video<br/>one dated picture<br/>checked against the program\"]\n  sr[\"Show runner<br/>queue and cue timeline<br/>read the dated picture, keep none\"]\n  del[\"Delivery<br/>every change, with its age\"]\n  panel[\"GM panel<br/>hears every correction, draws the age\"]\n  vlc -->|\"signals\"| adp\n  adp -->|\"re-read\"| vlc\n  sup -->|\"restarted\"| adp\n  adp -->|\"one path, every change\"| eq\n  eq -->|\"fresh picture\"| sr\n  eq -->|\"picture changed\"| del\n  del -->|\"one fact with its label\"| panel\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eq owner;\n",
+        "note": "The code that reads each program is the adapter beneath Equipment, which owns one dated picture per thing the room does. Show runner keeps no copy. Delivery carries each correction, dated. Or: one interface per program, nearer today's code, scattering questions about several programs."
       },
       "examples": [
         {
@@ -186,14 +186,14 @@
         "P8",
         "P9"
       ],
-      "shapeChange": "The reader is no longer the owner. It becomes the adapter under Equipment, which owns one dated picture per thing the room can do. The video queue and the cue timeline move into Show runner, which reads that picture and keeps no copy. One supervisor restarts a dead program and has it re-read. Every correction reaches the panel through Delivery, so the 15-second fix nobody heard is now heard. The other option is now the shape's: an interface per program."
+      "shapeChange": "Before, the card let the code that reads each program own the engine's picture of it. Now Equipment owns one dated picture per thing the room does; Show runner reads it and keeps no copy; Delivery carries every correction."
     },
     {
       "id": "C4",
       "title": "Nothing says what a game boundary clears or keeps",
       "atAShow": "The GM ends the game and restarts the engine; the ended game comes back as the current one and player scans keep landing in it. When the game ends, a tablet that reconnects loses its history and the wall scoreboard goes blank. A once-only cue spent in game one stays spent in game two.",
-      "whyItHappens": "Game start, end, reset, engine restart, tablet reload and reconnect each have their own code in each component. No table says, per fact and copy, whether a boundary clears, keeps or re-fetches it, and no message announces a boundary; screens infer one from a changed session id.",
-      "designTerms": "Lifecycle should own the table of moments against facts and the one interface that moves a game from one moment to the next by that table; it alone calls every part's reset, and Delivery publishes its boundary as a fact, so a boundary change lands in one table. Today no such interface exists, so the session, cue-engine, reset and tablet modules each encode their own cases; the seam leaks and one boundary change has no locality.",
+      "whyItHappens": "Game start, end, reset, engine restart, tablet reload and reconnect, the game's boundaries, each have their own code on each device. No table says, for each fact and each copy, whether a boundary clears it, keeps it or fetches it again, and no message announces one; screens guess a boundary from a changed session id.",
+      "designTerms": "Lifecycle should own the table of moments against facts and the one interface that moves a game from one moment to the next by that table; it alone calls every part's reset, and Delivery sends each moment as a fact. Today the session, cue, reset and tablet modules each hold their own cases: no locality.",
       "modules": [
         "backend/src/services/sessionService.js",
         "backend/src/services/systemReset.js",
@@ -208,8 +208,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  endg[\"Game end\"]\n  restart[\"Engine restart\"]\n  reset[\"Reset System\"]\n  lc[\"Lifecycle<br/>the table: each fact at each moment<br/>one mover, one path for boot and reset\"]\n  rec[\"Game record<br/>phase: ended stays ended, scans refused\"]\n  sr[\"Show runner<br/>spent cues and held items cleared at end\"]\n  del[\"Delivery<br/>the boundary as a fact, with a version\"]\n  tab[\"Tablet and TV<br/>apply the boundary, never guess from an id\"]\n  dev[\"Player devices<br/>told the boundary too\"]\n  endg -->|\"a row\"| lc\n  restart -->|\"a row\"| lc\n  reset -->|\"a row\"| lc\n  lc -->|\"applies the fate\"| rec\n  lc -->|\"applies the fate\"| sr\n  lc -->|\"announces\"| del\n  del -->|\"same fact\"| tab\n  del -->|\"same fact\"| dev\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class lc owner;",
-        "note": "One table of each fact's fate at every boundary is the shape's choice, and Lifecycle holds it. Lifecycle alone moves the game and calls every reset. Delivery carries each boundary as a fact with a version that every screen compares. Or: a table each part reads itself, with no central mover, which leaves \"did every part read it\" to a test."
+        "mermaid": "flowchart LR\n  endg[\"Game end\"]\n  restart[\"Engine restart\"]\n  reset[\"Reset System\"]\n  lc[\"Lifecycle<br/>the table:<br/>each fact at each moment<br/>one mover<br/>one path for boot and reset\"]\n  rec[\"Game record<br/>phase: ended stays ended, scans refused\"]\n  sr[\"Show runner<br/>spent cues and held items<br/>cleared at game end\"]\n  del[\"Delivery<br/>each moment as a fact<br/>with a version\"]\n  tab[\"Tablet and TV<br/>apply the moment<br/>never guess from an id\"]\n  dev[\"Player devices<br/>told the moment too\"]\n  endg -->|\"a row\"| lc\n  restart -->|\"a row\"| lc\n  reset -->|\"a row\"| lc\n  lc -->|\"applies its row\"| rec\n  lc -->|\"applies its row\"| sr\n  lc -->|\"announces\"| del\n  del -->|\"same fact\"| tab\n  del -->|\"same fact\"| dev\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class lc owner;\n",
+        "note": "Lifecycle holds one table saying what each moment does to each fact. It alone moves the game and calls every reset. Delivery sends each moment as a versioned fact every screen compares. Or: each part reads the table itself; only a test shows all did."
       },
       "examples": [
         {
@@ -248,14 +248,14 @@
       "parts": [
         "P11"
       ],
-      "shapeChange": "The table gained an owner. Lifecycle is the one part that moves a game and calls every reset. Game end, a restart and Reset System become rows it applies, not three callers of the table. The boundary reaches every screen through Delivery as a fact with a version, not a separate message, and player devices are told it too. The other option is now the shape's: a table each part reads itself."
+      "shapeChange": "Before, the card's table of moments had no owner. Now Lifecycle owns it, alone moves the game and calls every reset; Delivery tells every screen and player device each moment as a fact, so none has to guess."
     },
     {
       "id": "C5",
       "title": "Boot and Reset System wire the engine differently",
-      "atAShow": "The GM presses Reset System to recover mid-show. The music panel goes dead until someone restarts the engine. Later, Reset All Scores sends every tablet and the TV the old transaction list, so cleared evidence comes back on the wall. The cue engine now hears each video and clock event twice, and the Display row stays red until Check Now.",
-      "whyItHappens": "Starting the engine and rebuilding it after a reset are two separate hand-written lists. Boot wires the storage listeners first, then the broadcasts, with one set of services; the reset wires them the other way round with a shorter set, and adds some listeners a second time.",
-      "designTerms": "Lifecycle should own the one path boot and Reset System share, and alone call each part's reset interface; a starting point above every part should own the one list the engine is built from, under Engine instance's names, so wiring is decided once. Today boot and reset each implement that by hand, so every caller knows every service and the ordering rule: the seam leaks and a change has no locality.",
+      "atAShow": "The GM presses Reset System to recover mid-show. The music panel goes dead until someone restarts the engine. Later, Reset All Scores sends every tablet and the TV the old transaction list, so cleared evidence comes back on the wall. The cues now hear each video and clock event twice, and the Display row stays red until Check Now.",
+      "whyItHappens": "Starting the engine and rebuilding it after a reset are two separate hand-written lists. The start connects the parts in one order with one set of programs; the reset connects them in the other order with a shorter set, and connects some a second time.",
+      "designTerms": "Lifecycle should own the one path engine start and Reset System share, and alone call each part's reset; a starting point above every part should own the one list the engine is built from, under Engine instance's names. Today both do it by hand, each knowing every part and the order: no locality.",
       "modules": [
         "backend/src/app.js",
         "backend/src/server.js",
@@ -270,8 +270,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart TD\n  boot[\"Engine start\"]\n  reset[\"Reset System\"]\n  test[\"A test's setup\"]\n  root[\"Starting point<br/>builds every part once, from one list, under the engine's own names\"]\n  lc[\"Lifecycle<br/>boot and reset are one path<br/>the only caller of every reset\"]\n  rec[\"Game record<br/>cleared, then read\"]\n  eq[\"Equipment and Show runner<br/>music included, cue forwarding once\"]\n  ver[\"Verdict<br/>recomputed from the fresh picture\"]\n  del[\"Delivery<br/>snapshot built after the move\"]\n  boot -->|\"calls\"| root\n  reset -->|\"calls\"| root\n  test -->|\"calls, own instance\"| root\n  root -->|\"hands the parts to\"| lc\n  lc -->|\"moves\"| rec\n  lc -->|\"resets\"| eq\n  lc -->|\"asks\"| ver\n  lc -->|\"boundary\"| del\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class lc owner;",
-        "note": "One assembly routine for boot and reset is the shape's choice, in two parts. A starting point above every part builds each part once, from one list. Lifecycle runs boot and Reset System as one path and alone calls every reset, so nothing is left out. Or: a table each part reads itself, with no central mover, checked only by a test."
+        "mermaid": "flowchart TD\n  boot[\"Engine start\"]\n  reset[\"Reset System\"]\n  test[\"A test's setup\"]\n  root[\"Starting point<br/>builds every part once<br/>from one list<br/>under the engine's own names\"]\n  lc[\"Lifecycle<br/>start and reset are one path<br/>the only caller of every reset\"]\n  rec[\"Game record<br/>cleared, then read\"]\n  eq[\"Equipment and Show runner<br/>music included, cue events sent once\"]\n  ver[\"Verdict<br/>recomputed from the fresh picture\"]\n  del[\"Delivery<br/>the catch-up built after the move\"]\n  boot -->|\"calls\"| root\n  reset -->|\"calls\"| root\n  test -->|\"calls, with its own names\"| root\n  root -->|\"hands the parts to\"| lc\n  lc -->|\"moves\"| rec\n  lc -->|\"resets\"| eq\n  lc -->|\"asks\"| ver\n  lc -->|\"the moment\"| del\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class lc owner;\n",
+        "note": "One routine for start and reset, in two parts. A starting point builds every part once, from one list. Lifecycle runs start and reset as one path and alone calls every reset. Or: each part reads the table itself; only a test checks all did."
       },
       "examples": [
         {
@@ -301,14 +301,14 @@
         "P11",
         "P13"
       ],
-      "shapeChange": "The one assembly routine split into two things the map found. A starting point builds every part once from one list, so music cannot be left out and no listener is added twice. Lifecycle runs boot and Reset System as the same path and alone calls every reset. So a scores reset after a reset sends the cleared list, no cue fires twice, and the verdict is asked again so the Display row does not stay red. A test's setup uses the same starting point under its own names. The other option is now the shape's: a table each part reads itself."
+      "shapeChange": "Before, the card proposed one routine for engine start and Reset System. Now a starting point builds every part once from one list, and Lifecycle runs both as one path, so music is never left out and nothing wired twice."
     },
     {
       "id": "C6",
       "title": "Reconnect snapshot and live update are built apart",
-      "atAShow": "A GM reloads a tablet mid-game. The History badge stays hidden until the next scan, and a rebuilt admin panel can show the clock as --:-- until the next change. The device list flips between everyone ever and connected only, depending on which message came last.",
-      "whyItHappens": "For each fact the engine has one builder for the connect snapshot and another for the live message, and six places send the snapshot with hand-picked arguments. The tablet applies each by a different rule, and the restore path fires none of the events screens listen for.",
-      "designTerms": "Delivery should own one builder per fact, serving the catch-up snapshot and the live push from the authorities' change feeds. Lifecycle's restore fires the same publishes, and Screens draws what Delivery's one interface defines. Today the snapshot builder is shallow: its interface is a hand-passed list of every module, and five tablet adapters reshape its output, so the seam leaks both ways.",
+      "atAShow": "A GM reloads a tablet mid-game. The History badge stays hidden until the next scan, and a rebuilt admin panel can show the clock as --:-- until the next change. The device list flips between every device ever seen and only those connected now, depending on which message came last.",
+      "whyItHappens": "For each fact the engine has one piece of code that writes the catch-up snapshot a tablet gets on connect and another that writes the live message, and six places send the catch-up with hand-picked contents. The tablet applies each by a different rule, and a restore after a reload sends screens none of the signals they watch for.",
+      "designTerms": "Delivery should own one builder per fact, serving the catch-up snapshot and the live message from each deciding part's changes; Lifecycle's restore sends the same, and Screens draws only what that interface defines. Today the snapshot builder is shallow: a caller hands it every module, and five tablet adapters reshape its output: no locality.",
       "modules": [
         "backend/src/websocket/syncHelpers.js",
         "backend/src/websocket/broadcasts.js",
@@ -323,8 +323,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  rec[\"Game record<br/>changes since, dated\"]\n  eq[\"Equipment<br/>state with health and age\"]\n  run[\"Show runner<br/>cues, clock, held items\"]\n  con[\"Connections and roles<br/>who is connected\"]\n  life[\"Lifecycle<br/>boundary and restore\"]\n  del[\"Delivery<br/>one builder per fact\"]\n  snap[\"Catch-up on connect<br/>the facts, same shape, labelled\"]\n  live[\"Live push on change<br/>one fact, same shape, labelled\"]\n  scr[\"Screens<br/>one render per fact, same event either way\"]\n  rec -->|\"change feed\"| del\n  eq -->|\"change feed\"| del\n  run -->|\"change feed\"| del\n  con -->|\"device list\"| del\n  life -->|\"a restore publishes like a change\"| del\n  del -->|\"on connect\"| snap\n  del -->|\"on change\"| live\n  snap -->|\"same shape\"| scr\n  live -->|\"same shape\"| scr\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class del owner;",
-        "note": "Delivery owns one builder per fact and reads each authority's change feed, so catch-up and live push are one fact in one shape, labelled. A restore by Lifecycle publishes like a change. Screens renders each fact once, with one event. The card's first design, in Delivery. Or: each job delivers its own facts under a shared envelope."
+        "mermaid": "flowchart LR\n  rec[\"Game record<br/>changes since, dated\"]\n  eq[\"Equipment<br/>state with health and age\"]\n  run[\"Show runner<br/>cues, clock, held items\"]\n  con[\"Connections and roles<br/>who is connected\"]\n  life[\"Lifecycle<br/>new game, reset and restore\"]\n  del[\"Delivery<br/>one builder per fact\"]\n  snap[\"Catch-up on connect<br/>the facts, same shape, labelled\"]\n  live[\"Live message on change<br/>one fact, same shape, labelled\"]\n  scr[\"Screens<br/>one drawing per fact<br/>same signal either way\"]\n  rec -->|\"its changes\"| del\n  eq -->|\"its changes\"| del\n  run -->|\"its changes\"| del\n  con -->|\"device list\"| del\n  life -->|\"a restore sent like a change\"| del\n  del -->|\"on connect\"| snap\n  del -->|\"on change\"| live\n  snap -->|\"same shape\"| scr\n  live -->|\"same shape\"| scr\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class del owner;\n",
+        "note": "Delivery builds each fact once, so the catch-up and the live message carry one fact in one shape, with its label. A restore after a reload is sent like a change. Screens draws each fact one way. Or: each job sends its own facts."
       },
       "examples": [
         {
@@ -363,14 +363,14 @@
         "P6",
         "P11"
       ],
-      "shapeChange": "The card put the describe function in each fact's engine module. The map puts one builder per fact in Delivery, which reads every authority's change feed, the device list from Connections and roles included. Lifecycle's restore publishes like a live change, so a reload wakes the History badge and the clock as a live change would. The card's competing designs give way to the map's alternative for delivery. The standalone line now says what the tablet hosts under each candidate."
+      "shapeChange": "Before, the card had each engine part describe its facts. Now Delivery builds each fact once, for catch-up and live change, and a restore after a reload is sent like a change, so the History badge and clock wake."
     },
     {
       "id": "C7",
       "title": "A reply never says which request, final or stored",
-      "atAShow": "Player devices upload their queued scans while no game exists. The engine answers processed, stores nothing, and both devices delete the scans. A GM's scan that can never succeed comes back as a generic error, so the tablet replays it at every reconnect with a toast each time. A slow Reset System reports failure and the new game is skipped.",
-      "whyItHappens": "The engine answers before or without the write that makes the fact true, calls an unstored batch processed, returns some failures as a typed result and others as a generic error, and acknowledges commands by action name alone. Each device then decides for itself what a reply means.",
-      "designTerms": "Answering should own one interface that takes a request and gives one reply, at the seam where HTTP and the socket are two adapters; the reply's outcome words are a closed list the three clients read as generated data, and the Game record returns the outcome after the save. Today that interface is split between typed results, generic errors and action-name acks, so the seam leaks and three clients each keep their own reply rule.",
+      "atAShow": "Player devices upload their queued scans while no game exists. The engine answers \"processed\", stores nothing, and both devices delete the scans. A GM's scan that can never succeed comes back as a vague error, so the tablet resends it at every reconnect with a pop-up message each time. A slow Reset System reports failure and the new game is skipped.",
+      "whyItHappens": "The engine answers before, or without, saving the fact it reports; calls an unsaved batch processed; returns some failures as a named outcome and others as a vague error; and confirms a command by the command's name alone, so two quick presses cannot be told apart. Each device then decides for itself what a reply means.",
+      "designTerms": "Answering should own one interface, one request in and one reply out, web requests and the live connection its two adapters; the outcome words are one closed list every device reads as data; the Game record answers after the save. Today three reply shapes leave each device its own rule: no locality.",
       "modules": [
         "backend/src/websocket/adminEvents.js",
         "backend/src/routes/scanRoutes.js",
@@ -385,8 +385,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  dev[\"Player device<br/>queued scans\"]\n  tab[\"Tablet<br/>GM scan or command\"]\n  ans[\"Answering<br/>one door, two transports<br/>request id and device, grants checked once\"]\n  rec[\"Game record<br/>apply, save, then the outcome\"]\n  reply[\"One reply shape<br/>request id, outcome word, final, stored\"]\n  words[\"Reply words<br/>one closed list, generated for every device\"]\n  scr[\"Screens<br/>delete only if stored, final means stop\"]\n  dev -->|\"batch\"| ans\n  tab -->|\"scan, command\"| ans\n  ans -->|\"action\"| rec\n  rec -->|\"after the save\"| ans\n  ans -->|\"answers\"| reply\n  words -->|\"read as data\"| scr\n  reply -->|\"matched by request id\"| scr\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class ans owner;",
-        "note": "Replies that name their request and say final and stored, sent only after the save, are the shape's choice. Answering is one door for HTTP and the socket. The Game record saves, then gives the outcome. Every device reads one closed list of outcome words as data. Or: each device asks the engine which of its scans are stored, and deletes only those."
+        "mermaid": "flowchart LR\n  dev[\"Player device<br/>queued scans\"]\n  tab[\"Tablet<br/>GM scan or command\"]\n  ans[\"Answering<br/>one door, every way in<br/>knows request and device<br/>GM rights checked once\"]\n  rec[\"Game record<br/>apply, save, then the outcome\"]\n  reply[\"One reply shape<br/>which request, outcome word, final, stored\"]\n  words[\"Reply words<br/>one closed list<br/>made for every device\"]\n  scr[\"Screens<br/>delete only if stored<br/>final means stop\"]\n  dev -->|\"batch\"| ans\n  tab -->|\"scan, command\"| ans\n  ans -->|\"action\"| rec\n  rec -->|\"after the save\"| ans\n  ans -->|\"answers\"| reply\n  words -->|\"read as data\"| scr\n  reply -->|\"matched to its request\"| scr\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class ans owner;\n",
+        "note": "Every reply names its request and says whether it is final and whether anything was stored. The Game record saves first, then answers through Answering: one door and one list of outcome words for every device. Or: each device asks which scans are stored."
       },
       "examples": [
         {
@@ -424,14 +424,14 @@
       "parts": [
         "P4"
       ],
-      "shapeChange": "The save moved into the Game record and the reply into Answering. Answering is one door both transports share, and it checks the GM's grants once. The three devices' reply rules become one list of reply words, and the phone's and the hardware scanner's readers are made from it. So a batch sent with no game gets one answer, stored or refused, and every device acts on it the same way. The other option changed: each device asks which of its scans are stored."
+      "shapeChange": "Before, the card's reply part saved and answered. Now the Game record saves and Answering replies through one door for all devices, with one list of reply words, so a batch with no game gets one answer: stored or refused."
     },
     {
       "id": "C8",
       "title": "Engine and tests both assume they own the machine",
-      "atAShow": "On 2026-09-15 a unit test killed the live show's video player on blue's tree. In this tree the same run kills the live engine's VLC signal monitor and overwrites its process files. A killed engine leaves a full-screen player behind. Twenty-one test suites open a browser on the show TV. The operator's health script says VLC not found while the player runs.",
-      "whyItHappens": "The engine names and ends its helper programs by fixed file names and by command-line patterns over the whole machine, written as the only engine on the box. The test layers adopt whatever display, sound server and Bluetooth exist; that a layer is safe is claimed in comments, never checked.",
-      "designTerms": "Engine instance should own every name this engine holds, behind one interface; the settings file, a test's overrides and a preview's settings are adapters at its seam, and a starting point above every part builds the parts under those names. Today no such seam exists: each service module hard-codes a shared process file, and the kiosk and sound-server modules kill by machine-wide pattern, so identity has no locality.",
+      "atAShow": "On 2026-09-15 a unit test killed the live show's video player on the blue machine's code. In this code the same test run kills the live engine's watcher for the video player and overwrites the files that say which programs are running. A killed engine leaves a full-screen player behind. Twenty-one groups of tests open a browser on the show TV. The operator's health check says \"VLC not found\" while the player runs.",
+      "whyItHappens": "The engine finds and ends its helper programs by fixed file names and by searching the whole machine for programs by name, as if it were the only engine on the machine. The tests take over whatever display, sound and Bluetooth exist; that a test is safe is claimed in a note in the code, never checked.",
+      "designTerms": "Engine instance should own every name this engine holds, behind one interface; the settings file, a test's settings and a preview's settings are adapters at its seam, and a starting point builds every part under those names. Today no such seam exists: modules write fixed shared files and kill by machine-wide name search: no locality.",
       "modules": [
         "backend/src/utils/processMonitor.js",
         "backend/src/services/vlcMprisService.js",
@@ -446,8 +446,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  inst[\"Engine instance<br/>one set of names per engine\"]\n  root[\"Starting point<br/>builds every part from one list, under an engine's names\"]\n  live[\"Live engine<br/>live names\"]\n  test[\"Test engine<br/>test names, run by Joins and proofs\"]\n  prev[\"Preview engine<br/>preview names, run by Design studio\"]\n  livePids[\"Live process files, sockets, display\"]\n  testPids[\"Test process files, sockets, display\"]\n  sup[\"Equipment supervisor<br/>ends only what its own instance started\"]\n  vlc[\"Live VLC<br/>on the show TV\"]\n  health[\"Equipment health<br/>read from the live engine's own player, not a machine-wide search\"]\n  inst -->|\"names\"| root\n  root -->|\"builds\"| live\n  root -->|\"builds\"| test\n  root -->|\"builds\"| prev\n  live -->|\"writes under live names\"| livePids\n  test -->|\"writes under test names\"| testPids\n  live -->|\"starts\"| vlc\n  test -->|\"runs\"| sup\n  sup -.->|\"never reaches\"| vlc\n  live -->|\"reports its own player\"| health\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class inst owner;",
-        "note": "The shape takes the card's first design: one Engine instance holds every name an engine owns, and a starting point above every part builds the parts from one list, under those names. A test run and the designer's preview engine are second instances, so each can end only what it started. No machine-wide kill or search remains."
+        "mermaid": "flowchart LR\n  inst[\"Engine instance<br/>one set of names per engine\"]\n  root[\"Starting point<br/>builds every part from one list<br/>under an engine's names\"]\n  live[\"Live engine<br/>live names\"]\n  test[\"Test engine<br/>test names<br/>run by Joins and proofs\"]\n  prev[\"Preview engine<br/>preview names, run by Design studio\"]\n  livePids[\"Live program files, sockets, display\"]\n  testPids[\"Test program files, sockets, display\"]\n  sup[\"Equipment supervisor<br/>ends only what<br/>its own engine started\"]\n  vlc[\"Live VLC<br/>on the show TV\"]\n  health[\"Equipment health<br/>read from the engine's own player<br/>not a machine-wide search\"]\n  inst -->|\"names\"| root\n  root -->|\"builds\"| live\n  root -->|\"builds\"| test\n  root -->|\"builds\"| prev\n  live -->|\"writes under live names\"| livePids\n  test -->|\"writes under test names\"| testPids\n  live -->|\"starts\"| vlc\n  test -->|\"runs\"| sup\n  sup -.->|\"never reaches\"| vlc\n  live -->|\"reports its own player\"| health\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class inst owner;\n",
+        "note": "One Engine instance holds every name an engine owns, and a starting point builds the parts from one list, under those names. A test run and the designer's preview engine are engines too, so each ends only what it started. No machine-wide kill remains."
       },
       "examples": [
         {
@@ -492,14 +492,14 @@
         "P16",
         "P15"
       ],
-      "shapeChange": "The card already gave each engine its own names. The map says who else is an engine: every test run and the designer's preview engine, each built by the same starting point from one list of parts under its own names, so a green test run or a rehearsal can never end the show's player. Ending only the programs it started moves into Equipment's supervisor, and health is read from the engine's own player, not a search of the whole machine. The card's other designs (an outside supervisor, test containers, capability lists, one engine per machine) leave the note. The design-terms line now names Engine instance, and the standalone line adds what the tablet needs under each candidate."
+      "shapeChange": "The card already gave each engine its own names. Now every test run and the designer's preview engine are engines too, built the same way under their own names, so a test or rehearsal never ends the show's video player."
     },
     {
       "id": "C9",
       "title": "Tablets and phones decide facts the engine owns",
-      "atAShow": "A GM scans a token; the result screen says Transaction Complete with points the tablet worked out itself, before the engine has answered. The engine may refuse, and the correction arrives as a small toast. In standalone mode the tablet is the only judge, and its rules have gaps: a scan into a paused game shows complete and records nothing. A phone says revisited for last week's token.",
-      "whyItHappens": "The engine is the authority for scoring, claims and the scan gate, but the tablet carries its own copy of those rules, kept in step by hand and by comment, and the player devices pick their own team and their own new-or-seen. Each device shows its own verdict first.",
-      "designTerms": "The Game record should own every outcome a tap gets, running Game rules as one body both hosts load. Answering's interface is the seam a tap crosses, and Screens draws the reply, never a judgement of its own. Today the tablet holds a second implementation kept in step by comment, so the seam leaks judgements: a rule change lands in two places, with no locality.",
+      "atAShow": "A GM scans a token; the result screen says Transaction Complete with points the tablet worked out itself, before the engine has answered. The engine may refuse, and the correction arrives as a small pop-up message. In a standalone game the tablet is the only judge, and its rules have gaps: a scan into a paused game shows complete and records nothing. A phone says revisited for last week's token.",
+      "whyItHappens": "The engine decides scoring, claims and whether a scan is allowed now, but the tablet carries its own copy of those rules, kept matching by hand, with a note in the code as the only reminder. The phone and the hardware scanner each choose a team on their own and decide on their own whether a token is new or already seen. Each device shows its own answer first.",
+      "designTerms": "The Game record should own every outcome a tap gets, running Game rules as one body the engine and the tablet both load. Answering's interface is the seam a tap crosses; Screens draws the reply. Today the tablet keeps its own copy of the rules, so a rule change lands in two places: no locality.",
       "modules": [
         "backend/src/gameRules/scoring.js",
         "backend/src/gameRules/duplicatePolicy.js",
@@ -514,8 +514,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  gm[\"GM scans token\"]\n  tab[\"Tablet Screens<br/>shows pending, judges nothing\"]\n  ans[\"Answering<br/>one reply per tap\"]\n  rec[\"Game record on the engine<br/>decides claim, points and gate\"]\n  rules[\"Game rules<br/>one body of pure functions\"]\n  res[\"Result screen<br/>draws the reply with its points\"]\n  sans[\"Answering on the tablet<br/>standalone, local reply\"]\n  srec[\"Game record on the tablet<br/>standalone, the same functions\"]\n  phone[\"Player phone and hardware scanner<br/>Screens, rules as data tables\"]\n  gm -->|\"networked\"| tab\n  tab -->|\"request\"| ans\n  ans -->|\"apply, outcome back\"| rec\n  ans -->|\"reply with points\"| res\n  rules -->|\"loaded by\"| rec\n  gm -->|\"standalone\"| sans\n  sans -->|\"apply, outcome back\"| srec\n  sans -->|\"reply with points\"| res\n  rules -->|\"loaded by\"| srec\n  rules -->|\"tables generated\"| phone\n  phone -->|\"scan, the reply says new or seen\"| ans\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rec owner;",
-        "note": "The Game record decides every outcome a tap gets. The tablet shows pending, then draws the reply from Answering. Game rules is one body both hosts load, so a standalone tablet runs the same functions. Player devices get the rules as data and decide nothing while the engine is there. The card's first and third designs, joined. Or: two rule implementations under one contract, kept equal by tests."
+        "mermaid": "flowchart LR\n  gm[\"GM scans token\"]\n  tab[\"Tablet Screens<br/>shows pending, judges nothing\"]\n  ans[\"Answering<br/>one reply per tap\"]\n  rec[\"Game record on the engine<br/>decides claim and points,<br/>and whether a scan is allowed\"]\n  rules[\"Game rules<br/>one body of code<br/>that only calculates\"]\n  res[\"Result screen<br/>draws the reply with its points\"]\n  sans[\"Answering on the tablet<br/>standalone, local reply\"]\n  srec[\"Game record on the tablet<br/>standalone, the same rules\"]\n  phone[\"Player phone and hardware scanner<br/>Screens, rules as data tables\"]\n  gm -->|\"networked\"| tab\n  tab -->|\"request\"| ans\n  ans -->|\"apply, outcome back\"| rec\n  ans -->|\"reply with points\"| res\n  rules -->|\"loaded by\"| rec\n  gm -->|\"standalone\"| sans\n  sans -->|\"apply, outcome back\"| srec\n  sans -->|\"reply with points\"| res\n  rules -->|\"loaded by\"| srec\n  rules -->|\"tables generated\"| phone\n  phone -->|\"scan, the reply<br/>says new or seen\"| ans\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rec owner;",
+        "note": "The Game record decides what a tap gets. The tablet shows pending, then Answering's reply. Game rules is one body the engine and a standalone tablet both run; player devices get data tables and judge nothing. Or: two rule copies kept equal by tests."
       },
       "examples": [
         {
@@ -555,14 +555,14 @@
         "P1",
         "P14"
       ],
-      "shapeChange": "The card left the phone unchanged and let a standalone store merely load the shared rules. The map makes the Game record the one judge in both modes, hosted on the tablet when there is no engine. Every device becomes a screen that draws the reply from Answering, and the player devices share the rules as data. The card's other designs give way to the map's alternative: two rule bodies kept equal by tests. The standalone line now says what the tablet hosts under each candidate."
+      "shapeChange": "Before, the card left the phone alone and had the standalone tablet load shared rules. Now one Game record judges every tap, even with no engine, and every other device only draws the reply, so a rule change lands once."
     },
     {
       "id": "C10",
       "title": "Screens show a normal value when nothing is known",
-      "atAShow": "The venue profile fails to load; six services turn not installed, no video plays, no light cue fires, and the panel reads a calm green 3 of 9. The GM presses Check Now on a down service and nothing visibly happens. The engine dies; the TV keeps counting down. The music card goes grey with no offline line, and nobody at the venue notices.",
-      "whyItHappens": "No fact on the wire says whether it is known, unknown, stale or partial. Snapshot builders catch errors and send plausible defaults, a missing profile reads as no equipment, healthy means a program answered, and the check times that exist are never shown. The screen draws a normal value.",
-      "designTerms": "Delivery should own the label every fact carries (what it is, how old, how sure). Equipment's dated state feeds it, and Lifecycle passes on the Verdict's paper-or-live words. Screens draws the label at Delivery's seam. Today the pushed facts' interface carries neither status nor age, so snapshot builders turn errors into defaults and the seam leaks: a failure crosses as a normal value.",
+      "atAShow": "The venue profile fails to load; six services show as not installed, no video plays, no light cue fires, and the health panel reads a calm green 3 of 9. The GM presses Check Now on a down service and nothing visibly happens. The engine dies; the TV keeps counting down. The music card goes grey with no word that the engine is gone, and nobody at the venue notices.",
+      "whyItHappens": "No fact sent to a screen says whether it is known, unknown, stale or partial. The code that builds a tablet's catch-up swallows errors and sends a plausible normal value, a missing profile reads as no equipment, healthy only means a program answered, and the times of the last checks are never shown. The screen draws a normal value.",
+      "designTerms": "Delivery should own the label every fact carries: what it is, how old, how sure. Equipment's dated state feeds it, and Lifecycle passes the Verdict's words. Screens draws the label at Delivery's seam. Today the interface of a sent fact carries neither status nor age, so an error crosses the seam as a normal value.",
       "modules": [
         "backend/src/services/serviceHealthRegistry.js",
         "backend/src/websocket/syncHelpers.js",
@@ -577,8 +577,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  prof[\"Venue fit<br/>profile fails to load\"]\n  life[\"Lifecycle<br/>asks the Verdict at start\"]\n  ver[\"Verdict<br/>profile failed, no-go, paper\"]\n  eq[\"Equipment<br/>state with health and age\"]\n  con[\"Connections and roles<br/>one liveness rule for every device\"]\n  del[\"Delivery<br/>every fact labelled, what, how old, how sure\"]\n  panel[\"Health panel<br/>red profile row, checked at a time\"]\n  tv[\"TV clock<br/>drawn as old past its limit\"]\n  music[\"Music card<br/>down, not a calm grey\"]\n  prof -->|\"missing or invalid\"| life\n  life -->|\"profile and inventory\"| ver\n  ver -->|\"a failed check, never no equipment\"| life\n  life -->|\"verdicts\"| del\n  eq -->|\"dated picture\"| del\n  con -->|\"connection state\"| del\n  del -->|\"label drawn\"| panel\n  del -->|\"label drawn\"| tv\n  del -->|\"label drawn\"| music\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class del owner;",
-        "note": "Every delivered fact carries a label: what, how old, how sure. Equipment's state arrives dated. The Verdict, asked by Lifecycle at start, calls a failed profile no-go, not no equipment. One liveness rule says the engine is gone. Screens draws unknown, old and down as such. The card's first design, in Delivery. Or: each job delivers its own facts under a shared envelope."
+        "mermaid": "flowchart LR\n  prof[\"Venue fit<br/>profile fails to load\"]\n  life[\"Lifecycle<br/>asks the Verdict at start\"]\n  ver[\"Verdict<br/>profile failed, no-go<br/>(on paper, not a live check)\"]\n  eq[\"Equipment<br/>state with health and age\"]\n  con[\"Connections and roles<br/>one rule for whether<br/>a device is still there\"]\n  del[\"Delivery<br/>every fact labelled:<br/>what, how old, how sure\"]\n  panel[\"Health panel<br/>red profile row,<br/>with the time it was checked\"]\n  tv[\"TV clock<br/>drawn as old past its limit\"]\n  music[\"Music card<br/>down, not a calm grey\"]\n  prof -->|\"missing or invalid\"| life\n  life -->|\"profile and inventory\"| ver\n  ver -->|\"a failed check, never no equipment\"| life\n  life -->|\"verdicts\"| del\n  eq -->|\"dated picture\"| del\n  con -->|\"connection state\"| del\n  del -->|\"label drawn\"| panel\n  del -->|\"label drawn\"| tv\n  del -->|\"label drawn\"| music\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class del owner;",
+        "note": "Every delivered fact carries a label: what, how old, how sure, and Screens draw unknown, old and down as such. The Verdict, asked by Lifecycle at start, calls a failed profile no-go, not no equipment. Or: each part sends its own facts in one shape."
       },
       "examples": [
         {
@@ -620,14 +620,14 @@
         "P12",
         "P7"
       ],
-      "shapeChange": "The card made the health registry the owner of known, unknown and stale. The map makes the label part of every delivered fact, in Delivery. Equipment dates its picture. The Verdict, asked by Lifecycle, reports a failed profile as a no-go. Connections and roles gives one liveness rule. So the TV clock and the music card draw old or down the same way the health panel does. The card's competing designs give way to the map's alternative for delivery. The standalone line now names the declared standalone fact and the tablet's own Verdict."
+      "shapeChange": "Before, the health list alone said whether a fact was known, unknown or stale. Now every fact Delivery sends carries that label, so the TV clock and music card show old or down as the health panel does."
     },
     {
       "id": "C11",
       "title": "Several places answer the same question, each differently",
-      "atAShow": "Is a video playing has eight answers. A paused video counts as free, so a player is told their video was triggered while it waits, and releasing a held video plays over the paused one. Release All can stop at the first refused video. Music stays ducked after the queue is cleared. The downloaded report's two totals disagree.",
-      "whyItHappens": "Questions such as is a video playing, which teams exist and may the GM scan now are answered by several functions or stored values, each with its own rule and write path, so they disagree at the edges. No rule says which answerer every reader must use.",
-      "designTerms": "Each question should have one answerer inside the part that owns it: Equipment for whether a video is playing, the Game record for which teams exist and whether the GM may scan, behind a one-call interface every reader uses. Today there is no such seam: the queue, the command gate and the ducking count each implement 'is a video playing' by their own rule, so that knowledge has no locality.",
+      "atAShow": "Is a video playing has eight answers. A paused video counts as free, so a player is told their video was started while it waits, and releasing a held video plays over the paused one. Release All can stop at the first refused video. Music stays turned down after the queue is cleared. The downloaded report's two totals disagree.",
+      "whyItHappens": "Questions such as is a video playing, which teams exist and may the GM scan now are answered by several pieces of code or saved values, each with its own rule and its own way of being updated, so they disagree at the edges. No rule says which answerer every reader must use.",
+      "designTerms": "Each question should have one answerer inside the part that owns it, behind one interface every reader uses: the Game record for teams and whether the GM may scan, Equipment for whether a video plays. Today the video queue, the command check and the music volume rule each answer it alone: no seam, no locality.",
       "modules": [
         "backend/src/services/videoQueueService.js",
         "backend/src/services/commandExecutor.js",
@@ -642,8 +642,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>video paused\"]\n  eq[\"Equipment<br/>one dated answer, busy and paused\"]\n  run[\"Show runner<br/>queue, held items and ducking read that answer\"]\n  ans[\"Answering<br/>one dispatch for scans and commands\"]\n  player[\"Player scanner<br/>told to wait\"]\n  music[\"Music<br/>restored when nothing plays\"]\n  rec[\"Game record<br/>one answer for teams and may I scan\"]\n  tab[\"Tablet Screens<br/>draws the reply\"]\n  night[\"The night's record<br/>one total per team\"]\n  vlc -->|\"paused\"| eq\n  eq -->|\"busy, paused\"| run\n  run -->|\"video busy\"| ans\n  ans -->|\"wait\"| player\n  run -->|\"queue cleared, nothing playing\"| music\n  rec -->|\"outcome\"| ans\n  ans -->|\"reply\"| tab\n  rec -->|\"at the end\"| night\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eq owner;",
-        "note": "Each question has one answerer, inside the part that owns it, and every reader asks it. Equipment answers whether a video is playing. The Show runner answers what is held. The Game record answers which teams exist and whether the GM may scan. The night's record gives one total per team. The card's first design, placed by part. Or: an interface per program, leaving cross-program questions spread."
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>video paused\"]\n  eq[\"Equipment<br/>one dated answer, busy and paused\"]\n  run[\"Show runner<br/>queue, held items and music volume<br/>all read that answer\"]\n  ans[\"Answering<br/>one door for scans and commands\"]\n  player[\"Player scanner<br/>told to wait\"]\n  music[\"Music<br/>restored when nothing plays\"]\n  rec[\"Game record<br/>one answer for teams<br/>and whether the GM may scan\"]\n  tab[\"Tablet Screens<br/>draws the reply\"]\n  night[\"The night's record<br/>one total per team\"]\n  vlc -->|\"paused\"| eq\n  eq -->|\"busy, paused\"| run\n  run -->|\"video busy\"| ans\n  ans -->|\"wait\"| player\n  run -->|\"queue cleared, nothing playing\"| music\n  rec -->|\"outcome\"| ans\n  ans -->|\"reply\"| tab\n  rec -->|\"at the end\"| night\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eq owner;",
+        "note": "One answerer per question, inside its owning part: Equipment for whether a video plays, the Show runner for held items, the Game record for teams and scan permission, the night's record for totals. Or: an interface per program, leaving questions across programs spread."
       },
       "examples": [
         {
@@ -689,14 +689,14 @@
         "P4",
         "P5"
       ],
-      "shapeChange": "The card asked for one resolver per question as its own module. The map places each resolver inside the part that owns the question: Equipment, the Show runner, the Game record, Answering or the night's record. An answer and the fact it reads live in one place, and a player's wait comes back through Answering. The card's competing designs give way to the map's alternative, an interface per program. The standalone line now says what the tablet hosts under each candidate."
+      "shapeChange": "Before, the card wanted one answerer per question, as a part of its own. Now each answer lives inside the part that owns the fact, so Equipment says whether a video plays and the Game record says which teams exist."
     },
     {
       "id": "C12",
       "title": "Pack edits reach each part of the kit differently",
-      "atAShow": "A designer publishes a pack change and does not restart. The TV shows evidence by the new rules while the engine scores by the old. The file the engine serves no longer matches the hash in its own manifest, so a scanner that checks rejects it. A tablet running a different pack is only written to the log; nothing tells the GM. The publish tells the running engine nothing.",
-      "whyItHappens": "The engine freezes one pack at start, yet its file endpoints serve whatever is on disk and its token endpoint re-reads every call. The TV, tablet and hardware scanner each load it at their own moment and keep it; the phone reads its own copy. No message says it changed.",
-      "designTerms": "The Pack channel should own one adopted pack behind one interface (adopt, current, fetch, changed); each pack source (a folder, the designer's drafts, the test packs) is an adapter at its seam, and the Design studio reaches the running engine's copy only by message through Answering. Today the pack service's interface leaks the disk: it checks a path against the frozen inventory, then serves live bytes, and the token service re-reads the file around it, so frozen and live state cross the seam. No locality.",
+      "atAShow": "A designer publishes a pack change and does not restart. The TV shows evidence by the new rules while the engine scores by the old. The file the engine hands out no longer matches the fingerprint in the engine's own pack list, so a scanner that checks rejects it. A tablet running a different pack is only noted in the engine's log; nothing tells the GM. The publish tells the running engine nothing.",
+      "whyItHappens": "The engine freezes one pack at start, yet the files it hands out are whatever is on disk now, and it re-reads the token list from disk at every request. The TV, tablet and hardware scanner each load the pack at their own moment and keep it; the phone reads its own copy. No message says it changed.",
+      "designTerms": "The Pack channel should own one adopted pack behind one interface: adopt, say which is current, fetch a file, announce a change. Each source is an adapter at its seam, and the Design studio reaches the engine's copy by message. Today the engine's frozen list and the live disk both cross the seam: no locality.",
       "modules": [
         "backend/src/services/packService.js",
         "backend/src/routes/packRoutes.js",
@@ -711,8 +711,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  studio[\"Design studio<br/>publishes, then asks to apply, by message\"]\n  ans[\"Answering<br/>one door, one reply\"]\n  life[\"Lifecycle<br/>allows adopt in setup or ended, else refuses\"]\n  pack[\"Pack channel<br/>adopts once, one version, one stamp\"]\n  files[\"File fetch<br/>from the adopted copy, fingerprint checked\"]\n  del[\"Delivery<br/>pack identity on every snapshot and change\"]\n  tv[\"TV<br/>draws the facts as delivered, shows the stamp\"]\n  tab[\"Tablet<br/>stamp compared at connect, shows behind\"]\n  dev[\"Phone and hardware scanner<br/>stamp shown\"]\n  studio -->|\"apply this version\"| ans\n  ans -->|\"asks the window\"| life\n  life -->|\"adopt at the window\"| pack\n  pack -->|\"adopted bytes\"| files\n  pack -->|\"changed\"| del\n  del -->|\"pack identity and facts\"| tv\n  del -->|\"pack identity\"| tab\n  files -->|\"fetch and check\"| dev\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class pack owner;",
-        "note": "The shape takes the card's first design: one adopted version, one notice, one stamp. The Design studio publishes and applies by message, never by writing the engine's files. Lifecycle allows the adopt only between games. Delivery carries the pack identity to the tablets and the TV with the other facts, and the engine compares stamps when a device connects."
+        "mermaid": "flowchart LR\n  studio[\"Design studio<br/>publishes, then asks<br/>to apply, by message\"]\n  ans[\"Answering<br/>one door, one reply\"]\n  life[\"Lifecycle<br/>allows adopt in setup<br/>or ended, else refuses\"]\n  pack[\"Pack channel<br/>adopts once, one version, one stamp\"]\n  files[\"File fetch<br/>from the adopted copy, fingerprint checked\"]\n  del[\"Delivery<br/>pack stamp on every<br/>catch-up and live change\"]\n  tv[\"TV<br/>draws the facts as delivered,<br/>shows the stamp\"]\n  tab[\"Tablet<br/>stamp compared at connect,<br/>warns when it is behind\"]\n  dev[\"Phone and hardware scanner<br/>stamp shown\"]\n  studio -->|\"apply this version\"| ans\n  ans -->|\"asks if now is allowed\"| life\n  life -->|\"adopt when allowed\"| pack\n  pack -->|\"adopted files\"| files\n  pack -->|\"changed\"| del\n  del -->|\"pack stamp and facts\"| tv\n  del -->|\"pack stamp\"| tab\n  files -->|\"fetch and check\"| dev\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class pack owner;",
+        "note": "One adopted version, one notice, one stamp. The Design studio publishes and applies by message, never by writing the engine's files. Lifecycle allows the change only between games. Delivery sends the pack version to every screen, and the engine compares stamps when a device connects."
       },
       "examples": [
         {
@@ -752,14 +752,14 @@
         "P2",
         "P15"
       ],
-      "shapeChange": "The card's candidate let the pack view push its own changed event to the TV and let the config tool keep writing the engine's files. In the shape the Design studio applies by message, Lifecycle says when, and Delivery carries the pack identity with the other facts, so a tablet behind the engine is told, not logged. The TV draws the facts the engine decided and applies no rules of its own. The card's other designs (restart-only packs, disposable client copies, an apply rule per file) leave the note. The design-terms line now names Pack channel, and the standalone line adds the stamp, the game's record and the refused swap."
+      "shapeChange": "Before, the design tool wrote the engine's files and the TV got its own notice. Now the Design studio applies a pack by message, Lifecycle says when, and Delivery tells every screen the version, so no screen runs another pack."
     },
     {
       "id": "C13",
       "title": "The engine does not know who is connected",
-      "atAShow": "A tablet loses Wi-Fi and reloads; the engine still holds its old socket under the same station name and refuses the new one for up to about 85 seconds. Two tablets started together pick the same station name from an open list. The TV joins the GM room, receives every transaction and all ten service domains, and filters on its own side.",
-      "whyItHappens": "Whether a credential is asked for, and what a station is called, comes from a word the device sends or a route's default. Every socket event and route checks separately; none says who its audience is, so every socket gets everything and reads need no login.",
-      "designTerms": "Connections and roles should own one interface that admits a connection by its pass and gives its class, name and grants, plus one liveness rule, at the seam where socket and HTTP are adapters; Answering checks grants once from it and Delivery filters by it, one place for access. Today the handshake seam leaks: it trusts a self-declared word, and each route and socket event checks on its own, so access rules have no locality.",
+      "atAShow": "A tablet loses Wi-Fi and reloads; the engine still holds the old connection under the same station name and refuses the new one for up to about 85 seconds. Two tablets started together pick the same station name from an open list. The TV connects as if it were a GM tablet, receives every transaction and all ten kinds of service state, and discards what it does not need on its own side.",
+      "whyItHappens": "Whether a pass is asked for, and what a station is called, comes from a word the device sends, or from what the engine assumes when nothing is sent. Every kind of request checks separately, and none says who its audience is, so every live connection gets everything and reading the game's state needs no pass.",
+      "designTerms": "Connections and roles should own one interface that admits a connection by its pass and says its kind, name, rights and whether it is there; both ways of connecting are adapters at that seam. Answering checks rights once, Delivery filters by role. Today it trusts a self-declared word and each request checks alone: no locality.",
       "modules": [
         "backend/src/websocket/socketServer.js",
         "backend/src/websocket/gmAuth.js",
@@ -774,8 +774,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  tab[\"GM tablet<br/>operator pass\"]\n  tv[\"TV page<br/>display pass\"]\n  dev[\"Phone and hardware scanner<br/>device pass\"]\n  any[\"Stranger on the wifi<br/>no pass\"]\n  con[\"Connections and roles<br/>admits every connection by its pass<br/>class, name, grants, one liveness rule\"]\n  ans[\"Answering<br/>grants checked once per request\"]\n  del[\"Delivery<br/>each fact filtered by role\"]\n  gm[\"GM screens<br/>transactions, equipment, devices\"]\n  disp[\"Display screens<br/>scores, evidence, clock\"]\n  tab -->|\"pass\"| con\n  tv -->|\"pass\"| con\n  dev -->|\"pass\"| con\n  con -.->|\"refused\"| any\n  con -->|\"who may do what\"| ans\n  con -->|\"who may see what\"| del\n  del -->|\"GM facts\"| gm\n  del -->|\"display facts\"| disp\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class con owner;",
-        "note": "A verified pass at every connection and an audience per fact is the shape's choice. Connections and roles admits each connection by its pass, so a typed name or a route default decides nothing. Delivery filters each fact by that role. Answering checks grants once. Or: two separate surfaces, a public one for scoreboards and players and an operator one for the GM, closed by default for everything else."
+        "mermaid": "flowchart LR\n  tab[\"GM tablet<br/>operator pass\"]\n  tv[\"TV page<br/>display pass\"]\n  dev[\"Phone and hardware scanner<br/>device pass\"]\n  any[\"Stranger on the wifi<br/>no pass\"]\n  con[\"Connections and roles<br/>admits every connection by its pass<br/>kind, name, rights,<br/>whether it is still there\"]\n  ans[\"Answering<br/>rights checked once per request\"]\n  del[\"Delivery<br/>each fact filtered by role\"]\n  gm[\"GM screens<br/>transactions, equipment, devices\"]\n  disp[\"Display screens<br/>scores, evidence, clock\"]\n  tab -->|\"pass\"| con\n  tv -->|\"pass\"| con\n  dev -->|\"pass\"| con\n  con -.->|\"refused\"| any\n  con -->|\"who may do what\"| ans\n  con -->|\"who may see what\"| del\n  del -->|\"GM facts\"| gm\n  del -->|\"display facts\"| disp\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class con owner;",
+        "note": "Every connection shows a verified pass. Connections and roles admits it by that pass, so a typed name or default decides nothing; Delivery filters each fact by role; Answering checks rights once. Or: two doors, one public for scoreboards and players, one for the GM."
       },
       "examples": [
         {
@@ -814,14 +814,14 @@
         "P7",
         "P4"
       ],
-      "shapeChange": "The role table no longer sends. Connections and roles only knows who each connection is and whether it is still there. Delivery uses that to keep GM facts off the TV, and Answering uses it to check the GM's grants once, so today's three separate checks become one. The phone and the hardware scanner now present a device pass too. The other option changed: two separate surfaces, one public and one for the operator."
+      "shapeChange": "Before, the card's role table both knew who was connected and sent facts. Now Connections and roles knows who each connection is, Delivery and Answering ask it, and every device, phones included, shows a pass, so three checks become one."
     },
     {
       "id": "C14",
       "title": "Names joining two places are kept by hand",
-      "atAShow": "A GM opens Team Details: the score box is wrong, GM adjustments never appear, completed groups read In Progress with a $0 bonus, while the scoreboard screen on the same tablet shows the real total. Game Activity shows Unknown, no stars, $0 for a token no player scanned first. The video Playing badge never appears, because its element was never in the page.",
-      "whyItHappens": "A screen reads a property the object lacks; a renderer looks up an element the page never had; a module listens for an event nothing sends; the contract lists events nobody emits. Each name is written on both sides, and a wrong side yields nothing instead of an error.",
-      "designTerms": "Joins and proofs should own the check that both sides of every shared name agree; Delivery and Answering own the shapes, written once as their interfaces, and each device's Screens adapter reads them, so a missing side fails the proof before the show. Today the facade-strategy seam leaks: Team Details reads a field only the strategy adapter holds, the facade never exposes it, and the miss is silent.",
+      "atAShow": "A GM opens Team Details: the score box is wrong, GM adjustments never appear, completed groups read In Progress with a $0 bonus, while the scoreboard screen on the same tablet shows the real total. Game Activity shows Unknown, no stars, $0 for a token no player scanned first. The video Playing badge never appears, because the page never had a place to draw it.",
+      "whyItHappens": "A screen reads a field the fact never carries; a screen looks for a spot the page never had; a part waits for a message nothing sends; the written contract lists messages nobody sends. Each name is written on both sides, and a wrong side yields nothing instead of an error.",
+      "designTerms": "Joins and proofs should own the check that both sides of every shared name agree; Delivery and Answering own the shapes, written once, and Screens read them, so a missing side fails the proof before the show. Today the tablet's inner seam leaks: Team Details silently reads a field the outer layer never passes on.",
       "modules": [
         "ALNScanner/src/ui/renderers/GameOpsRenderer.js",
         "ALNScanner/src/core/unifiedDataManager.js",
@@ -836,8 +836,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  del[\"Delivery<br/>one builder per fact, the shape written once\"]\n  ans[\"Answering<br/>reply words, a closed list\"]\n  joins[\"Joins and proofs<br/>contracts generated from those shapes, both sides checked\"]\n  eng[\"Engine<br/>sends only the generated shapes\"]\n  scr[\"Screens on the tablet<br/>renderers read the delivered shape, keep no copy\"]\n  td[\"Team Details and Game Activity<br/>draw the facts as delivered\"]\n  badge[\"Video badge<br/>drawn from the video fact, or the check fails\"]\n  dead[\"An event with no sender or no reader<br/>fails the proof, not the show\"]\n  del -->|\"fact shapes\"| joins\n  ans -->|\"reply words\"| joins\n  joins -->|\"checks\"| eng\n  joins -->|\"checks\"| scr\n  del -->|\"delivered facts\"| scr\n  scr -->|\"renders\"| td\n  scr -->|\"renders\"| badge\n  joins -->|\"lists\"| dead\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;",
-        "note": "The shape takes the card's third design: every shared shape is written once, facts by Delivery and replies by Answering; Joins and proofs generates the contracts from them and checks both sides. Screens keep no copy, so Team Details and Game Activity draw only delivered facts. An unsent event fails the proof. Or: each job keeps its own delivery under one envelope."
+        "mermaid": "flowchart LR\n  del[\"Delivery<br/>one builder per fact,<br/>the shape written once\"]\n  ans[\"Answering<br/>reply words, a closed list\"]\n  joins[\"Joins and proofs<br/>contracts built from those shapes,<br/>both sides checked\"]\n  eng[\"Engine<br/>sends only the generated shapes\"]\n  scr[\"Screens on the tablet<br/>draw the delivered shape,<br/>keep no copy\"]\n  td[\"Team Details and Game Activity<br/>draw the facts as delivered\"]\n  badge[\"Video badge<br/>drawn from the video fact,<br/>or the check fails\"]\n  dead[\"A message with no sender<br/>or no reader<br/>fails the proof, not the show\"]\n  del -->|\"fact shapes\"| joins\n  ans -->|\"reply words\"| joins\n  joins -->|\"checks\"| eng\n  joins -->|\"checks\"| scr\n  del -->|\"delivered facts\"| scr\n  scr -->|\"draws\"| td\n  scr -->|\"draws\"| badge\n  joins -->|\"lists\"| dead\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;",
+        "note": "Every shape is written once, facts by Delivery, replies by Answering, and Joins and proofs checks both sides against them. Screens keep no copy; Team Details draws only delivered facts. Unsent messages fail the proof. Or: each part delivers its own facts in one shape."
       },
       "examples": [
         {
@@ -876,14 +876,14 @@
         "P14",
         "P1"
       ],
-      "shapeChange": "The card's candidate was a check on the tablet that every id and event has one definition. The map first puts each shape in one place: Delivery and Answering write every fact and reply shape once, Joins and proofs generates the contracts from them, and the tablet's screens, Game Activity included, draw what they are delivered and keep no copy. A mismatch now fails the proof, not the start-up. The card's other designs (typed facade lists, deleting half-built paths) leave the note, and per-job delivery appears as the alternative. The design-terms line now names Joins and proofs, and the standalone line adds the pack-file check and one transaction shape."
+      "shapeChange": "Before, the card checked on the tablet that every name had one definition. Now each shared shape is written once, by Delivery or Answering, and Joins and proofs checks both sides, so a mismatch fails a test before the show."
     },
     {
       "id": "C15",
       "title": "The deployed game is many parts nothing compares",
-      "atAShow": "Between shows, a rollback moves the parent checkout but no submodule backwards, and pm2 restart keeps serving the pre-rollback scanner build, so a bad rollback reaches the next show. A machine built from the tree's own documents pairs a speaker that connects with no audio profile, because the documents carry the wrong Bluetooth role.",
-      "whyItHappens": "The show machine is a parent checkout, four submodules on main, a scanner build folder, hand-copied media, host rules, hooks and program names fixed to one OS release. Each part moves by its own hand-run step and nothing compares them afterwards, so a half-applied change goes unnoticed.",
-      "designTerms": "Release should own what is installed, as one manifest behind one interface (describe, check), with the blue and green machines as the cutover at its seam; Pack channel checks media by fingerprint and Venue fit names programs per machine. Today no module owns it: each part is moved by its own hand-run step, so the seam between source and running machine leaks unchecked.",
+      "atAShow": "Between shows, a rollback moves the engine's code back but none of the four shared code pieces beneath it, and a restart keeps serving the tablet app built before the rollback, so a bad rollback reaches the next show. A machine set up from the project's own instructions pairs a speaker that connects but is never set up for sound, because the instructions name the wrong Bluetooth setting.",
+      "whyItHappens": "The show machine holds the engine's code, four shared code pieces each at their own version, a built tablet app, hand-copied media, machine settings, start-up scripts and program names tied to one operating system release. Each moves by its own hand-run step, and nothing compares them afterwards, so a half-applied change goes unnoticed.",
+      "designTerms": "Release should own what is installed: one list, one interface to describe and check it, with the two machines' swap at its seam; Pack channel checks media by fingerprint, Venue fit names each machine's programs. Today no module owns it, so each piece moves by hand and the seam to the running machine goes unchecked.",
       "modules": [
         ".gitmodules",
         "backend/package.json",
@@ -898,8 +898,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart TD\n  rel[\"Release<br/>one described set: engine, client builds, pack, media, profile\"]\n  cut[\"Cutover<br/>swap the whole set, blue to green and back\"]\n  pack[\"Pack channel<br/>every named media file checked by fingerprint\"]\n  fit[\"Venue fit<br/>this machine's program names, install commands and host rules\"]\n  inst[\"Engine instance<br/>this engine's own names\"]\n  verd[\"Verdict<br/>go, no-go, dormant\"]\n  gate[\"Start gate<br/>a mismatch is reported before the show\"]\n  rel -->|\"installs or rolls back\"| cut\n  rel -->|\"compares at start\"| pack\n  rel -->|\"compares at start\"| fit\n  rel -->|\"compares at start\"| inst\n  rel -->|\"says it in\"| verd\n  verd -->|\"go or no-go\"| gate\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rel owner;",
-        "note": "The card's one design is the shape's choice: Release describes what is installed as one set and compares it at start, in Verdict's words, so a rollback moves everything or says what it did not. Pack channel checks each media file by fingerprint; Venue fit holds the machine's program names and host rules. Or: Release folds into Venue fit's Deploy stage."
+        "mermaid": "flowchart TD\n  rel[\"Release<br/>one described set:<br/>engine, tablet and phone apps,<br/>pack, media, profile\"]\n  cut[\"Cutover<br/>swap the whole set,<br/>blue to green and back\"]\n  pack[\"Pack channel<br/>every named media file<br/>checked by fingerprint\"]\n  fit[\"Venue fit<br/>this machine's program names,<br/>install commands and settings\"]\n  inst[\"Engine instance<br/>this engine's own names\"]\n  verd[\"Verdict<br/>go, no-go, dormant\"]\n  gate[\"Start gate<br/>a mismatch is reported<br/>before the show\"]\n  rel -->|\"installs or rolls back\"| cut\n  rel -->|\"compares at start\"| pack\n  rel -->|\"compares at start\"| fit\n  rel -->|\"compares at start\"| inst\n  rel -->|\"says it in\"| verd\n  verd -->|\"go or no-go\"| gate\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rel owner;",
+        "note": "Release lists the installed set and compares it at start, in the Verdict's words, so a rollback moves everything or says what it did not. Pack channel checks media by fingerprint; Venue fit names each machine's programs. Or: Release folds into Venue fit's Deploy stage."
       },
       "examples": [
         {
@@ -937,14 +937,14 @@
         "P12",
         "P13"
       ],
-      "shapeChange": "The card's one design stands, spread over parts: Release owns the installed set and swaps it whole between the blue and green machines, Pack channel checks the media, Venue fit holds the machine's program names, install commands and host rules, and the check speaks in Verdict's three words, so a mismatch reads like any other no-go before the show. The one deploy command becomes that whole-set swap. The note gains one alternative, Release folded into Venue fit's Deploy stage, and drops the kit certificate, which no part names. The design-terms line now names Release, and the standalone line adds the stamp and build id each device would show."
+      "shapeChange": "Before, the card's design was one install command for every piece. Now Release owns the installed set and swaps it whole between the blue and green machines, so a mismatch reads as a no-go before the show."
     },
     {
       "id": "C16",
       "title": "A green test run proves nothing about the show",
-      "atAShow": "Nothing shows at the show; this is why the other fifteen reached one. Unit tests stayed green while Team Details showed the wrong score, because their fake facade had the field the real one lacks. A delete step in an end-to-end flow had been silently skipping on a selector that never matched. Blue's last full run skipped 62 tests, and group completion has no test on real content.",
-      "whyItHappens": "Fakes are written by hand with nothing comparing them to the real classes. Steps that find no element, or check only that no error appeared, pass. Every test engine runs under a flag that changes what Reset System does, so no layer runs the reset the show runs.",
-      "designTerms": "Joins and proofs should own every proof: each part's interface is its test surface, a fake is an adapter checked against the class at the same seam, and one proof per fact runs from authority to screen on an Engine instance of its own with Equipment stand-ins. Today each fake is hand-written and checked against nothing; the seam leaks, and no test crosses one path from authority to screen.",
+      "atAShow": "Nothing shows at the show; this is why the other fifteen reached one. The small tests stayed green while Team Details showed the wrong score, because their stand-in had a field the real part lacks. A delete step in a full run-through test had been silently skipped, because it looked for a button under a name the page never used. Blue's last full run skipped 62 tests, and group completion has no test on real content.",
+      "whyItHappens": "Fakes are written by hand, and nothing compares them to the real parts they stand for. A test step that finds nothing on the page, or checks only that no error appeared, passes. Every test engine runs with a switch that changes what Reset System does, so no test runs the reset the show runs.",
+      "designTerms": "Joins and proofs should own every proof: each part's interface is its test surface, a fake is an adapter checked against the real part at the same seam, and one proof per fact runs from authority to screen on its own Engine instance. Today fakes are checked against nothing and no test crosses that path.",
       "modules": [
         "ALNScanner/tests/unit/ui/uiManager.test.js",
         "ALNScanner/tests/unit/core/gameActivityBuilder.test.js",
@@ -959,8 +959,8 @@
       },
       "after": {
         "caption": "Candidate, not decided",
-        "mermaid": "flowchart LR\n  joins[\"Joins and proofs<br/>every interface is its test surface\"]\n  real[\"Real class<br/>declares its surface\"]\n  fake[\"Fake<br/>an adapter at the same seam, checked against the class\"]\n  path[\"One proof per fact<br/>from its authority to a screen, on the rig\"]\n  inst[\"Engine instance<br/>each run under its own names\"]\n  stand[\"Equipment stand-ins<br/>real second adapters\"]\n  life[\"Lifecycle<br/>one reset path, tested as the show runs it\"]\n  packs[\"Two packs<br/>the same suite on each\"]\n  skips[\"Skips<br/>listed loudly, never counted green\"]\n  joins -->|\"checks\"| fake\n  real -->|\"surface\"| fake\n  joins -->|\"runs\"| path\n  path -->|\"on\"| inst\n  path -->|\"with\"| stand\n  path -->|\"through\"| life\n  joins -->|\"runs on\"| packs\n  joins -->|\"prints\"| skips\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;",
-        "note": "The shape takes the card's first and second designs: Joins and proofs checks every fake against the class it stands for, prints every skip, and runs one proof per fact from authority to screen, under its own Engine instance, with Equipment stand-ins and the reset path the show runs. Or: Equipment per program, leaving the rig's stand-ins hypothetical."
+        "mermaid": "flowchart LR\n  joins[\"Joins and proofs<br/>every interface is its test surface\"]\n  real[\"Real part<br/>declares its surface\"]\n  fake[\"Fake<br/>an adapter at the same seam,<br/>checked against the real part\"]\n  path[\"One proof per fact<br/>from its authority to a screen,<br/>on the test rig\"]\n  inst[\"Engine instance<br/>each run under its own names\"]\n  stand[\"Equipment stand-ins<br/>real second adapters\"]\n  life[\"Lifecycle<br/>one reset path,<br/>tested as the show runs it\"]\n  packs[\"Two packs<br/>the same suite on each\"]\n  skips[\"Skips<br/>listed loudly, never counted green\"]\n  joins -->|\"checks\"| fake\n  real -->|\"surface\"| fake\n  joins -->|\"runs\"| path\n  path -->|\"on\"| inst\n  path -->|\"with\"| stand\n  path -->|\"through\"| life\n  joins -->|\"runs on\"| packs\n  joins -->|\"prints\"| skips\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;",
+        "note": "Joins and proofs checks every fake against the real part, prints every skip, and runs one proof per fact from authority to screen, under its own Engine instance, with Equipment stand-ins and the show's own reset path. Or: an interface per program, leaving stand-ins unbuilt."
       },
       "examples": [
         {
@@ -995,7 +995,7 @@
       "parts": [
         "P16"
       ],
-      "shapeChange": "The card's candidate fixed the fakes and the skips. The map also takes the card's second design: one path per fact from where it is decided to a screen, run on a rig under an engine of its own, so no test can touch the show and a reset is tested as the show runs it. The same suite runs on two packs. The test flag the card names goes with Lifecycle's one reset path. The card's third design, documents generated from tests, leaves the note, and Equipment per program appears as the alternative. The design-terms line now names Joins and proofs, and the standalone line adds how each candidate proves the tablet."
+      "shapeChange": "Before, the card fixed only the fakes and the skipped tests. Now each fact also gets one test from where it is decided to a screen, on an engine of its own, so no test touches the show."
     }
   ]
 }
