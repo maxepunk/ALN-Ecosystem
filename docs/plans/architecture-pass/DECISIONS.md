@@ -23,6 +23,12 @@ history, the cause analysis, the engine-jobs document, the standalone
 pass, the after-game survey, the owner site's Decisions page data, and
 the inventory beside this file (`decision-record/inventory.md`).
 
+Where a later decision contradicts part of an earlier one without
+naming it, this record keeps the earlier decision as made and says, in
+the entry and in "Read as overtaken, not yet confirmed", what the later
+decision implies. Nothing inferred is written as if the owner had said
+it.
+
 ---
 
 ## The goal and the frame
@@ -49,30 +55,34 @@ History:
   rest of the design half was reordered to fit this frame (see "Design
   top-down, hardest-to-reverse choices first").
 
-**The architecture pass is the next work**
+**The architecture pass is the work now**
 
-The architecture pass is the current work. The paused hardening pieces
-and the truth sweep wait for its answers. It covers the whole engine:
-the backend orchestrator, the GM scanner, the player scanners (web and
-ESP32), the scoreboards and the config tool. Blue keeps running the game
-until the new engine is ready to swap in on green, and no date governs
-the work. The owner's condition with the yes: the orchestrator must
-understand the engine being built and the roadmap being adjusted,
-starting with how the truth sweep differs from the pass. The questions
-the pass must answer are listed under "The nine questions the pass
-answers".
+The architecture pass is the current work, design half first. The
+paused hardening pieces and the truth sweep wait for its answers. It
+covers the whole engine: the backend orchestrator, the GM scanner, the
+player scanners (web and ESP32), the scoreboards and the config tool.
+Blue keeps running the game until the new engine is ready to swap in on
+green, and no date governs the work. The owner's condition with the
+yes: the orchestrator must understand the engine being built and the
+roadmap being adjusted, starting with how the truth sweep differs from
+the pass. The questions the pass must answer are listed under "The nine
+questions the pass answers".
 
 Made 2026-10-30.
 
 History:
-- 2026-10-30, the definition session's first round. Made with six
+- 2026-10-30, the definition session. Made as the next work, with six
   questions, the central one being who decides each fact the GM sees.
   The owner asked: "how is the truth sweep different from the
   architecture pass?" The nine evidence files in the program document
   were made to meet that condition.
-- 2026-10-30, second and fourth rounds. Two of the six questions were
-  reworded and three more added; the set is now nine (see "The nine
-  questions the pass answers").
+- 2026-10-30, the definition session, in the rounds that reworded and
+  widened the question set. Two of the six questions were reworded and
+  three more added; the set is now nine (see "The nine questions the
+  pass answers").
+- 2026-10-30, the definition session's sign-off. The owner ratified the
+  program document, and the pass became the current work, design half
+  first ("The owner ratified the program document").
 
 **Blue's fixes are evidence of design causes**
 
@@ -87,11 +97,11 @@ design in the design rounds is checked against them.
 Made 2026-10-30.
 
 History:
-- 2026-10-30, third round. Made. The owner's meaning of the kickoff
-  brief's question on blue's fixes was an evidence method, not a
-  process for future fixes. Two worked examples: the claimed-token list
-  (three more places that update it) and the frozen music and lighting
-  panels (a hand-written table that re-sends state).
+- 2026-10-30, the definition session. Made. The owner's meaning of the
+  kickoff brief's question on blue's fixes was an evidence method, not
+  a process for future fixes. Two worked examples: the claimed-token
+  list (three more places that update it) and the frozen music and
+  lighting panels (a hand-written table that re-sends state).
 - 2026-10-31. Qualified by "Design for the long term, beyond ALN": clues
   to where the design is off, never the driver.
 - 2026-11-01. "Design top-down, hardest-to-reverse choices first" made
@@ -113,24 +123,25 @@ names what one truth checks.
 Made 2026-10-30.
 
 History:
-- 2026-10-30, first round. Made. The outside-program clause was flagged
-  for the owner.
-- 2026-10-30, second round. The owner confirmed that an outside program
-  can be an authority.
+- 2026-10-30, the definition session. Made. The outside-program clause
+  was flagged for the owner.
+- 2026-10-30, the definition session, the round after. The owner
+  confirmed that an outside program can be an authority.
 
 **Promises, qualities, moments, venue technician**
 
-A promise is what a person can count on at a given moment. The pass
-states the engine's requirements as ten promises, and "job" is retired.
-Parts keep promises; design flaws break them. A quality is something
-every part must have so a promise holds everywhere; it is never a
-promise itself. A moment is when a promise matters: a production stage,
-a point in a show, release day. The person who fits a kit to a venue is
-the venue technician, not "installer". Promises carry titles only, so a
-card reads without memorizing ids. The seventh title is itself a
-promise: "The game fits the venue it is in tonight". Shared work that
-several promises depend on needs no word of its own: each piece becomes
-one part.
+A promise is what a person can count on at a given moment. The owner's
+page is organized around the promises, and "job" is retired. The draft
+has ten promises; whether they are the right ten is still open (see
+"Still open"). Parts keep promises; design flaws break them. A quality
+is something every part must have so a promise holds everywhere; it is
+never a promise itself. A moment is when a promise matters: a
+production stage, a point in a show, release day. The person who fits a
+kit to a venue is the venue technician, not "installer". Promises carry
+titles only, so a card reads without memorizing ids. The title "The
+game fits the venue it is in tonight" is itself a promise. Shared work
+that several promises depend on needs no word of its own: each piece
+becomes one part.
 
 Made 2026-11-01.
 
@@ -173,25 +184,25 @@ History:
 
 The pass answers these nine questions for the whole engine:
 
-1. Who decides each fact: who decides each fact the GM sees (the
-   authority)?
-2. Service state travels with its health: does a service's state travel
-   with its health?
-3. How the engine reads its programs: how does the engine read the
-   programs it drives?
-4. Only the live engine touches the show: can anything other than the
-   live engine touch the live show (tests today, the preview engine
-   later)?
-5. One question gets one answer: does one question get one answer?
-6. Each fact at a game boundary: what does each fact and each copy do at
-   a boundary (a game starting or ending, a system reset, a restart, a
-   pack change while running)?
-7. Each component gets what its role needs: does each component receive
-   what its role needs, and no more?
-8. How copies update and show their age: how may a copy be updated, and
-   can a screen tell how old it is?
-9. Reconnect snapshot built like live update: is each fact's reconnect
-   snapshot built the same way as its live update?
+- Who decides each fact: who decides each fact the GM sees (the
+  authority)?
+- Service state travels with its health: does a service's state travel
+  with its health?
+- How the engine reads its programs: how does the engine read the
+  programs it drives?
+- Only the live engine touches the show: can anything other than the
+  live engine touch the live show (tests today, the preview engine
+  later)?
+- One question gets one answer: does one question get one answer?
+- Each fact at a game boundary: what does each fact and each copy do at
+  a boundary (a game starting or ending, a system reset, a restart, a
+  pack change while running)?
+- Each component gets what its role needs: does each component receive
+  what its role needs, and no more?
+- How copies update and show their age: how may a copy be updated, and
+  can a screen tell how old it is?
+- Reconnect snapshot built like live update: is each fact's reconnect
+  snapshot built the same way as its live update?
 
 The nine stand. Since the design half was reordered top-down, the
 design rounds go by the hardest decisions to reverse, not one rule per
@@ -202,20 +213,26 @@ design, is to be confirmed with the owner.
 Made 2026-10-30.
 
 History:
-- 2026-10-30, first round. Six questions, with the authority question
-  central. The fourth then read "can a test touch the live show?" and
-  the sixth "who re-checks after a reset?".
-- 2026-10-30, second round. The fourth became "can anything other than
-  the live engine touch the live show?" and the sixth "what does each
-  fact and each copy do at a boundary?". A seventh was added on what
-  each component receives; the owner ruled it must start from the
-  settled roles.
-- 2026-10-30, third round. The seventh was worded (see "The role
+- 2026-10-30, the definition session. Six questions, with "Who decides
+  each fact" central. "Only the live engine touches the show" then read
+  "can a test touch the live show?" and "Each fact at a game boundary"
+  read "who re-checks after a reset?".
+- 2026-10-30, the definition session, the round after. "Only the live
+  engine touches the show" became "can anything other than the live
+  engine touch the live show?" and "Each fact at a game boundary"
+  became "what does each fact and each copy do at a boundary?". "Each
+  component gets what its role needs" was added, on what each component
+  receives; the owner ruled it must start from the settled roles.
+- 2026-10-30, the definition session, the round after that. "Each
+  component gets what its role needs" was worded (see "The role
   question starts from settled roles").
-- 2026-10-30, fourth round. The eighth and ninth were added from the
-  code map. Each question was to get its own rule and test, and the
-  first, sixth, eighth and ninth were to be designed together as one
-  rule for live state.
+- 2026-10-30, the definition session, the round that settled the
+  method. "How copies update and show their age" and "Reconnect
+  snapshot built like live update" were added from the code map. Each
+  question was to get its own rule and test, and "Who decides each
+  fact", "Each fact at a game boundary", "How copies update and show
+  their age" and "Reconnect snapshot built like live update" were to be
+  designed together as one rule for live state.
 - 2026-11-01. "Design top-down, hardest-to-reverse choices first"
   ordered the design rounds by decision, not by question. Whether
   "designed together" and "one rule per question" still hold is to be
@@ -234,10 +251,12 @@ from these roles.
 Made 2026-10-30.
 
 History:
-- 2026-10-30, second round. The owner said "sure" to widening two
-  questions but found that the new role question ignored the settled
-  roles; it was sent back to be reworded from them.
-- 2026-10-30, third round. Made with the wording above.
+- 2026-10-30, the definition session, the round that reworded the
+  questions. The owner said "sure" to widening two questions but found
+  that the new role question ignored the settled roles; it was sent
+  back to be reworded from them.
+- 2026-10-30, the definition session, the round after. Made with the
+  wording above.
 
 **Standalone games: declared, never mixed**
 
@@ -267,31 +286,34 @@ History:
 
 **The night's record and the after-game article**
 
-The after-game article and emailer are the game's business, outside
-the engine, and the engine's record is designed so they can read it.
-The second half of the promise "Every tap gets its answer, and the
-night can be told afterwards" names the director and the players after
-the show. What the players receive after the show is the game's
-business: the engine makes them no promise of their own. The night's
-record carries the pack the game ran and the texts the players saw, so
-the article quotes what they held. Players' emails stay outside the
-engine; later the game's own tools could collect them from the
-ticketing service. The Director Console stays a separate program that
-reads the engine's record; the record is designed so the console can
-later become ALN's own part of the engine's Review stage. The two
-clocks (a sale stamped by the tablet, an adjustment by the engine) join
-the flaw "Tablets and phones decide facts the engine owns" as a finding.
-Whether paper documents join the pack, with "unlocked" recorded during
-play, was not answered and waits for the design rounds.
+What the players receive after the show, and their contact details, are
+the game's business, outside the engine; the engine's record is
+designed so the game's own tools can read it. The second half of the
+promise "Every tap gets its answer, and the night can be told
+afterwards" names the director and the players after the show. The
+engine makes the players no promise of their own for what they receive
+after the show. The night's record carries the pack the game ran and
+the texts the players saw, so the article quotes what they held.
+Players' emails stay outside the engine; later the game's own tools
+could collect them from the ticketing service. The Director Console
+stays a separate program, for now, that reads the engine's record; the
+record is designed so the console can later become ALN's own part of
+the engine's Review stage. The two clocks (a sale stamped by the
+tablet, an adjustment by the engine) join the flaw "Tablets and phones
+decide facts the engine owns" as a finding. Whether paper documents
+join the pack, with "unlocked" recorded during play, was not answered
+and waits for the design rounds.
 
 Made 2026-11-01.
 
 History:
 - 2026-11-01. The owner asked to bring the after-game article and
   emailer into the engine map. A read-only survey asked six questions;
-  the owner answered them all the same day. The answers were folded
-  into the promise's people, the night's record part, the flaw card,
-  the glossary's Review entry and the roadmap's capture block.
+  the owner answered five of them, and the first half of the third, the
+  same day. Whether paper documents join the pack was not answered. The
+  answers were folded into the promise's people, the night's record
+  part, the flaw card, the glossary's Review entry and the roadmap's
+  capture block.
 
 **One published protocol and an outside test bench**
 
@@ -337,8 +359,8 @@ The pass ends when every rule's test passes on the rig.
 Made 2026-10-30.
 
 History:
-- 2026-10-30, third round. Made as two phases, the third of three
-  options the owner was shown. The owner had asked why the pass changes
+- 2026-10-30, the definition session. Made as two phases, the third
+  option the owner was shown. The owner had asked why the pass changes
   no code and when the engine code changes. Each area was to start with
   its proof test failing on today's engine.
 - 2026-11-01. The halves were renamed design half and build half
@@ -355,22 +377,24 @@ History:
 
 The pass is a roadmap revision, run the way the September re-charter
 ran: evidence, a draft with questions, a hostile review, question
-rounds, ratification. Its new roadmap becomes the roadmap's next
-revision; the earlier text survives in git history. The glossary entry
-for "architecture pass" is written. The order of the design half's
-steps is the top-down order. On the owner's pages the draft's questions
-go by title, not number.
+rounds, the owner's sign-off. Its new roadmap becomes the roadmap's
+next revision; the earlier text survives in git history. The glossary
+entry for "architecture pass" is written. The order of the design
+half's steps is the top-down order. On the owner's pages the draft's
+questions go by title, not number.
 
 Made 2026-10-30.
 
 History:
-- 2026-10-30, first round. Made. The glossary entry waited until the
-  pass's difference from the truth sweep was settled.
-- 2026-10-30, third round. The difference was settled and the entry
-  written.
+- 2026-10-30, the definition session. Made, with ratification as the
+  last step's name. The glossary entry waited until the pass's
+  difference from the truth sweep was settled.
+- 2026-10-30, the definition session, two rounds later. The difference
+  was settled and the entry written.
 - 2026-11-01. The order of the steps became the top-down order, and
   "Titles, not numbers, and a topic record" replaced numbered
-  questions with titled ones on the owner's pages.
+  questions with titled ones on the owner's pages. "Name each step by
+  what it does" named the last step the owner's sign-off.
 
 **The truth sweep's charter is retired**
 
@@ -384,33 +408,37 @@ glossary carry notes.
 Made 2026-10-30.
 
 History:
-- 2026-10-30, second round. Made. The sweep had been a repair job on
-  the routes by which service status reaches the GM's admin panel,
-  taking today's design as given; the pass decides the design itself.
+- 2026-10-30, the definition session, the round that reworded the
+  questions. Made. The sweep had been a repair job on the routes by
+  which service status reaches the GM's admin panel, taking today's
+  design as given; the pass decides the design itself.
 
 **Five documents the design half hands over**
 
-The design half hands over: the rules, each with a proof test in plain
-words (what to do, and what must happen); the cause analysis, with every
-blue fix and every finding assigned to a cause and a rule or set aside
-with a reason; the published protocol, which took the place of contract
-proposals drafted for the two contract files; decision records, one
-short note per hard-to-reverse choice, in a new `docs/adr/` folder; and
-the new roadmap, with the build half's areas in order, the remaining
-hardening pieces and the sweep's purpose placed inside them, the
-show-ready gate restated and the later blocks after the build half.
+The design half hands over: the rules, one per question, each with a
+proof test in plain words (what to do, and what must happen); the cause
+analysis, with every blue fix and every finding assigned to a cause and
+a rule or set aside with a reason; contract proposals, drafted for the
+two contract files before code; decision records, one short note per
+hard-to-reverse choice, in a new `docs/adr/` folder; and the new
+roadmap, with the build half's areas in order, the remaining hardening
+pieces and the sweep's purpose placed inside them, the show-ready gate
+restated and the later blocks after the build half. Two parts of this
+are read as overtaken, to be confirmed with the owner: "one per
+question", by the design rounds going by hard-to-reverse decision; and
+the contract proposals, by the one published protocol.
 
 Made 2026-10-30.
 
 History:
-- 2026-10-30, fourth round. Made, with the rules as one per question
-  and the third document as contract proposals.
+- 2026-10-30, the definition session, the round that settled the
+  method. Made.
 - 2026-11-01. "Design top-down, hardest-to-reverse choices first"
   orders the design by decision, not by question, so "one rule per
   question" may change; "One published protocol and an outside test
-  bench" turns the contract proposals into one protocol. The record
-  does not name either as a change to this decision; both readings are
-  to be confirmed.
+  bench" would turn the contract proposals into one protocol. The
+  record does not name either as a change to this decision; both
+  readings are to be confirmed.
 
 **The design half's method and tools**
 
@@ -420,30 +448,34 @@ readers split by source, merged by cause, checked); the requirements
 testable situations, and the ways the platform must be extended, and by
 whom); the independent panel; the design rounds, ordered by the hardest
 decisions to reverse; the build plan; the hostile review (two reviewers
-with different angles, a checker for each finding, one fleet at a
-time); the final questions; the owner's sign-off. The design rounds use
-the skills `codebase-design` and `improve-codebase-architecture`. Each
-round writes two or three competing designs side by side, with
-before-and-after diagrams, published as pages for the owner, never left
-as temporary files. A throwaway prototype is written where the code's
-behaviour is uncertain and never merged. Every design is checked
-against the promises, the quality targets, the extension cases and the
-sixteen design flaws, and every rule says how it serves hot-apply, the
-preview engine, capture, players' phones and standalone games. The test
-rig is built when building starts, not before design.
+with different angles, a checker for each finding, one group of
+reviewers at a time); the final questions; the owner's sign-off. The
+design rounds use the skills `codebase-design` and
+`improve-codebase-architecture`. Each round writes two or three
+competing designs side by side, with before-and-after diagrams,
+published as pages for the owner, never left as temporary files. A
+throwaway prototype is written where the code's behaviour is uncertain
+and never merged. Every design is checked against the promises, the
+quality targets, the extension cases and the sixteen design flaws, and
+every rule says how it serves hot-apply, the preview engine, capture,
+players' phones and standalone games. The test rig is built when
+building starts, not before design.
 
 Made 2026-10-30.
 
 History:
-- 2026-10-30, fourth round. Made, in the order: cause analysis; the
-  test rig rebuilt and used to reproduce the unrun findings; design
-  rule by rule; the hostile review; grill rounds; ratification. The two
-  design skills were confirmed for this pass.
-- 2026-10-30, sixth round. The order corrected: a proposed build order
-  drafted before the review, and one question round with the review's
-  findings and the order ("Corrections to the readers and the hardening
-  pieces").
-- 2026-10-31. Standalone games joined the list every rule serves.
+- 2026-10-30, the definition session, the round that settled the
+  method. Made, in the order: cause analysis, with its readers grouped
+  by cause; the test rig rebuilt and used to reproduce the unrun
+  findings; design rule by rule; the hostile review; grill rounds;
+  ratification. The two design skills were confirmed for this pass.
+- 2026-10-30, the definition session, the record check's round. The
+  order corrected (a proposed build order drafted before the review,
+  and one question round with the review's findings and the order) and
+  the readers changed: split by source, then merged by cause, then
+  checked ("Corrections to the readers and the hardening pieces").
+- 2026-10-31. Standalone games joined the list every rule serves
+  ("Standalone games: declared, never mixed").
 - 2026-11-01. The test rig moved to the start of building ("Build the
   test rig when building starts").
 - 2026-11-01. The order became top-down and the design rounds go by
@@ -455,17 +487,22 @@ The design half ends at the owner's sign-off, and only once all of
 these hold: every finding and every blue fix is assigned to a rule, or
 set aside with a reason; every rule says how it serves the planned
 capabilities and standalone games; the review's blocking findings are
-resolved; and every question has a rule and a proof test, a condition
-that the top-down order may change and that is to be confirmed. The
-condition that the rig reproduces each finding marked for live proof no
-longer applies: the rig is built when building starts.
+resolved; every question has a rule and a proof test; and the rig
+reproduces each finding marked for live proof. Two of these are read as
+overtaken, to be confirmed with the owner: "every question has a
+rule", by the top-down order of the design rounds; and the rig
+condition, by "Build the test rig when building starts", which builds
+the rig when building starts.
 
 Made 2026-10-30.
 
 History:
-- 2026-10-30, fourth round. Made with five conditions.
-- 2026-11-01. "Build the test rig when building starts" removed the
-  rig's part. The record does not name this as a change to the end
+- 2026-10-30, the definition session, the round that settled the
+  method. Made with five conditions.
+- 2026-10-31. "Standalone games: declared, never mixed" put standalone
+  games on the list every rule must serve.
+- 2026-11-01. "Build the test rig when building starts" moves the rig
+  after design. The record does not name this as a change to the end
   conditions; the reading is to be confirmed.
 - 2026-11-01. "Design top-down, hardest-to-reverse choices first" may
   change "every question has a rule"; to be confirmed.
@@ -483,12 +520,13 @@ then a skeptical check ran. That work is done.
 Made 2026-10-30.
 
 History:
-- 2026-10-30, sixth round. Made as three corrections from a record
-  check: (a) the design half's order, (b) the hardening pieces, (c) the
-  readers. The owner said yes to all three.
-- 2026-11-01. Part (a), the order, was superseded by "Build the test
-  rig when building starts" and "Design top-down, hardest-to-reverse
-  choices first". Parts (b) and (c) stand.
+- 2026-10-30, the definition session, the record check's round. Made
+  as three corrections from a record check: the design half's order,
+  the hardening pieces, the readers. The owner said yes to all three.
+- 2026-11-01. The correction to the order was superseded by "Build the
+  test rig when building starts" and "Design top-down,
+  hardest-to-reverse choices first". The hardening pieces and the
+  readers stand.
 
 **Build the test rig when building starts**
 
@@ -522,8 +560,8 @@ as many separate copies; how today's engine moves to the new design.
 Each round has two or three designs side by side, checked against the
 promises, the quality targets, the extension cases and today's sixteen
 design flaws as test cases. Then a build plan that starts with a thin
-first version. The owner site is reframed fully to the long-term frame,
-and the sequencing words are made unambiguous.
+first version. The owner site is to be reframed fully to the long-term
+frame, and the sequencing words are made unambiguous.
 
 Made 2026-11-01.
 
@@ -584,8 +622,11 @@ The owner's page is five linked pages built from one set of data: the
 engine (the front page), decisions, promises, parts and design flaws.
 The history of earlier wordings and changes lives in a change log. The
 owner relied on nothing in the single page it replaced, so nothing from
-it had to stay. The site is reframed fully to the long-term frame, and
-its decisions, questions and design flaws go by title.
+it had to stay. The site is to be reframed to the long-term frame, and
+its decisions, questions and design flaws are to go by title in place
+of numbers. Neither is done yet: the live site still asks the owner to
+answer by a question's letter or number, and still names a round and a
+step by number.
 
 Made 2026-11-01.
 
@@ -599,13 +640,14 @@ History:
   live the same day.
 - 2026-11-01. "Design top-down, hardest-to-reverse choices first" asks
   for the site to be reframed to the long-term frame; "Titles, not
-  numbers, and a topic record" puts titles on its pages.
+  numbers, and a topic record" asks for titles on its pages. Both wait
+  for the next version of the site.
 
 ---
 
 ## How the work runs
 
-**Green's follow-ups ship before the pass**
+**Green's follow-ups ship when the definition session ends**
 
 Green's three follow-ups (the boot check that logged a false
 "WirePlumber rule missing" warning on a correct green, the two lines
@@ -617,8 +659,9 @@ definition session ends, alongside the pass. Done: merged 2026-10-30 at
 Made 2026-10-30.
 
 History:
-- 2026-10-30, first round. The owner leaned yes ("ok, I think?").
-- 2026-10-30, second round. Made.
+- 2026-10-30, the definition session. The owner leaned yes ("ok, I
+  think?").
+- 2026-10-30, the definition session, the round after. Made.
 - 2026-10-30. Merged.
 
 **Decide in question rounds, never at sign-off**
@@ -626,20 +669,22 @@ History:
 Every decision is made in a question round with the evidence in view,
 and written into its document at once. Documents record decisions; they
 are never where a decision is first made. Anything new found while
-writing comes back to the owner as a question first. Ratification is a
-skim with no new decisions. The rule stands for every unit of work, not
-only the pass. The flow of the design half's rounds is the top-down
-order.
+writing comes back to the owner as a question first. The owner's
+sign-off is a skim with no new decisions. The rule stands for every
+unit of work, not only the pass. The flow of the design half's rounds
+is the top-down order.
 
 Made 2026-10-30.
 
 History:
-- 2026-10-30, fifth round. Made, with an approved flow: the owner
-  confirms the cause list; facts only from the rig; one page per rule
-  with the owner's pick; the review's findings that would change a
-  decision come back as questions; the owner decides the build order;
-  at ratification the state page names the build half's first area.
-- 2026-10-30, sixth round. The flow's order corrected.
+- 2026-10-30, the definition session, the round that settled how
+  decisions are made. Made, with an approved flow: the owner confirms
+  the cause list; facts only from the rig; one page per rule with the
+  owner's pick; the review's findings that would change a decision come
+  back as questions; the owner decides the build order; at
+  ratification the state page names the build half's first area.
+- 2026-10-30, the definition session, the record check's round. The
+  flow's order corrected.
 - 2026-11-01. The flow became the top-down order ("Design top-down,
   hardest-to-reverse choices first"). The rule itself is unchanged and
   is written in the process guide.
@@ -653,8 +698,9 @@ design half first.
 Made 2026-10-30.
 
 History:
-- 2026-10-30, seventh round. Made. The definition session's decisions
-  moved into the program document's appendix word for word.
+- 2026-10-30, the definition session's sign-off. Made. The definition
+  session's decisions moved into the program document's appendix word
+  for word.
 
 **No rule for documents: fix as we go**
 
@@ -693,56 +739,60 @@ History:
 
 ## Superseded and withdrawn
 
-By date. Each says what it said, what replaced it and when.
+Dated by the day each was replaced or withdrawn. Each says what it
+said, when it was made, and what replaced it.
 
 - **2026-10-30. Two of the original questions' wordings.** "Can a test
-  touch the live show?" and "who re-checks after a reset?" were replaced
-  on 2026-10-30, in the second round, by "can anything other than the
-  live engine touch the live show?" and "what does each fact and each
-  copy do at a boundary?" (see "The nine questions the pass answers").
+  touch the live show?" and "who re-checks after a reset?", from the
+  definition session's opening, were replaced the same day by "can
+  anything other than the live engine touch the live show?" and "what
+  does each fact and each copy do at a boundary?" (see "The nine
+  questions the pass answers").
 - **2026-10-30. The design half's first order.** Cause analysis, test
-  rig, design rule by rule, hostile review, grill rounds, ratification.
-  Replaced on 2026-10-30, in the sixth round, by an order with the
-  build order drafted before the review and one question round
-  ("Corrections to the readers and the hardening pieces", part a).
-- **2026-10-30. The approved flow of the rounds.** The owner confirms
+  rig, design rule by rule, hostile review, grill rounds, ratification,
+  from the definition session's round that settled the method. Replaced
+  the same day, in the record check's round, by an order with the build
+  order drafted before the review and one question round ("Corrections
+  to the readers and the hardening pieces", its correction to the
+  order).
+- **2026-11-01. The approved flow of the rounds.** The owner confirms
   the cause list; facts only; one page per rule with the owner's pick;
   review findings as questions; the owner decides the build order;
-  ratification. Replaced on 2026-11-01 by the top-down order ("Design
-  top-down, hardest-to-reverse choices first"). The rule that every
-  decision is made in a round stands.
-- **2026-10-31. "Job" and "installer".** The engine's requirements were
-  ten "jobs", and the person who fits a kit to a venue was the
-  "installer". Replaced on 2026-11-01 by "promise" and "venue
-  technician" ("Promises, qualities, moments, venue technician").
+  ratification. Made 2026-10-30. Replaced by the top-down order
+  ("Design top-down, hardest-to-reverse choices first"). The rule that
+  every decision is made in a round stands.
+- **2026-11-01. "Job" and "installer".** The engine's requirements were
+  ten "jobs" (from 2026-10-31), and the person who fits a kit to a
+  venue was the "installer" (in the roadmap as "venue installer" since
+  2026-09-04). Replaced by "promise" and "venue technician"
+  ("Promises, qualities, moments, venue technician").
 - **2026-11-01. The design half's corrected order.** Cause analysis,
   test rig, design, a proposed build order, its review, one question
-  round, ratification. Replaced on 2026-11-01 by "Build the test rig
-  when building starts" and "Design top-down, hardest-to-reverse
-  choices first".
+  round, ratification. Made 2026-10-30 in the record check's round.
+  Replaced by "Build the test rig when building starts" and "Design
+  top-down, hardest-to-reverse choices first".
 - **2026-11-01. "How much the rig proves before design" (withdrawn).**
   It asked how many of the findings marked for live proof the test rig
-  should reproduce before design starts. Withdrawn on 2026-11-01 by
+  should reproduce before design starts. Asked 2026-10-30. Withdrawn by
   "Build the test rig when building starts". The owner site's
-  Decisions page and the state page still list it as open and need
-  updating.
+  Decisions page still lists it as open and needs updating.
 - **2026-11-01. The part "Joins and proofs".** In the candidate shape,
   one part held the shapes two parts share, written once, and the tests
-  on an engine of their own. Replaced on 2026-11-01 by "One published
-  protocol and an outside test bench".
+  on an engine of their own. Replaced by "One published protocol and an
+  outside test bench".
 - **2026-11-01. "Phase 1" and "phase 2", and bare step, block and
-  round numbers.** Replaced on 2026-11-01 by the design half and the
-  build half, steps named by what they do, blocks by name, rounds by
-  date and test levels by name ("Name each step by what it does").
+  round numbers.** In use since 2026-10-30. Replaced by the design half
+  and the build half, steps named by what they do, blocks by name,
+  rounds by date and test levels by name ("Name each step by what it
+  does").
 - **2026-11-01. Decision and question numbers on the owner's pages, and
-  the numbered decision list on the state page.** Replaced on
-  2026-11-01 by titles and by this record ("Titles, not numbers, and a
-  topic record").
+  the numbered decision list on the state page.** Replaced by titles
+  and by this record ("Titles, not numbers, and a topic record").
 
 Read as overtaken, not yet confirmed. The record does not say these in
 so many words; a later decision contradicts part of an earlier one
-without naming it. Each is flagged in its entry's history and should be
-put to the owner:
+without naming it. Each is flagged in its entry and should be put to
+the owner:
 
 - Each build area starting with its proof test failing on today's
   engine ("One program: design half, then build half"), overtaken by
@@ -796,13 +846,15 @@ About the game's record:
   orchestrator's view; it is yes, record every attempt and its answer
   and show it nowhere until a feature needs it.
 
-Kept for the design rounds, not questions now:
-- Where "this game is standalone" is held: the venue profile, the pack,
-  the game's record or each device.
-- Whether paper documents join the pack, with "unlocked" recorded
-  during play.
-- The Decisions page's list of design choices for the design rounds
-  (eleven, from where standalone is declared to the order of the work).
+Kept for the design rounds, not questions now: the Decisions page's
+list of twelve design choices, from where "this game is standalone" is
+declared (the venue profile, the pack, the game's record or each
+device) to whether paper documents join the pack, with "unlocked"
+recorded during play. Between them: how facts reach screens, the life
+of a game, the game rules as shared code, the equipment's interface,
+the standalone tablet, the scoreboard, the config tool, when a changed
+pack may be adopted, where the start-or-adopt setting lives, and the
+order of the work.
 
 One item on the page is no longer open: "How much the rig proves before
 design" was withdrawn (see "Superseded and withdrawn").
@@ -821,10 +873,10 @@ questions; "AG" numbers are the after-game survey's six questions.
 
 | Old number | Title | Where in this record |
 |---|---|---|
-| 1 | The architecture pass is the next work | The goal and the frame |
+| 1 | The architecture pass is the work now | The goal and the frame |
 | 2 | Run the pass like the re-charter | How the design is made, and in what order |
 | 3 | Four words for the game's live facts | The words |
-| 4 | Green's follow-ups ship before the pass | How the work runs |
+| 4 | Green's follow-ups ship when the definition session ends | How the work runs |
 | 5 | Two questions reworded, one role question added | In the history of "The nine questions the pass answers" (What the engine must do) |
 | 6 | The truth sweep's charter is retired | How the design is made, and in what order |
 | 7 | One program: design half, then build half | How the design is made, and in what order |
@@ -835,7 +887,7 @@ questions; "AG" numbers are the after-game survey's six questions.
 | 12 | The design half's method and tools | How the design is made, and in what order |
 | 13 | When the design half is finished | How the design is made, and in what order |
 | 14 | Decide in question rounds, never at sign-off | How the work runs |
-| 15 | Corrections to the readers and the hardening pieces | How the design is made, and in what order (its part on the order: Superseded and withdrawn) |
+| 15 | Corrections to the readers and the hardening pieces | How the design is made, and in what order (its correction to the order: Superseded and withdrawn) |
 | 16 | The owner ratified the program document | How the work runs |
 | 17 | Is the list of design flaws right? | Still open, folded into "Are these the right ten promises?" |
 | 18 | Flaws none of the pass's questions covers | Still open, folded into "Proof and release in one promise?" |
@@ -887,14 +939,16 @@ questions; "AG" numbers are the after-game survey's six questions.
 
 ### The after-game survey's six questions
 
-All six were answered on 2026-11-01 and are the entry "The night's
-record and the after-game article" (What the engine must do).
+Asked on 2026-11-01. The owner answered five of them, and the first
+half of the third, the same day; the second half of the third (paper
+documents) waits for the design rounds. The answers are the entry "The
+night's record and the after-game article" (What the engine must do).
 
 | Old number | What it asked | Where in this record |
 |---|---|---|
 | AG1 | Does the night's-record promise name the director and the players? | The night's record and the after-game article (yes) |
 | AG2 | Do the players after the show get a promise of their own? | The night's record and the after-game article (no: the game's business) |
-| AG3 | Does the night's record carry the pack and the texts; do paper documents join the pack? | The night's record and the after-game article (first half yes; paper documents: Still open) |
+| AG3 | Does the night's record carry the pack and the texts; do paper documents join the pack? | The night's record and the after-game article (first half yes; paper documents: Still open, kept for the design rounds) |
 | AG4 | Does the engine ever hold players' emails and consent? | The night's record and the after-game article (no) |
 | AG5 | What does "integrate" the Director Console mean? | The night's record and the after-game article (separate, reads the record; shaped for the Review stage later) |
 | AG6 | Do the two clocks join an existing flaw or become a new one? | The night's record and the after-game article (they join "Tablets and phones decide facts the engine owns") |

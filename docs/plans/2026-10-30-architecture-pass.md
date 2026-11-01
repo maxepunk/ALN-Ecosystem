@@ -1,5 +1,7 @@
 # The architecture pass: program document
 
+> Decision and question numbers in this record map to titles in `docs/plans/architecture-pass/DECISIONS.md` (its last section, "For older records: number to title").
+
 **Status: ratified by the owner, 2026-10-30 (decision 16).** This
 document records the owner's decisions from the pass's definition
 session (Appendix A, decisions 1 to 16, rounds 1 to 7 on 2026-10-30)
@@ -311,6 +313,8 @@ Decision 3 (the runtime-state terms) is used throughout and lives in
 `CONTEXT.md` §4b.
 
 ## Appendix A. The decision record
+
+> Decision and question numbers in this record map to titles in `docs/plans/architecture-pass/DECISIONS.md` (its last section, "For older records: number to title").
 
 The definition session's decisions, moved here word for word from the
 state page (`docs/plans/CURRENT-STATE.md` §0) when the owner ratified

@@ -1,5 +1,7 @@
 # Cause analysis (phase 1, step 1 of the architecture pass)
 
+> Decision and question numbers in this record map to titles in `docs/plans/architecture-pass/DECISIONS.md` (its last section, "For older records: number to title").
+
 **Status: draft for the owner's confirmation; checked (program document section 4.1, step 1).** Nothing here is decided. The owner reviews the list of causes in section 1 and says whether anything is missing or wrongly grouped. Every design choice below is marked "candidate, not decided". The refute-by-default check has run over this document in two halves (`2026-10-30-cause-analysis-check-1.md`, `2026-10-30-cause-analysis-check-2.md`); its corrections are applied in place and listed one per line in section 6.
 
 - **Date:** 2026-10-30.

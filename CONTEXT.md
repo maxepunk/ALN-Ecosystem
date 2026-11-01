@@ -95,8 +95,9 @@ you intend.
      Standalone means the device works alone. This is an
      infrastructure choice, not a gameplay choice. A whole game can
      be run standalone: the GM scanner and the player scanners each
-     work alone, and no game mixes the two modes (owner, 2026-10-31,
-     architecture pass decision 22).
+     work alone, and no game mixes the two modes (owner, 2026-10-31;
+     the architecture pass's decision "Standalone games: declared,
+     never mixed", `docs/plans/architecture-pass/DECISIONS.md`).
   3. *Display mode.* Which picture the venue display shows: the idle
      loop, the scoreboard, or a video. The orchestrator owns this
      state machine (`displayControlService`) and announces changes
@@ -383,7 +384,10 @@ you intend.
 ## 4b. Runtime state
 
 Settled 2026-10-30 at the architecture pass's definition session
-(decision record: `docs/plans/2026-10-30-architecture-pass.md`, Appendix A). These words name
+(the decision "Four words for the game's live facts",
+`docs/plans/architecture-pass/DECISIONS.md`; the session's record word
+for word: `docs/plans/2026-10-30-architecture-pass.md`, Appendix A).
+These words name
 the facts a running game changes and where those facts live. They
 decide nothing about how the engine should hold them; that is the
 architecture pass's question.
@@ -410,7 +414,8 @@ architecture pass's question.
 - **Venue technician.** The person who fits a kit to a venue: they
   satisfy the pack's tech rider, bind the installation profile and run
   the preflight (§5b, Deploy). Use this name, not "installer" or
-  "venue installer" (owner, 2026-11-01, decision 27).
+  "venue installer" (owner, 2026-11-01, "Promises, qualities, moments,
+  venue technician", `docs/plans/architecture-pass/DECISIONS.md`).
 - **Install tier.** How much of the kit is deployed for one event,
   from the minimum (player scanners and tokens only) to the full rig.
   Every tier must run a legitimate game. Tiers are normal
@@ -542,8 +547,9 @@ the GM scanner, and a game's own post-show tooling)
   stays a separate program that reads the record; the record is
   shaped so a game's telling can later run inside Review. What
   reaches the players after the show, and their contact details,
-  stay the game's business, outside the engine (decision 28,
-  2026-11-01).
+  stay the game's business, outside the engine ("The night's record
+  and the after-game article", 2026-11-01,
+  `docs/plans/architecture-pass/DECISIONS.md`).
 - **Director.** The Review-stage hat (usually the same human as GM
   or designer): the person who crafts the night's telling and
   harvests design learning back into Author.
@@ -691,14 +697,18 @@ the GM scanner, and a game's own post-show tooling)
   them, each rule proven by a test. Its aim is the best architecture
   for the engine's long-term use as it grows beyond ALN; blue's fixes
   and findings are clues to where today's design is off, never the
-  driver (owner, 2026-10-31, decision 26). (Owner-ratified wording,
-  2026-10-30; decision record: `docs/plans/2026-10-30-architecture-pass.md`, Appendix A.)
+  driver (owner, 2026-10-31, "Design for the long term, beyond ALN").
+  (Owner-ratified wording, 2026-10-30; the decisions by title:
+  `docs/plans/architecture-pass/DECISIONS.md`; the session's record
+  word for word: `docs/plans/2026-10-30-architecture-pass.md`,
+  Appendix A.)
 - **Promise.** What a person can count on at a given moment, for
   example "One game, the same on every screen". The architecture pass
   states the engine's requirements as ten promises, each named by its
   title alone, with no number. Parts keep promises; design flaws break
   them. It replaces "job", the pass's word for the same list from
-  2026-10-31 (owner, 2026-11-01, decision 27).
+  2026-10-31 (owner, 2026-11-01, "Promises, qualities, moments, venue
+  technician").
 - **Moment.** When a promise matters: a production stage (§5b:
   Author, Rehearse, Run, Review), a point inside a show (doors open,
   mid-show, the end of a game, a restart), or release day.
@@ -719,7 +729,9 @@ the GM scanner, and a game's own post-show tooling)
   unit bounded. The owner retired this charter on 2026-10-30. Its
   purpose, proving with rig tests and screen captures that every
   screen tells the truth, moves into the build work the architecture
-  pass plans, and it covers every screen (decision record:
+  pass plans, and it covers every screen ("The truth sweep's charter
+  is retired", `docs/plans/architecture-pass/DECISIONS.md`; the
+  session's record word for word:
   `docs/plans/2026-10-30-architecture-pass.md`, Appendix A).
 - **Retired code names.** Track letters (Track A–E), stage codes
   (BS/CS/PS numbers, B0–B12, C1–C4, E-numbers, O-numbers), and slice

@@ -198,8 +198,10 @@ choice. Gate (ratified, Q5): (1) hardware-proven; (2) the hardening
 block and the truth sweep landed *(superseded 2026-10-30, owner: the
 sweep's charter is retired, the hardening pieces are rebuilt inside
 the architecture pass, and the pass's phase 2 takes this slot; the
-pass's roadmap revision restates the condition; decision record:
-`2026-10-30-architecture-pass.md`, Appendix A)*; (3) one full venue rehearsal done
+pass's roadmap revision restates the condition; the decisions "One
+program: design half, then build half" and "The truth sweep's charter
+is retired" in `architecture-pass/DECISIONS.md`; the session's record
+word for word: `2026-10-30-architecture-pass.md`, Appendix A)*; (3) one full venue rehearsal done
 (§6, Stage C — an off-day machine swap, already defined as a full
 cutover rehearsal including the swap back); (4) the owner has
 reviewed the visible-change list (Appendix B) as the GM. On the
@@ -334,7 +336,9 @@ preview block. Verified: nothing here touches the authoring tool.
 rig tests and screen captures that every screen tells the truth,
 moves into the build work the architecture pass plans, and it covers
 every screen, the scoring, transaction and session screens included;
-decision record: `2026-10-30-architecture-pass.md`, Appendix A. The
+"The truth sweep's charter is retired" in `architecture-pass/DECISIONS.md`;
+the session's record word for word: `2026-10-30-architecture-pass.md`,
+Appendix A. The
 text below is the 2026-09-05 charter, kept as history.)*
 (New unit: the scanner state-truth sweep.) Audit every path from
 engine event to what the admin panel shows, and fix every place the
@@ -373,7 +377,8 @@ not one (dependency audit, claim 1):
    the emitter was owned by no document anywhere. It is owned here.
    It stamps each bundle with the pack the game ran and the texts
    the players saw, so the night's telling quotes what they held
-   (decision 28, 2026-11-01).
+   ("The night's record and the after-game article", 2026-11-01,
+   `architecture-pass/DECISIONS.md`).
    (Its landing starts the clock on the report pipeline's migration,
    still owner-paced — §8.10.)
 3. **A photo store**: the engine has no binary upload path at all;
@@ -612,7 +617,7 @@ record §6 lists them).
 | 8.7 | The 2026-06-18 documentation audit (81 findings) | **Block 6**, as a bounded triage: classify still-open vs superseded, record the remainder. |
 | 8.8 | Pack-defined NEW display surfaces + the constellation renderer | The second game's modules (§7.2) own the renderer; making the surface *set* extensible stays headroom beyond it. |
 | 8.9 | The source-adapter interface (Notion as the first adapter) | Content-tooling entry (§7.3; it is that block's named foundation). |
-| 8.10 | The report pipeline's migration to the structured bundle | Owner-paced; **the clock starts at the capture block's bundle emitter** (Block 4). Until then, ALN's report markdown stays byte-pinned by the golden master (including its ★ characters, which the pipeline parses). The plan (decision 28, 2026-11-01): the Director Console stays a separate program and reads the bundle; the bundle is shaped so the console can later run as ALN's part of the Review stage. Players' emails stay outside the engine; the game's own tools may later collect them from the ticketing service. |
+| 8.10 | The report pipeline's migration to the structured bundle | Owner-paced; **the clock starts at the capture block's bundle emitter** (Block 4). Until then, ALN's report markdown stays byte-pinned by the golden master (including its ★ characters, which the pipeline parses). The plan ("The night's record and the after-game article", 2026-11-01, `architecture-pass/DECISIONS.md`): the Director Console stays a separate program and reads the bundle; the bundle is shaped so the console can later run as ALN's part of the Review stage. Players' emails stay outside the engine; the game's own tools may later collect them from the ticketing service. |
 | 8.11 | Invisible device-tier tokens: yes or no | An owner decision at the players'-phones entry grill (§7.1), bounded by §2.1. |
 | 8.12 | The tier-ladder roster and scripted capability profiles | The players'-phones entry grill (§7.1; they are the acceptance instrument). |
 | 8.13 | The team/player-management questions; the player-interaction brainstorm | The later blocks' entry grills (§7.1–7.2 absorbed part already). |

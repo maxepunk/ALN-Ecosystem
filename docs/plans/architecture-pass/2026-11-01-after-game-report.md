@@ -1,5 +1,7 @@
 # The after-game report and emailer, and where they touch the engine
 
+> Decision and question numbers in this record map to titles in `docs/plans/architecture-pass/DECISIONS.md` (its last section, "For older records: number to title").
+
 A read-only survey, 2026-11-01. The owner asked to bring the after-game
 article and emailer into the engine map, since the roadmap means to
 join them to the engine in the long run. Source:

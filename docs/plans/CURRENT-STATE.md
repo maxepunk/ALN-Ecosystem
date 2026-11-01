@@ -5,181 +5,57 @@ else is required reading: the pointers at the bottom say what to open
 and when. Check every claim of a summary against git and this page
 before acting.
 
-## 0. Resume here (2026-10-30)
+## 0. Resume here (2026-11-01)
 
-- **The current unit** is the architecture pass, phase 1: deciding
-  the shared rules for runtime state with the owner, one question
-  round at a time. The owner ratified its program document on
-  2026-10-30: `docs/plans/2026-10-30-architecture-pass.md`. Its §4 is
-  phase 1's flow; its Appendix A holds the definition session's
-  decisions 1 to 16. Working log (git-ignored):
+- **The current unit** is the architecture pass, in its design half,
+  under the owner's proactive goal: "design a long-term optimal
+  architecture for our engine that makes it intuitive and easy to
+  maintain, continue development on, and extend". The ratified program
+  document is `docs/plans/2026-10-30-architecture-pass.md`; its order
+  is replaced by the decision "Design top-down, hardest-to-reverse
+  choices first" (`docs/plans/architecture-pass/DECISIONS.md`). The design
+  half runs: the requirements (now), the panel, the design rounds, the
+  build plan, the hostile review, the final questions, the owner's
+  sign-off; then the build half. Working log (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
-- **First steps** (program document §10):
-  1. Green's three follow-ups: done. Merged on 2026-10-30 at
-     `089dd527` after a task review, a final whole-branch review and
-     one re-reviewed fix wave; the merged tree passed the full backend
-     suite (151 files, 3127 tests), the coverage check and lint
-     (hardening plan §9).
-  2. Phase 1, step 1, the cause analysis: written and checked,
-     waiting for the owner's confirmation (round 8, questions 17 to
-     21). `docs/plans/architecture-pass/2026-10-30-cause-analysis.md`:
-     sixteen causes over 358 findings (one added 2026-11-01 from the
-     after-game survey), 21 set aside with reasons; its
-     section 1 is the short list. The four reader sheets and the two
-     check files sit beside it. Step 2, the test rig, follows the
-     owner's answers.
-- **Phase 1's decisions** go here as the owner makes them, then into
-  phase 1's documents (`docs/agents/process.md` §5). A decision carries
-  the number of the question it answers.
-  20. No rule for documents in the pass (round 8). Documents are fixed
-      as we go, always: `docs/agents/process.md` §4, last paragraph.
-  22. Standalone games join the list every rule must serve, beside
-      hot-apply, the preview engine, capture and phones (round 8;
-      widens decision 12's list). Yes to (a): a whole game run with no
-      engine, the GM scanner and the player scanners each working
-      alone, as a choice a game can declare. No to (b): no game mixes
-      networked and standalone devices. On the ESP32 the owner's
-      reasoning is parity: the two player scanners keep feature parity
-      wherever possible, so the ESP32's missing standalone mode is a
-      parity gap under (a), not a new feature. Recorded on that
-      reasoning; the owner's explicit word is asked for.
-  26. The pass's frame (owner direction, 2026-10-31, answering no
-      question): design the best architecture for the next iteration
-      of the engine, for long-term use and future development as its
-      use grows beyond ALN. Blue's fixes and findings are clues to
-      where today's design is off, never the driver: the pass is not
-      a triage of ALN's issues renamed as architecture fixes. The
-      owner expects the frame to change the approach and how the
-      design and the roadmap are discussed more than the fixes
-      themselves.
-  27. The pass's vocabulary (owner, 2026-11-01, answering no
-      question; the owner found "job" forced once the jobs were
-      restated from people's side and the map split them into
-      promises, qualities and parts). A **promise** is what a person
-      can count on at a given moment; the page is organized around
-      the ten promises, and "job" is retired. Parts keep promises;
-      design flaws break them; a **quality** is something every part
-      must have so a promise holds everywhere, never a promise
-      itself; a **moment** is when a promise matters (a production
-      stage, a point in a show, release day). The person who fits a
-      kit to a venue is the **venue technician**, not "installer".
-      Promises carry **titles only**, no numbers, so a card reads
-      without memorizing ids. The seventh title becomes a promise:
-      "The game fits the venue it is in tonight". Shared work several
-      promises depend on needs no word of its own: each piece becomes
-      one part. Glossary: `CONTEXT.md` section 7.
-  28. The after-game article and emailer (owner, 2026-11-01,
-      answering the six questions of
-      `docs/plans/architecture-pass/2026-11-01-after-game-report.md`).
-      (1) The second half of "Every tap gets its answer, and the night
-      can be told afterwards" names the director and the players after
-      the show. (2) What the players receive after the show is the
-      game's business: the engine makes them no promise of their own.
-      (3) The night's record carries the pack the game ran and the
-      texts the players saw, so the article quotes what they held.
-      Whether paper documents join the pack, with "unlocked" recorded
-      during play, was not answered: a question for step 3. (4)
-      Players' emails stay outside the engine; later the game's own
-      tools could collect them from the ticketing service's API. (5)
-      Plan for the console staying a separate program that reads the
-      engine's record; design the record so the console can later
-      become ALN's own part of the engine's Review stage. (6) The two
-      clocks (a sale stamped by the tablet, an adjustment by the
-      engine) join "Tablets and phones decide facts the engine owns".
-  29. The owner page becomes five linked pages built from one set of
-      data (owner, 2026-11-01): the engine (the front page),
-      decisions, promises, parts and design flaws; the history of
-      earlier wordings and changes moves to a change log. The owner
-      relies on nothing in version 7, so nothing has to stay as it is.
-  30. The test rig no longer comes before design (owner, 2026-11-01,
-      answering "withdraw question 21?"): question 21 is withdrawn. The
-      rig is built at the start of building, as part of the new test
-      bench where a thin first version of the new design runs end to
-      end, not to reproduce today's problems first. Exception: if the
-      decision on how to move from today's engine chooses to change it
-      in place, pinning down today's behaviour first comes back.
-  31. The rest of the design half is reordered top-down for the
-      proactive frame of decision 26 (owner, 2026-11-01; amends
-      decisions 12, 14 and 15): finish the requirements (the owner's
-      answers, plus quality targets written as testable situations and
-      the ways the platform must be extended, and by whom); then design
-      rounds ordered by the hardest decisions to reverse (how the
-      engine holds the game's state; the published protocol and file
-      formats; where authority lives across devices, offline and
-      standalone included; how games and venues extend the engine; how
-      one engine runs as many separate copies; how today's engine moves
-      to the new design), each with two or three designs side by side,
-      checked against the promises, the quality targets, the extension
-      cases and today's sixteen design flaws as test cases; then a
-      build plan that starts with that thin first version. The owner
-      site is reframed fully to this proactive frame, and the
-      sequencing words are made unambiguous: the owner asked "which
-      phase 1?", so no page uses a bare phase, step, round or block
-      number again.
-      The owner's words for the goal (2026-11-01): "design a long-term
-      optimal architecture for our engine that makes it intuitive and
-      easy to maintain, continue development on, and extend
-      (proactive)", in place of "fixing issues seen / fixed on blue to
-      run ALN (reactive)".
-  32. An independent panel of architects, who have not seen the
-      orchestrator's reasoning, proposes and stress-tests the top-level
-      design decisions before the first design round (owner,
-      2026-11-01). The owner said the context the panel gets is
-      critical: its brief comes to the owner before the panel runs.
-  33. The published protocol and the test bench replace "Joins and
-      proofs" (owner, 2026-11-01, after the explanation). The protocol is
-      one versioned definition of everything that crosses the engine's
-      edge: what a device may ask, what the engine answers, what it tells
-      screens, and the files that carry a game or a night (the pack, the
-      venue profile, the night's record, the media list). Every
-      program's code is generated from it or checked against it. It
-      consolidates today's scattered contracts (backend/contracts, the
-      venue-profile schema, the pack schemas in ALN-TokenData), and it is
-      designed in an early design round, not merely collected. The tests
-      become a test bench outside the engine; "Proof" stays a quality
-      every part must meet.
-  34. One set of sequencing names (owner OK, 2026-11-01, except decision
-      numbers, which are under discussion): the architecture pass has a
-      design half and a build half; its steps are named by what they do
-      (requirements, the panel, the design rounds, the build plan, the
-      hostile review, the final questions, the owner's sign-off); the
-      roadmap's blocks go by name only; question rounds by date; test
-      levels by name (logic only; real programs with stand-in hardware;
-      the home test bed; the venue). No page uses a bare phase, step,
-      block or round number.
-  35. The panel's context plan (owner OK, 2026-11-01): first the goal,
-      the requirements (the promises with the owner's answers, the
-      confirmed quality targets and extension cases, the standing
-      constraints) and the setting (one owner and AI agents developing
-      it; the hardware and a local network that can drop; one two-hour
-      show for a few dozen devices); only after the first proposals,
-      today's engine as facts and the sixteen design flaws as test
-      situations. Withheld: the orchestrator's recommendations, the
-      17-part candidate shape (it enters in a second round as one more
-      proposal) and the earlier lists of design choices. Three
-      architects with different lenses propose blind, then critique each
-      other and the candidate shape; a synthesis lists the decisions,
-      options, costs, trial runs and the owner's questions. It runs
-      after the owner confirms the requirements; its brief goes to the
-      owner first.
-  36. Titles, not numbers (owner, 2026-11-01): decisions, questions and
-      design flaws go by short plain titles in conversation and on the
-      owner's pages; ids stay only inside records, for cross-reference.
-      The decision record is reorganized by topic: what stands now,
-      each written as current truth, with a dated history beneath;
-      superseded decisions move into that history. The owner: "I've
-      been using them because you've been using them, but they're not
-      necessarily clear or the best approach." Being applied: the new
-      record replaces this numbered list.
-  Open in round 8, all on the report page or in the chat: 17 (is the
-  cause list right), 18 (the three causes no question covers), 19
-  (record every scan attempt's outcome: the owner's yes to the
-  orchestrator's view), 21 (how many findings the rig shows in step 2),
-  22's ESP32 reading (the owner's word), and from the standalone pass
-  23 (is "nothing declares a game standalone" a seventeenth cause, N1),
-  24 (one GM tablet per standalone game?) and 25 (exposure and video
-  tokens with no engine). For step 3, not now: where the standalone
-  fact is held (game record, pack, profile or each device).
+- **Now: the requirements.** The owner confirms them on the owner
+  site's Decisions page: the ten promises (their questions are listed
+  below by title); the quality targets (42, fourteen with a number the
+  owner sets) and the extension cases (24), drafted and checked in
+  `docs/plans/architecture-pass/requirements/`; and the readings the
+  decision record marks "to be confirmed". The site is being rewritten
+  to the proactive frame for this (plan
+  `docs/plans/architecture-pass/report/site/2026-11-01-site-plan-v2.md`).
+  Then the panel: its brief goes to the owner before it runs.
+- **Done so far.** Green's three follow-ups merged on 2026-10-30 at
+  `089dd527` (full backend suite, coverage check and lint passed). The
+  review of today's engine
+  (`docs/plans/architecture-pass/2026-10-30-cause-analysis.md`:
+  sixteen design flaws over 358 findings, 21 set aside) is now
+  evidence and test situations, not the design's input. The owner
+  site, version 8. The decision record by topic.
+- **The decisions** live in `docs/plans/architecture-pass/DECISIONS.md`,
+  by topic: what stands now, each written as current truth with a
+  dated history beneath, and the superseded ones in their own section.
+  New decisions go there as the owner makes them, then into the pass's
+  documents (`docs/agents/process.md` §5). Open for the owner, by
+  title, each with its evidence on the owner site's Decisions page
+  ("What the Engine Promises",
+  https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL): about the
+  promises, "Are these the right ten promises?", "Two clauses added to
+  the pack promise", "The roles promise covers who may act", "The venue
+  promise names declared standalone", "Split the tap promise in two?",
+  "Keep the venue promise whole?", "Proof and release in one promise?"
+  and "Which promise carries equipment state on screens?"; about
+  standalone games, "The ESP32's standalone mode", "One GM tablet per
+  standalone game?" and "Exposed evidence and video with no engine";
+  about the game's record, "Record every refused GM scan attempt?".
+  Kept for the design rounds, not questions now: the page's twelve
+  design choices, from where "this game is standalone" is declared to
+  whether paper documents join the pack. "How much the rig proves
+  before design" was withdrawn by "Build the test rig when building
+  starts". Old decision and question numbers map to titles in the
+  record's last table.
 - **The branch.** This program's records live on the branch
   `claude/nice-curie-hescfv`, with three draft pull requests:
   ALN-Ecosystem #35, ALNScanner #17 and ALN-TokenData #8. `main` is
@@ -196,7 +72,8 @@ before acting.
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
 - **Live state** (2026-11-01): the relationship map is done and on the
-  owner's page, now in the owner's words (decision 27: workflows
+  owner's page, now in the owner's words ("Promises, qualities,
+  moments, venue technician": workflows
   `wf_d5b390ac-27a`, `wf_81c41f8d-ec0` and `wf_b5ed9f35-493`, 28
   conflicts applied); waiting for the owner's answers. The owner asked how the
   ten jobs relate, at both levels (the big components and the modules
@@ -216,23 +93,25 @@ before acting.
   checked the whole page (57 conflicts, all applied); `wf_206a51c3-758`
   (`page-fix-verify.js`) confirmed 54 resolved and 3 partly, and its 10
   new conflicts were settled at `f509848c`. The map changed three
-  recommendations: E (rename J8, not split), F (widen J10), G (route
-  equipment state by one delivery part, so neither sentence changes, if
-  step 3 keeps one delivery part). Records for step 3, not questions
-  now: the shape departs from the ratified capability map on where the
+  recommendations: "Keep the venue promise whole?" (rename the venue
+  promise, not split), "Proof and release in one promise?" (widen the
+  proof-and-release promise), "Which promise carries equipment state
+  on screens?" (route equipment state by one delivery part, so neither
+  sentence changes, if step 3 keeps one delivery part). Records for
+  step 3, not questions now: the shape departs from the ratified capability map on where the
   start-or-adopt setting lives (the page's step-3 preview asks); the
   shape is silent on a short offline claim list on a disconnected
   tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
   worktrees, no test rig.
-- **In flight** (2026-11-01): the owner site, version 8, is live and
-  waits for the owner's answers: thirteen questions on its Decisions
-  page (the promises question; A to G; 22, 24, 25; 19; 21). Decisions
-  28 and 29 are folded in. Next after the answers: step 2, the test
-  rig.
+- **In flight** (2026-11-01): the owner site's rewrite to the proactive
+  frame (version 9: Requirements, Design and Today's engine in place of
+  Promises, Parts and Design flaws; titles, not numbers; the sequencing
+  names; the jargon table's wordings). Version 8 stays live until it
+  ships.
 - **The owner's site.** "What the Engine Promises"
   (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), version 8 live
   (version id 1793525496-560c, 2026-11-01): five linked pages and a
-  change log (decision 29), `index.html` (the engine), `decisions.html`,
+  change log ("The owner's site: five linked pages"), `index.html` (the engine), `decisions.html`,
   `promises.html`, `parts.html`, `flaws.html`, `changes.html`, all in
   `docs/plans/architecture-pass/report/site/`. Built by
   `report/build_site.py` from the four page-data files in `report/`
@@ -258,7 +137,8 @@ before acting.
   whole engine and five moments followed through its parts, checked
   against the shape twice (`wf_ef6158a7-f16`, `wf_6b57ff3f-3f3`).
   Version 6 was
-  published 2026-11-01 in the words of decision 27: ten promises named
+  published 2026-11-01 in the words of "Promises, qualities, moments,
+  venue technician": ten promises named
   by title, "How the promises fit together", part cards that say which
   promises each part mainly keeps and how its work is done today.
   Version 5 carried "How the jobs fit together";
@@ -270,8 +150,14 @@ before acting.
   `wf_d1152165-580`) and the evidence at the back. The consistency check
   the owner asked for ran as `wf_4e810a25-00f`: 39 conflicts, all
   applied (cause analysis section 8). Questions: the jobs (is the list
-  right; A to G), the standalone questions (22's ESP32 reading, 24,
-  25), 19 and 21; 18 is folded into F and 23 into C.
+  right, and the seven promise questions now on the Decisions page by
+  title), the standalone questions (the ESP32's standalone mode, one GM
+  tablet per standalone game, exposed evidence and video with no
+  engine), "Record every refused GM scan attempt?" and "How much the
+  rig proves before design"; "Flaws none of the pass's questions
+  covers" is folded into "Proof and release in one promise?" and "Is
+  the missing standalone declaration a flaw?" into "The venue promise
+  names declared standalone".
 - **Earlier runs.** The doc-drift fixes merged at `4fc04790` (ALNScanner
   `b521774`). The cause-analysis workflow `wf_5b8300fe-cb6` finished on
   2026-10-30. Three read-only mapping runs finished earlier on
@@ -347,11 +233,13 @@ touches blue's branch.
 - **Block 1, unlock:** done except green's home hardware pass
   (ROADMAP §6, Stage B). The baseline screen images were never
   captured; ruling R22 moved them into the truth-sweep work, whose
-  purpose now moves into the pass's phase 2 (decision 6).
+  purpose now moves into the pass's phase 2 ("The truth sweep's
+  charter is retired").
 - **Block 2, hardening:** done and merged: the equipment families, the
   dormancy core, the test-harness minimum. They stay; phase 2 changes
-  them only where a rule requires (decision 15). To be rebuilt inside
-  the pass's phase 2 (decision 7): the profile check, the dormancy-core
+  them only where a rule requires ("Corrections to the readers and the
+  hardening pieces"). To be rebuilt inside the pass's phase 2 ("One
+  program: design half, then build half"): the profile check, the dormancy-core
   fixes, credentials, the supervisor, the self-heal, the preflight
   checks and panel, the final wiring, the close review. Those with
   briefs carry an on-hold line; the preflight checks and panel, the
@@ -360,10 +248,11 @@ touches blue's branch.
   2026-10-30 (`089dd527`).
 - **Block 3, truth sweep:** never started; its audit notes were lost.
   Its charter is retired, and its purpose moves into the pass's phase
-  2, covering every screen (decision 6).
+  2, covering every screen ("The truth sweep's charter is retired").
 - **Blocks 4 to 6 and the later blocks:** not started. The capture
   block, the preview block and the later blocks come after phase 2;
-  the new roadmap places Block 6 (decisions 7 and 10).
+  the new roadmap places Block 6 ("One program: design half, then
+  build half"; "Five documents the design half hands over").
 - The roadmap's calendar, built around the September run, has passed.
 
 ## 6. Open items, and who owns them
