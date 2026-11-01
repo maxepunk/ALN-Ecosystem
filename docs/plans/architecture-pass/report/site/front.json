@@ -177,7 +177,7 @@
     },
     {
       "head": "The engine's own machinery.",
-      "text": "In the candidate, [[part:P8]] reports what each program in the room is doing, dated. [[part:P10]] turns that, and the venue technician's profile in [[part:P12]], into go, no-go or \"not installed tonight\" ([[promise:J8]], [[promise:J9]]). [[part:P9]] holds the cues, the clock, the video queue and the items held while a service is down, so the room does what was cued and asked ([[promise:J4]]). [[part:P11]] says when to check again and what each part resets at setup, start, pause, end, reset, restart and the next game, which feeds back into the equipment ([[promise:J5]]); it alone moves a game. The profile feeds this loop from outside. In today's code the loop is also a chain of seven backend modules that depend on each other in a circle, and the game's record is one of them."
+      "text": "In the candidate, [[part:P8]] reports what each program in the room is doing, dated. [[part:P10]] turns that, and the venue technician's profile in [[part:P12]], into go, no-go or \"not installed tonight\" ([[promise:J8]], [[promise:J9]]). [[part:P9]] holds the cues, the clock, the video queue and the items held while a service is down, so the room does what was cued and asked ([[promise:J4]]). [[part:P11]] says when to check again and what each part resets at setup, start, pause, end, reset, restart and the next game, which feeds back into the equipment ([[promise:J5]]); it alone moves a game. The profile feeds this loop from outside. In today's code the loop is also a chain of seven backend modules that depend on each other in a circle, and one of them holds the game's record."
     },
     {
       "head": "What reaches the show from outside.",
@@ -280,7 +280,7 @@
     },
     {
       "page": "changes",
-      "line": "Every version, newest first; earlier wordings, what changed on each promise and card and why, the recommendations the map changed, and the words the owner page has changed, most of them by decision 27."
+      "line": "Every version, newest first; earlier wordings, what changed on each promise and card and why, the recommendations the map changed, and the words these pages have changed, most of them by decision 27."
     }
   ],
   "words": [

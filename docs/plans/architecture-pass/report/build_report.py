@@ -1,4 +1,8 @@
-"""Build the owner-facing page for step 1, around the engine's ten promises (decisions 26 and 27).
+"""RETIRED 2026-11-01. Version 7's builder, kept for the record only: the live builder is build_site.py,
+which writes the five-page site (decision 29). The data files have moved on since version 7 (markers, new
+fields), so this script no longer rebuilds version 7 faithfully; do not re-run it.
+
+Build the owner-facing page for step 1, around the engine's ten promises (decisions 26 and 27).
 
 Inputs: 2026-10-31-engine-jobs.json (the promises, first written as jobs by the engine-jobs workflow;
           reconciled with the engine shape on 2026-11-01),

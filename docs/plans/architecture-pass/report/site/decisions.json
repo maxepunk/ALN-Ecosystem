@@ -3,7 +3,7 @@
     "Everything still open for you is on this page, each question with its evidence on the same screen. Answer in the chat, by the question's letter or number (the first one is the promises question). Answer any of them, in any order, and leave the rest for later.",
     "Three tags say where a question stands. Open: no answer yet. Applied, please confirm: the change is already in the promise's wording, and one word from you keeps it or undoes it. Recommendation changed by the map: the candidate shape changed what we recommend, and the Change log has the earlier recommendation.",
     "Under each question, \"What we know\" lists the facts the answer rests on. Most facts link to the promise, part, design flaw or question they come from, so you can read more before you answer. Only the Decided list at the end records what you have decided.",
-    "Three questions from round 8 live on here under new names: question 17 is the promises question, 18 is folded into question F, and 23 into question C."
+    "Three questions from round 8 have other names here: question 17 is the promises question, question 18 is part of question F, and question 23 is part of question C."
   ],
   "groups": [
     {
@@ -48,7 +48,7 @@
           "status": "applied",
           "decides": "Whether the promise keeps its second half: starting, pausing and ending a game and changing scores stay with the GM, and the stored passwords and keys change before outsiders touch the system.",
           "evidence": [
-            "In the candidate, one part, [[part:P7]], holds both the pass and what it allows, and [[part:P4]] checks the rule once, at the one door every request passes.",
+            "In the candidate, one part, [[part:P7]], holds both each device's pass and what it allows, and [[part:P4]] checks the rule once, at the one door every request passes.",
             "The same rule is a quality every part must have, named \"Only the GM moves the game\" on the [[page:parts]] page.",
             "Today a connection's own word decides what it gets: anyone on the kit network can fetch the whole game state, and the TV connects as if it were a GM tablet ([[flaw:C13]])."
           ],
@@ -67,7 +67,7 @@
             "The map supports them: whether a game is standalone is an input every rule takes (the quality \"Who decides when there is no engine\"), and it is declared where the game is fitted to tonight's setup, under [[promise:J8|the venue promise]].",
             "Where the declaration is kept is a step-3 choice: the venue profile, the pack, the game's record or each device. The map favours the profile, because a profile that lists no engine equipment already makes every engine duty read \"not installed tonight\". Whichever is chosen, [[part:P2]] carries the declaration to every device.",
             "Today the declaration is each tablet's own tap, the phone's web address and nothing on the hardware scanner; the pack has no field for it ([[flaw:N1]]).",
-            "[[flaw:N1|N1]], the proposed flaw, holds eight findings from the standalone pass. If it is not a flaw of its own, they join [[flaw:C9|C9]], [[flaw:C11|C11]] and [[flaw:C14|C14]] and the hardware scanner parity list. On the map [[flaw:N1|N1]] lands on [[part:P2]] and [[part:P12]], or on [[part:P3]] if the declaration is kept there; the answer to 23 does not move it."
+            "[[flaw:N1|N1]], the proposed flaw, holds eight findings from the standalone pass. If it is not a flaw of its own, they join [[flaw:C9|C9]], [[flaw:C11|C11]] and [[flaw:C14|C14]] and the hardware scanner parity list. On the map [[flaw:N1|N1]] lands on [[part:P2]] and [[part:P12]], or on [[part:P3]] if the declaration is kept there; your answer on the second point does not move it."
           ],
           "options": [],
           "recommendation": "Agree. On the second point, yes: three other rules (game boundaries, one answer per question, how old a copy is) need the declared fact as an input, and would otherwise each invent their own answer.",
@@ -317,7 +317,7 @@
           "evidence": [
             "The test rig is the automated test machine with real video, music, audio and lighting stand-ins. On it a problem can be made to happen for real instead of read off the code. It is step 2 of phase 1 and follows your answers here.",
             "The program document names four reproductions for the rig: the deleted token still refused ([[flaw:C1]]), the music panel behind live music ([[flaw:C2]]), the ended game returning after a restart ([[flaw:C4]]) and the reset that leaves music out ([[flaw:C5]]).",
-            "Six flaws already carry a \"seen live\" note on their cards on the [[page:flaws]] page, among them [[flaw:C8]] (a unit test killed the live video player), [[flaw:C10]] (a greyed music card went unnoticed at the venue), [[flaw:C15]] (a half-applied rollback) and [[flaw:C16]] (62 skipped tests). Two more, [[flaw:C5|C5]] and [[flaw:C11|C11]], were reproduced in a test.",
+            "Six flaws already carry a \"seen live\" note on their cards on the [[page:flaws]] page, among them [[flaw:C8]] (a unit test killed the live video player), [[flaw:C10]] (a greyed music card went unnoticed at the venue), [[flaw:C15]] (a half-applied rollback) and [[flaw:C16]] (62 skipped tests). Two more, [[flaw:C5]] and [[flaw:C11]], were reproduced in a test.",
             "Phase 2 proves each problem anyway, because every area starts with its test failing on today's engine.",
             "The rig needs stand-ins for the room's equipment; [[part:P8]] plans one software stand-in per capability for the preview engine and the test rig."
           ],
