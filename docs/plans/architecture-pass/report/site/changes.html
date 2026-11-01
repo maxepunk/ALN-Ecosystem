@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Change log · What the Engine Promises</title>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap">
+<style>
+/* Layout: one reading column; the engine's promises lead, each holding the design flaws that break it; evidence and questions at the end. */
+:root {
+  --bg: #f4f6f5; --surface: #ffffff; --fg: #17201e; --muted: #5b6965; --line: #d5dddb;
+  --accent: #0f766e; --fault: #c2261f; --chip: #e7eeec; --chip-live: #fbe9e7;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-label: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --dia-bg: #ffffff; --dia-node: #f1f6f5; --dia-cluster: #e9f0ee; --dia-note: #fbf5e4; --dia-text: #17201e; --dia-border: #8a9c97; --dia-line: #5b6965; --dia-label-bg: rgba(255, 255, 255, 0.85); --warm: #b45309; --nav-bg: #ffffff; --on-accent: #ffffff; --line-strong: #9fb0ab;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #101614; --surface: #17201e; --fg: #e6ecea; --muted: #9babA6; --line: #2a3633;
+  --accent: #4db6aa; --fault: #ff6f61; --chip: #22302c; --chip-live: #3a2220; --dia-bg: #17201e; --dia-node: #1f2b28; --dia-cluster: #1a2421; --dia-note: #2f2a1b; --dia-text: #e6ecea; --dia-border: #5f736e; --dia-line: #9babA6; --dia-label-bg: rgba(23, 32, 30, 0.85); --warm: #f0a04b; --nav-bg: #17201e; --on-accent: #0b1210; --line-strong: #4a5a56; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #101614; --surface: #17201e; --fg: #e6ecea; --muted: #9babA6; --line: #2a3633;
+  --accent: #4db6aa; --fault: #ff6f61; --chip: #22302c; --chip-live: #3a2220; --dia-bg: #17201e; --dia-node: #1f2b28; --dia-cluster: #1a2421; --dia-note: #2f2a1b; --dia-text: #e6ecea; --dia-border: #5f736e; --dia-line: #9babA6; --dia-label-bg: rgba(23, 32, 30, 0.85); --warm: #f0a04b; --nav-bg: #17201e; --on-accent: #0b1210; --line-strong: #4a5a56; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 40px 72px;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 24px; font-weight: 600; }
+h3 { font-size: 19px; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--accent); }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eyebrow, .tag, figcaption, .grid th span { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--muted); }
+.muted { color: var(--muted); }
+.lead { font-size: 18px; max-width: 68ch; }
+header.top { display: grid; gap: 14px; }
+.decide { border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--surface); border-radius: 6px; padding: 18px 20px; display: grid; gap: 10px; }
+.decide p { max-width: 72ch; }
+.decided-note { font-size: 15px; max-width: 78ch; color: var(--muted); border-left: 3px solid var(--line); padding-left: 12px; }
+.howto { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.howto > div { display: grid; gap: 8px; align-content: start; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: 14px; }
+.sw { display: inline-block; width: 22px; height: 14px; border-radius: 3px; border: 3px solid var(--fault); vertical-align: -2px; margin-right: 6px; }
+.sw.owner { border-color: var(--accent); }
+dl.terms { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 15px; }
+dl.terms dt { font-weight: 600; }
+dl.terms dd { margin: 0; color: var(--muted); }
+.toc { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.grid th, .grid td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: middle; }
+.grid thead th { white-space: normal; vertical-align: bottom; min-width: 64px; }
+.grid tbody th { font-weight: 400; min-width: 220px; }
+.grid tbody th a { font-family: var(--font-mono); font-weight: 500; text-decoration: none; margin-right: 4px; }
+.grid td.dot { color: var(--accent); text-align: center; font-size: 15px; }
+.family { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+.intro { max-width: 72ch; color: var(--muted); font-size: 17px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; scroll-margin-top: var(--anchor-gap); }
+.wrap > *, .family > *, .card > * { min-width: 0; }
+.card-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: baseline; }
+.cid { font-family: var(--font-mono); font-weight: 500; font-size: 15px; color: var(--accent); }
+.chips { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--font-label); font-size: 13px; background: var(--chip); border-radius: 999px; padding: 2px 10px; }
+.chip.live { background: var(--chip-live); color: var(--fault); }
+.story { display: grid; gap: 10px; max-width: 76ch; }
+.story .tag, .design .tag, .live-note .tag { display: block; margin-bottom: 2px; }
+.diagrams { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+figure.dia { margin: 0; border: 1px solid var(--line); border-radius: 6px; padding: 12px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+figure.dia.after { border-style: dashed; }
+.scroll { overflow-x: auto; min-width: 0; }
+.after-note { font-size: 14px; color: var(--muted); }
+.standalone { border-left: 3px solid var(--accent); padding-left: 12px; }
+.parity th, .parity td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; font-size: 14px; }
+.parity thead th { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; color: var(--muted); }
+.parity tbody th { font-weight: 600; min-width: 9em; }
+.parity td { min-width: 12em; }
+.parity tr.both-weak td, .parity tr.both-weak th { background: var(--chip); }
+.sa-box { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 18px 20px; display: grid; gap: 12px; }
+.sa-box p { max-width: 76ch; }
+.design { font-size: 15px; max-width: 80ch; border-top: 1px solid var(--line); padding-top: 14px; }
+details summary { cursor: pointer; font-size: 15px; color: var(--accent); }
+details[open] summary { margin-bottom: 10px; }
+.examples { margin: 0 0 12px; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; }
+.ids { font-family: var(--font-mono); font-size: 13px; color: var(--muted); margin-right: 4px; }
+.mods { display: flex; flex-wrap: wrap; gap: 6px; }
+.mods code { font-family: var(--font-mono); font-size: 12.5px; background: var(--chip); border-radius: 4px; padding: 2px 6px; overflow-wrap: anywhere; }
+.aside th, .aside td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.aside th { font-weight: 600; min-width: 9em; }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+.questions { display: grid; gap: 20px; }
+.q { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 18px 20px; display: grid; gap: 10px; }
+.q ol { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+.q .rec { font-weight: 500; }
+footer { font-size: 14px; color: var(--muted); display: grid; gap: 6px; }
+footer code { font-family: var(--font-mono); font-size: 13px; }
+.job { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; padding-top: 8px; border-top: 2px solid var(--line); scroll-margin-top: var(--anchor-gap); }
+.job > * { min-width: 0; }
+.job-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.job-head .kind { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--accent); }
+.jid { font-family: var(--font-mono); font-weight: 500; font-size: 17px; color: var(--accent); }
+.job-head .meaning { font-size: 17px; max-width: 74ch; }
+.chip.role { background: transparent; border: 1px solid var(--line); }
+.job-facts { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.job-facts > div { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.open { color: var(--fault); font-weight: 600; }
+.short { display: grid; gap: 8px; }
+.short ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.short li { max-width: 80ch; }
+.fid { font-family: var(--font-mono); font-weight: 500; margin-right: 6px; }
+.secondary { color: var(--muted); }
+.glance td, .glance th { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.glance tbody th { font-weight: 500; min-width: 15em; }
+.glance a { text-decoration: none; }
+.qgroup { display: grid; gap: 14px; }
+.qgroup > h3 { font-size: 17px; color: var(--muted); font-weight: 600; }
+.q h3 { color: var(--fg); }
+.q .applied { font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }
+.q .changedrec { font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fault); }
+.changed { font-size: 15px; max-width: 80ch; background: var(--chip); border-radius: 6px; padding: 10px 14px; }
+.changed .tag { display: block; margin-bottom: 2px; color: var(--accent); }
+.partrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.partrow .tag { margin-right: 4px; }
+a.chip.part { text-decoration: none; color: var(--fg); border: 1px solid var(--accent); background: transparent; }
+a.chip.part:hover { background: var(--chip); }
+.job-head .was { font-size: 14px; color: var(--muted); }
+.job-head dl.who { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0; font-size: 15px; max-width: 80ch; }
+dl.who dt { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--muted); padding-top: 3px; }
+dl.who dd { margin: 0; }
+.fit { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; border-top: 2px solid var(--line); padding-top: 8px; }
+.fit > * { min-width: 0; }
+.fit-summary { display: grid; gap: 10px; max-width: 78ch; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 16px 20px; }
+.fit-block { display: grid; gap: 10px; min-width: 0; }
+.fit-block > *, .fit details { min-width: 0; }
+.fit-block > p { max-width: 76ch; }
+.mech th, .mech td, .alts th, .alts td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.mech thead th, .alts thead th { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; color: var(--muted); }
+.mech tbody th { font-weight: 600; min-width: 10em; }
+.alts tbody th { font-weight: 600; min-width: 11em; }
+.alts td { min-width: 14em; }
+.idcell { font-family: var(--font-mono); font-size: 13px; min-width: 8em; }
+.idcell a, .pmeta a { text-decoration: none; margin-right: 2px; }
+.layers-fig { margin: 0; display: grid; gap: 8px; }
+ol.layers { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ol.layers li { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+ol.layers .lvl { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; font-weight: 600; color: var(--muted); min-width: 4.5em; }
+.parts { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+article.part { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; scroll-margin-top: var(--anchor-gap); }
+article.part h4 { margin: 0; font-size: 16px; font-weight: 600; }
+article.part p { font-size: 14.5px; }
+.pmeta .tag { margin-right: 6px; }
+ul.devices { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 80ch; }
+figure.dia.wide { padding: 12px; }
+figure.dia.whole { padding: 14px; }
+.svgwrap { min-width: 760px; }
+.shape-svg { display: block; width: 100%; height: auto; color: var(--fg); }
+.walks { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+figure.dia.walk { padding: 12px; }
+.figkey { font-size: 14px; color: var(--muted); max-width: 80ch; }
+.figkey .key { display: inline-block; width: 18px; height: 12px; border-radius: 3px; border: 3px solid; vertical-align: -1px; margin: 0 6px 0 10px; }
+.figkey .key:first-child { margin-left: 0; }
+.figkey .key.tap { border-color: var(--accent); }
+.figkey .key.machine { border-color: var(--warm); }
+.figkey .key.outside { border: 2px dashed var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+
+/* The site's frame: one gutter on the outer wrapper, a sticky navigation bar under the safe area,
+   the status line, and the components the new pages add. Every colour is a token. */
+.site { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.site > * { max-width: 1040px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
+body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); background: var(--nav-bg); z-index: 30; }
+.skip { position: absolute; left: -9999px; top: 0; }
+.skip:focus { left: max(16px, env(safe-area-inset-left, 0px)); top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 40; background: var(--surface); padding: 6px 10px; border-radius: 6px; }
+.sitenav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 10px 0; background: var(--nav-bg); box-shadow: 0 0 0 100vmax var(--nav-bg); clip-path: inset(0 -100vmax); font-family: var(--font-label); font-size: 14.5px; font-weight: 500; }
+.sitenav a { color: var(--fg); text-decoration: none; padding: 2px 0; border-bottom: 2px solid transparent; }
+.sitenav a:hover { border-bottom-color: var(--line); }
+.sitenav a[aria-current="page"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.sitenav .site-name { font-weight: 600; letter-spacing: 0.01em; margin-right: 6px; }
+.sitenav .count { display: inline-block; min-width: 1.6em; text-align: center; font-size: 12px; line-height: 1.5; border-radius: 999px; background: var(--accent); color: var(--on-accent); margin-left: 4px; padding: 0 5px; }
+.status { font-size: 14px; color: var(--muted); padding: 10px 0 0; margin-top: 0; margin-bottom: 0; }
+main.wrap { padding-top: 24px; }
+:root { --anchor-gap: calc(env(safe-area-inset-top, 0px) + 104px); }
+[id] { scroll-margin-top: var(--anchor-gap); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3, h4 { text-wrap: balance; }
+section { display: grid; gap: 14px; min-width: 0; }
+section > * { min-width: 0; }
+.page-head { display: grid; gap: 14px; }
+.page-head p { max-width: 72ch; }
+.prose { display: grid; gap: 10px; }
+.prose p { max-width: 76ch; }
+.where-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); }
+.where-grid > div { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+.where-grid > div.open-now { border-left: 4px solid var(--accent); }
+.where-grid h3 { font-size: 17px; }
+.where-grid ul, .plain-list { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 15px; }
+.moments { display: grid; gap: 14px; }
+.moment { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 16px 18px; display: grid; gap: 12px 28px; grid-template-columns: minmax(0, 17rem) minmax(0, 1fr); align-items: start; }
+.moment-meta, .moment-counts { display: grid; gap: 10px; align-content: start; min-width: 0; }
+@media (max-width: 720px) { .moment { grid-template-columns: minmax(0, 1fr); } }
+.moment h3 { font-size: 18px; }
+.moment .when { font-size: 14.5px; color: var(--muted); }
+.moment ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14.5px; }
+.moment ul.counts { list-style: none; padding-left: 0; gap: 10px; }
+.moment ul.counts a { font-weight: 500; }
+.moment ul.counts span { display: block; color: var(--muted); }
+.around { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items: start; }
+.around-item { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; font-size: 14.5px; }
+.around-item h3 { font-size: 16px; }
+.around-item .tag { margin-right: 6px; }
+.guide { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.guide li { display: grid; grid-template-columns: minmax(7.5em, max-content) 1fr; gap: 2px 14px; max-width: 86ch; }
+.guide li a { font-weight: 600; }
+.words { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); }
+.words h3 { font-size: 16px; margin-bottom: 6px; }
+.q { scroll-margin-top: var(--anchor-gap); }
+.q h4 { font-size: 19px; font-weight: 600; line-height: 1.25; margin: 0; color: var(--fg); }
+.q ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; }
+.q .block { display: grid; gap: 4px; }
+.q ul.options { list-style: none; padding-left: 0; gap: 8px; }
+.q ul.options li { border-left: 3px solid var(--line); padding-left: 10px; }
+.q ul.options strong { font-weight: 600; }
+.q .rec { border-top: 1px solid var(--line); padding-top: 10px; }
+.q .rec .tag { display: block; color: var(--accent); margin-bottom: 2px; }
+.stag { justify-self: start; font-family: var(--font-label); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-radius: 999px; padding: 2px 10px; border: 1px solid var(--line); color: var(--muted); }
+.stag.s-applied { color: var(--accent); border-color: var(--accent); }
+.stag.s-changed { color: var(--fault); border-color: var(--fault); background: var(--chip-live); }
+.q.q-applied { border-left-color: var(--accent); }
+.q.q-changed { border-left-color: var(--fault); }
+.q.q-open { border-left-color: var(--line-strong); }
+.qgroup > h3 { font-size: 17px; color: var(--muted); font-weight: 600; }
+ol.step3 { margin: 0; padding-left: 22px; display: grid; gap: 6px; max-width: 86ch; }
+.decided-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.decided-list li { display: grid; grid-template-columns: minmax(8.5em, max-content) 1fr; gap: 2px 14px; max-width: 92ch; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; }
+.decided-list .dn { font-family: var(--font-label); font-weight: 600; }
+.decided-list .dd { display: block; font-size: 13px; color: var(--muted); font-weight: 500; }
+.log-entry { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; display: grid; gap: 8px; scroll-margin-top: var(--anchor-gap); }
+.log-entry h3 { font-size: 18px; }
+.log-entry .when { font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--muted); }
+.log-entry ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; max-width: 86ch; }
+.log-entry .prompt { font-size: 15px; color: var(--muted); border-left: 3px solid var(--accent); padding-left: 12px; max-width: 86ch; }
+.log-entry .was-title { font-size: 15px; }
+.log-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.beforeafter { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.beforeafter > div { display: grid; gap: 4px; align-content: start; font-size: 15px; }
+.fgroup { display: grid; gap: 16px; border-top: 2px solid var(--line); padding-top: 10px; }
+.fgroup > h3 { font-size: 20px; }
+.fgroup > h3 .tag { display: block; margin-bottom: 4px; }
+.card-head h4 { font-size: 19px; font-weight: 600; line-height: 1.2; margin: 0; }
+.card.proposed { border-style: dashed; }
+.flawtable th, .flawtable td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.flawtable thead th, .glance thead th { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; color: var(--muted); }
+.flawtable tbody th { font-weight: 500; min-width: 16em; }
+.flawtable td { min-width: 9em; }
+.flawtable td.num { min-width: 4em; }
+.flawtable .fid, .glance .fid { font-family: var(--font-mono); font-weight: 500; margin-right: 4px; }
+.flawtable a, .glance a { text-decoration: none; }
+.glance td { min-width: 12em; font-size: 14px; }
+.glance td.flawcell { min-width: 9em; }
+.lead-in { max-width: 78ch; }
+.alts tbody tr { scroll-margin-top: var(--anchor-gap); }
+.alts tbody tr:target th, .alts tbody tr:target td { background: var(--chip); }
+.part h3 { margin: 0; font-size: 16px; font-weight: 600; }
+footer.site-foot { padding: 32px 0 48px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); display: grid; gap: 6px; }
+footer.site-foot p { max-width: 90ch; }
+footer.site-foot code { font-family: var(--font-mono); font-size: 13px; overflow-wrap: anywhere; }
+.dia-svg { margin: 0; background: transparent; font-size: 13px; text-align: center; }
+figure.dia.walk .dia-svg svg { min-width: 720px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+
+.dia-svg svg { max-width: none; }
+.dia-svg [stroke="#000000"], .dia-svg [stroke="#666"], .dia-svg [stroke="#999"] { stroke: var(--dia-line); }
+.dia-svg [fill="#eaeaea"] { fill: var(--dia-node); }
+.dia-svg [fill="#EDF2AE"] { fill: var(--dia-note); }
+</style>
+</head>
+<body>
+<div class="site">
+<a class="skip" href="#main">Skip to the page</a>
+<nav class="sitenav" aria-label="Pages of this site"><a class="site-name" href="index.html">What the Engine Promises</a><a href="index.html">The engine</a><a href="decisions.html" aria-label="Decisions, 13 open questions">Decisions<span class="count" aria-hidden="true">13</span></a><a href="promises.html">Promises</a><a href="parts.html">Parts</a><a href="flaws.html">Design flaws</a><a href="changes.html" aria-current="page">Change log</a></nav>
+<p class="status">Architecture pass, phase 1, step 1. The shape is a candidate; nothing is decided unless a page says so. Updated 2026-11-01.</p>
+<main class="wrap" id="main">
+<header class="page-head">
+  <h1>Change log</h1>
+  <div class="prose"><p>This page keeps the history the other pages no longer carry: every published version of the owner page, each promise&#x27;s first wording as a job, what changed on each design-flaw card, the three recommendations the map changed, and the words decision 27 replaced. Nothing here is open for decision; the open questions are on <a href="decisions.html">Decisions</a>.</p></div>
+</header>
+
+<section id="versions" aria-labelledby="versions-h">
+  <h2 id="versions-h">Versions</h2>
+  <article class="log-entry" id="v8">
+  <p class="when">Version 8 · 2026-11-01</p>
+  <h3>Five linked pages and a change log</h3>
+  <ul><li>One page became six: <a href="index.html">The engine</a> (the front page, the whole engine in one read), <a href="decisions.html">Decisions</a> (every open question with its evidence on the same screen), <a href="promises.html">Promises</a>, <a href="parts.html">Parts</a>, <a href="flaws.html">Design flaws</a> and this change log, all built from one set of data and linked by title.</li><li>Each promise&#x27;s &quot;earlier wording, as a job&quot; and each card&#x27;s &quot;what changed&quot; note moved here from the promise entries and the flaw cards.</li><li>Decision 28 folded in: the night&#x27;s-record half of <a href="promises.html#every-tap">Every tap gets its answer, and the night can be told afterwards</a> names the director and the players after the show; its goal says the record carries the game it ran and the texts the players saw, and that ALN&#x27;s Director Console stays a separate program reading it, with room to run inside the Review stage later; its built-today line notes that ALN&#x27;s article writer reads the GM tablet&#x27;s report by hand, outside the engine.</li><li>The two clocks, finding X-08, joined <a href="flaws.html#c9">Tablets and phones decide facts the engine owns</a> under decision 28; the total is 358 findings, 337 of them under the sixteen flaws and 21 set aside.</li><li>The front page&#x27;s &quot;Around the engine&quot; names what sits outside the engine, the after-game article and emailer among them; the step-3 list gains whether paper documents join the pack with &quot;unlocked&quot; recorded during play; the Decided list gains 28 and 29.</li><li>Every diagram is drawn when the site is built and written into the page, so no page depends on the viewer&#x27;s diagram drawing.</li></ul>
+  <p class="prompt"><span class="tag">What prompted it</span> The owner answered the page-structure questions on 2026-11-01: &quot;five linked pages&quot;; &quot;move history to change log&quot;; and, asked whether anything in version 7 had to stay as it is, &quot;there&#x27;s nothing I rely on in today&#x27;s page yet. so no.&quot; The same day the owner answered the six questions of the after-game survey (decision 28).</p>
+</article><article class="log-entry" id="v7">
+  <p class="when">Version 7 · 2026-11-01</p>
+  <h3>The candidate engine drawn whole, and five moments followed through its parts</h3>
+  <ul><li>The candidate shape now opens with one hand-drawn picture of the whole engine: the devices and tools on top; <a href="parts.html#answering">Answering</a> as the one door in and <a href="parts.html#delivery">Delivery</a> as the one door out, with <a href="parts.html#connections-and-roles">Connections and roles</a> between them; behind them the game&#x27;s facts, the life of a game and the room, with the ring of equipment, verdict, lifecycle and show runner visible; the foundations below. Labelled arrows show what passes at a show.</li><li>Five sequence walkthroughs follow single moments through the parts: a GM taps a token; a cue plays or cannot; the GM ends the game; the doors-open preflight; the designer publishes a change. Each names the promises it keeps.</li><li>The 54-link dependency diagram stays below the picture, renamed.</li><li>The picture and the walkthroughs were checked against the shape twice. The first check applied 19 conflicts (the lifecycle gathers tonight&#x27;s profile and what is running and asks the verdict, which calls nothing; Delivery reads what changed in each part, and no part sends to it; the night&#x27;s record learns of the end from the lifecycle; a pack waits while a game is running or paused). The second confirmed 16 resolved and 3 partly and applied 10 new (the verdict&#x27;s three answers, go, no-go or not tonight; only tablets and scanners keep a pack copy; a standalone tablet runs the same doors, record and lifecycle with stand-ins).</li><li>All 41 page diagrams render at 1200 and 400 pixels with no overflow.</li></ul>
+  <p class="prompt"><span class="tag">What prompted it</span> The owner said the 17-part shape was never diagrammed and the page did not show how everything comes together.</p>
+</article><article class="log-entry" id="v6">
+  <p class="when">Version 6 · 2026-11-01</p>
+  <h3>The page in the owner&#x27;s words</h3>
+  <ul><li>The page is retitled &quot;What the Engine Promises&quot; (version 3 to 5 were &quot;What the Engine Must Do&quot;) and organized around ten promises named by title alone: no number anywhere a reader sees. Each promise shows its earlier wording as a job under its title.</li><li>&quot;How the jobs fit together&quot; became &quot;How the promises fit together&quot;. Parts keep promises and design flaws break them; each part card says which promises it mainly keeps and which also need it, and its Today line says how its work is done today. The shared work several promises depend on is folded into the parts; the qualities table says which promises each quality keeps.</li><li>The questions are rewritten in promise words with the same recommendations. The words box puts the page&#x27;s own words first (promise, moment, design flaw, part, quality) and defines module, interface and seam without the word &quot;part&quot;, which now names only the 17 candidate parts.</li><li>The person who fits a kit to a venue is the venue technician throughout.</li><li>The vocabulary check applied 28 conflicts, among them: two notes no longer call a promise a label; two metaphors are plain; decision 27 joins the decided list. Its verification settled five leftovers: the summary no longer says two promises are kept mostly by a quality; the table of moments is read by most promises, not every one; two long notes are split; the Connections and roles card says &quot;This part also says&quot;.</li></ul>
+  <p class="prompt"><span class="tag">What prompted it</span> The owner found &quot;job&quot; forced once the jobs were restated from people&#x27;s side and the map split them into promises, qualities and parts (decision 27, 2026-11-01).</p>
+</article><article class="log-entry" id="v5">
+  <p class="when">Version 5 · 2026-11-01</p>
+  <h3>How the jobs fit together</h3>
+  <ul><li>A new section carries the relationship map and the candidate shape: every job restated from the side of the people it serves, eleven shared mechanisms, thirteen tangles in today&#x27;s code, and a candidate shape of 17 parts with one direction of dependency (54 links, no cycle), drawn in layers, with which part would run where and where a real alternative exists.</li><li>Each job entry leads with its restatement (who, when, what must happen). Each card names the parts that would remove its flaw and says what the map changed in its candidate design.</li><li>The map changed three recommendations: E (rename, not split), F (one promise, widened to release day), G (the route sits in neither promise if step 3 keeps one delivery part). A step-3 preview lists the choices the map leaves to the owner.</li><li>Every card&#x27;s candidate design and every job&#x27;s entry were brought into line with the shape (182 verdicts, 96 corrected). The cards and jobs were put into plain words and the whole page checked (57 conflicts applied; then 54 confirmed resolved, 3 partly, and 10 new settled).</li><li>The alternatives table is in plain words; question titles are in full colour; &quot;green run&quot; is said as a passing test run.</li></ul>
+  <p class="prompt"><span class="tag">What prompted it</span> The owner asked how the ten jobs relate, at both levels (the big components and the modules inside them), and said the venue job and the truth job (<a href="promises.html#the-venue">The game fits the venue it is in tonight</a> and <a href="promises.html#read-a-screen">Anyone reading a screen can act on it without a second question</a> today) read as mechanics, not what they do for people.</p>
+</article><article class="log-entry" id="v4">
+  <p class="when">Version 4 · 2026-11-01</p>
+  <h3>The consistent page</h3>
+  <ul><li>The consistency check found 39 conflicts: 29 across the list of design flaws, the standalone pass, the jobs document and the page data, all settled from code or records and applied (22 changes, 5 duplicates, 2 already gone, 1 settled by hand and applied), and 10 in the page itself. Section 8 of the cause analysis lists every change.</li><li>The page&#x27;s own ten fixes: question 4 covers <a href="flaws.html#c8">C8</a>; question 23 is asked inside question C, with a recommendation; N1 is marked proposed, with no card; the standalone pass&#x27;s 35 findings are counted as 27 under the sixteen flaws and 8 under the proposed N1; the built-today line says the standing test rig was lost with the old container; question 21 recommends 16 rig runs, one per design flaw, instead of about 17; questions E and F offer every option, including keeping one job; the phone&#x27;s seen mark is described; each job&#x27;s text points to the questions at the end.</li></ul>
+  <p class="prompt"><span class="tag">What prompted it</span> The owner asked for a consistency check of the page and the documents behind it (2026-10-31). The first run stalled and was lost; the rerun also covered the jobs document, its page data and the page rebuilt around the jobs.</p>
+</article><article class="log-entry" id="v3">
+  <p class="when">Version 3 · 2026-11-01</p>
+  <h3>The page rebuilt around the engine&#x27;s jobs</h3>
+  <ul><li>The page is retitled &quot;What the Engine Must Do&quot; (versions 1 and 2 were &quot;ALN Cause Analysis&quot;). It opens with what the engine is for, then the ten jobs, each with what is built today and the long-term goal; the design flaws sit under the job each mainly breaks, with the cards nested under their main job; the standalone pass follows; the evidence moves to the back.</li><li>C1 to C16 are called design flaws in owner-facing text.</li><li>The questions are regrouped: the jobs (is the list right; A to G), the standalone questions (22&#x27;s hardware-scanner reading, 24, 25), 19 and 21. Question 17 becomes the question about the list; 18 is folded into F and 23 into C.</li><li>Three changes applied in the jobs document for the owner to confirm (questions A, B, C): the pack job says nothing in the engine assumes ALN and every part of the kit runs the same version of the pack and says which; the roles job covers who may do what; the venue job says a standalone game is a choice the game declares, never mixed.</li></ul>
+  <p class="prompt"><span class="tag">What prompted it</span> The owner found the flaw-first structure hard to follow and asked to restructure step 1 around the engine&#x27;s jobs first, under the frame of decision 26 (owner direction, 2026-10-31): design the best architecture for the next iteration of the engine, for long-term use and future development as its use grows beyond ALN; blue&#x27;s fixes and findings are clues to where today&#x27;s design is off, never the driver. The owner also said &quot;cause analysis&quot; does not land as a name.</p>
+</article><article class="log-entry" id="v2">
+  <p class="when">Version 2 · 2026-10-31</p>
+  <h3>The standalone pass folded in</h3>
+  <ul><li>Each card gains a line on what the flaw does in a whole standalone game (which device decides the fact there, and whether the first candidate design survives with no engine), with a standalone summary.</li><li>The hardware scanner&#x27;s parity table (24 rows) and questions 23 to 25 are added: is &quot;nothing declares a game standalone&quot; a seventeenth flaw (N1); does a standalone game run on one GM tablet; what exposed evidence and video tokens do with no engine.</li><li>The cause analysis gains section 7 (the standalone pass) and two findings from the document fixes.</li></ul>
+  <p class="prompt"><span class="tag">What prompted it</span> Decision 22 (round 8, 2026-10-31): standalone games join the list every rule must serve, as a whole game run with no engine that a game can declare, never mixed. On the hardware scanner the owner&#x27;s reasoning is parity between the two player scanners, so its missing standalone mode was recorded as a parity gap and the owner&#x27;s explicit word asked for.</p>
+</article><article class="log-entry" id="v1">
+  <p class="when">Version 1 · 2026-10-31</p>
+  <h3>Sixteen causes behind the engine&#x27;s faults</h3>
+  <ul><li>The first published page, titled &quot;ALN Cause Analysis&quot;: sixteen cards, each with what it looks like at a show, why it happens, a before and after diagram, examples with their finding ids, blue&#x27;s fixes, and the pass&#x27;s questions it touches. Two checkers applied 42 corrections before publishing.</li><li>Every diagram was parsed and drawn in a real browser; the diagrams are stacked and drawn top-down at natural size so the page never widens past the screen; the lead counts all 357 findings.</li></ul>
+  <p class="prompt"><span class="tag">What prompted it</span> The owner asked for a visual report of the cause list; round 8&#x27;s questions 17 (is the cause list right) and 18 (the three causes no question covers) waited for it, after the cause analysis was written and checked. The owner had also asked whether the architecture method skill was used for step 1; it was not (decision 12 put it on step 3), so the report presented the list by that method.</p>
+</article>
+</section>
+
+<section id="earlier-wording" aria-labelledby="earlier-wording-h">
+  <h2 id="earlier-wording-h">The promises' earlier wording</h2>
+  <div class="log-grid"><article class="log-entry" id="was-designers-game">
+  <h3><a href="promises.html#designers-game">The designer&#x27;s game is the game the whole kit plays</a></h3>
+  <p class="was-title"><span class="tag">Earlier wording, as a job</span> “Run any game from its pack”</p>
+  <ul><li>Before, this promise covered any pack, proven by the toy pack. Now every device plays one version, checked when a device connects, since a mismatch is only logged today. The two-pack proof also keeps <a href="promises.html#proven-change">A change is proven before it reaches anyone, and the owner alone sends it to the show</a>.</li><li>In version 3 it was widened to say that nothing in the engine assumes ALN and that every part of the kit runs the same version of the pack and can say which (applied for the owner to confirm, <a href="decisions.html#q-a">question A</a>). In the candidate shape (version 5) the first clause became a quality every part must have, Generic, and the second the pack channel&#x27;s stamp on every copy, compared whenever a device connects.</li><li>Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6.</li></ul>
+</article><article class="log-entry" id="was-one-game">
+  <h3><a href="promises.html#one-game">One game, the same on every screen</a></h3>
+  <p class="was-title"><span class="tag">Earlier wording, as a job</span> “Keep one true record of the game, and show it truly everywhere”</p>
+  <ul><li>Before, this promise asked for one true record shown truly everywhere. Now the Game record is the one decider and Delivery the one route to every screen, live or after a reconnect, because a reloaded tablet can show different facts.</li><li>Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6.</li></ul>
+</article><article class="log-entry" id="was-every-tap">
+  <h3><a href="promises.html#every-tap">Every tap gets its answer, and the night can be told afterwards</a></h3>
+  <p class="was-title"><span class="tag">Earlier wording, as a job</span> “Answer every action, and remember what happened”</p>
+  <ul><li>Before, the goal spoke only of the report. Now two parts keep it, Answering at the tap and The night&#x27;s record after the end, because its two people need different things; whether that makes two promises stays <a href="decisions.html#q-d">question D</a>.</li><li>Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6.</li><li>Decision 28 (version 8) changed its people, need and goal. Its people now name, after the show, the director who tells the night&#x27;s story and the players it is told to, beside the owner and the designer. Its need now says the director tells the players the story of their night from what was captured during play, with the game and the texts they saw, not reconstructed, and that how the story reaches the players is the game&#x27;s own business. Its goal now says the record of the night is stamped with the game it ran and the texts the players saw, and that ALN&#x27;s telling, the Director Console, is a separate program that reads it, with room to run inside the engine&#x27;s Review stage later. Its built-today line notes that ALN&#x27;s article writer reads the GM tablet&#x27;s report by hand, outside the engine.</li></ul>
+</article><article class="log-entry" id="was-the-room">
+  <h3><a href="promises.html#the-room">The room does what the designer cued and the GM asked</a></h3>
+  <p class="was-title"><span class="tag">Earlier wording, as a job</span> “Run the show&#x27;s equipment, and know its true state”</p>
+  <ul><li>Before, the title also asked the engine to know each program&#x27;s true state. Now Equipment keeps that dated picture here, beside the Show runner. Showing it truly on a screen belongs to another promise, <a href="promises.html#read-a-screen">Anyone reading a screen can act on it without a second question</a>, which the label on every fact keeps. Running the room and labelling a screen are different work.</li><li>Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6.</li></ul>
+</article><article class="log-entry" id="was-lifecycle-buttons">
+  <h3><a href="promises.html#lifecycle-buttons">Each lifecycle button does exactly what its name says</a></h3>
+  <p class="was-title"><span class="tag">Earlier wording, as a job</span> “Move each game through its life cleanly”</p>
+  <ul><li>Before, this promise was said as a developer&#x27;s table of facts against moments. Now it is the GM&#x27;s trust in each button; the table stays, kept by one Lifecycle part that alone moves and resets the game, since start and Reset System differ today.</li><li>Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6.</li></ul>
+</article><article class="log-entry" id="was-change-a-value">
+  <h3><a href="promises.html#change-a-value">The designer changes a value and plays it within minutes, and the live show never notices</a></h3>
+  <p class="was-title"><span class="tag">Earlier wording, as a job</span> “Let designers build, change and try games safely”</p>
+  <ul><li>Before, a change could wait for a restart. Now the Design studio talks to the engine only by message, which applies a change between games or refuses, so the designer plays within minutes and the live show never notices.</li><li>Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6.</li></ul>
+</article><article class="log-entry" id="was-each-person">
+  <h3><a href="promises.html#each-person">Each person sees their part and can do only their part</a></h3>
+  <p class="was-title"><span class="tag">Earlier wording, as a job</span> “Give each person exactly what their role needs, and let each do only what their role allows”</p>
+  <ul><li>Before, this promise gave each role its screen; knowing who is connected had no home. Now one Connections and roles part knows every connection and one door checks every action, because today a connection&#x27;s own word decides what it gets.</li><li>In version 3 it was widened to cover who may do what: starting, pausing, ending and score changes stay with the GM, and the stored secrets rotate before outsiders arrive (applied for the owner to confirm, <a href="decisions.html#q-b">question B</a>).</li><li>Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6; its people say venue technicians.</li></ul>
+</article><article class="log-entry" id="was-the-venue">
+  <h3><a href="promises.html#the-venue">The game fits the venue it is in tonight</a></h3>
+  <p class="was-title"><span class="tag">Earlier wording, as a job</span> “Run wherever the venue and the game need”</p>
+  <ul><li>Before, this promise covered every setup, engine or none. Now it is the venue technician fitting the game to tonight&#x27;s venue, with a standalone game declared here (where it is kept is a step-3 choice) and Release checking each machine. You are asked to confirm this in <a href="decisions.html#q-e">question E</a>.</li><li>In version 3 it gained the owner&#x27;s words from decision 22: a game runs with or without an engine as a choice the game declares, never mixed (applied for the owner to confirm, <a href="decisions.html#q-c">question C</a>).</li><li>The map (version 5) found the earlier wording made the engine the subject and named places, with the people missing, and restated it as &quot;Fit the game to the venue it is in tonight&quot;. Decision 27 made that seventh title a promise: <a href="promises.html#the-venue">The game fits the venue it is in tonight</a> (version 6). The person in it is the venue technician.</li></ul>
+</article><article class="log-entry" id="was-read-a-screen">
+  <h3><a href="promises.html#read-a-screen">Anyone reading a screen can act on it without a second question</a></h3>
+  <p class="was-title"><span class="tag">Earlier wording, as a job</span> “Tell the truth about what it knows”</p>
+  <ul><li>Before, this promise asked the engine to tell the truth. Now a label on every fact and reply keeps it, and Delivery and Answering carry that label. One part of its own keeps it too: the Verdict, whose answer reaches no screen today.</li><li>The map (version 5) found the earlier wording made the engine the speaker and listed the four states a fact can be in, which are the mechanism, not the reader&#x27;s need, and restated it from the reader&#x27;s side. Retitled under decision 27 in version 6; the preflight&#x27;s reader is the venue technician.</li></ul>
+</article><article class="log-entry" id="was-proven-change">
+  <h3><a href="promises.html#proven-change">A change is proven before it reaches anyone, and the owner alone sends it to the show</a></h3>
+  <p class="was-title"><span class="tag">Earlier wording, as a job</span> “Stay trustworthy as it changes”</p>
+  <ul><li>Before, this promise was one sentence about tests, with release day inside. Now three parts keep it, Joins and proofs, Engine instance and Release, because the developer&#x27;s proof and the owner&#x27;s release day are different moments; <a href="decisions.html#q-f">question F</a> stays open.</li><li>Restated from the side of the people it serves in version 5, with release day named in the title, and retitled under decision 27 in version 6.</li></ul>
+</article></div>
+</section>
+
+<section id="card-changes" aria-labelledby="card-changes-h">
+  <h2 id="card-changes-h">The cards</h2>
+  <div class="log-grid"><article class="log-entry" id="changed-c1">
+  <h3><span class="cid">C1</span> <a href="flaws.html#c1">Each tablet keeps its own list of claimed tokens</a></h3>
+  <ul><li>Before, the card let each tablet keep a list of claimed tokens. Now only the Game record decides claims, from the transactions; a tablet draws what it is sent and asks at each tap, so a delete or reset leaves no stale list.</li></ul>
+</article><article class="log-entry" id="changed-c2">
+  <h3><span class="cid">C2</span> <a href="flaws.html#c2">Service health and service state travel on separate paths</a></h3>
+  <ul><li>Before, the card left the record and updates with the music service. Now Equipment keeps one dated record of each thing the room does and Delivery sends each change by one route, so every panel sees outages and recoveries.</li></ul>
+</article><article class="log-entry" id="changed-c3">
+  <h3><span class="cid">C3</span> <a href="flaws.html#c3">Engine trusts its stale picture of outside programs</a></h3>
+  <ul><li>Before, the card let the code that reads each program own the engine&#x27;s picture of it. Now Equipment owns one dated picture per thing the room does; Show runner reads it and keeps no copy; Delivery carries every correction.</li></ul>
+</article><article class="log-entry" id="changed-c4">
+  <h3><span class="cid">C4</span> <a href="flaws.html#c4">Nothing says what a game boundary clears or keeps</a></h3>
+  <ul><li>Before, the card&#x27;s table of moments had no owner. Now Lifecycle owns it, alone moves the game and calls every reset; Delivery tells every screen and player device each moment as a fact, so none has to guess.</li></ul>
+</article><article class="log-entry" id="changed-c5">
+  <h3><span class="cid">C5</span> <a href="flaws.html#c5">Boot and Reset System wire the engine differently</a></h3>
+  <ul><li>Before, the card proposed one routine for engine start and Reset System. Now a starting point builds every part once from one list, and Lifecycle runs both as one path, so music is never left out and nothing wired twice.</li></ul>
+</article><article class="log-entry" id="changed-c6">
+  <h3><span class="cid">C6</span> <a href="flaws.html#c6">Reconnect snapshot and live update are built apart</a></h3>
+  <ul><li>Before, the card had each engine part describe its facts. Now Delivery builds each fact once, for catch-up and live change, and a restore after a reload is sent like a change, so the History badge and clock wake.</li></ul>
+</article><article class="log-entry" id="changed-c7">
+  <h3><span class="cid">C7</span> <a href="flaws.html#c7">A reply never says which request, final or stored</a></h3>
+  <ul><li>Before, the card&#x27;s reply part saved and answered. Now the Game record saves and Answering replies through one door for all devices, with one list of reply words, so a batch with no game gets one answer: stored or refused.</li></ul>
+</article><article class="log-entry" id="changed-c8">
+  <h3><span class="cid">C8</span> <a href="flaws.html#c8">Engine and tests both assume they own the machine</a></h3>
+  <ul><li>The card already gave each engine its own names. Now every test run and the designer&#x27;s preview engine are engines too, built the same way under their own names, so a test or rehearsal never ends the show&#x27;s video player.</li></ul>
+</article><article class="log-entry" id="changed-c9">
+  <h3><span class="cid">C9</span> <a href="flaws.html#c9">Tablets and phones decide facts the engine owns</a></h3>
+  <ul><li>Before, the card left the phone alone and had the standalone tablet load shared rules. Now one Game record judges every GM tap, on the engine or on a standalone tablet, and player devices draw the engine&#x27;s reply, so a rule change lands once.</li><li>Finding X-08, the two clocks, joined this card under decision 28 (version 8). One game&#x27;s money events carry two clocks: a sale carries the time the tablet put in its request, a manual score adjustment the engine computer&#x27;s time. The GM enters the first-burial bonus and the transfers as adjustments, so on two games they printed nine hours away from the sales, and ALN&#x27;s Director Console shifts them back before its writers read them. The card now has 19 findings.</li></ul>
+</article><article class="log-entry" id="changed-c10">
+  <h3><span class="cid">C10</span> <a href="flaws.html#c10">Screens show a normal value when nothing is known</a></h3>
+  <ul><li>Before, the health list alone said whether a fact was known, unknown or stale. Now every fact Delivery sends carries that label, so the TV clock and music card show old or down as the health panel does.</li></ul>
+</article><article class="log-entry" id="changed-c11">
+  <h3><span class="cid">C11</span> <a href="flaws.html#c11">Several places answer the same question, each differently</a></h3>
+  <ul><li>Before, the card wanted one answerer per question, as a part of its own. Now each answer lives inside the part that owns the fact, so Equipment says whether a video plays and the Game record says which teams exist.</li></ul>
+</article><article class="log-entry" id="changed-c12">
+  <h3><span class="cid">C12</span> <a href="flaws.html#c12">Pack edits reach each copy of the pack differently</a></h3>
+  <ul><li>Before, the design tool wrote the engine&#x27;s files and the TV got its own notice. Now the Design studio applies a pack by message, Lifecycle says when, and Delivery tells every screen the version, so a tablet on another pack is told, not just logged.</li></ul>
+</article><article class="log-entry" id="changed-c13">
+  <h3><span class="cid">C13</span> <a href="flaws.html#c13">The engine does not know who is connected</a></h3>
+  <ul><li>Before, the card&#x27;s role table both knew who was connected and sent facts. Now Connections and roles knows who each connection is, Delivery and Answering ask it, and every device, phones included, shows a pass, so three checks become one.</li></ul>
+</article><article class="log-entry" id="changed-c14">
+  <h3><span class="cid">C14</span> <a href="flaws.html#c14">Names joining two places are kept by hand</a></h3>
+  <ul><li>Before, the card checked on the tablet that every name had one definition. Now each shared shape is written once, by Delivery or Answering, and Joins and proofs checks both sides, so a mismatch fails a test before the show.</li></ul>
+</article><article class="log-entry" id="changed-c15">
+  <h3><span class="cid">C15</span> <a href="flaws.html#c15">The deployed game is many parts nothing compares</a></h3>
+  <ul><li>Before, the card&#x27;s design was one install command for every piece. Now Release owns the installed set and swaps it whole between the blue and green machines, so a mismatch reads as a no-go before the show.</li></ul>
+</article><article class="log-entry" id="changed-c16">
+  <h3><span class="cid">C16</span> <a href="flaws.html#c16">A green test run proves nothing about the show</a></h3>
+  <ul><li>Before, the card fixed only the fakes and the skipped tests. Now each fact also gets one test from where it is decided to a screen, on an engine of its own, so no test touches the show.</li></ul>
+</article></div>
+</section>
+
+<section id="recommendations" aria-labelledby="recommendations-h">
+  <h2 id="recommendations-h">Recommendations the map changed</h2>
+  <article class="log-entry" id="rec-e">
+  <h3><a href="decisions.html#q-e">Question E</a></h3>
+  <div class="beforeafter">
+    <div><span class="tag">Before</span><p>Split the venue promise, then &quot;Run wherever the venue and the game need&quot;, into &quot;fit the game to the venue&quot; and &quot;run in any setup&quot;: fitting a game to a room is the venue technician&#x27;s work (the profile, the bindings, the one preflight); running in any setup is standalone games, other kits and the open-source release. Recommendation: split, because the venue technician is one of the engine&#x27;s five users and had no job of their own. Version 4 added the alternative of keeping one job renamed &quot;Fit the game to the venue, whatever the setup&quot;.</p></div>
+    <div><span class="tag">After</span><p>One promise, titled <a href="promises.html#the-venue">The game fits the venue it is in tonight</a>, with standalone games kept in its first sentences. Two titles fit the map: &quot;The game fits the venue, whatever the setup&quot; keeps standalone games and other kits in the title; &quot;The game fits the venue it is in tonight&quot; names the venue technician&#x27;s moment and leaves them to the sentences. The cost of not splitting is that the GM running a standalone game and a future operator with another kit are named in a sentence, not in a title.</p></div>
+  </div>
+  <p class="prompt"><span class="tag">Why</span> The map found that &quot;run in any setup&quot; has no part of its own. Fitting the game to tonight&#x27;s venue is one part with an output, <a href="parts.html#venue-fit">Venue fit</a>: the venue technician&#x27;s profile, which says what the kit brings, binds each of the pack&#x27;s names to a real instrument and says whether the engine starts each program; <a href="parts.html#verdict">Verdict</a> turns it into one go or no-go. Running with no engine is a switch every rule takes, declared as part of fitting the game. Running on another kit is each engine knowing its own names, <a href="parts.html#engine-instance">Engine instance</a>, the same part that keeps a test from touching the live show. A separate promise would own nothing.</p>
+</article><article class="log-entry" id="rec-f">
+  <h3><a href="decisions.html#q-f">Question F</a></h3>
+  <div class="beforeafter">
+    <div><span class="tag">Before</span><p>The change promise, then &quot;Stay trustworthy as it changes&quot;, holds four kinds of work (tests that cannot hurt the live show, tests that prove the real path, checks that joined parts agree, checks that what is installed matches). Split it into &quot;Prove it works, away from the live show&quot; and &quot;Keep every part in step&quot;, and give each half a question of its own in the pass. Version 4 added the option of widening one job&#x27;s sentence to say a new version reaches the show only when the owner says it is ready, with rollback as plugging the old machine back in.</p></div>
+    <div><span class="tag">After</span><p>One promise, as the title <a href="promises.html#proven-change">A change is proven before it reaches anyone, and the owner alone sends it to the show</a> has it, covering both moments, and give the proof and the release a question each in the pass. The other options stay listed: split release day into a promise of its own; file release day with the venue technician&#x27;s deploy work under <a href="promises.html#the-venue">The game fits the venue it is in tonight</a>; or go back to the earlier wording, about tests alone, at the cost of leaving the owner&#x27;s release day unnamed.</p></div>
+  </div>
+  <p class="prompt"><span class="tag">Why</span> The map separates the promise&#x27;s two moments, not its kinds of work. Before every change, the developer&#x27;s tests pass and show the show still works for ALN and for the toy game; that is a quality every part must have, carried by <a href="parts.html#joins-and-proofs">Joins and proofs</a> and <a href="parts.html#engine-instance">Engine instance</a>, and checking that joined parts agree is part of it. On release day, the owner decides when a new version goes to the venue and can swap back by replugging a machine; that is one small part, <a href="parts.html#release">Release</a>, which checks that everything installed matches. The earlier split into &quot;prove it works&quot; and &quot;keep every part in step&quot; does not match the map, because keeping joined parts in step is part of the proof. Both moments exist so that nothing reaches the live show unproven, or before the owner says so.</p>
+</article><article class="log-entry" id="rec-g">
+  <h3><a href="decisions.html#q-g">Question G</a></h3>
+  <div class="beforeafter">
+    <div><span class="tag">Before</span><p>Which job carries the equipment&#x27;s state to every screen? The record job keeps the game&#x27;s record true everywhere; the equipment job runs the equipment and knows its state; today the music or lights panel can stay wrong after a reconnect, and neither sentence says whose that is. Recommendation: the equipment job, because it keeps the game&#x27;s record and the equipment&#x27;s state apart and matches the pass&#x27;s question 2 (does a service&#x27;s state travel with its health). A first draft of version 5 instead recommended the record promise, since the game&#x27;s running state already includes the video queue, music, held items, the clock and each service&#x27;s health, and would have moved <a href="flaws.html#c2">C2</a>&#x27;s card under it; the published version 5 withdrew that.</p></div>
+    <div><span class="tag">After</span><p>Add the route to neither promise, as long as step 3 keeps one delivery part; both then hold through it, and <a href="flaws.html#c2">C2</a>&#x27;s card stays under <a href="promises.html#the-room">The room does what the designer cued and the GM asked</a>, where its moment at a show is felt. If step 3 chooses the other way, with the parts behind each promise delivering their own facts, the route belongs with the room promise, beside C2&#x27;s card. If the owner still wants one promise to hold the words: under the room promise they sit with the equipment whose state it is, but that promise then names a route the other also needs; under <a href="promises.html#one-game">One game, the same on every screen</a> they match how the game&#x27;s running state is already defined, but that promise then carries the equipment beside the game&#x27;s record.</p></div>
+  </div>
+  <p class="prompt"><span class="tag">Why</span> One part, <a href="parts.html#delivery">Delivery</a>, carries every fact to every screen, game facts and equipment alike, each with its label (how sure, how old). <a href="parts.html#equipment">Equipment</a> decides its own state and health as one dated fact; Delivery carries it; the screens draw it. The two promises already cover their halves: under the room promise the GM makes the room do a thing and sees it happen, or sees at once that it did not; under the record promise every screen agrees, also after a tablet comes back. So neither sentence needs to name the route.</p>
+</article>
+</section>
+
+<section id="vocabulary" aria-labelledby="vocabulary-h">
+  <h2 id="vocabulary-h">The words</h2>
+  <ul class="plain-list"><li>Promise, not job. A promise is what a person can count on at a given moment. The pass&#x27;s word for the same list from 2026-10-31 was &quot;job&quot;; the owner found it forced once the jobs were restated from people&#x27;s side and the map split them into promises, qualities and parts. The three dated records that say &quot;job&quot; keep their words and carry a note mapping each job to its promise title.</li><li>Venue technician, not &quot;installer&quot; or &quot;venue installer&quot;: the person who fits a kit to a venue, satisfies the pack&#x27;s tech rider, binds the installation profile and runs the preflight (decision 27).</li><li>Titles, not numbers. Promises carry their titles only, so a card reads without memorizing ids; the numbers appear nowhere a reader sees, and in the headings, the glance table, the cross-links and the diagrams&#x27; labels the titles replace them.</li><li>Parts keep promises; design flaws break them. &quot;Kept by&quot; and &quot;break&quot; are the page&#x27;s words for that from version 6, and &quot;broken by&quot; from version 8; a part card says &quot;Mainly keeps&quot; and &quot;Also needed by&quot;.</li><li>Quality: something every part must have so a promise holds everywhere, never a promise itself. The summary&#x27;s line that two jobs were mostly qualities became two promises kept by a quality, because a quality is never a promise.</li><li>Moment: when a promise matters, a production stage (Author, Rehearse, Run, Review), a point inside a show, or release day.</li><li>Part: one of the 17 pieces of the candidate design, and only that. Before, &quot;part&quot; meant a piece of the engine at any size; a pack&#x27;s holders are now places, today&#x27;s code is modules or code, a kit&#x27;s copies are copies, and module, interface and seam are defined without the word.</li><li>The seventh title becomes a promise: the map&#x27;s restatement &quot;Fit the game to the venue it is in tonight&quot; became <a href="promises.html#the-venue">The game fits the venue it is in tonight</a>.</li><li>Shared work several promises depend on needs no word of its own: each piece becomes one part, so the map&#x27;s &quot;shared mechanisms&quot; are folded into the part cards.</li><li>Design flaw, not cause, for C1 to C16 in owner-facing text, from version 3; the owner said &quot;cause analysis&quot; does not land. &quot;Green run&quot; is said as a passing test run from version 5.</li></ul>
+</section>
+</main>
+<footer class="site-foot"><p>Built from the page's version history and decisions 20 to 29 on the program's state page, the first wording of each promise in the promises document of 2026-10-31, the notes each card and promise carried after the relationship map, and the shared vocabulary.</p></footer>
+</div>
+</body>
+</html>

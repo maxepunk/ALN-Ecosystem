@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Decisions · What the Engine Promises</title>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap">
+<style>
+/* Layout: one reading column; the engine's promises lead, each holding the design flaws that break it; evidence and questions at the end. */
+:root {
+  --bg: #f4f6f5; --surface: #ffffff; --fg: #17201e; --muted: #5b6965; --line: #d5dddb;
+  --accent: #0f766e; --fault: #c2261f; --chip: #e7eeec; --chip-live: #fbe9e7;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-label: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --dia-bg: #ffffff; --dia-node: #f1f6f5; --dia-cluster: #e9f0ee; --dia-note: #fbf5e4; --dia-text: #17201e; --dia-border: #8a9c97; --dia-line: #5b6965; --dia-label-bg: rgba(255, 255, 255, 0.85); --warm: #b45309; --nav-bg: #ffffff; --on-accent: #ffffff; --line-strong: #9fb0ab;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #101614; --surface: #17201e; --fg: #e6ecea; --muted: #9babA6; --line: #2a3633;
+  --accent: #4db6aa; --fault: #ff6f61; --chip: #22302c; --chip-live: #3a2220; --dia-bg: #17201e; --dia-node: #1f2b28; --dia-cluster: #1a2421; --dia-note: #2f2a1b; --dia-text: #e6ecea; --dia-border: #5f736e; --dia-line: #9babA6; --dia-label-bg: rgba(23, 32, 30, 0.85); --warm: #f0a04b; --nav-bg: #17201e; --on-accent: #0b1210; --line-strong: #4a5a56; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #101614; --surface: #17201e; --fg: #e6ecea; --muted: #9babA6; --line: #2a3633;
+  --accent: #4db6aa; --fault: #ff6f61; --chip: #22302c; --chip-live: #3a2220; --dia-bg: #17201e; --dia-node: #1f2b28; --dia-cluster: #1a2421; --dia-note: #2f2a1b; --dia-text: #e6ecea; --dia-border: #5f736e; --dia-line: #9babA6; --dia-label-bg: rgba(23, 32, 30, 0.85); --warm: #f0a04b; --nav-bg: #17201e; --on-accent: #0b1210; --line-strong: #4a5a56; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 40px 72px;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 24px; font-weight: 600; }
+h3 { font-size: 19px; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--accent); }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eyebrow, .tag, figcaption, .grid th span { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--muted); }
+.muted { color: var(--muted); }
+.lead { font-size: 18px; max-width: 68ch; }
+header.top { display: grid; gap: 14px; }
+.decide { border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--surface); border-radius: 6px; padding: 18px 20px; display: grid; gap: 10px; }
+.decide p { max-width: 72ch; }
+.decided-note { font-size: 15px; max-width: 78ch; color: var(--muted); border-left: 3px solid var(--line); padding-left: 12px; }
+.howto { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.howto > div { display: grid; gap: 8px; align-content: start; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px 18px; font-size: 14px; }
+.sw { display: inline-block; width: 22px; height: 14px; border-radius: 3px; border: 3px solid var(--fault); vertical-align: -2px; margin-right: 6px; }
+.sw.owner { border-color: var(--accent); }
+dl.terms { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 15px; }
+dl.terms dt { font-weight: 600; }
+dl.terms dd { margin: 0; color: var(--muted); }
+.toc { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.grid th, .grid td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: middle; }
+.grid thead th { white-space: normal; vertical-align: bottom; min-width: 64px; }
+.grid tbody th { font-weight: 400; min-width: 220px; }
+.grid tbody th a { font-family: var(--font-mono); font-weight: 500; text-decoration: none; margin-right: 4px; }
+.grid td.dot { color: var(--accent); text-align: center; font-size: 15px; }
+.family { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+.intro { max-width: 72ch; color: var(--muted); font-size: 17px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 22px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; scroll-margin-top: var(--anchor-gap); }
+.wrap > *, .family > *, .card > * { min-width: 0; }
+.card-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: baseline; }
+.cid { font-family: var(--font-mono); font-weight: 500; font-size: 15px; color: var(--accent); }
+.chips { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--font-label); font-size: 13px; background: var(--chip); border-radius: 999px; padding: 2px 10px; }
+.chip.live { background: var(--chip-live); color: var(--fault); }
+.story { display: grid; gap: 10px; max-width: 76ch; }
+.story .tag, .design .tag, .live-note .tag { display: block; margin-bottom: 2px; }
+.diagrams { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+figure.dia { margin: 0; border: 1px solid var(--line); border-radius: 6px; padding: 12px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+figure.dia.after { border-style: dashed; }
+.scroll { overflow-x: auto; min-width: 0; }
+.after-note { font-size: 14px; color: var(--muted); }
+.standalone { border-left: 3px solid var(--accent); padding-left: 12px; }
+.parity th, .parity td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; font-size: 14px; }
+.parity thead th { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; color: var(--muted); }
+.parity tbody th { font-weight: 600; min-width: 9em; }
+.parity td { min-width: 12em; }
+.parity tr.both-weak td, .parity tr.both-weak th { background: var(--chip); }
+.sa-box { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); padding: 18px 20px; display: grid; gap: 12px; }
+.sa-box p { max-width: 76ch; }
+.design { font-size: 15px; max-width: 80ch; border-top: 1px solid var(--line); padding-top: 14px; }
+details summary { cursor: pointer; font-size: 15px; color: var(--accent); }
+details[open] summary { margin-bottom: 10px; }
+.examples { margin: 0 0 12px; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; }
+.ids { font-family: var(--font-mono); font-size: 13px; color: var(--muted); margin-right: 4px; }
+.mods { display: flex; flex-wrap: wrap; gap: 6px; }
+.mods code { font-family: var(--font-mono); font-size: 12.5px; background: var(--chip); border-radius: 4px; padding: 2px 6px; overflow-wrap: anywhere; }
+.aside th, .aside td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.aside th { font-weight: 600; min-width: 9em; }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+.questions { display: grid; gap: 20px; }
+.q { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 18px 20px; display: grid; gap: 10px; }
+.q ol { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+.q .rec { font-weight: 500; }
+footer { font-size: 14px; color: var(--muted); display: grid; gap: 6px; }
+footer code { font-family: var(--font-mono); font-size: 13px; }
+.job { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; padding-top: 8px; border-top: 2px solid var(--line); scroll-margin-top: var(--anchor-gap); }
+.job > * { min-width: 0; }
+.job-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.job-head .kind { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--accent); }
+.jid { font-family: var(--font-mono); font-weight: 500; font-size: 17px; color: var(--accent); }
+.job-head .meaning { font-size: 17px; max-width: 74ch; }
+.chip.role { background: transparent; border: 1px solid var(--line); }
+.job-facts { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.job-facts > div { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.open { color: var(--fault); font-weight: 600; }
+.short { display: grid; gap: 8px; }
+.short ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.short li { max-width: 80ch; }
+.fid { font-family: var(--font-mono); font-weight: 500; margin-right: 6px; }
+.secondary { color: var(--muted); }
+.glance td, .glance th { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.glance tbody th { font-weight: 500; min-width: 15em; }
+.glance a { text-decoration: none; }
+.qgroup { display: grid; gap: 14px; }
+.qgroup > h3 { font-size: 17px; color: var(--muted); font-weight: 600; }
+.q h3 { color: var(--fg); }
+.q .applied { font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }
+.q .changedrec { font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fault); }
+.changed { font-size: 15px; max-width: 80ch; background: var(--chip); border-radius: 6px; padding: 10px 14px; }
+.changed .tag { display: block; margin-bottom: 2px; color: var(--accent); }
+.partrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+.partrow .tag { margin-right: 4px; }
+a.chip.part { text-decoration: none; color: var(--fg); border: 1px solid var(--accent); background: transparent; }
+a.chip.part:hover { background: var(--chip); }
+.job-head .was { font-size: 14px; color: var(--muted); }
+.job-head dl.who { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0; font-size: 15px; max-width: 80ch; }
+dl.who dt { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--muted); padding-top: 3px; }
+dl.who dd { margin: 0; }
+.fit { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; border-top: 2px solid var(--line); padding-top: 8px; }
+.fit > * { min-width: 0; }
+.fit-summary { display: grid; gap: 10px; max-width: 78ch; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 16px 20px; }
+.fit-block { display: grid; gap: 10px; min-width: 0; }
+.fit-block > *, .fit details { min-width: 0; }
+.fit-block > p { max-width: 76ch; }
+.mech th, .mech td, .alts th, .alts td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.mech thead th, .alts thead th { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; color: var(--muted); }
+.mech tbody th { font-weight: 600; min-width: 10em; }
+.alts tbody th { font-weight: 600; min-width: 11em; }
+.alts td { min-width: 14em; }
+.idcell { font-family: var(--font-mono); font-size: 13px; min-width: 8em; }
+.idcell a, .pmeta a { text-decoration: none; margin-right: 2px; }
+.layers-fig { margin: 0; display: grid; gap: 8px; }
+ol.layers { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ol.layers li { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+ol.layers .lvl { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; font-weight: 600; color: var(--muted); min-width: 4.5em; }
+.parts { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+article.part { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; scroll-margin-top: var(--anchor-gap); }
+article.part h4 { margin: 0; font-size: 16px; font-weight: 600; }
+article.part p { font-size: 14.5px; }
+.pmeta .tag { margin-right: 6px; }
+ul.devices { margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 80ch; }
+figure.dia.wide { padding: 12px; }
+figure.dia.whole { padding: 14px; }
+.svgwrap { min-width: 760px; }
+.shape-svg { display: block; width: 100%; height: auto; color: var(--fg); }
+.walks { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+figure.dia.walk { padding: 12px; }
+.figkey { font-size: 14px; color: var(--muted); max-width: 80ch; }
+.figkey .key { display: inline-block; width: 18px; height: 12px; border-radius: 3px; border: 3px solid; vertical-align: -1px; margin: 0 6px 0 10px; }
+.figkey .key:first-child { margin-left: 0; }
+.figkey .key.tap { border-color: var(--accent); }
+.figkey .key.machine { border-color: var(--warm); }
+.figkey .key.outside { border: 2px dashed var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+
+/* The site's frame: one gutter on the outer wrapper, a sticky navigation bar under the safe area,
+   the status line, and the components the new pages add. Every colour is a token. */
+.site { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.site > * { max-width: 1040px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
+body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); background: var(--nav-bg); z-index: 30; }
+.skip { position: absolute; left: -9999px; top: 0; }
+.skip:focus { left: max(16px, env(safe-area-inset-left, 0px)); top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 40; background: var(--surface); padding: 6px 10px; border-radius: 6px; }
+.sitenav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 10px 0; background: var(--nav-bg); box-shadow: 0 0 0 100vmax var(--nav-bg); clip-path: inset(0 -100vmax); font-family: var(--font-label); font-size: 14.5px; font-weight: 500; }
+.sitenav a { color: var(--fg); text-decoration: none; padding: 2px 0; border-bottom: 2px solid transparent; }
+.sitenav a:hover { border-bottom-color: var(--line); }
+.sitenav a[aria-current="page"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.sitenav .site-name { font-weight: 600; letter-spacing: 0.01em; margin-right: 6px; }
+.sitenav .count { display: inline-block; min-width: 1.6em; text-align: center; font-size: 12px; line-height: 1.5; border-radius: 999px; background: var(--accent); color: var(--on-accent); margin-left: 4px; padding: 0 5px; }
+.status { font-size: 14px; color: var(--muted); padding: 10px 0 0; margin-top: 0; margin-bottom: 0; }
+main.wrap { padding-top: 24px; }
+:root { --anchor-gap: calc(env(safe-area-inset-top, 0px) + 104px); }
+[id] { scroll-margin-top: var(--anchor-gap); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3, h4 { text-wrap: balance; }
+section { display: grid; gap: 14px; min-width: 0; }
+section > * { min-width: 0; }
+.page-head { display: grid; gap: 14px; }
+.page-head p { max-width: 72ch; }
+.prose { display: grid; gap: 10px; }
+.prose p { max-width: 76ch; }
+.where-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); }
+.where-grid > div { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+.where-grid > div.open-now { border-left: 4px solid var(--accent); }
+.where-grid h3 { font-size: 17px; }
+.where-grid ul, .plain-list { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 15px; }
+.moments { display: grid; gap: 14px; }
+.moment { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 16px 18px; display: grid; gap: 12px 28px; grid-template-columns: minmax(0, 17rem) minmax(0, 1fr); align-items: start; }
+.moment-meta, .moment-counts { display: grid; gap: 10px; align-content: start; min-width: 0; }
+@media (max-width: 720px) { .moment { grid-template-columns: minmax(0, 1fr); } }
+.moment h3 { font-size: 18px; }
+.moment .when { font-size: 14.5px; color: var(--muted); }
+.moment ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14.5px; }
+.moment ul.counts { list-style: none; padding-left: 0; gap: 10px; }
+.moment ul.counts a { font-weight: 500; }
+.moment ul.counts span { display: block; color: var(--muted); }
+.around { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); align-items: start; }
+.around-item { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; font-size: 14.5px; }
+.around-item h3 { font-size: 16px; }
+.around-item .tag { margin-right: 6px; }
+.guide { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.guide li { display: grid; grid-template-columns: minmax(7.5em, max-content) 1fr; gap: 2px 14px; max-width: 86ch; }
+.guide li a { font-weight: 600; }
+.words { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); }
+.words h3 { font-size: 16px; margin-bottom: 6px; }
+.q { scroll-margin-top: var(--anchor-gap); }
+.q h4 { font-size: 19px; font-weight: 600; line-height: 1.25; margin: 0; color: var(--fg); }
+.q ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; }
+.q .block { display: grid; gap: 4px; }
+.q ul.options { list-style: none; padding-left: 0; gap: 8px; }
+.q ul.options li { border-left: 3px solid var(--line); padding-left: 10px; }
+.q ul.options strong { font-weight: 600; }
+.q .rec { border-top: 1px solid var(--line); padding-top: 10px; }
+.q .rec .tag { display: block; color: var(--accent); margin-bottom: 2px; }
+.stag { justify-self: start; font-family: var(--font-label); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-radius: 999px; padding: 2px 10px; border: 1px solid var(--line); color: var(--muted); }
+.stag.s-applied { color: var(--accent); border-color: var(--accent); }
+.stag.s-changed { color: var(--fault); border-color: var(--fault); background: var(--chip-live); }
+.q.q-applied { border-left-color: var(--accent); }
+.q.q-changed { border-left-color: var(--fault); }
+.q.q-open { border-left-color: var(--line-strong); }
+.qgroup > h3 { font-size: 17px; color: var(--muted); font-weight: 600; }
+ol.step3 { margin: 0; padding-left: 22px; display: grid; gap: 6px; max-width: 86ch; }
+.decided-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.decided-list li { display: grid; grid-template-columns: minmax(8.5em, max-content) 1fr; gap: 2px 14px; max-width: 92ch; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; }
+.decided-list .dn { font-family: var(--font-label); font-weight: 600; }
+.decided-list .dd { display: block; font-size: 13px; color: var(--muted); font-weight: 500; }
+.log-entry { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; display: grid; gap: 8px; scroll-margin-top: var(--anchor-gap); }
+.log-entry h3 { font-size: 18px; }
+.log-entry .when { font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--muted); }
+.log-entry ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; max-width: 86ch; }
+.log-entry .prompt { font-size: 15px; color: var(--muted); border-left: 3px solid var(--accent); padding-left: 12px; max-width: 86ch; }
+.log-entry .was-title { font-size: 15px; }
+.log-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.beforeafter { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); }
+.beforeafter > div { display: grid; gap: 4px; align-content: start; font-size: 15px; }
+.fgroup { display: grid; gap: 16px; border-top: 2px solid var(--line); padding-top: 10px; }
+.fgroup > h3 { font-size: 20px; }
+.fgroup > h3 .tag { display: block; margin-bottom: 4px; }
+.card-head h4 { font-size: 19px; font-weight: 600; line-height: 1.2; margin: 0; }
+.card.proposed { border-style: dashed; }
+.flawtable th, .flawtable td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+.flawtable thead th, .glance thead th { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; color: var(--muted); }
+.flawtable tbody th { font-weight: 500; min-width: 16em; }
+.flawtable td { min-width: 9em; }
+.flawtable td.num { min-width: 4em; }
+.flawtable .fid, .glance .fid { font-family: var(--font-mono); font-weight: 500; margin-right: 4px; }
+.flawtable a, .glance a { text-decoration: none; }
+.glance td { min-width: 12em; font-size: 14px; }
+.glance td.flawcell { min-width: 9em; }
+.lead-in { max-width: 78ch; }
+.alts tbody tr { scroll-margin-top: var(--anchor-gap); }
+.alts tbody tr:target th, .alts tbody tr:target td { background: var(--chip); }
+.part h3 { margin: 0; font-size: 16px; font-weight: 600; }
+footer.site-foot { padding: 32px 0 48px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); display: grid; gap: 6px; }
+footer.site-foot p { max-width: 90ch; }
+footer.site-foot code { font-family: var(--font-mono); font-size: 13px; overflow-wrap: anywhere; }
+.dia-svg { margin: 0; background: transparent; font-size: 13px; text-align: center; }
+figure.dia.walk .dia-svg svg { min-width: 720px; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+
+.dia-svg svg { max-width: none; }
+.dia-svg [stroke="#000000"], .dia-svg [stroke="#666"], .dia-svg [stroke="#999"] { stroke: var(--dia-line); }
+.dia-svg [fill="#eaeaea"] { fill: var(--dia-node); }
+.dia-svg [fill="#EDF2AE"] { fill: var(--dia-note); }
+</style>
+</head>
+<body>
+<div class="site">
+<a class="skip" href="#main">Skip to the page</a>
+<nav class="sitenav" aria-label="Pages of this site"><a class="site-name" href="index.html">What the Engine Promises</a><a href="index.html">The engine</a><a href="decisions.html" aria-current="page" aria-label="Decisions, 13 open questions">Decisions<span class="count" aria-hidden="true">13</span></a><a href="promises.html">Promises</a><a href="parts.html">Parts</a><a href="flaws.html">Design flaws</a><a href="changes.html">Change log</a></nav>
+<p class="status">Architecture pass, phase 1, step 1. The shape is a candidate; nothing is decided unless a page says so. Updated 2026-11-01.</p>
+<main class="wrap" id="main">
+<header class="page-head">
+  <h1>Decisions</h1>
+  <div class="prose"><p>Everything still open for you is on this page, each question with its evidence on the same screen. Answer in the chat, by the question&#x27;s letter or number. Each question stands alone: answer any of them, in any order, and leave the rest for later.</p><p>Three tags say where a question stands. Open: no answer yet. Applied, please confirm: the change is already in the promise&#x27;s wording, and one word from you keeps it or undoes it. Recommendation changed by the map: the candidate shape changed what we recommend, and the question says what the earlier recommendation was.</p><p>Under each question, &quot;What we know&quot; lists the facts the answer rests on. Most facts link to the promise, part, design flaw or question they come from, so you can read more before you answer. The shape is a candidate; nothing on this page is decided unless the Decided list at the end says so.</p></div>
+</header>
+
+<section class="questions" id="open" aria-labelledby="open-h">
+  <h2 id="open-h">Open now</h2>
+  <div class="qgroup">
+    <h3>About the promises</h3>
+    <div class="q q-open" id="q-promises">
+  <p class="stag s-open">Open</p>
+  <h4>Are these the right ten promises, and does each read from the side of the people who count on it?</h4>
+  <div class="block"><span class="tag">What it decides</span><p>Whether the ten promises on the <a href="promises.html">Promises</a> page are the base the pass designs for, with these titles, or something is missing, doubled or wrongly put.</p></div>
+  <div class="block"><span class="tag">What we know</span><ul><li>Each promise says who counts on it, when, and what must happen for them. Every title is new; the earlier wording of each is in the <a href="changes.html">Change log</a>.</li><li>In the map every promise is kept by parts of its own; each entry on the <a href="promises.html">Promises</a> page names the parts that keep it.</li><li>The one candidate for an eleventh promise, running in any setup, owns no part; see <a href="#q-e">question E</a>.</li><li>Each design flaw mainly breaks exactly one promise. <a href="promises.html#change-a-value">The designer changes a value and plays it within minutes, and the live show never notices</a> is the one promise no flaw mainly breaks today; <a href="flaws.html#c8">Engine and tests both assume they own the machine</a> and <a href="flaws.html#c12">Pack edits reach each copy of the pack differently</a> break it beside others.</li><li>This question replaces question 17 of round 8, which asked whether the list of causes was right.</li></ul></div>
+  
+  <p class="rec"><span class="tag">Recommendation</span>Keep these ten as the base, with these titles, and settle D to G below. In the map every promise is kept by parts of its own, and the one candidate for an eleventh, &quot;run in any setup&quot;, owns no part (question E).</p>
+</div><div class="q q-applied" id="q-a">
+  <p class="stag s-applied">Applied, please confirm</p>
+  <h4>A. &quot;<a href="promises.html#designers-game">The designer&#x27;s game is the game the whole kit plays</a>&quot; now says a second designer&#x27;s game runs on the same engine, and that every device plays the same version of the pack and shows which.</h4>
+  <div class="block"><span class="tag">What it decides</span><p>Whether both added clauses stay in the promise.</p></div>
+  <div class="block"><span class="tag">What we know</span><ul><li>&quot;Nothing in the engine assumes ALN&quot; is now a quality every part must have, named Generic on the <a href="parts.html">Parts</a> page. It is carried by <a href="parts.html#game-rules">Game rules</a>, which takes rules only from the pack, and by <a href="parts.html#venue-fit">Venue fit</a> and <a href="parts.html#engine-instance">Engine instance</a>, which take kit names only from the profile and the instance.</li><li>The version every device shows is the stamp <a href="parts.html#pack-channel">Pack channel</a> puts on every copy and every game record, compared whenever a device connects.</li><li>The second clause is what <a href="flaws.html#c12">Pack edits reach each copy of the pack differently</a> breaks: today a tablet running a different pack than the engine is only written to a log, and nothing tells the GM.</li><li>A second designer&#x27;s game on the same engine rests on the same part, <a href="parts.html#game-rules">Game rules</a>, which only calculates and changes nothing.</li></ul></div>
+  
+  <p class="rec"><span class="tag">Recommendation</span>Keep both. The first is what lets other games run; the second is what design flaw <a href="flaws.html#c12">C12</a> breaks.</p>
+</div><div class="q q-applied" id="q-b">
+  <p class="stag s-applied">Applied, please confirm</p>
+  <h4>B. &quot;<a href="promises.html#each-person">Each person sees their part and can do only their part</a>&quot; now covers who may do what, not only who sees what.</h4>
+  <div class="block"><span class="tag">What it decides</span><p>Whether the promise keeps its second half: starting, pausing and ending a game and changing scores stay with the GM, and the stored passwords and keys change before outsiders touch the system.</p></div>
+  <div class="block"><span class="tag">What we know</span><ul><li>One part, <a href="parts.html#connections-and-roles">Connections and roles</a>, holds both the pass and what it allows, and <a href="parts.html#answering">Answering</a> checks the rule once, at the one door every request passes.</li><li>The same rule is a quality every part must have, named &quot;Only the GM moves the game&quot; on the <a href="parts.html">Parts</a> page.</li><li>Today a connection&#x27;s own word decides what it gets: anyone on the kit network can fetch the whole game state, and the TV connects as if it were a GM tablet (<a href="flaws.html#c13">The engine does not know who is connected</a>).</li></ul></div>
+  
+  <p class="rec"><span class="tag">Recommendation</span>Agree.</p>
+</div><div class="q q-applied" id="q-c">
+  <p class="stag s-applied">Applied, please confirm</p>
+  <h4>C. &quot;<a href="promises.html#the-venue">The game fits the venue it is in tonight</a>&quot; now says a standalone game is a choice the game declares, never mixed.</h4>
+  <div class="block"><span class="tag">What it decides</span><p>Whether the clause stays, and, folded in from question 23, whether &quot;nothing declares a game standalone&quot; is a design flaw of its own (<a href="flaws.html#n1">Nothing declares a game standalone</a>) with its own rule.</p></div>
+  <div class="block"><span class="tag">What we know</span><ul><li>These are your decision 22&#x27;s words (2026-10-31): a whole game can run with no engine, as a choice a game declares, and no game mixes networked and standalone devices.</li><li>The map supports them: whether a game is standalone is an input every rule takes (the quality &quot;Who decides when there is no engine&quot;), and <a href="promises.html#the-venue">The game fits the venue it is in tonight</a>, which fits the game to tonight&#x27;s setup, is where it is declared.</li><li>Where the declaration is kept is a step-3 choice: the venue profile, the pack, the game&#x27;s record or each device. The map favours the profile, because a profile that lists no engine equipment already makes every engine duty read &quot;not installed tonight&quot;. Whichever is chosen, <a href="parts.html#pack-channel">Pack channel</a> carries the declaration to every device.</li><li>Today the declaration is each tablet&#x27;s own tap, the phone&#x27;s web address and nothing on the hardware scanner; the pack has no field for it (<a href="flaws.html#n1">Nothing declares a game standalone</a>).</li><li><a href="flaws.html#n1">Nothing declares a game standalone</a> holds eight findings from the standalone pass. If it is not a flaw of its own, they join <a href="flaws.html#c9">Tablets and phones decide facts the engine owns</a>, <a href="flaws.html#c11">Several places answer the same question, each differently</a> and <a href="flaws.html#c14">Names joining two places are kept by hand</a> and the hardware scanner parity list. On the map it lands on <a href="parts.html#pack-channel">Pack channel</a> and <a href="parts.html#venue-fit">Venue fit</a>, or on <a href="parts.html#game-record">Game record</a> if the declaration is kept there; the answer to 23 does not move it.</li></ul></div>
+  
+  <p class="rec"><span class="tag">Recommendation</span>Agree. On question 23, yes: three other rules (game boundaries, one answer per question, how old a copy is) need the declared fact as an input, and would otherwise each invent their own answer.</p>
+</div><div class="q q-open" id="q-d">
+  <p class="stag s-open">Open</p>
+  <h4>D. Split &quot;<a href="promises.html#every-tap">Every tap gets its answer, and the night can be told afterwards</a>&quot; into two promises?</h4>
+  <div class="block"><span class="tag">What it decides</span><p>Whether the tap&#x27;s answer and the night&#x27;s record are one promise or two. The parts are the same either way.</p></div>
+  <div class="block"><span class="tag">What we know</span><ul><li>Decision 28 (2026-11-01) changed the second half of <a href="promises.html#every-tap">Every tap gets its answer, and the night can be told afterwards</a>: it now names the director who tells the night&#x27;s story and the players it is told to, beside you and the designer. This question stays open.</li><li>Answering happens at the tap, for the GM or the player. The night&#x27;s record is for after the show: what is captured during play, the session bundle, the review. The map confirms the two share no part: <a href="parts.html#answering">Answering</a> sits in the middle of the engine, and five promises depend on it; <a href="parts.html#the-nights-record">The night&#x27;s record</a> is written once, at the end of a game, and read afterwards.</li><li><a href="parts.html#the-nights-record">The night&#x27;s record</a> now carries the game the night ran and the texts the players saw (decision 28, point 3). The designer&#x27;s Review reads it inside the engine; the game&#x27;s own telling, for ALN the Director Console, reads it from outside, with room to run inside the Review stage later (decision 28, point 5).</li><li><a href="flaws.html#c7">A reply never says which request, final or stored</a> mainly breaks the tap&#x27;s answer. No design flaw mainly breaks the night&#x27;s record half yet, because that half is mostly planned work.</li><li>The alternatives table on the <a href="parts.html">Parts</a> page has this row: the tap&#x27;s answer and the night&#x27;s record, one part or two.</li></ul></div>
+  <div class="block"><span class="tag">The options, and what each costs</span><ul class="options"><li><strong>Keep one promise.</strong> The GM at the tap and the people after the show (the director, the players, you and the designer) look for what they count on in one sentence.</li><li><strong>Split into two promises.</strong> Makes a promise that no design flaw mainly breaks yet, because the night&#x27;s record is mostly planned work.</li></ul></div>
+  <p class="rec"><span class="tag">Recommendation</span>Split, into &quot;Every tap gets its answer&quot; and &quot;The night can be told afterwards&quot;. The two halves serve different people at two moments and share no part, so two sentences let each find theirs.</p>
+</div><div class="q q-changed" id="q-e">
+  <p class="stag s-changed">Recommendation changed by the map</p>
+  <h4>E. Keep &quot;<a href="promises.html#the-venue">The game fits the venue it is in tonight</a>&quot; as one promise, rather than split it?</h4>
+  <div class="block"><span class="tag">What it decides</span><p>Whether running in any setup (no engine, another kit) gets a promise of its own, and which title the one promise carries if it stays one.</p></div>
+  <div class="block"><span class="tag">What we know</span><ul><li>Fitting the game to tonight&#x27;s venue is one part with an output of its own: <a href="parts.html#venue-fit">Venue fit</a> holds the venue technician&#x27;s profile, which says what the kit brings, binds each of the pack&#x27;s names to a real instrument and says whether the engine starts each program; <a href="parts.html#verdict">Verdict</a> turns it into one go or no-go.</li><li>The map found that &quot;run in any setup&quot; has no part of its own. Running with no engine is a switch every rule takes, declared as part of fitting the game. Running on another kit is each engine knowing its own names, <a href="parts.html#engine-instance">Engine instance</a>, the same part that keeps a test from touching the live show. A separate promise for it would own nothing.</li><li>The promise already names the venue technician, a GM running a game with no engine and a future operator with a second kit; the last two are in its sentences, not in its title.</li><li><a href="flaws.html#n1">Nothing declares a game standalone</a> mainly breaks this promise; <a href="flaws.html#c15">The deployed game is many parts nothing compares</a> breaks it where program names and install commands are fixed to one operating-system release, so a new machine logs warnings or refuses its install.</li><li>The earlier recommendation, to split, is in the <a href="changes.html">Change log</a>.</li></ul></div>
+  <div class="block"><span class="tag">The options, and what each costs</span><ul class="options"><li><strong>Split: a promise of its own for running in any setup.</strong> It would own no part.</li><li><strong>One promise, titled &quot;The game fits the venue, whatever the setup&quot;.</strong> Keeps standalone games and other kits in the title; the venue technician&#x27;s moment moves to the sentences.</li><li><strong>One promise, titled &quot;The game fits the venue it is in tonight&quot;.</strong> Names the venue technician&#x27;s moment; the GM running a standalone game and a future operator with another kit are named in a sentence, not in a title.</li></ul></div>
+  <p class="rec"><span class="tag">Recommendation</span>One promise, titled &quot;The game fits the venue it is in tonight&quot;, with standalone games kept in its first sentences. This replaces the earlier recommendation to split.</p>
+</div><div class="q q-changed" id="q-f">
+  <p class="stag s-changed">Recommendation changed by the map</p>
+  <h4>F. &quot;<a href="promises.html#proven-change">A change is proven before it reaches anyone, and the owner alone sends it to the show</a>&quot;: one promise, two, or release day moved?</h4>
+  <div class="block"><span class="tag">What it decides</span><p>Whether the developer&#x27;s proof and your release day stay in one promise, split, move release day under the venue technician, or go back to a sentence about tests alone.</p></div>
+  <div class="block"><span class="tag">What we know</span><ul><li>The map separates this promise&#x27;s two moments. Before every change, the developer&#x27;s tests pass and show the show still works for ALN and for the toy game; that is a quality every part must have (Proof, on the <a href="parts.html">Parts</a> page), and checking that joined parts agree is part of it. <a href="parts.html#joins-and-proofs">Joins and proofs</a> and <a href="parts.html#engine-instance">Engine instance</a> carry it.</li><li>On release day, you decide when a new version goes to the venue and can swap back by replugging a machine. That is one small part, <a href="parts.html#release">Release</a>: what is installed is one described set the engine compares at start, so a rollback moves everything or says what it did not.</li><li>Four flaws mainly break this promise: <a href="flaws.html#c8">Engine and tests both assume they own the machine</a>, <a href="flaws.html#c14">Names joining two places are kept by hand</a>, <a href="flaws.html#c15">The deployed game is many parts nothing compares</a> and <a href="flaws.html#c16">A green test run proves nothing about the show</a>. Question 4 of the pass covers keeping tests away from the live show (<a href="flaws.html#c8">Engine and tests both assume they own the machine</a>). For the other three no question of the nine fits: question 5 is only the nearest for the names two parts share (<a href="flaws.html#c14">Names joining two places are kept by hand</a>), and the installed pieces (<a href="flaws.html#c15">The deployed game is many parts nothing compares</a>) and tests that prove the real path (<a href="flaws.html#c16">A green test run proves nothing about the show</a>) have none.</li><li>Every option below places <a href="flaws.html#c15">The deployed game is many parts nothing compares</a>; <a href="flaws.html#c16">A green test run proves nothing about the show</a> lands on <a href="parts.html#joins-and-proofs">Joins and proofs</a> whichever you choose.</li><li>The alternatives table on the <a href="parts.html">Parts</a> page has this row: release day as its own part beside the developer&#x27;s proof, or in <a href="parts.html#venue-fit">Venue fit</a>&#x27;s deploy chain. This question replaces question 18 of round 8. The earlier recommendation is in the <a href="changes.html">Change log</a>.</li></ul></div>
+  <div class="block"><span class="tag">The options, and what each costs</span><ul class="options"><li><strong>a. Keep one promise covering both moments, as the title does.</strong> One title covers two people at two moments, the developer&#x27;s proof and your release day; the pass gives each its own question.</li><li><strong>b. Split release day into a promise of its own.</strong> It gives your release day its own sentence, kept by one small part.</li><li><strong>c. File release day with the venue technician&#x27;s deploy work, under &quot;<a href="promises.html#the-venue">The game fits the venue it is in tonight</a>&quot;.</strong> The check of what is installed sits where the venue technician works, but your decision to send a version moves away from the developer&#x27;s proof.</li><li><strong>d. Go back to the earlier wording, about tests alone.</strong> The parts fit that too; the cost is that your release day stays unnamed.</li></ul></div>
+  <p class="rec"><span class="tag">Recommendation</span>One promise, as the title has it, and give the proof and the release a question each in the pass. Both moments exist so that nothing reaches the live show unproven, or before you say so. The earlier split into &quot;prove it works&quot; and &quot;keep every part in step&quot; does not match the map, because keeping joined parts in step is part of the proof.</p>
+</div><div class="q q-changed" id="q-g">
+  <p class="stag s-changed">Recommendation changed by the map</p>
+  <h4>G. Which promise covers the equipment&#x27;s state on every screen?</h4>
+  <div class="block"><span class="tag">What it decides</span><p>Whether the route that carries the equipment&#x27;s state to the screens is named in &quot;<a href="promises.html#the-room">The room does what the designer cued and the GM asked</a>&quot;, in &quot;<a href="promises.html#one-game">One game, the same on every screen</a>&quot;, or in neither.</p></div>
+  <div class="block"><span class="tag">What we know</span><ul><li>If step 3 keeps one delivery part, neither promise needs to name the route: <a href="parts.html#delivery">Delivery</a> carries every fact to every screen, game facts and equipment alike, each with its label (how sure, how old); six promises use it.</li><li><a href="parts.html#equipment">Equipment</a> decides each program&#x27;s state and health as one dated fact; <a href="parts.html#delivery">Delivery</a> carries it; <a href="parts.html#screens">Screens</a> draw it.</li><li>The two promises already cover their halves. Under <a href="promises.html#the-room">The room does what the designer cued and the GM asked</a>, the GM makes the room do a thing and sees it happen, or sees at once that it did not. Under <a href="promises.html#one-game">One game, the same on every screen</a>, every screen agrees, also after a tablet comes back. The game&#x27;s running state there already includes the video queue, music, held items, the clock and each service&#x27;s health.</li><li><a href="flaws.html#c2">Service health and service state travel on separate paths</a> is the flaw this question places: today health and state travel on separate routes, so the music card keeps its playing look while the health row turns red. Its card sits under <a href="promises.html#the-room">The room does what the designer cued and the GM asked</a>, where its moment at a show is felt.</li><li>Step 3 chooses between one delivery part and the parts behind each promise delivering their own facts; the alternatives table on the <a href="parts.html">Parts</a> page has that row. The earlier answer is in the <a href="changes.html">Change log</a>.</li></ul></div>
+  <div class="block"><span class="tag">The options, and what each costs</span><ul class="options"><li><strong>Name the route in neither promise.</strong> Holds only as long as step 3 keeps one delivery part.</li><li><strong>Name it under &quot;<a href="promises.html#the-room">The room does what the designer cued and the GM asked</a>&quot;.</strong> The words sit with the equipment whose state it is, but that promise then names a route the other also needs.</li><li><strong>Name it under &quot;<a href="promises.html#one-game">One game, the same on every screen</a>&quot;.</strong> The words match how the game&#x27;s running state is already defined, but that promise then carries the equipment beside the game&#x27;s record.</li></ul></div>
+  <p class="rec"><span class="tag">Recommendation</span>Add the route to neither promise, as long as step 3 keeps one delivery part; both then hold through it, and <a href="flaws.html#c2">C2</a>&#x27;s card stays under &quot;<a href="promises.html#the-room">The room does what the designer cued and the GM asked</a>&quot;, where its moment at a show is felt. If step 3 chooses the other way, with the parts behind each promise delivering their own facts, the route belongs with the room promise, beside <a href="flaws.html#c2">C2</a>&#x27;s card. This replaces the earlier answer, which put the route under the room promise whatever the design.</p>
+</div>
+  </div><div class="qgroup">
+    <h3>About standalone games</h3>
+    <div class="q q-open" id="q-22">
+  <p class="stag s-open">Open</p>
+  <h4>22. The ESP32 gets a standalone mode matching the web scanner&#x27;s.</h4>
+  <div class="block"><span class="tag">What it decides</span><p>Whether the hardware scanner&#x27;s missing standalone mode is parity work the pass must serve, as decision 22 recorded on your parity reasoning. Your explicit word is asked for.</p></div>
+  <div class="block"><span class="tag">What we know</span><ul><li>Decision 22 (2026-10-31) recorded the hardware scanner&#x27;s missing standalone mode as a parity gap, not a new feature, because the two player scanners keep feature parity wherever possible.</li><li>The parity table on the <a href="flaws.html">Design flaws</a> page compares 24 abilities; with no engine the hardware scanner trails the phone in seven of them.</li><li>Today the hardware scanner treats a missing engine as an outage that never ends: a red Disconnected, a growing queue, and &quot;Rescan later&quot; for a video that can never play (<a href="flaws.html#c10">Screens show a normal value when nothing is known</a>, <a href="flaws.html#n1">Nothing declares a game standalone</a>).</li><li>A yes means the standalone declaration must reach a device that has no idea of it today; on the map <a href="parts.html#pack-channel">Pack channel</a> carries it to every device with its pack.</li></ul></div>
+  <div class="block"><span class="tag">The options, and what each costs</span><ul class="options"><li><strong>Yes.</strong> The standalone declaration must reach a device that has no idea of it today.</li><li><strong>No.</strong> Leaves the hardware scanner behind the phone with no engine, in seven of the 24 abilities the parity table compares, and showing a missing engine as a red outage all night.</li></ul></div>
+  <p class="rec"><span class="tag">Recommendation</span>Yes, as your parity rule asks.</p>
+</div><div class="q q-open" id="q-24">
+  <p class="stag s-open">Open</p>
+  <h4>24. Does a standalone game run on one GM tablet?</h4>
+  <div class="block"><span class="tag">What it decides</span><p>Whether one tablet is the whole authority of a standalone game, and whether a standalone tablet&#x27;s record of the night can hold player scans.</p></div>
+  <div class="block"><span class="tag">What we know</span><ul><li>Today two standalone tablets are two separate games: each holds its own claim list, so one token can be sold on both, and each holds its own score table (<a href="flaws.html#c1">Each tablet keeps its own list of claimed tokens</a>).</li><li>Several tablets sharing one game with no engine would need them to talk to each other directly, a large new piece.</li><li>A standalone tablet&#x27;s record of the night (<a href="parts.html#the-nights-record">The night&#x27;s record</a>) can hold player scans only if the standalone player scanners hand their scans to that tablet.</li><li>Player devices need to learn each new game: a game id from the tablet that they check, if they are joined to it, or a reset of their own (<a href="flaws.html#c4">Nothing says what a game boundary clears or keeps</a>).</li><li>In the candidate shape the tablet runs the engine&#x27;s <a href="parts.html#game-record">Game record</a> and <a href="parts.html#lifecycle">Lifecycle</a>, or an engine of its own kept equal by tests; the alternatives table on the <a href="parts.html">Parts</a> page has that row.</li></ul></div>
+  <div class="block"><span class="tag">The options, and what each costs</span><ul class="options"><li><strong>One tablet.</strong> Standalone games with two GMs are ruled out.</li><li><strong>Several tablets sharing one game.</strong> They would need to talk to each other directly, a large new piece.</li></ul></div>
+  <p class="rec"><span class="tag">Recommendation</span>One tablet, unless you plan standalone games with two GMs.</p>
+</div><div class="q q-open" id="q-25">
+  <p class="stag s-open">Open</p>
+  <h4>25. With no engine and no TV, what do exposed evidence and video tokens do?</h4>
+  <div class="block"><span class="tag">What it decides</span><p>What the screens draw in those two cases.</p></div>
+  <div class="block"><span class="tag">What we know</span><ul><li>In detective-style modes the pack says an exposure shows on the scoreboard. On a tablet alone the scoreboard screen is kept to ranking modes and the evidence picker is hidden, so the GM sees the summary once, on the result screen, and &quot;exposed means public&quot; has no standalone effect (<a href="flaws.html#n1">Nothing declares a game standalone</a>).</li><li>A video token on the phone shows a black screen with the token&#x27;s name; on the hardware scanner, its picture and &quot;Rescan later&quot;, which never works (<a href="flaws.html#n1">Nothing declares a game standalone</a>, <a href="flaws.html#c10">Screens show a normal value when nothing is known</a>).</li><li>The screens that would draw either answer are <a href="parts.html#screens">Screens</a>; in the candidate shape a small <a href="parts.html#verdict">Verdict</a> stand-in on the tablet marks every engine duty dormant: grey, never red.</li><li>The standalone pass left both answers to you: what a video token shows with no engine is a declared answer standalone needs, not a fault to fix.</li></ul></div>
+  <div class="block"><span class="tag">The options, and what each costs</span><ul class="options"><li><strong>Exposed evidence on the tablet&#x27;s own scoreboard screen; a video token shows its picture with a plain note.</strong> Needs the tablet&#x27;s own scoreboard screen to show exposed evidence.</li><li><strong>Show nothing for exposure and hide video tokens.</strong> Smaller, but drops a mode&#x27;s effect from a standalone game.</li></ul></div>
+  <p class="rec"><span class="tag">Suggestion</span>Exposed evidence shows on the GM tablet&#x27;s own scoreboard screen, which standalone already has. A video token shows its picture with a plain note instead of an error.</p>
+</div>
+  </div><div class="qgroup">
+    <h3>About the game&#x27;s record</h3>
+    <div class="q q-open" id="q-19">
+  <p class="stag s-open">Open</p>
+  <h4>19. When a GM scan is refused, does the game keep a record of the attempt?</h4>
+  <div class="block"><span class="tag">What it decides</span><p>Whether the game&#x27;s record keeps refused attempts (a token already used, or no game running), or only the answer goes back to the tablet.</p></div>
+  <div class="block"><span class="tag">What we know</span><ul><li>Today a refused GM scan is told to the tablet that scanned and recorded nowhere else. The cause analysis set this aside as a product choice no design flaw decides.</li><li>On the map <a href="parts.html#game-record">Game record</a> is where the game&#x27;s facts are decided and the answer goes back through <a href="parts.html#answering">Answering</a>. A yes adds a kind of fact to the record that no screen shows yet.</li><li>Where <a href="promises.html#every-tap">Every tap gets its answer, and the night can be told afterwards</a> lists <a href="flaws.html#c9">Tablets and phones decide facts the engine owns</a>, it leaves this to you: whether refused scans belong in the night&#x27;s record is your open question, not that flaw.</li><li>A standalone tablet records refused duplicates and unknown tokens nowhere either; a yes needs a standalone counterpart, which <a href="flaws.html#c7">A reply never says which request, final or stored</a>&#x27;s change carries.</li></ul></div>
+  <div class="block"><span class="tag">The options, and what each costs</span><ul class="options"><li><strong>Yes.</strong> The record gains a kind of fact that no screen shows yet.</li><li><strong>No.</strong> A refused attempt is recorded nowhere, as today: only the tablet that scanned hears about it, and the night&#x27;s record cannot tell it.</li></ul></div>
+  <p class="rec"><span class="tag">Recommendation</span>Yes. Record every attempt and its answer, and show it nowhere until a feature needs it.</p>
+</div>
+  </div><div class="qgroup">
+    <h3>About the next step</h3>
+    <div class="q q-open" id="q-21">
+  <p class="stag s-open">Open</p>
+  <h4>21. How many problems should the test rig prove before design starts?</h4>
+  <div class="block"><span class="tag">What it decides</span><p>How many runs the test rig makes in step 2, before step 3&#x27;s design starts.</p></div>
+  <div class="block"><span class="tag">What we know</span><ul><li>The test rig is the automated test machine with real video, music, audio and lighting stand-ins. On it a problem can be made to happen for real instead of read off the code. It is step 2 of phase 1 and follows your answers here.</li><li>The program document names four reproductions for the rig: the deleted token still refused (<a href="flaws.html#c1">Each tablet keeps its own list of claimed tokens</a>), the music panel behind live music (<a href="flaws.html#c2">Service health and service state travel on separate paths</a>), the ended game returning after a restart (<a href="flaws.html#c4">Nothing says what a game boundary clears or keeps</a>) and the reset that leaves music out (<a href="flaws.html#c5">Boot and Reset System wire the engine differently</a>).</li><li>Eight flaws already carry a &quot;seen live&quot; note on their cards on the <a href="flaws.html">Design flaws</a> page, among them <a href="flaws.html#c8">Engine and tests both assume they own the machine</a> (a unit test killed the live video player), <a href="flaws.html#c10">Screens show a normal value when nothing is known</a> (a greyed music card went unnoticed at the venue), <a href="flaws.html#c15">The deployed game is many parts nothing compares</a> (a half-applied rollback) and <a href="flaws.html#c16">A green test run proves nothing about the show</a> (62 skipped tests).</li><li>Phase 2 proves each problem anyway, because every area starts with its test failing on today&#x27;s engine.</li><li>The rig needs stand-ins for the room&#x27;s equipment; <a href="parts.html#equipment">Equipment</a> plans one software stand-in per capability for the preview engine and the test rig.</li></ul></div>
+  
+  <p class="rec"><span class="tag">Recommendation</span>One per design flaw, 16 runs.</p>
+</div>
+  </div>
+</section>
+
+<section class="questions" id="step-3" aria-labelledby="step-3-h">
+  <h2 id="step-3-h">Coming in step 3, no answer needed</h2>
+  <div class="q">
+    <h4>The map leaves these choices to you.</h4>
+    <p>Step 3 puts each in front of you with designs side by side. They are listed here so nothing arrives as a surprise.</p>
+    <ol class="step3"><li>Where &quot;this game is standalone&quot; is declared: the venue profile (the map favours it), the pack, the game&#x27;s record or each device.</li><li>Getting facts onto screens: one delivery part for every fact, or the parts behind each promise delivering their own facts in a shared shape. Both designs and their costs are compared under &quot;Where a real alternative exists&quot; on <a href="parts.html#alt-delivery">Parts</a>.</li><li>The life of a game: one lifecycle part that alone moves the game and resets every part, or a table each part reads and applies itself. Both designs and their costs are compared on <a href="parts.html#alt-lifecycle">Parts</a>.</li><li>The game rules as one shared body of code that the engine and the tablet both run, or two bodies kept equal by tests. Both designs and their costs are compared on <a href="parts.html#alt-rules">Parts</a>.</li><li>The equipment&#x27;s interface: one per thing the room can do (play a video, light a scene), or one per outside program. Both designs and their costs are compared on <a href="parts.html#alt-equipment">Parts</a>.</li><li>The standalone tablet: the same record and lifecycle parts the engine runs, or an engine of its own. Both designs and their costs are compared on <a href="parts.html#alt-standalone-tablet">Parts</a>.</li><li>The scoreboard: one page in two places, or a view inside the GM app. Both designs and their costs are compared on <a href="parts.html#alt-scoreboard">Parts</a>.</li><li>The config tool: a separate program that talks to the engine by message, or a surface the engine itself serves.</li><li>When a changed pack may be adopted while the engine runs. That is not built yet; the plan allows it only before a game starts or after it ends.</li><li>Where the setting lives that says whether the engine starts each outside program or adopts one already running: in the venue technician&#x27;s profile, as the candidate shape has it, or in a file of its own, as the capability map you approved has it.</li><li>The order of the work: by part, with the engine&#x27;s own names and delivery first since most flaws land on them, or by block as the roadmap has it.</li><li>Whether paper documents join the pack, with &quot;unlocked&quot; recorded during play, so the night&#x27;s record can say which documents the players opened. Decision 28 left this to step 3; today the director marks them by hand after the show.</li></ol>
+  </div>
+</section>
+
+<section id="decided" aria-labelledby="decided-h">
+  <h2 id="decided-h">Decided</h2>
+  <ul class="decided-list"><li><span class="dn">Decision 20<span class="dd">2026-10-31</span></span><span>No rule for documents in the pass. Documents are fixed as we go, always.</span></li><li><span class="dn">Decision 22<span class="dd">2026-10-31</span></span><span>Standalone games join the list every rule must serve: a whole game run with no engine, the GM scanner and the player scanners each working alone, as a choice a game can declare. No game mixes networked and standalone devices. The hardware scanner&#x27;s missing standalone mode was recorded as a parity gap; your explicit word is question 22 above.</span></li><li><span class="dn">Decision 26<span class="dd">2026-10-31</span></span><span>The pass designs the best engine for the long term, as its use grows beyond ALN. Blue&#x27;s fixes and findings are clues to where today&#x27;s design is off, never the driver.</span></li><li><span class="dn">Decision 27<span class="dd">2026-11-01</span></span><span>The page&#x27;s words: a promise is what a person can count on at a given moment; parts keep promises; design flaws break them; a quality is something every part must have; a moment is when a promise matters. The person who fits a kit to a venue is the venue technician. Promises carry titles only, no numbers.</span></li><li><span class="dn">Decision 28<span class="dd">2026-11-01</span></span><span>The after-game article and emailer: the second half of &quot;<a href="promises.html#every-tap">Every tap gets its answer, and the night can be told afterwards</a>&quot; names the director and the players after the show; what the players receive is the game&#x27;s business; the night&#x27;s record carries the game it ran and the texts the players saw; players&#x27; emails stay outside the engine; the Director Console stays a separate program that reads the record, with room to run inside the Review stage later; the two clocks join <a href="flaws.html#c9">Tablets and phones decide facts the engine owns</a>.</span></li><li><span class="dn">Decision 29<span class="dd">2026-11-01</span></span><span>The owner page becomes five linked pages built from one set of data (the engine, decisions, promises, parts and design flaws) and a change log for earlier wordings and changes. Nothing in version 7 has to stay as it is.</span></li></ul>
+</section>
+</main>
+<footer class="site-foot"><p>Built from the questions of version 7; the engine-shape document of 2026-11-01 (its alternatives and the choices it leaves to step 3); the cause analysis of 2026-10-30; the standalone pass of 2026-10-31; the after-game report of 2026-11-01; and decisions 20 to 29 on the program's state page.</p></footer>
+</div>
+</body>
+</html>

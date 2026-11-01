@@ -61,7 +61,7 @@
       "date": "2026-11-01",
       "title": "The consistent page",
       "items": [
-        "The consistency check found 39 conflicts: 29 across the list of design flaws, the standalone pass, the jobs document and the page data, all settled from code or records and applied (22 changes, 5 duplicates, 2 already gone, 1 left for the orchestrator and applied), and 10 in the page itself. Section 8 of the cause analysis lists every change.",
+        "The consistency check found 39 conflicts: 29 across the list of design flaws, the standalone pass, the jobs document and the page data, all settled from code or records and applied (22 changes, 5 duplicates, 2 already gone, 1 settled by hand and applied), and 10 in the page itself. Section 8 of the cause analysis lists every change.",
         "The page's own ten fixes: question 4 covers [[flaw:C8|C8]]; question 23 is asked inside question C, with a recommendation; N1 is marked proposed, with no card; the standalone pass's 35 findings are counted as 27 under the sixteen flaws and 8 under the proposed N1; the built-today line says the standing test rig was lost with the old container; question 21 recommends 16 rig runs, one per design flaw, instead of about 17; questions E and F offer every option, including keeping one job; the phone's seen mark is described; each job's text points to the questions at the end."
       ],
       "prompt": "The owner asked for a consistency check of the page and the documents behind it (2026-10-31). The first run stalled and was lost; the rerun also covered the jobs document, its page data and the page rebuilt around the jobs."
