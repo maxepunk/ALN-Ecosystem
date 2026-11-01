@@ -75,9 +75,9 @@ before acting.
   from the next session. The owner added a plugin-install line to the
   cloud environment's setup script on 2026-10-30, for sessions started
   after that.
-- **Live state** (2026-11-01): the relationship map is done and the
-  page is being brought into line with it. The owner asked how the ten
-  jobs relate, at both levels (the big components and the modules
+- **Live state** (2026-11-01): the relationship map is done and on the
+  owner's page; waiting for the owner's answers. The owner asked how the
+  ten jobs relate, at both levels (the big components and the modules
   inside them), and said J8 and J9 read as mechanics, not what they do
   for people. Workflow `wf_5f2445a0-bac`
   (`docs/agents/workflow-scripts/engine-shape.js`) wrote four maps
@@ -85,29 +85,26 @@ before acting.
   `docs/plans/architecture-pass/2026-11-01-engine-shape.md`: every job
   restated from the side of the people it serves, eleven shared
   mechanisms, thirteen tangles, and a candidate shape of 17 parts with
-  one direction of dependency (52 edges, no cycle). Its check
-  (`2026-11-01-engine-shape-check.md`) held 122 claims and corrected
-  78; the fold applied them (section 8). Done: workflow
-  `wf_b02b162e-653` (`docs/agents/workflow-scripts/reconcile-shape.js`)
-  brought each flaw card's candidate design, design-terms line and
-  standalone line, and each job's title, need, goal and standalone line,
-  into line with the shape (three card groups and the jobs, each checked
-  on its own: 182 verdicts, 96 corrected), merged into the page data at
-  `d4a938dd`. One departure from a ratified record is put to the owner
-  in the page's step-3 preview: the shape keeps the start-or-adopt
-  setting in the installer's profile, where the capability map gave it
-  a file of its own. Running now: workflow `wf_c3571dd0-522`
-  (`docs/agents/workflow-scripts/page-consistency.js`): three
-  plain-words editors with firm lengths (the checks left the cards'
-  notes long), a merge (`report/merge_plain.py`), then two
-  refute-by-default checks of the whole page; then fixes, a rebuild and
-  a republish. The page builder already carries the new section "How the
-  jobs fit together" and the map's changed recommendations (E: rename
-  J8 rather than split; F: widen J10; G: change neither sentence, one
-  delivery part keeps both promises), each question with both sides'
-  costs. No worktrees, no test rig.
+  one direction of dependency (54 edges, no cycle). Its check held 122
+  claims and corrected 78; the fold applied them (section 8). Workflow
+  `wf_b02b162e-653` (`reconcile-shape.js`) brought every card's
+  candidate design and every job's entry into line with the shape (182
+  verdicts, 96 corrected). Workflow `wf_c3571dd0-522`
+  (`page-consistency.js`) put the cards and jobs into plain words and
+  checked the whole page (57 conflicts, all applied); `wf_206a51c3-758`
+  (`page-fix-verify.js`) confirmed 54 resolved and 3 partly, and its 10
+  new conflicts were settled at `f509848c`. The map changed three
+  recommendations: E (rename J8, not split), F (widen J10), G (route
+  equipment state by one delivery part, so neither sentence changes, if
+  step 3 keeps one delivery part). Records for step 3, not questions
+  now: the shape departs from the ratified capability map on where the
+  start-or-adopt setting lives (the page's step-3 preview asks); the
+  shape is silent on a short offline claim list on a disconnected
+  tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
+  worktrees, no test rig.
 - **The owner's page.** "What the Engine Must Do"
-  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL, version 4 live;
+  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL, version 5 live,
+  published 2026-11-01 with "How the jobs fit together";
   source `docs/plans/architecture-pass/report/`, built by
   `build_report.py`) leads with the engine's ten jobs
   (`docs/plans/architecture-pass/2026-10-31-engine-jobs.md`, workflow
