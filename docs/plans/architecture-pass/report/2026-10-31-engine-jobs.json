@@ -561,7 +561,7 @@
         "need": "The installer states what the kit brings tonight, binds the pack's names to real instruments and gets one go or no-go. A game declared standalone knows it is standalone instead of showing a lost connection all night. A second kit or a new machine needs no change to engine code.",
         "proposedTitle": "Fit the game to the venue it is in tonight"
       },
-      "shapeChange": "Before, this job covered every setup, engine or none. Now it is the installer fitting the game to tonight's venue, with a standalone game declared here (where it is kept is a step-3 choice) and Release checking each machine; running anywhere became a quality."
+      "shapeChange": "Before, this job covered every setup, engine or none. Now it is the installer fitting the game to tonight's venue, with a standalone game declared here (where it is kept is a step-3 choice) and Release checking each machine. Question E asks you to confirm."
     },
     {
       "id": "J9",
@@ -638,7 +638,7 @@
         "the people building the engine, whose green run must mean something",
         "the GM, whose live show no test may touch"
       ],
-      "goal": "Tests climb in levels, from the real engine with stand-in equipment to the real programs. Each test run, preview and second kit has its own names, so none reaches a live show. Shared shapes are written once; stand-ins are checked against the real thing; every change runs on two packs. The owner alone sends a checked machine, and can replug the old one.",
+      "goal": "Tests run in levels, from logic alone, through the real engine and its programs with stand-ins for the room's equipment, to a home test bed and the venue. Each test run, preview and second kit has its own names, so none reaches a live show. Shared shapes are written once and stand-ins are checked against the real thing; every change runs on two packs. The owner alone sends a checked machine, and can replug the old one.",
       "goalOpen": false,
       "needs": [
         "The test environment (capability 46): tests cannot touch the live machine's tracking files, the TV or its players; they skip loudly with a reason. Today nothing stops a test copy of the engine from starting the sound system; in the candidate shape a test engine runs as an engine of its own, with a stand-in for sound, so no switch is needed.",

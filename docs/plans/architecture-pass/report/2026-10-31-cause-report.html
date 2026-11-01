@@ -110,7 +110,8 @@ footer code { font-family: var(--font-mono); font-size: 13px; }
 .glance tbody th { font-weight: 500; min-width: 15em; }
 .glance a { text-decoration: none; }
 .qgroup { display: grid; gap: 14px; }
-.qgroup h3 { font-size: 17px; color: var(--muted); font-weight: 600; }
+.qgroup > h3 { font-size: 17px; color: var(--muted); font-weight: 600; }
+.q h3 { color: var(--fg); }
 .q .applied { font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }
 .q .changedrec { font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fault); }
 .changed { font-size: 15px; max-width: 80ch; background: var(--chip); border-radius: 6px; padding: 10px 14px; }
@@ -166,7 +167,7 @@ figure.dia.wide { padding: 12px; }
   <h2 id="deciding">What you are deciding</h2>
   <p><strong>The jobs.</strong> Are these the right ten jobs for the engine, said from the side of the people they serve, and is one missing? Seven small questions, A to G, ask about their wording and whether three of them should split. The relationship map changed three of those recommendations: E, F and G.</p>
   <p><strong>How the jobs fit together.</strong> New since your last look: <a href="#fit">a map</a> of how the jobs depend on each other and on the pieces of the engine, and one candidate shape for the whole engine. The design on each card now follows that shape, and a note at the top of each card says what changed. Nothing in the shape is decided; it is where step 3 starts.</p>
-  <p><strong>Standalone games, the game's record, the next step.</strong> Three questions about games with no engine, one about recording refused scans, and one about how much the test rig proves before design starts. Everything is <a href="#your-questions">at the end</a>, each with a recommendation.</p>
+  <p><strong>Standalone games, the game's record, the next step.</strong> Three questions about games with no engine, one about recording refused scans, and one about how much the test rig proves before design starts. Everything is <a href="#your-questions">at the end</a>, each with a recommendation or a suggestion; the step-3 preview there needs no answer yet.</p>
 </section>
 
 <section class="sa-box" aria-labelledby="purpose">
@@ -249,7 +250,7 @@ flowchart TD
   class J6,J10 outside;</pre></div>
     <details>
       <summary>The 25 main links between the jobs</summary>
-      <p class="muted" style="margin:10px 0">23 are dependencies: without them, the job that uses them breaks at a show. One is a quality and one is a shared piece; they are drawn dashed.</p>
+      <p class="muted" style="margin:10px 0">23 are dependencies: without them, the job that uses them breaks at a show. One is a quality and one is a shared piece; they are drawn dotted.</p>
       <div class="scroll"><pre class="mermaid">%%{init: {&quot;flowchart&quot;: {&quot;useMaxWidth&quot;: false}, &quot;sequence&quot;: {&quot;useMaxWidth&quot;: false}}}%%
 flowchart TD
   J1[&quot;J1 The designer&#x27;s game is the game the whole kit plays&quot;]
@@ -299,7 +300,7 @@ flowchart TD
   <div class="fit-block">
     <h3>Qualities every job must have</h3>
     <p>These are not pieces of the engine. Each is something every piece must be.</p>
-    <div class="tablewrap"><table class="mech"><thead><tr><th>Quality</th><th>What it means</th><th>Jobs</th></tr></thead><tbody><tr><th scope="row">Honesty</th><td>A screen never shows a calm normal value where the truth is unknown, old, broken or not installed tonight. Carried as a label on every delivered fact and every reply, with the three health words from the verdict.</td><td class="idcell"><a href="#j1">J1</a> <a href="#j2">J2</a> <a href="#j3">J3</a> <a href="#j4">J4</a> <a href="#j5">J5</a> <a href="#j6">J6</a></td></tr><tr><th scope="row">Proof</th><td>A green run means the show path works for two games, and no test reaches a live show. Carried by testing each part through the same door everything else uses, and by giving every test run its own engine names.</td><td class="idcell"><a href="#j1">J1</a> <a href="#j2">J2</a> <a href="#j3">J3</a> <a href="#j4">J4</a> <a href="#j5">J5</a> <a href="#j6">J6</a> <a href="#j7">J7</a> <a href="#j8">J8</a> <a href="#j9">J9</a></td></tr><tr><th scope="row">Generic</th><td>Nothing in the engine assumes ALN, one kit, one pack or one production. Carried by taking rules only from the pack and kit names only from the profile and the engine&#x27;s own instance.</td><td class="idcell"><a href="#j1">J1</a> <a href="#j2">J2</a> <a href="#j3">J3</a> <a href="#j4">J4</a> <a href="#j5">J5</a> <a href="#j6">J6</a> <a href="#j7">J7</a> <a href="#j8">J8</a> <a href="#j9">J9</a> <a href="#j10">J10</a></td></tr><tr><th scope="row">Who decides when there is no engine</th><td>Every rule says who decides when there is no engine, and a standalone game is a declared fact, never mixed. Carried by hosting the same record, lifecycle and answering modules on the tablet, with the declaration held wherever the owner places it; the installer&#x27;s profile is the candidate favoured here.</td><td class="idcell"><a href="#j1">J1</a> <a href="#j2">J2</a> <a href="#j3">J3</a> <a href="#j5">J5</a> <a href="#j9">J9</a></td></tr><tr><th scope="row">Only the GM moves the game</th><td>Lifecycle, show control and score changes stay in the GM&#x27;s hands. Carried by checking once, at the one door every request passes, what each connection may do.</td><td class="idcell"><a href="#j2">J2</a> <a href="#j3">J3</a> <a href="#j4">J4</a> <a href="#j5">J5</a></td></tr></tbody></table></div>
+    <div class="tablewrap"><table class="mech"><thead><tr><th>Quality</th><th>What it means</th><th>Jobs</th></tr></thead><tbody><tr><th scope="row">Honesty</th><td>A screen never shows a calm normal value where the truth is unknown, old, broken or not installed tonight. Carried as a label on every delivered fact and every reply, with the three health words from the verdict.</td><td class="idcell"><a href="#j1">J1</a> <a href="#j2">J2</a> <a href="#j3">J3</a> <a href="#j4">J4</a> <a href="#j5">J5</a> <a href="#j6">J6</a></td></tr><tr><th scope="row">Proof</th><td>A passing test run means the show works for two games, and no test reaches a live show. Carried by testing each part through the same door everything else uses, and by giving every test run its own engine names.</td><td class="idcell"><a href="#j1">J1</a> <a href="#j2">J2</a> <a href="#j3">J3</a> <a href="#j4">J4</a> <a href="#j5">J5</a> <a href="#j6">J6</a> <a href="#j7">J7</a> <a href="#j8">J8</a> <a href="#j9">J9</a></td></tr><tr><th scope="row">Generic</th><td>Nothing in the engine assumes ALN, one kit, one pack or one production. Carried by taking rules only from the pack and kit names only from the profile and the engine&#x27;s own instance.</td><td class="idcell"><a href="#j1">J1</a> <a href="#j2">J2</a> <a href="#j3">J3</a> <a href="#j4">J4</a> <a href="#j5">J5</a> <a href="#j6">J6</a> <a href="#j7">J7</a> <a href="#j8">J8</a> <a href="#j9">J9</a> <a href="#j10">J10</a></td></tr><tr><th scope="row">Who decides when there is no engine</th><td>Every rule says who decides when there is no engine, and a standalone game is a declared fact, never mixed. Carried by hosting the same record, lifecycle and answering modules on the tablet, with the declaration held wherever the owner places it; the installer&#x27;s profile is the candidate favoured here.</td><td class="idcell"><a href="#j1">J1</a> <a href="#j2">J2</a> <a href="#j3">J3</a> <a href="#j5">J5</a> <a href="#j9">J9</a></td></tr><tr><th scope="row">Only the GM moves the game</th><td>Lifecycle, show control and score changes stay in the GM&#x27;s hands. Carried by checking once, at the one door every request passes, what each connection may do.</td><td class="idcell"><a href="#j2">J2</a> <a href="#j3">J3</a> <a href="#j4">J4</a> <a href="#j5">J5</a></td></tr></tbody></table></div>
   </div>
 
   <details>
@@ -327,7 +328,7 @@ flowchart TD
   <p>One engine knows its own names (data folder, process files, sockets, ports, the display it drives, the passes it accepts), so a second engine on the same machine, a test, a preview or a second kit, never touches the first. Its parts are built once from one list, by a starting point that sits above them all.</p>
   <p class="pmeta"><span class="tag">Serves</span> <a href="#j10">J10</a> <a href="#j6">J6</a> <a href="#j8">J8</a> <a href="#j5">J5</a></p>
   <p class="pmeta"><span class="tag">Removes</span> <a href="#c8">C8</a> <a href="#c5">C5</a> <a href="#c15">C15</a></p>
-  <p class="pmeta"><span class="tag">Runs on</span> the engine, the config tool, the tests, GM tablets, as a small stand-in in a standalone game</p>
+  <p class="pmeta"><span class="tag">Runs on</span> the engine, the config tool, the tests; in a standalone game, a small stand-in on the GM tablet</p>
   <p class="pmeta muted"><span class="tag">Where it can be swapped</span> The environment (the settings file, a test&#x27;s overrides, a preview&#x27;s). The one list of parts is used by boot, by Reset System and by tests alike.</p>
 </article><article class="part" id="p2">
   <h4>Pack channel</h4>
@@ -341,7 +342,7 @@ flowchart TD
   <p>Every connection presents a verified pass; the engine knows what class it is, its name, which role it has and whether it is still there, by one liveness rule. A client&#x27;s own word decides nothing.</p>
   <p class="pmeta"><span class="tag">Serves</span> <a href="#j7">J7</a> <a href="#j2">J2</a> <a href="#j3">J3</a> <a href="#j8">J8</a> <a href="#j9">J9</a></p>
   <p class="pmeta"><span class="tag">Removes</span> <a href="#c13">C13</a> <a href="#c10">C10</a></p>
-  <p class="pmeta"><span class="tag">Runs on</span> the engine, GM tablets, as a small stand-in in a standalone game</p>
+  <p class="pmeta"><span class="tag">Runs on</span> the engine; in a standalone game, a small stand-in on the GM tablet</p>
   <p class="pmeta muted"><span class="tag">Where it can be swapped</span> The kinds of pass (operator, watch-only, device, session) and the ways a connection arrives.</p>
 </article><article class="part" id="p12">
   <h4>Venue fit</h4>
@@ -362,21 +363,21 @@ flowchart TD
   <p>Each thing the room can do (play a video, play music, play a sound, route and set a volume, light a scene, show a display) behind one interface, with the outside program as an adapter beneath it. The engine&#x27;s picture of each program is dated and reconciled; one supervisor restarts what it can.</p>
   <p class="pmeta"><span class="tag">Serves</span> <a href="#j4">J4</a> <a href="#j9">J9</a> <a href="#j8">J8</a> <a href="#j10">J10</a></p>
   <p class="pmeta"><span class="tag">Removes</span> <a href="#c3">C3</a> <a href="#c2">C2</a> <a href="#c11">C11</a></p>
-  <p class="pmeta"><span class="tag">Runs on</span> the engine, GM tablets, as a small stand-in in a standalone game</p>
+  <p class="pmeta"><span class="tag">Runs on</span> the engine; in a standalone game, a small stand-in on the GM tablet</p>
   <p class="pmeta muted"><span class="tag">Where it can be swapped</span> One adapter per program and one software stand-in per capability for the preview engine and the test rig.</p>
 </article><article class="part" id="p10">
   <h4>Verdict</h4>
   <p>What the game needs against what the kit has tonight, as one calculation whose every line says paper or live and go, no-go or dormant. The editor, the preflight, the start gate and a cue-time refusal all quote it. Already built; what is missing is a route to the screen.</p>
   <p class="pmeta"><span class="tag">Serves</span> <a href="#j9">J9</a> <a href="#j8">J8</a> <a href="#j6">J6</a> <a href="#j4">J4</a> <a href="#j5">J5</a></p>
   <p class="pmeta"><span class="tag">Removes</span> <a href="#c10">C10</a></p>
-  <p class="pmeta"><span class="tag">Runs on</span> the engine, the config tool, GM tablets, as a small stand-in in a standalone game</p>
+  <p class="pmeta"><span class="tag">Runs on</span> the engine, the config tool; in a standalone game, a small stand-in on the GM tablet</p>
   <p class="pmeta muted"><span class="tag">Where it can be swapped</span> None needed: data in, data out. The caller gathers the live inventory and passes it in.</p>
 </article><article class="part" id="p9">
   <h4>Show runner</h4>
   <p>The designer&#x27;s cues, the game clock, the video queue and the held items: what the room should be doing now, given the game&#x27;s events and the GM&#x27;s commands, and what is parked because a service is down or a video is busy. One held store; it reads equipment&#x27;s dated picture and keeps none of its own.</p>
   <p class="pmeta"><span class="tag">Serves</span> <a href="#j4">J4</a> <a href="#j5">J5</a> <a href="#j1">J1</a></p>
   <p class="pmeta"><span class="tag">Removes</span> <a href="#c11">C11</a> <a href="#c3">C3</a></p>
-  <p class="pmeta"><span class="tag">Runs on</span> the engine, GM tablets, as a small stand-in in a standalone game</p>
+  <p class="pmeta"><span class="tag">Runs on</span> the engine; in a standalone game, a small stand-in on the GM tablet</p>
   <p class="pmeta muted"><span class="tag">Where it can be swapped</span> The cue vocabulary and clock rules from the pack.</p>
 </article><article class="part" id="p11">
   <h4>Lifecycle</h4>
@@ -523,7 +524,7 @@ flowchart TD
 flowchart TD
   BE[&quot;Backend on the show machine: pack channel serve, game record authority, answering, night&#x27;s record, delivery, connections, equipment, show runner, verdict, lifecycle, venue fit, engine instance, rules as a library&quot;]
   GM[&quot;GM tablet, networked: screens, rules library, pack client with its stamp, the client side of answering and delivery&quot;]
-  GS[&quot;GM tablet, standalone: screens, rules, pack client, game record, lifecycle, local answering, local delivery, a local night&#x27;s record, the standalone declaration&quot;]
+  GS[&quot;GM tablet, standalone: screens, rules, pack client, game record, lifecycle, local answering, local delivery, a local night&#x27;s record, the standalone declaration, and small stand-ins for connections, equipment, the show runner, the verdict and the engine&#x27;s names&quot;]
   PH[&quot;Phone and hardware scanner: screens, pack client with its stamp, reply words as data, rules as data, the standalone declaration read&quot;]
   SB[&quot;Scoreboards, TV and Pi 4: screens under a display pass, and the TV&#x27;s browser is also an equipment adapter on the backend&quot;]
   CT[&quot;Config tool: design studio, rules for validation, pack publish, verdict badges on paper, the installer&#x27;s venue fit editor, a preview instance, release&quot;]
@@ -577,7 +578,7 @@ flowchart TD
     <p><span class="tag">At a show</span> A designer publishes a pack change and does not restart. The TV shows evidence by the new rules while the engine scores by the old. The file the engine hands out no longer matches the fingerprint in the engine&#x27;s own pack list, so a scanner that checks rejects it. A tablet running a different pack is only noted in the engine&#x27;s log; nothing tells the GM. The publish tells the running engine nothing.</p>
     <p><span class="tag">Why it happens</span> The engine freezes one pack at start, yet the files it hands out are whatever is on disk now, and it re-reads the token list from disk at every request. The TV, tablet and hardware scanner each load the pack at their own moment and keep it; the phone reads its own copy. No message says it changed.</p>
     
-    <p class="standalone"><span class="tag">In a standalone game</span> each device loads whatever pack its source holds; a mid-game reload can hand the tablet a newer pack; no stamp marks the game or any device. In the candidate each device shows its stamp, the Game record carries the game&#x27;s, and Lifecycle refuses a swap mid-game, whether the tablet runs the engine&#x27;s parts or an engine of its own kept equal by tests.</p>
+    <p class="standalone"><span class="tag">In a standalone game</span> each device loads whatever pack its source holds; a mid-game reload can hand the tablet a newer pack; no stamp marks the game or any device. In the candidate each device shows its stamp, the Game record carries the game&#x27;s, and Lifecycle refuses a swap mid-game. The other way, an engine of its own on the tablet, must do the same, kept equal by tests.</p>
   </div>
   <div class="diagrams">
     <figure class="dia before">
@@ -875,7 +876,7 @@ flowchart TD
     <p><span class="tag">At a show</span> Is a video playing has eight answers. A paused video counts as free, so a player is told their video was started while it waits, and releasing a held video plays over the paused one. Release All can stop at the first refused video. Music stays turned down after the queue is cleared. The downloaded report&#x27;s two totals disagree.</p>
     <p><span class="tag">Why it happens</span> Questions such as is a video playing, which teams exist and may the GM scan now are answered by several pieces of code or saved values, each with its own rule and its own way of being updated, so they disagree at the edges. No rule says which answerer every reader must use.</p>
     <p class="live-note"><span class="tag">Seen live</span> The display&#x27;s false healthy Check Now was reproduced in-process by the recovered review.</p>
-    <p class="standalone"><span class="tag">In a standalone game</span> the tablet answers group completion in two disagreeing places, teams in three, and scan permission by one ignored check; the phone decides it is standalone by one test written three times. The candidate puts the engine&#x27;s Game record on the tablet, or an engine of its own kept equal by tests, and declares standalone a fact.</p>
+    <p class="standalone"><span class="tag">In a standalone game</span> the tablet answers group completion in two disagreeing places, teams in three, and scan permission by one ignored check; the phone decides it is standalone by one test written three times. The candidate shape puts the engine&#x27;s Game record on the tablet and declares standalone a fact; the other way is an engine of its own on the tablet, kept equal by tests.</p>
   </div>
   <div class="diagrams">
     <figure class="dia before">
@@ -1202,7 +1203,7 @@ flowchart TD
     <p><span class="tag">At a show</span> The GM ends the game and restarts the engine; the ended game comes back as the current one and player scans keep landing in it. When the game ends, a tablet that reconnects loses its history and the wall scoreboard goes blank. A once-only cue spent in game one stays spent in game two.</p>
     <p><span class="tag">Why it happens</span> Game start, end, reset, engine restart, tablet reload and reconnect, the game&#x27;s boundaries, each have their own code on each device. No table says, for each fact and each copy, whether a boundary clears it, keeps it or fetches it again, and no message announces one; screens guess a boundary from a changed session id.</p>
     
-    <p class="standalone"><span class="tag">In a standalone game</span> the tablet decides every boundary, and the phone&#x27;s seen tokens and the hardware scanner&#x27;s queue outlive every game. In the candidate the tablet runs the engine&#x27;s Lifecycle table, or its own, kept equal by tests. Player devices need to learn each new game: from the tablet if they are joined to it (question 24), or by a reset of their own.</p>
+    <p class="standalone"><span class="tag">In a standalone game</span> the tablet decides every boundary, and the phone&#x27;s seen tokens and the hardware scanner&#x27;s queue outlive every game. In the candidate the tablet runs the engine&#x27;s Lifecycle table, or its own, kept equal by tests. Player devices need to learn each new game: a game id from the tablet that they check, if they are joined to it (question 24), or a reset of their own.</p>
   </div>
   <div class="diagrams">
     <figure class="dia before">
@@ -1446,7 +1447,7 @@ flowchart TD
     <span class="jid">J8</span>
     <h2>Fit the game to the venue it is in tonight</h2><p class="was">Proposed title. It was “Run wherever the venue and the game need”.</p><p class="meaning">The installer states what the kit brings tonight, binds the pack&#x27;s names to real instruments and gets one go or no-go. A game declared standalone knows it is standalone instead of showing a lost connection all night. A second kit or a new machine needs no change to engine code.</p><dl class="who"><dt>Who</dt><dd>The venue installer; a GM running a game with no engine; a future operator with a second kit</dd><dt>When</dt><dd>In the days before an event, and on the night when the engine is absent by choice</dd></dl>
   </header>
-  <p class="changed"><span class="tag">Changed after the relationship map</span> Before, this job covered every setup, engine or none. Now it is the installer fitting the game to tonight&#x27;s venue, with a standalone game declared here (where it is kept is a step-3 choice) and Release checking each machine; running anywhere became a quality.</p>
+  <p class="changed"><span class="tag">Changed after the relationship map</span> Before, this job covered every setup, engine or none. Now it is the installer fitting the game to tonight&#x27;s venue, with a standalone game declared here (where it is kept is a step-3 choice) and Release checking each machine. Question E asks you to confirm.</p>
   <div class="partrow"><span class="tag">Carried by these parts of the candidate shape</span><a class="chip part" href="#p12">Venue fit</a><a class="chip part" href="#p17">Release</a></div>
   <div class="job-facts">
     <div><span class="tag">Built today</span><p>Venue profiles and &quot;not installed tonight&quot;; standalone modes on the GM tablet and the web player scanner; the blue and green machine method.</p></div>
@@ -1469,7 +1470,7 @@ flowchart TD
   <p class="changed"><span class="tag">Changed after the relationship map</span> Before, this job asked the engine to tell the truth. Now it is a label on every fact and reply, carried by Delivery and Answering, with one part of its own, the Verdict, because today the verdict reaches no screen.</p>
   <div class="partrow"><span class="tag">Carried by these parts of the candidate shape</span><a class="chip part" href="#p10">Verdict</a><a class="chip part" href="#p4">Answering</a><a class="chip part" href="#p6">Delivery</a><a class="chip part" href="#p14">Screens</a></div>
   <div class="job-facts">
-    <div><span class="tag">Built today</span><p>Health words healthy, down and dormant (grey), each shown with the service it names; a first, minimal preflight.</p></div>
+    <div><span class="tag">Built today</span><p>Health words healthy, down and dormant (grey) for each service on the health panel; a first, minimal preflight.</p></div>
     <div><span class="tag">The long-term goal</span><p>Every fact and reply carries a label: how old, how sure, paper or live. Red means act now; grey means absent on purpose; an unreadable equipment list shows unknown. One Verdict (healthy, down or dormant) answers the editor, the preflight and the start check, and reaches the screen. The preflight says what it cannot check; a broken profile blocks starting.</p></div>
   </div>
   <div class="short">
@@ -1491,7 +1492,7 @@ flowchart TD
     <p><span class="tag">At a show</span> The venue profile fails to load; six services show as not installed, no video plays, no light cue fires, and the health panel reads a calm green 3 of 9. The GM presses Check Now on a down service and nothing visibly happens. The engine dies; the TV keeps counting down. The music card goes grey with no word that the engine is gone, and nobody at the venue notices.</p>
     <p><span class="tag">Why it happens</span> No fact sent to a screen says whether it is known, unknown, stale or partial. The code that builds a tablet&#x27;s catch-up swallows errors and sends a plausible normal value, a missing profile reads as no equipment, healthy only means a program answered, and the times of the last checks are never shown. The screen draws a normal value.</p>
     <p class="live-note"><span class="tag">Seen live</span> A greyed music card with no offline line went unnoticed at the venue.</p>
-    <p class="standalone"><span class="tag">In a standalone game</span> every device shows the missing engine as broken: the phone says Offline, the hardware scanner red Disconnected with a growing queue, a video token Rescan later. Nothing says standalone by choice. The candidate declares that fact to every device and gives the tablet a small Verdict stand-in; or, with an engine of its own, keeps it equal by tests.</p>
+    <p class="standalone"><span class="tag">In a standalone game</span> every device shows the missing engine as broken: the phone says Offline, the hardware scanner red Disconnected with a growing queue, a video token Rescan later. Nothing says standalone by choice. The candidate shape declares that fact to every device and gives the tablet a small Verdict stand-in. If the tablet keeps an engine of its own instead, tests keep that engine equal.</p>
   </div>
   <div class="diagrams">
     <figure class="dia before">
@@ -1559,11 +1560,11 @@ flowchart TD
   <div class="partrow"><span class="tag">Carried by these parts of the candidate shape</span><a class="chip part" href="#p16">Joins and proofs</a><a class="chip part" href="#p13">Engine instance</a><a class="chip part" href="#p17">Release</a></div>
   <div class="job-facts">
     <div><span class="tag">Built today</span><p>Unit, contract, integration and end-to-end tests; a rung-1 run with the real programs in CI, started by hand or by a change to its own files (the standing test rig was lost with the old container; step 2 rebuilds it); CI on every pull request to main; coverage that may not fall.</p></div>
-    <div><span class="tag">The long-term goal</span><p>Tests climb in levels, from the real engine with stand-in equipment to the real programs. Each test run, preview and second kit has its own names, so none reaches a live show. Shared shapes are written once; stand-ins are checked against the real thing; every change runs on two packs. The owner alone sends a checked machine, and can replug the old one.</p></div>
+    <div><span class="tag">The long-term goal</span><p>Tests run in levels, from logic alone, through the real engine and its programs with stand-ins for the room&#x27;s equipment, to a home test bed and the venue. Each test run, preview and second kit has its own names, so none reaches a live show. Shared shapes are written once and stand-ins are checked against the real thing; every change runs on two packs. The owner alone sends a checked machine, and can replug the old one.</p></div>
   </div>
   <div class="short">
     <span class="tag">Where today's design falls short</span>
-    <ul><li><a class="fid" href="#c8">C8</a>The engine names its helper files in fixed places and kills by pattern across the whole machine, and the tests adopt the real display and audio, so a test run killed the live show&#x27;s video player on blue, and in today&#x27;s tree the same run kills the live engine&#x27;s video-signal watcher and overwrites its helper files.</li><li><a class="fid" href="#c14">C14</a>Names and shapes that join two places are kept by hand on each side and nothing checks that the sides agree, so a mismatch fails silently.</li><li><a class="fid" href="#c15">C15</a>The deployed game is several separately versioned checkouts, a built folder, hand-copied media and hand-run steps that nothing compares, so a rollback quietly runs a mixture.</li><li><a class="fid" href="#c16">C16</a>Hand-written fakes are never checked against the real classes, skips and silent passes count as green, and coverage is counted per file, so a green run does not show the real path works.</li></ul>
+    <ul><li><a class="fid" href="#c8">C8</a>The engine names its helper files in fixed places and kills by pattern across the whole machine, and the tests adopt the real display and audio, so a test run killed the live show&#x27;s video player on blue, and in today&#x27;s tree the same run kills the live engine&#x27;s video-signal watcher and overwrites its helper files.</li><li><a class="fid" href="#c14">C14</a>Names and shapes that join two places are kept by hand on each side and nothing checks that the sides agree, so a mismatch fails silently.</li><li><a class="fid" href="#c15">C15</a>The deployed game is several separately versioned checkouts, a built folder, hand-copied media and hand-run steps that nothing compares, so a rollback quietly runs a mixture.</li><li><a class="fid" href="#c16">C16</a>Hand-written test stand-ins are never checked against the real code, skipped tests and silent passes count as passing, and coverage is counted per file, so a passing run does not show the real path works.</li></ul>
   </div>
   <p class="standalone"><span class="tag">In a standalone game</span> nothing tests a player device with no engine; the phone&#x27;s pack test passes on a file the deployed site lacks; the one test comparing both modes skips its group case. In the candidate shape the same proofs cover the tablet, or, with its own engine, a cross-check.</p>
   <details><summary>What the planned capabilities need from it (6)</summary><ul class="examples"><li>The test environment (capability 46): tests cannot touch the live machine&#x27;s tracking files, the TV or its players; they skip loudly with a reason. Today nothing stops a test copy of the engine from starting the sound system; in the candidate shape a test engine runs as an engine of its own, with a stand-in for sound, so no switch is needed.</li><li>The seams for more kits (capability 42) and the preview engine (capability 20): the same per-engine naming layer as test runs, built once. Sixteen fixed temporary paths in eight files and two machine-wide kills exist today.</li><li>The supervisor (capability 9): process cleanup that cannot hit the wrong process.</li><li>Screen baselines (capability 29) and the two-pack run: guards against changes the owner did not choose.</li><li>Blue/green cutover (capability 44), the Block 1 deliverables (capability 45) and the Block 6 close (capability 51): frozen production and blue containment honored; nothing deploys until the owner says so.</li><li>The rig that ran the real stack was lost with the container; its recipe survives.</li></ul></details>
@@ -1875,7 +1876,7 @@ flowchart TD
     <div class="q">
       <h3>Are these the right ten jobs, and does each now read from the side of the people it serves?</h3>
       <p>Is a job the engine must do for any game missing? Are two of them really one? Each job now leads with who relies on it, when, and what must happen for them. All ten have a proposed new title written that way; the old title shows under each. This replaces question 17.</p>
-      <p class="rec">Recommendation: keep these ten, with the new titles. The map found no job missing: every job lands on parts of its own, and the one candidate for an eleventh, "run in any setup", owns no part (question E).</p>
+      <p class="rec">Recommendation: keep these ten as the base, with the new titles, and settle D to G below. In the map every job lands on parts of its own, and the one candidate for an eleventh, "run in any setup", owns no part (question E).</p>
     </div>
     <div class="q">
       <p class="applied">Applied, please confirm</p>
@@ -1912,7 +1913,7 @@ flowchart TD
     <div class="q">
       <p class="changedrec">Recommendation changed by the map</p>
       <h3>F. J10: widen it, split it, or leave it?</h3>
-      <p>The map separates J10's two moments. Before every change, the developer's green run shows the show still works for ALN and for the toy game; that is a quality every part must pass, and checking that joined parts agree is part of it. On release day, you decide when a new version goes to the venue and can swap back by replugging a machine; that is one small part, the release, which checks that everything installed matches.</p>
+      <p>The map separates J10's two moments. Before every change, the developer's tests pass and show the show still works for ALN and for the toy game; that is a quality every part must pass, and checking that joined parts agree is part of it. On release day, you decide when a new version goes to the venue and can swap back by replugging a machine; that is one small part, the release, which checks that everything installed matches.</p>
       <ol type="a">
         <li>Widen J10's sentence to include release day. The proposed title does this: "A change is proven before it reaches anyone, and the owner alone sends it to the show".</li>
         <li>Split release day into a job of its own. It gives your release day its own sentence, for a job with one small part.</li>
@@ -1920,7 +1921,7 @@ flowchart TD
         <li>Leave J10 as drafted. The parts fit that too; the cost is that your release day stays unnamed in a sentence about tests.</li>
       </ol>
       <p>Question 4 covers keeping tests away from the live show (C8). For the other three flaws under this job no question of the nine fits: question 5 is only the nearest for the names two parts share (C14), and the installed pieces (C15) and tests that prove the real path (C16) have none. This replaces question 18.</p>
-      <p class="rec">Recommendation: widen, as the proposed title does, and give the proof and the release a question each in the pass. Both moments guard one promise: nothing reaches the live show unproven, or before you say so. The earlier split into "prove it works" and "keep every part in step" does not match the map, because keeping joined parts in step is part of the proof.</p>
+      <p class="rec">Recommendation: widen, as the proposed title does, and give the proof and the release a question each in the pass. Both moments exist so that nothing reaches the live show unproven, or before you say so. The earlier split into "prove it works" and "keep every part in step" does not match the map, because keeping joined parts in step is part of the proof.</p>
     </div>
     <div class="q">
       <p class="changedrec">Recommendation changed by the map</p>
@@ -1954,7 +1955,7 @@ flowchart TD
     <h3>About the game's record</h3>
     <div class="q">
       <h3>19. When a GM scan is refused, does the game keep a record of the attempt?</h3>
-      <p>For example, a token already used, or no game running. Today only the tablet that scanned hears about it. On the map this decides whether the game's record keeps refused attempts, or only the answer goes back to the tablet. Yes means the record gains a kind of fact that no screen shows yet. No means a refused attempt lives only on the tablet that scanned, as today, and the night's record cannot tell it.</p>
+      <p>For example, a token already used, or no game running. Today only the tablet that scanned hears about it. On the map this decides whether the game's record keeps refused attempts, or only the answer goes back to the tablet. Yes means the record gains a kind of fact that no screen shows yet. No means a refused attempt is recorded nowhere, as today: only the tablet that scanned hears about it, and the night's record cannot tell it.</p>
       <p class="rec">Recommendation: yes. Record every attempt and its answer, and show it nowhere until a feature needs it.</p>
     </div>
   </div>

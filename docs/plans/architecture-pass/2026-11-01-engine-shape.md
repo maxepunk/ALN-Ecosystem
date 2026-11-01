@@ -301,7 +301,7 @@ What each seam gives, in design words. **Leverage:** one P1 implementation pays 
 flowchart LR
   BE["Backend on the show machine: P2 serve, P3 authority, P4, P5, P6, P7, P8, P9, P10, P11, P12 read, P13, and P1 as a library"]
   GM["GM tablet, networked: P14 Screens, P1 library, P2 client with its stamp, P4 and P6 as the client side of the doors"]
-  GS["GM tablet, standalone: P14, P1, P2 client, P3 record, P11 lifecycle, P4 local answering, P6 local delivery, P5 a local night's record, P12 the standalone declaration"]
+  GS["GM tablet, standalone: P14, P1, P2 client, P3 record, P11 lifecycle, P4 local answering, P6 local delivery, P5 a local night's record, the standalone declaration wherever it is kept, stand-ins for P7, P8, P9, P10 and P13"]
   PH["Phone and hardware scanner: P14 Screens, P2 client with its stamp, P4 reply words as data, P1 tables as data, the standalone declaration read"]
   SB["Scoreboards, TV and Pi 4: P14 Screens under a display pass from P7, and the TV's browser is also a P8 adapter on the backend"]
   CT["Config tool: P15 Design studio, P1 for validation, P2 publish, P10 badges on paper, P12 the installer's editor, P13 a preview instance, P17 Deploy"]
@@ -455,4 +455,5 @@ Applied from `docs/plans/architecture-pass/2026-11-01-engine-shape-check.md` on 
 - JSON questionNotes D, E, F, G, A, C: as rows 5-D to 5-C; E no longer names a J11.
 - JSON ownerChoices[10]: hot-apply as planned, not set.
 - Page check (`consistency/2026-11-01-page-jobs-and-cards.md`, row 23), 2026-11-01: two edges added, P16 → P14 (screen baselines, coverage to the screen) and P16 → P11 (the reset path tested as the show runs it); 54 edges, the same topological order holds, no cycle.
+- Page check verification (`consistency/2026-11-01-page-fix-verify.md`, new conflict 5), 2026-11-01: section 4.3's diagram names the standalone tablet's five stand-ins (row 4.3d) and hedges where the declaration is kept.
 - Orchestrator, at commit (same rows 0.5 and P12): the sources line describes the direction map's four users; the flaw-landing list's N1 entry and the mechanism-landing list's M-K entry follow P12's hedge and row 4.2b's composition root.

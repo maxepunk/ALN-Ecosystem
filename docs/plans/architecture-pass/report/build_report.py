@@ -28,7 +28,7 @@ PASS = HERE.parent / '2026-10-31-standalone-pass.md'
 # Where each candidate part runs, in the owner's words.
 RUNS_ON = {'backend': 'the engine', 'gm-tablet': 'GM tablets', 'player-devices': 'player scanners',
            'scoreboards': 'the scoreboards', 'config-tool': 'the config tool', 'tests': 'the tests',
-           'gm-tablet-standin': 'GM tablets, as a small stand-in in a standalone game'}
+           'gm-tablet-standin': ''}
 NAMES = {}  # part id -> plain name, filled from the shape by build()
 
 # What each job already does today: the orchestrator's addition, from the root CLAUDE.md
@@ -42,7 +42,7 @@ BUILT = {
     'J6': 'The config tool; a store for drafting and publishing packs.',
     'J7': 'The GM password and its login token; a watch-only pass for the Pi 4 scoreboard; anonymous player scans.',
     'J8': 'Venue profiles and "not installed tonight"; standalone modes on the GM tablet and the web player scanner; the blue and green machine method.',
-    'J9': 'Health words healthy, down and dormant (grey), each shown with the service it names; a first, minimal preflight.',
+    'J9': 'Health words healthy, down and dormant (grey) for each service on the health panel; a first, minimal preflight.',
     'J10': 'Unit, contract, integration and end-to-end tests; a rung-1 run with the real programs in CI, started by hand or by a change to its own files (the standing test rig was lost with the old container; step 2 rebuilds it); CI on every pull request to main; coverage that may not fall.',
 }
 
@@ -304,7 +304,9 @@ def part_layers(shape):
 
 
 def part_html(p):
-    runs = ', '.join(RUNS_ON.get(r, r) for r in p['runsOn'])
+    runs = ', '.join(RUNS_ON.get(r, r) for r in p['runsOn'] if r != 'gm-tablet-standin')
+    if 'gm-tablet-standin' in p['runsOn']:
+        runs += '; in a standalone game, a small stand-in on the GM tablet'
     return f'''<article class="part" id="{p["id"].lower()}">
   <h4>{e(p["name"])}</h4>
   <p>{e(p["plain"])}</p>
@@ -410,7 +412,7 @@ def fit_html(shape, jobs):
     <div class="scroll"><pre class="mermaid">{e(present(overview_src(jobs)).replace('"useMaxWidth": false}, "sequence"', '"useMaxWidth": false, "nodeSpacing": 20}, "sequence"', 1))}</pre></div>
     <details>
       <summary>The {len(re.findall(r"-\.?->", shape["relationsMermaid"]))} main links between the jobs</summary>
-      <p class="muted" style="margin:10px 0">{len(re.findall(r"[^.]-->", shape["relationsMermaid"]))} are dependencies: without them, the job that uses them breaks at a show. One is a quality and one is a shared piece; they are drawn dashed.</p>
+      <p class="muted" style="margin:10px 0">{len(re.findall(r"[^.]-->", shape["relationsMermaid"]))} are dependencies: without them, the job that uses them breaks at a show. One is a quality and one is a shared piece; they are drawn dotted.</p>
       <div class="scroll"><pre class="mermaid">{e(present(shape["relationsMermaid"]))}</pre></div>
     </details>
   </figure>
@@ -668,7 +670,7 @@ figure.dia.wide {{ padding: 12px; }}
   <h2 id="deciding">What you are deciding</h2>
   <p><strong>The jobs.</strong> Are these the right ten jobs for the engine, said from the side of the people they serve, and is one missing? Seven small questions, A to G, ask about their wording and whether three of them should split. The relationship map changed three of those recommendations: E, F and G.</p>
   <p><strong>How the jobs fit together.</strong> New since your last look: <a href="#fit">a map</a> of how the jobs depend on each other and on the pieces of the engine, and one candidate shape for the whole engine. The design on each card now follows that shape, and a note at the top of each card says what changed. Nothing in the shape is decided; it is where step 3 starts.</p>
-  <p><strong>Standalone games, the game's record, the next step.</strong> Three questions about games with no engine, one about recording refused scans, and one about how much the test rig proves before design starts. Everything is <a href="#your-questions">at the end</a>, each with a recommendation.</p>
+  <p><strong>Standalone games, the game's record, the next step.</strong> Three questions about games with no engine, one about recording refused scans, and one about how much the test rig proves before design starts. Everything is <a href="#your-questions">at the end</a>, each with a recommendation or a suggestion; the step-3 preview there needs no answer yet.</p>
 </section>
 
 <section class="sa-box" aria-labelledby="purpose">
@@ -743,7 +745,7 @@ figure.dia.wide {{ padding: 12px; }}
     <div class="q">
       <h3>Are these the right ten jobs, and does each now read from the side of the people it serves?</h3>
       <p>Is a job the engine must do for any game missing? Are two of them really one? Each job now leads with who relies on it, when, and what must happen for them. All ten have a proposed new title written that way; the old title shows under each. This replaces question 17.</p>
-      <p class="rec">Recommendation: keep these ten, with the new titles. The map found no job missing: every job lands on parts of its own, and the one candidate for an eleventh, "run in any setup", owns no part (question E).</p>
+      <p class="rec">Recommendation: keep these ten as the base, with the new titles, and settle D to G below. In the map every job lands on parts of its own, and the one candidate for an eleventh, "run in any setup", owns no part (question E).</p>
     </div>
     <div class="q">
       <p class="applied">Applied, please confirm</p>
@@ -788,7 +790,7 @@ figure.dia.wide {{ padding: 12px; }}
         <li>Leave J10 as drafted. The parts fit that too; the cost is that your release day stays unnamed in a sentence about tests.</li>
       </ol>
       <p>Question 4 covers keeping tests away from the live show (C8). For the other three flaws under this job no question of the nine fits: question 5 is only the nearest for the names two parts share (C14), and the installed pieces (C15) and tests that prove the real path (C16) have none. This replaces question 18.</p>
-      <p class="rec">Recommendation: widen, as the proposed title does, and give the proof and the release a question each in the pass. Both moments guard one promise: nothing reaches the live show unproven, or before you say so. The earlier split into "prove it works" and "keep every part in step" does not match the map, because keeping joined parts in step is part of the proof.</p>
+      <p class="rec">Recommendation: widen, as the proposed title does, and give the proof and the release a question each in the pass. Both moments exist so that nothing reaches the live show unproven, or before you say so. The earlier split into "prove it works" and "keep every part in step" does not match the map, because keeping joined parts in step is part of the proof.</p>
     </div>
     <div class="q">
       <p class="changedrec">Recommendation changed by the map</p>
@@ -822,7 +824,7 @@ figure.dia.wide {{ padding: 12px; }}
     <h3>About the game's record</h3>
     <div class="q">
       <h3>19. When a GM scan is refused, does the game keep a record of the attempt?</h3>
-      <p>For example, a token already used, or no game running. Today only the tablet that scanned hears about it. On the map this decides whether the game's record keeps refused attempts, or only the answer goes back to the tablet. Yes means the record gains a kind of fact that no screen shows yet. No means a refused attempt lives only on the tablet that scanned, as today, and the night's record cannot tell it.</p>
+      <p>For example, a token already used, or no game running. Today only the tablet that scanned hears about it. On the map this decides whether the game's record keeps refused attempts, or only the answer goes back to the tablet. Yes means the record gains a kind of fact that no screen shows yet. No means a refused attempt is recorded nowhere, as today: only the tablet that scanned hears about it, and the night's record cannot tell it.</p>
       <p class="rec">Recommendation: yes. Record every attempt and its answer, and show it nowhere until a feature needs it.</p>
     </div>
   </div>
