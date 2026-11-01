@@ -319,7 +319,10 @@ TODAY = {}   # part id -> how its work is done today, from the shared work it ta
 def today_of(plain):
     """A shared-work entry is its definition, then how it is done today: keep what follows the first sentence."""
     first, _, rest = plain.partition('. ')
-    return rest.strip() or plain
+    rest = rest.strip() or plain
+    if rest.startswith('Today '):   # the card's label already says "Today"
+        rest = rest[6].upper() + rest[7:]
+    return rest
 
 
 def part_html(p):
