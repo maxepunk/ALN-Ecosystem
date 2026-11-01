@@ -25,7 +25,7 @@
       {"text": "The later blocks: players' phones, the second game's modules, content tooling, the operations era and the release block, which reaches adoptable."}
     ]
   },
-  "now": "You can confirm the requirements now on [[page:decisions]]: the quality targets, with every number left for you to set listed in one place; the extension cases; the promises and their wording questions; then the standalone questions and the game's record. Answer in the chat by a question's letter or its title; each question stands alone.",
+  "now": "You can confirm the requirements now on [[page:decisions]]: the quality targets, with every number left for you to set listed in one place; the extension cases; the promises and their wording questions; then the standalone questions and the game's record; and the panel's brief. Answer in the chat by a question's letter or its title; each question stands alone.",
   "moments": [
     {
       "name": "Author and Rehearse",
@@ -254,7 +254,6 @@
       "line": "A director, with the game's own developer, extends the after-game telling through the night's record, a published file read from outside the engine; what reaches the players afterwards stays the game's business ([[ex:EX19]])."
     }
   ],
-  "worldMermaid": "flowchart LR\n  subgraph outside[\"Outside the engine: the people, their devices and tools\"]\n    direction LR\n    src[\"Content source<br/>(Notion today)\"]\n    des[\"Designer\"]\n    tool[\"Design tool\"]\n    tech[\"Venue technician\"]\n    op[\"Operator\"]\n    gm[\"GM\"]\n    tab[\"GM tablets\"]\n    pl[\"Players\"]\n    scan[\"Player scanners:<br/>phones, hardware\"]\n    aud[\"Audience\"]\n    tv[\"TV and scoreboards\"]\n    dir[\"Director\"]\n    con[\"Director's console\"]\n    dev[\"Developer\"]\n    bench[\"Test bench\"]\n  end\n  subgraph proto[\"The published protocol: every message and file that crosses the engine's edge\"]\n    direction TB\n    msg[\"Messages: what a device may ask,<br/>what the engine answers,<br/>what it tells screens\"]\n    pack[\"The pack\"]\n    media[\"Media list<br/>and bundle\"]\n    prof[\"Venue profile\"]\n    rec[\"The night's record\"]\n  end\n  eng[\"The engine\"]\n  subgraph progs[\"Outside programs, each reached through support written for it inside the engine\"]\n    direction TB\n    video[\"Video player\"]\n    music[\"Music player\"]\n    audio[\"Audio and Bluetooth\"]\n    lights[\"Lighting\"]\n  end\n  src -->|\"feeds\"| tool\n  des --> tool\n  tool -->|\"publishes\"| pack\n  tool --> media\n  tech --> prof\n  op -->|\"picks the installed pack,<br/>swaps machines\"| eng\n  gm --> tab\n  tab <-->|\"commands, answers\"| msg\n  pl -->|\"tap\"| scan\n  scan <-->|\"scans, answers\"| msg\n  msg -->|\"scores, evidence\"| tv\n  tv --> aud\n  msg <--> eng\n  pack --> eng\n  media --> eng\n  prof --> eng\n  eng -->|\"writes at the end\"| rec\n  rec --> con\n  con --> dir\n  dev --> bench\n  bench <-->|\"tests\"| eng\n  dev -.->|\"changes the code\"| eng\n  eng <-->|\"drives, asks\"| video\n  eng <-->|\"drives, asks\"| music\n  eng <-->|\"drives, asks\"| audio\n  eng <-->|\"drives, asks\"| lights\n  classDef engine stroke:#0f766e,stroke-width:3px;\n  class eng engine;\n  style proto stroke:#0f766e,stroke-width:3px,stroke-dasharray:6 4;",
   "worldKey": "Every message and every file that reaches the engine from a device, a tool or a screen crosses one line, the published protocol: what a device may ask, what the engine answers, what it tells screens, and the files that carry a game or a night (the pack, the venue profile, the night's record, the media list). The engine's outside programs (video, music, audio and Bluetooth, lighting) sit on its other side: the engine reaches each through support written for it inside the engine, and a swapped program changes that support and the venue profile, nothing else. At a show, no person touches the running engine directly: the designer through the pack, fed by the content source (Notion today; another tool later through one adapter); the venue technician through the profile; the operator, you or a future one, by picking the installed pack and swapping machines between events; the GM and the players through their devices; the audience through the TV; the director through the night's record. The developer changes the engine's code and proves it from the test bench outside. The picture shows what is required at the engine's edge, not how the engine is built inside.",
   "decidedLately": [
     {
@@ -275,7 +274,7 @@
     },
     {
       "slug": "independent-architects-propose-the-top-level-design",
-      "line": "An independent panel of architects, who have not seen the orchestrator's reasoning, proposes and stress-tests the top-level design decisions before the first design round; its brief comes to you before the panel runs."
+      "line": "An independent panel of architects, who have not seen the reasoning of the agent running the pass, proposes and stress-tests the top-level design decisions before the first design round; its brief comes to you before the panel runs."
     }
   ],
   "siteGuide": [
@@ -467,7 +466,7 @@
     },
     {
       "term": "The panel",
-      "def": "Three independent architects with different lenses who have not seen the orchestrator's reasoning. They propose the top-level design blind after you confirm the requirements, then critique each other and the earlier candidate. Its brief comes to you before it runs.",
+      "def": "Three independent architects with different lenses who have not seen the reasoning of the agent running the pass. They propose the top-level design blind after you confirm the requirements, then critique each other and the earlier candidate. Its brief comes to you before it runs.",
       "group": "sequence"
     },
     {
@@ -554,7 +553,7 @@
   "intros": {
     "requirements": [
       "These are the engine's requirements, for you to confirm: the ten promises, what each person can count on at a given moment; the quality targets, how well the engine must work, each told as a situation that can be tested; the extension cases, how the platform must grow and who does the growing; and the standing rules from the roadmap. The panel and the design rounds design against them. They say what is needed, never how to build it.",
-      "Each promise reads the same way. Who and when name the people and the moment. What they count on is the promise in full. Built today says what already exists for it. The long-term goal is where the design is heading; a goal marked open is left to the design rounds. The quality targets and extension cases that serve the promise follow. Where today's engine falls short lists the design flaws that break it, each a situation on [[page:today]]. In a standalone game says what changes with no engine. Folded under the entry are what the planned capabilities need from it and the test situations taken from the shows. Each quality target gives what happens and what must then be true, the number left for you to set where one is needed, the promises it serves, whether it is settled or proposed, and why it matters. Each extension case names who extends, what they should need to touch, what must stay untouched, when, the promises it serves, its status and why.",
+      "Each promise reads the same way. Who and when name the people and the moment. What they count on is the promise in full; what already exists for it today is on [[page:today]]. The long-term goal is where the design is heading; a goal marked open is left to the design rounds. The quality targets and extension cases that serve the promise follow. Where today's engine falls short lists the design flaws that break it, each a situation on [[page:today]]. In a standalone game says what changes with no engine. Folded under the entry are what the planned capabilities need from it and the test situations taken from the shows. Each quality target gives what happens and what must then be true, the number left for you to set where one is needed, the promises it serves, whether it is settled or proposed, and why it matters. Each extension case names who extends, what they should need to touch, what must stay untouched, when, the promises it serves, its status and why.",
       "Nothing on this page is a design. Where a target or a case rests on a decision you made or a roadmap section you ratified, it says so; where it is proposed, it waits for your word on [[page:decisions]], where every number left for you to set is listed in one place."
     ],
     "design": [

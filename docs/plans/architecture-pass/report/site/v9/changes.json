@@ -412,7 +412,7 @@
     },
     {
       "was": "capability, as in \"one stand-in per capability\" or \"an interface per capability\"",
-      "now": "each kind of job (play a video, set a volume, light a scene)"
+      "now": "each kind of thing the room can do (play a video, set a volume, light a scene)"
     },
     {
       "was": "finding ids (A-05, B-07, D-04, X-08 and the rest)",

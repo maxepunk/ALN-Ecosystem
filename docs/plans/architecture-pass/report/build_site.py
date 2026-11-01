@@ -1145,7 +1145,9 @@ section > * { min-width: 0; }
 .words { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); }
 .words h3 { font-size: 16px; margin-bottom: 6px; }
 @media (max-width: 520px) { dl.terms { grid-template-columns: minmax(0, 1fr); } dl.terms dd { margin-bottom: 8px; } }
-figure.dia.world .dia-svg svg { display: block; margin: 0 auto; }
+.world-svg { display: block; width: 100%; height: auto; color: var(--fg); }
+.world-narrow { display: none; max-width: 420px; margin: 0 auto; }
+@media (max-width: 700px) { .world-wide { display: none; } .world-narrow { display: block; } }
 /* Decisions. */
 .q { scroll-margin-top: var(--anchor-gap); }
 .q h3 { font-size: 19px; font-weight: 600; line-height: 1.25; margin: 0; color: var(--fg); }
@@ -1166,8 +1168,8 @@ figure.dia.world .dia-svg svg { display: block; margin: 0 auto; }
 .q.q-changed { border-left-color: var(--fault); }
 .q.q-open { border-left-color: var(--line-strong); }
 .qgroup > h3 { font-size: 17px; color: var(--muted); font-weight: 600; }
-ol.rounds, ol.later { margin: 0; padding-left: 22px; display: grid; gap: 8px; max-width: 88ch; }
-ol.rounds li a.round { font-weight: 600; }
+ul.rounds, ul.later { margin: 0; padding-left: 22px; display: grid; gap: 8px; max-width: 88ch; }
+ul.rounds li a.round { font-weight: 600; }
 .topic { display: grid; gap: 10px; }
 .topic > h3 { font-size: 18px; }
 .decided-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
@@ -1197,6 +1199,11 @@ ol.rounds li a.round { font-weight: 600; }
 .rules li .src { font-size: 13.5px; color: var(--muted); }
 /* Design. */
 .ahead { display: grid; gap: 16px; }
+.pb { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+.pb-sec { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 20px; display: grid; gap: 8px; }
+.pb-sec h3 { font-size: 17px; }
+.pb-sec p { max-width: 82ch; font-size: 15px; }
+ul.pb-items { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 82ch; font-size: 15px; }
 .ahead-item { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 16px 20px; display: grid; gap: 10px; }
 .ahead-item h3 .ord { color: var(--muted); font-weight: 500; margin-right: 6px; }
 .ahead-item .block { display: grid; gap: 4px; }
@@ -1327,49 +1334,146 @@ def shell(page, title, body, css, open_n):
             f'{content}</body>\n</html>\n')
 
 
-# The world picture's layout (front.worldMermaid is drawn as written, with three changes of presentation only, so
-# it reads at phone width; the build checks that no node, label, edge or group title changes):
-# 1. it keeps its left-to-right direction (present() turns other flowcharts top-down);
-# 2. the four people and screens outside the engine that only receive (the TV and scoreboards, the audience, the
-#    Director's console, the director) are drawn in a second box with the same title as the first, so the layout
-#    can place them after the engine instead of stretching one box across the whole picture;
-# 3. the group titles are drawn as plain text (htmlLabels off), so a long title takes its own room above the boxes
-#    instead of covering them.
-WORLD_LATE = ('tv', 'aud', 'con', 'dir')
-WORLD_INIT = '%%{init: {"flowchart": {"useMaxWidth": false, "htmlLabels": false, "subGraphTitleMargin": {"top": 10, "bottom": 10}}}}%%'
+# The engine in its world, hand-drawn in two layouts: wide for desktop, stacked for phones (CSS shows one at a time,
+# at 700 pixels). Each person is one box naming the devices or tools they use; every message and file crosses the
+# published protocol on its way to or from the engine; the operator and the developer reach the engine below the
+# band, as front.worldKey describes; the outside programs sit on the engine's far side. The text is the picture's
+# only source; the front-page check reads it against the requirements and front.worldKey.
+WORLD_CAPTION = ('The engine in its world: the people and their devices, the published protocol every message and file '
+                 'crosses, the engine, and the outside programs it drives')
+WORLD_PEOPLE = {   # name -> (wide sublines, narrow sublines)
+    'Designer': (['makes the game in the design tool,', 'with content from Notion today'], ['the design tool,', 'content from Notion']),
+    'Venue technician': (["fits the venue: tonight's kit"], ['the venue profile']),
+    'GM': (['runs the game on the GM tablets'], ['GM tablets']),
+    'Players': (['tap tokens on phones and scanners'], ['phones and scanners']),
+    'Audience': (['watch the TV and scoreboards'], ['TV and scoreboards']),
+    'Director': (['tells the night afterwards,', "in the Director's console"], ["Director's console"]),
+    'Operator': (['you, or a future one: installs', 'packs and swaps machines'], ['you, or a future one:', 'installs packs,', 'swaps machines']),
+    'Developer': (['changes the code and tests it', 'on the test bench'], ['changes the code,', 'tests it on the', 'test bench']),
+}
+WORLD_PROGRAMS = ['Video player', 'Music player', 'Audio and Bluetooth', 'Lighting']
 
 
-def world_src(src):
-    lines = src.strip().split('\n')
-    out, moved, inside, title = [], [], False, None
-    for line in lines:
-        st = line.strip()
-        m = re.match(r'subgraph outside\["([^"]+)"\]', st)
-        if m:
-            inside, title = True, m.group(1)
-            out.append(line)
-            continue
-        if inside and st == 'end':
-            inside = False
-            out.append(line)
-            out.append(f'  subgraph outside2["{title}"]')
-            out.append('    direction LR')
-            out.extend(moved)
-            out.append('  end')
-            continue
-        n = re.match(r'(\w+)\[', st)
-        if inside and n and n.group(1) in WORLD_LATE:
-            moved.append(line)
-            continue
-        out.append(line)
-    if title is None or len(moved) != len(WORLD_LATE):
-        raise SystemExit('front.worldMermaid changed: its outside group or the four receiving nodes are not as the builder expects')
+def world_svg(layout):
+    """One layout of the world picture: 'wide' (1000 x 576) or 'narrow' (360 x 742)."""
+    out = []
+    mk, mka = ('wmk', 'wmkA') if layout == 'wide' else ('nmk', 'nmkA')
 
-    def content(ls):
-        return sorted(l.strip() for l in ls if not re.match(r'\s*(subgraph\b|end$|direction\b)', l.strip()))
-    if content(lines) != content(out) or sorted(set(re.findall(r'subgraph \w+\["([^"]+)"\]', '\n'.join(out)))) != sorted(set(re.findall(r'subgraph \w+\["([^"]+)"\]', src))):
-        raise SystemExit('the world picture\'s layout changed a node, a label, an edge or a group title')
-    return WORLD_INIT + '\n' + '\n'.join(out)
+    def text(x, y, t, size=11.5, anchor='start', weight=None, op=None):
+        w = f' font-weight="{weight}"' if weight else ''
+        o = f' opacity="{op}"' if op else ''
+        out.append(f'<text x="{x}" y="{y}" font-size="{size}" text-anchor="{anchor}"{w}{o} fill="currentColor">{e(t)}</text>')
+
+    def band(x, y, w, h, accent=False):
+        stroke = ' style="fill: var(--chip); stroke: var(--accent)" stroke-width="2" stroke-dasharray="7 5"' if accent \
+            else ' style="fill: var(--chip)"'
+        out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8"{stroke} fill-opacity=".6"/>')
+
+    def person(x, y, w, h, name, subs, size=13.5):
+        out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="6" style="fill: var(--surface); stroke: currentColor" stroke-width="1.2"/>')
+        text(x + 12, y + 19, name, size=size, weight='600')
+        for i, t in enumerate(subs):
+            text(x + 12, y + 35 + i * 14, t, size=11, op='.8')
+
+    def item(x, y, w, h, name, subs=(), accent=False, size=12.5, name_size=None):
+        stroke = 'var(--accent)' if accent else 'currentColor'
+        sw = 2.6 if accent else 1.2
+        out.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="6" style="fill: var(--surface); stroke: {stroke}" stroke-width="{sw}"/>')
+        lines = [name] + list(subs)
+        top = y + h / 2 - (len(lines) - 1) * 7 + 4.5
+        for i, t in enumerate(lines):
+            text(x + w / 2, round(top + i * 14, 1), t, size=(name_size or size) if i == 0 else 11, anchor='middle',
+                 weight='600' if i == 0 else None, op=None if i == 0 else '.8')
+
+    def arrow(points, label=None, at=None, anchor='middle', both=False, accent=False):
+        d = 'M' + ' L'.join(f'{px},{py}' for px, py in points)
+        m = mka if accent else mk
+        start = f' marker-start="url(#{m})"' if both else ''
+        stroke = 'var(--accent)' if accent else 'currentColor'
+        out.append(f'<path d="{d}" fill="none" style="stroke: {stroke}" stroke-width="1.5" marker-end="url(#{m})"{start}/>')
+        if label:
+            text(at[0], at[1], label, size=11, anchor=anchor, op='.9')
+
+    def head(x, y, t):
+        text(x, y, t.upper(), size=10.5, weight='600', op='.7')
+
+    if layout == 'wide':
+        W, H = 1000, 576
+        head(28, 26, 'The people and their devices')
+        head(444, 26, 'The published protocol')
+        head(680, 26, 'The engine')
+        head(848, 26, 'Outside programs')
+        band(16, 36, 302, 530)
+        band(432, 36, 186, 380, accent=True)
+        band(836, 36, 154, 226)
+        rows = [('Designer', 52, 58), ('Venue technician', 122, 44), ('GM', 178, 44), ('Players', 234, 44),
+                ('Audience', 290, 44), ('Director', 346, 58), ('Operator', 430, 58), ('Developer', 498, 58)]
+        for name, y, h in rows:
+            person(28, y, 278, h, name, WORLD_PEOPLE[name][0])
+        item(444, 50, 162, 32, 'The pack')
+        item(444, 88, 162, 32, 'Media list and bundle')
+        item(444, 128, 162, 32, 'Venue profile')
+        item(444, 178, 162, 156, 'Messages', ['what a device may ask,', 'what the engine answers,', 'what it tells screens'])
+        item(444, 346, 162, 58, "The night's record", ['written at the end', 'of a game'])
+        item(680, 50, 120, 506, 'The engine', ['its inside is what', 'the design decides'], accent=True, name_size=16)
+        for i, name in enumerate(WORLD_PROGRAMS):
+            item(848, 52 + i * 42, 130, 34, name, name_size=12)
+            arrow([(800, 69 + i * 42), (848, 69 + i * 42)], both=True)
+        text(913, 234, 'the engine drives each', size=10.5, anchor='middle', op='.8')
+        text(913, 248, 'and asks how it is', size=10.5, anchor='middle', op='.8')
+        # people and the protocol
+        arrow([(306, 66), (444, 66)], 'publishes', (375, 60))
+        arrow([(306, 104), (444, 104)])
+        arrow([(306, 144), (444, 144)], 'writes', (375, 138))
+        arrow([(306, 200), (444, 200)], 'commands, answers', (375, 194), both=True)
+        arrow([(306, 256), (444, 256)], 'scans, answers', (375, 250), both=True)
+        arrow([(444, 312), (306, 312)], 'scores, evidence', (375, 306))
+        arrow([(444, 375), (306, 375)], 'read after the show', (375, 369))
+        # the protocol and the engine
+        arrow([(606, 66), (680, 66)])
+        arrow([(606, 104), (680, 104)])
+        arrow([(606, 144), (680, 144)])
+        arrow([(606, 256), (680, 256)], both=True, accent=True)
+        arrow([(680, 375), (606, 375)])
+        # below the band
+        arrow([(306, 459), (680, 459)], 'between events', (493, 453))
+        arrow([(306, 527), (680, 527)], 'code and tests', (493, 521))
+    else:
+        W, H = 360, 742
+        head(14, 18, 'The people and their devices')
+        band(6, 26, 348, 204)
+        grid = [('Designer', 14, 36), ('Venue technician', 184, 36), ('GM', 14, 100), ('Players', 184, 100),
+                ('Audience', 14, 164), ('Director', 184, 164)]
+        for name, x, y in grid:
+            person(x, y, 162, 56, name, WORLD_PEOPLE[name][1], size=13)
+        arrow([(95, 232), (95, 260)], both=True)
+        arrow([(265, 232), (265, 260)], both=True)
+        text(180, 250, 'sends and receives', size=11, anchor='middle', op='.9')
+        band(6, 262, 348, 162, accent=True)
+        head(14, 280, 'The published protocol')
+        item(14, 288, 332, 48, 'Messages', ['what a device asks, the answers, what screens show'])
+        item(14, 344, 162, 32, 'The pack')
+        item(184, 344, 162, 32, 'Media list and bundle')
+        item(14, 384, 162, 32, 'Venue profile')
+        item(184, 384, 162, 32, "The night's record")
+        arrow([(95, 426), (95, 454)], both=True, accent=True)
+        item(14, 456, 162, 150, 'The engine', ['its inside is what', 'the design decides'], accent=True, name_size=16)
+        band(192, 440, 162, 176)
+        head(200, 458, 'Outside programs')
+        for i, name in enumerate(WORLD_PROGRAMS):
+            item(200, 466 + i * 36, 146, 30, name, name_size=12)
+            arrow([(176, 481 + i * 36), (200, 481 + i * 36)], both=True)
+        band(6, 640, 348, 94)
+        person(14, 650, 162, 74, 'Operator', WORLD_PEOPLE['Operator'][1], size=13)
+        person(184, 650, 162, 74, 'Developer', WORLD_PEOPLE['Developer'][1], size=13)
+        arrow([(95, 648), (95, 608)])
+        arrow([(265, 648), (265, 628), (150, 628), (150, 608)])
+    defs = ('<defs>'
+            f'<marker id="{mk}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>'
+            f'<marker id="{mka}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent)"/></marker>'
+            '</defs>')
+    return (f'<svg class="world-svg world-{layout}" viewBox="0 0 {W} {H}" role="img" aria-label="{e(WORLD_CAPTION)}" '
+            f'font-family="IBM Plex Sans, system-ui, sans-serif">{defs}{"".join(out)}</svg>')
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -1403,8 +1507,8 @@ def page_engine(D):
                     for q in f['qualities'])
     growth = ''.join(f'<div><h3><a href="{href("requirements", "growth-" + slug(g["who"]))}">{e(g["who"])}</a></h3><p>{rich(g["line"])}</p></div>'
                      for g in f['growth'])
-    cap = 'The engine in its world: the people, their devices and tools, the published protocol and the outside programs'
-    world = diagram(world_src(f['worldMermaid']), cap)
+    cap = WORLD_CAPTION
+    world = world_svg('wide') + world_svg('narrow')
     lately = ''.join(f'<li>{dec_a(x["slug"])}<span>{rich(x["line"])}</span></li>' for x in f['decidedLately'])
 
     def terms(group):
@@ -1418,7 +1522,7 @@ def page_engine(D):
   <h2 id="where-h">Where the work stands</h2>
   <div class="timeline">
     <div><h3>Done</h3>{tl_items(tl["done"])}</div>
-    <div class="tl-now"><h3>Now: the design half</h3>{tl_items(tl["now"], ordered=True)}</div>
+    <div class="tl-now"><h3>Now: the design half</h3>{tl_items(tl["now"])}</div>
     <div><h3>Next</h3>{tl_items(tl["next"])}</div>
   </div>
 </section>
@@ -1458,7 +1562,7 @@ def page_engine(D):
   <h2 id="world-h">The engine in its world</h2>
   <figure class="dia wide world">
     <figcaption>{e(cap)}</figcaption>
-    <div class="scroll">{world}</div>
+    <div class="world-pic">{world}</div>
     <p class="figkey">{rich(f["worldKey"])}</p>
   </figure>
 </section>
@@ -1561,10 +1665,10 @@ def page_decisions(D):
 <section id="design-rounds" aria-labelledby="design-rounds-h">
   <h2 id="design-rounds-h">Coming in the design rounds, no answer needed now</h2>
   <p>The top-level decisions, in the order the design rounds take them, hardest to reverse first. Each links to its entry on {page_a("design")}.</p>
-  <ol class="rounds">{"".join(rounds)}</ol>
+  <ul class="rounds">{"".join(rounds)}</ul>
   <h3>Later choices</h3>
   <p>{rich(LATER_INTRO)}</p>
-  <ol class="later">{"".join(later)}</ol>
+  <ul class="later">{"".join(later)}</ul>
 </section>
 
 <section id="decided" aria-labelledby="decided-h">
@@ -1651,7 +1755,7 @@ def promise_html(j, D):
   </div>
   <p class="standalone"><span class="tag">In a standalone game</span> {e(standalone)}</p>
   <details><summary>What the planned capabilities need from it ({len(j["needs"])})</summary><ul class="examples">{needs}</ul></details>
-  <details><summary>Test situations from the shows ({len(j["tests"])}); {e(qtext)}</summary><ol class="examples">{tests}</ol></details>
+  <details><summary>Test situations from the shows ({len(j["tests"])}); {e(qtext)}</summary><ul class="examples">{tests}</ul></details>
 </section>'''
 
 
@@ -1837,7 +1941,7 @@ def earlier_html(D):
     overview = present(overview_src(jobs)).replace('"useMaxWidth": false}, "sequence"', '"useMaxWidth": false, "nodeSpacing": 20}, "sequence"', 1)
     rel_cap = f'The {n_links} main links between the promises'
     return f'''<details class="earlier">
-    <summary><span class="tag">The earlier candidate, folded</span><span class="note">{rich(D["design"]["earlierNote"])}</span></summary>
+    <summary><span class="tag">Open the earlier candidate</span><span class="note">{rich(D["design"]["earlierNote"])}</span></summary>
     <div class="earlier-body">
 
 <section class="fit-block" id="whole" aria-labelledby="whole-h">
@@ -1924,7 +2028,7 @@ def earlier_html(D):
 def page_design(D):
     g = D['design']
     ahead = ''.join(f'''<article class="ahead-item" id="d-{a["slug"]}">
-    <h3><span class="ord">{k}.</span>{e(a["title"])}</h3>
+    <h3>{e(a["title"])}</h3>
     <div class="block"><span class="tag">What it decides</span><p>{rich(a["decides"])}</p></div>
     <div class="block"><span class="tag">What drives it</span><p>{rich(a["drivers"])}</p></div>
     <div class="block"><span class="tag">Already settled around it</span><p>{rich(a["settled"])}</p></div>
@@ -1942,6 +2046,18 @@ def page_design(D):
         alt = (x.get('alt') or '').strip()
         link = f' <a href="{href("design", alt)}">Both designs compared.</a>' if alt else ''
         later.append(f'<li>{rich(x["text"])}{link}</li>')
+    pb = g['panel']
+    if pb['slug'] != 'panel':
+        raise SystemExit('design.panel must carry the slug "panel" (the anchor the Decisions page links to)')
+
+    def pb_items(items):
+        return ''.join(f'<li><strong>{e(i["lead"])}.</strong> {rich(i["text"])}</li>' for i in items)
+    pb_secs = ''.join(f'''<div class="pb-sec">
+    <h3>{e(sec["title"])}</h3>
+    {paras(sec.get("paragraphs", []))}
+    {f'<ul class="pb-items">{pb_items(sec["items"])}</ul>' if sec.get("items") else ''}
+    {paras(sec.get("after", []))}
+  </div>''' for sec in pb['sections'])
     return f'''<header class="page-head">
   <h1>Design</h1>
   <div class="prose">{paras(D["front"]["intros"]["design"])}</div>
@@ -1952,6 +2068,12 @@ def page_design(D):
   <div class="ahead">{ahead}</div>
 </section>
 
+<section id="panel" aria-labelledby="panel-h">
+  <h2 id="panel-h">{e(pb["title"])}</h2>
+  <div class="prose">{paras(pb["intro"])}</div>
+  <div class="pb">{pb_secs}</div>
+</section>
+
 <section id="decided" aria-labelledby="decided-h">
   <h2 id="decided-h">Decided directions</h2>
   <div class="directions">{decided}</div>
@@ -1960,7 +2082,7 @@ def page_design(D):
 <section id="later" aria-labelledby="later-h">
   <h2 id="later-h">Later choices</h2>
   <p>Mid-level choices that still stand. Each is settled inside one of the decisions ahead, or by the build plan.</p>
-  <ol class="later">{"".join(later)}</ol>
+  <ul class="later">{"".join(later)}</ul>
 </section>
 
 <section id="earlier" aria-labelledby="earlier-h">
@@ -2292,14 +2414,13 @@ def index_sentences_without(s):
 VISIBLE_IDS = re.compile(r'\b(?:J(?:10|[1-9])|C(?:1[0-6]|[1-9])|N1|QT\d+|EX\d+|[A-Z]{1,2}-\d{2,3})\b')
 BARE_NUMBERS = re.compile(r'\b(?:phase|step|round|block|decision|question)s? \d+\b', re.I)
 # Retired words: allowed on changes.html only (the brief's list, then every other term of the jargon table's
-# "Term as it appears" column a pattern matches without false positives). Three phrases are excepted, each named
-# in the build log as an input to reword: "kind of job" is jargon wording 20's own plain wording for
-# "capability"; "a developer's job" (one extension case's "why") is the everyday word for a task, not the retired
-# name for a promise; "orchestrator" naming the agent that runs the pass is not the retired name for the engine.
+# "Term as it appears" column a pattern matches without false positives). No exceptions: the three phrases the
+# first build let through ("kind of job", "a developer's job", "orchestrator" for the agent running the pass) were
+# reworded at their sources on 2026-11-01.
 RETIRED = [
-    ('job', r'\bjobs?\b(?<!kind of job)(?<!kinds of job)(?<!developer[\'’]s job)'),
+    ('job', r'\bjobs?\b'),
     ('installer', r'\binstallers?\b'),
-    ('orchestrator', r'\borchestrator\b(?![\'’]s reasoning| \(the agent running the pass\)|[\'’]s recommendations)'),
+    ('orchestrator', r'\borchestrators?\b'),
     ('the planning half', r'\bplanning half\b'),
     ('the building half', r'\bbuilding half\b'),
     ('the map', r'\bthe map\b'),

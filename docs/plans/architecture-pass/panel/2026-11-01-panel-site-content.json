@@ -9,42 +9,75 @@
       {
         "title": "Who is on the panel",
         "paragraphs": [
-          "Three architects. Each is a fresh AI agent on the strongest model available. None has seen the conversations or the planning documents of the orchestrator (the agent running the pass), and none sees another's work until round two. Each has one lens, so that the three proposals differ. A lens says where an architect looks hardest; every architect still answers to every requirement."
+          "Three architects. Each is a fresh AI agent on the strongest model available. None has seen the conversations or the planning documents of the agent running the pass, and none sees another's work until the second round. Each has one lens, so that the three proposals differ. A lens says where an architect looks hardest; every architect still answers to every requirement."
         ],
         "items": [
-          {"lead": "State and authority", "text": "How a live game's facts are held, changed, ordered and recovered across the show machine, the tablets, the phones and the hardware scanners, on a network that drops, with standalone games included."},
-          {"lead": "Growth and extension", "text": "How designers, venue technicians and outside developers extend the platform without touching the engine's code: games as packs, venues as profiles, new kinds of screen, device and outside program, and the published protocol as what other people build against."},
-          {"lead": "Living with it", "text": "How one owner and AI agents keep the engine easy to understand, change, test and release for years: how small and clear each piece is, and how a change is made, tested on the test bench and shipped with no risk to a show."}
+          {
+            "lead": "State and authority",
+            "text": "How a live game's facts are held, changed, ordered and recovered across the show machine, the tablets, the phones and the hardware scanners, on a network that drops, with standalone games included."
+          },
+          {
+            "lead": "Growth and extension",
+            "text": "How designers, venue technicians and outside developers extend the platform without touching the engine's code: games as packs, venues as profiles, new kinds of screen, device and outside program, and the published protocol as what other people build against."
+          },
+          {
+            "lead": "Living with it",
+            "text": "How one owner and AI agents keep the engine easy to understand, change, test and release for years: how small and clear each piece is, and how a change is made, tested on the test bench and shipped with no risk to a show."
+          }
         ]
       },
       {
-        "title": "Round one: proposing blind",
+        "title": "The blind round",
         "paragraphs": [
           "Each architect gets one prepared folder and nothing else:"
         ],
         "items": [
-          {"lead": "The goal", "text": "In your words."},
-          {"lead": "The requirements", "text": "As you confirm them on [[page:requirements]]: the ten promises with your answers, the quality targets with the numbers you set, the extension cases and the standing rules."},
-          {"lead": "The setting, as facts", "text": "A show is one game of about two hours at one venue, with a few dozen devices. One show machine, a Raspberry Pi 5, drives the TV and the room's sound and must go from power-on to a running show with no technician. The room's outside programs (video, music, sound with Bluetooth speakers, the venue's lighting) can each crash or be missing. The devices are GM tablets, players' own phones (a web page, with no install and no accounts), hardware scanners and NFC tokens. The venue's Wi-Fi can drop at any moment, and no internet is assumed. A game's content is written in Notion today, with its large media files beside the pack. One owner, who is not an engineer, develops the engine with AI agents, and a future open-source community may join."},
-          {"lead": "Your decisions that bind any design", "text": "[[dec:one-published-protocol-and-an-outside-test-bench]], [[dec:standalone-games-declared-never-mixed]], [[dec:four-words-for-the-game-s-live-facts]], [[dec:the-night-s-record-and-the-after-game-article]] and [[dec:the-role-question-starts-from-settled-roles]], if you agree ([[q:Q]])."},
-          {"lead": "The six decisions ahead, as the agenda", "text": "If you agree ([[q:Q]]). An architect may add, split or merge decisions and must say why. How today's engine moves to the new design waits for round two, when today's engine is known."}
+          {
+            "lead": "The goal",
+            "text": "In your words."
+          },
+          {
+            "lead": "The requirements",
+            "text": "As you confirm them on [[page:requirements]]: the ten promises with your answers, the quality targets with the numbers you set, the extension cases and the standing rules."
+          },
+          {
+            "lead": "The setting, as facts",
+            "text": "A show is one game of about two hours at one venue, with a few dozen devices. One show machine, a Raspberry Pi 5, drives the TV and the room's sound and must go from power-on to a running show with no technician. The room's outside programs (video, music, sound with Bluetooth speakers, the venue's lighting) can each crash or be missing. The devices are GM tablets, players' own phones (a web page, with no install and no accounts), hardware scanners and NFC tokens. The venue's Wi-Fi can drop at any moment, and no internet is assumed. A game's content is written in Notion today, with its large media files beside the pack. One owner, who is not an engineer, develops the engine with AI agents, and a future open-source community may join."
+          },
+          {
+            "lead": "Your decisions that bind any design",
+            "text": "[[dec:one-published-protocol-and-an-outside-test-bench]], [[dec:standalone-games-declared-never-mixed]], [[dec:four-words-for-the-game-s-live-facts]], [[dec:the-night-s-record-and-the-after-game-article]] and [[dec:the-role-question-starts-from-settled-roles]], if you agree ([[q:Q]])."
+          },
+          {
+            "lead": "The six decisions ahead, as the agenda",
+            "text": "If you agree ([[q:Q]]). An architect may add, split or merge decisions and must say why. How today's engine moves to the new design waits for the second round, when today's engine is known."
+          }
         ],
         "after": [
           "Each architect writes a top-level design, decision by decision: the choice; one or two alternatives they rejected, with the cost of each; a table of how the design keeps each promise, meets each quality target and allows each extension case, naming any it cannot meet; its riskiest assumption; and the trial run, a throwaway prototype, that would test that assumption fastest."
         ]
       },
       {
-        "title": "Round two: meeting today's engine",
+        "title": "The second round: meeting today's engine",
         "paragraphs": [
-          "After round one, each architect also gets:"
+          "After the blind round, each architect also gets:"
         ],
         "items": [
-          {"lead": "Today's engine, as facts", "text": "A fact sheet of what runs where, in what language, and what works today; and the code with its component guides, to read but not change, if you agree ([[q:R]])."},
-          {"lead": "The sixteen design flaws, as test situations", "text": "What goes wrong at a show, the problems behind it and where in today's code they sit, with no fix attached."},
-          {"lead": "The other two proposals, and the earlier candidate", "text": "The 17-part design drawn bottom-up from today's engine, as one more proposal."}
+          {
+            "lead": "Today's engine, as facts",
+            "text": "A fact sheet of what runs where, in what language, and what works today; and the code with its component guides, to read but not change, if you agree ([[q:R]])."
+          },
+          {
+            "lead": "The sixteen design flaws, as test situations",
+            "text": "What goes wrong at a show, the problems behind it and where in today's code they sit, with no fix attached."
+          },
+          {
+            "lead": "The other two proposals, and the earlier candidate",
+            "text": "The 17-part design drawn bottom-up from today's engine, as one more proposal."
+          }
         ],
         "after": [
-          "Each architect tests every proposal (their own, the other two and the earlier candidate) against the sixteen situations and today's facts: which situations it removes, which it leaves, and what moving today's engine to it would cost. They critique the others, then revise their own design and say what changed and why. Round two also gives the last decision ahead its real options: rebuild beside today's engine, change it in place piece by piece, or a mix."
+          "Each architect tests every proposal (their own, the other two and the earlier candidate) against the sixteen situations and today's facts: which situations it removes, which it leaves, and what moving today's engine to it would cost. They critique the others, then revise their own design and say what changed and why. The second round also gives the last decision ahead its real options: rebuild beside today's engine, change it in place piece by piece, or a mix."
         ]
       },
       {
@@ -56,14 +89,14 @@
       {
         "title": "What is withheld, and how",
         "paragraphs": [
-          "Withheld from round one: the orchestrator's recommendations and leading guesses; the earlier candidate, which enters round two as one more proposal; the earlier lists of design choices; today's engine and its review. Withheld from both rounds: the orchestrator's reasoning, the review's conclusions about fixes, and the earlier candidate's table of alternatives.",
-          "A script builds each round's folder from the sources (the requirements files, the standing rules, the decision record). Each architect is told to read only its folder, plus the code in round two, and never the planning documents. Nothing technical stops an agent from opening a file it was told to leave alone, so the synthesis's checker also looks for traces of withheld material in every proposal."
+          "Withheld from the blind round: the recommendations and leading guesses of the agent running the pass; the earlier candidate, which enters the second round as one more proposal; the earlier lists of design choices; today's engine and its review. Withheld from both rounds: the reasoning of the agent running the pass, the review's conclusions about fixes, and the earlier candidate's table of alternatives.",
+          "A script builds each round's folder from the sources (the requirements files, the standing rules, the decision record). Each architect is told to read only its folder, plus the code in the second round, and never the planning documents. Nothing technical stops an agent from opening a file it was told to leave alone, so the synthesis's checker also looks for traces of withheld material in every proposal."
         ]
       },
       {
         "title": "Size and cost",
         "paragraphs": [
-          "About eight agents: three in round one, three in round two, the synthesis and its checker. It takes two to three hours and several million tokens, about the size of one of the larger site workflows."
+          "About eight agents: three in the blind round, three in the second round, the synthesis and its checker. It takes two to three hours and several million tokens, about the size of one of the larger site workflows."
         ]
       }
     ]
@@ -83,9 +116,18 @@
           "Your goal names three things the design must make easy: maintaining the engine, continuing its development, and extending it. The quality targets add staying up through a live show and standalone and offline play."
         ],
         "options": [
-          {"label": "The three draft lenses: state and authority; growth and extension; living with it.", "cost": "Live-show reliability has no architect of its own; it sits inside the state lens."},
-          {"label": "Add a fourth architect, on live-show reliability.", "cost": "One more proposal in each round, a longer synthesis, and about a third more time and cost."},
-          {"label": "Replace \"living with it\" with a lens on the smallest possible engine.", "cost": "Keeping the engine easy to maintain and change, which your goal names first, loses its own architect."}
+          {
+            "label": "The three draft lenses: state and authority; growth and extension; living with it.",
+            "cost": "Live-show reliability has no architect of its own; it sits inside the state lens."
+          },
+          {
+            "label": "Add a fourth architect, on live-show reliability.",
+            "cost": "One more proposal in each round, a longer synthesis, and about a third more time and cost."
+          },
+          {
+            "label": "Replace \"living with it\" with a lens on the smallest possible engine.",
+            "cost": "Keeping the engine easy to maintain and change, which your goal names first, loses its own architect."
+          }
         ],
         "recommendation": "The three draft lenses. Between them they cover what your goal names, and each quality target still binds all three. A fourth architect adds cost and a longer synthesis for a quality the state lens already weighs.",
         "recKind": "Recommendation"
@@ -93,35 +135,47 @@
       {
         "letter": "Q",
         "anchor": "q-q",
-        "title": "What the panel gets in round one",
+        "title": "What the panel gets in the blind round",
         "status": "open",
-        "decides": "Whether the panel's blind first round also gets the decisions you have made that bind any design, and the six decisions ahead as its agenda, or only the goal, the requirements and the setting.",
+        "decides": "Whether the panel's blind round also gets the decisions you have made that bind any design, and the six decisions ahead as its agenda, or only the goal, the requirements and the setting.",
         "evidence": [
-          "[[dec:what-the-architects-panel-sees-and-when]] lists the goal, the requirements and the setting for the first round, and names nothing else.",
-          "The decisions that bind any design: [[dec:one-published-protocol-and-an-outside-test-bench]], [[dec:standalone-games-declared-never-mixed]], [[dec:four-words-for-the-game-s-live-facts]], [[dec:the-night-s-record-and-the-after-game-article]] and [[dec:the-role-question-starts-from-settled-roles]]. They are your decisions, not the orchestrator's reasoning.",
+          "[[dec:what-the-architects-panel-sees-and-when]] lists the goal, the requirements and the setting for the blind round, and names nothing else.",
+          "The decisions that bind any design: [[dec:one-published-protocol-and-an-outside-test-bench]], [[dec:standalone-games-declared-never-mixed]], [[dec:four-words-for-the-game-s-live-facts]], [[dec:the-night-s-record-and-the-after-game-article]] and [[dec:the-role-question-starts-from-settled-roles]]. They are your decisions, not the reasoning of the agent running the pass.",
           "The six decisions ahead are your list, from [[dec:design-top-down-hardest-to-reverse-choices-first]].",
           "If anything else should be added to what the panel sees, or kept from it, say so with this question."
         ],
         "options": [
-          {"label": "Also give round one your binding decisions and the six decisions ahead, with leave to add, split or merge decisions.", "cost": "The agenda frames the architects' thinking; they are told they may change it."},
-          {"label": "Give round one only the goal, the requirements and the setting.", "cost": "Proposals may break decisions you have already made, and the synthesis must sort them out."}
+          {
+            "label": "Also give the blind round your binding decisions and the six decisions ahead, with leave to add, split or merge decisions.",
+            "cost": "The agenda frames the architects' thinking; they are told they may change it."
+          },
+          {
+            "label": "Give the blind round only the goal, the requirements and the setting.",
+            "cost": "Proposals may break decisions you have already made, and the synthesis must sort them out."
+          }
         ],
-        "recommendation": "Also give round one your binding decisions and the six decisions ahead. A panel without them would spend its proposals on designs you have already ruled out, and it may still change the agenda if it says why.",
+        "recommendation": "Also give the blind round your binding decisions and the six decisions ahead. A panel without them would spend its proposals on designs you have already ruled out, and it may still change the agenda if it says why.",
         "recKind": "Recommendation"
       },
       {
         "letter": "R",
         "anchor": "q-r",
-        "title": "Round two reads today's code",
+        "title": "The second round reads today's code",
         "status": "open",
-        "decides": "Whether, in round two, the architects may read today's code and its component guides, or only a fact sheet about today's engine.",
+        "decides": "Whether, in the second round, the architects may read today's code and its component guides, or only a fact sheet about today's engine.",
         "evidence": [
-          "[[dec:what-the-architects-panel-sees-and-when]] gives round two today's engine as facts and the sixteen design flaws as test situations. It does not say in what form.",
+          "[[dec:what-the-architects-panel-sees-and-when]] gives the second round today's engine as facts and the sixteen design flaws as test situations. It does not say in what form.",
           "The code is the most exact fact about today's engine. It is also large, and reading it can pull a design toward small changes to today's engine."
         ],
         "options": [
-          {"label": "A fact sheet first, then the code and its component guides, to read but not change.", "cost": "The code can pull designs toward today's engine; the architects revise their own blind proposals rather than start again from the code."},
-          {"label": "A fact sheet only.", "cost": "The fact sheet is a summary someone wrote; what it leaves out, the architects cannot check."}
+          {
+            "label": "A fact sheet first, then the code and its component guides, to read but not change.",
+            "cost": "The code can pull designs toward today's engine; the architects revise their own blind proposals rather than start again from the code."
+          },
+          {
+            "label": "A fact sheet only.",
+            "cost": "The fact sheet is a summary someone wrote; what it leaves out, the architects cannot check."
+          }
         ],
         "recommendation": "A fact sheet first, then the code, to read only. The architects test their proposals against the real engine, and starting from their own blind proposals keeps the code from setting the design.",
         "recKind": "Recommendation"

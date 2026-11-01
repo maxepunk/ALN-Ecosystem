@@ -49,6 +49,108 @@
       "panel": "The panel brings two or three ways of moving side by side, each priced by what it needs from today's engine, with [[page:today]] as the evidence of what already works and what is already well built. The situations nearest this decision: [[flaw:C15]], [[flaw:C16]] and [[flaw:C5]]. The round ends by handing the build plan its starting point; the build plan settles the order of the work."
     }
   ],
+  "panel": {
+    "slug": "panel",
+    "title": "The panel's brief",
+    "intro": [
+      "Before the first design round, an independent panel of three architects proposes the top-level design ([[dec:independent-architects-propose-the-top-level-design]]). You said the context the panel gets is critical, so its brief comes to you before it runs. It follows [[dec:what-the-architects-panel-sees-and-when]]. The choices that decision leaves open are [[q:P]], [[q:Q]] and [[q:R]]. The panel runs only after you confirm the requirements and approve this brief."
+    ],
+    "sections": [
+      {
+        "title": "Who is on the panel",
+        "paragraphs": [
+          "Three architects. Each is a fresh AI agent on the strongest model available. None has seen the conversations or the planning documents of the agent running the pass, and none sees another's work until the second round. Each has one lens, so that the three proposals differ. A lens says where an architect looks hardest; every architect still answers to every requirement."
+        ],
+        "items": [
+          {
+            "lead": "State and authority",
+            "text": "How a live game's facts are held, changed, ordered and recovered across the show machine, the tablets, the phones and the hardware scanners, on a network that drops, with standalone games included."
+          },
+          {
+            "lead": "Growth and extension",
+            "text": "How designers, venue technicians and outside developers extend the platform without touching the engine's code: games as packs, venues as profiles, new kinds of screen, device and outside program, and the published protocol as what other people build against."
+          },
+          {
+            "lead": "Living with it",
+            "text": "How one owner and AI agents keep the engine easy to understand, change, test and release for years: how small and clear each piece is, and how a change is made, tested on the test bench and shipped with no risk to a show."
+          }
+        ]
+      },
+      {
+        "title": "The blind round",
+        "paragraphs": [
+          "Each architect gets one prepared folder and nothing else:"
+        ],
+        "items": [
+          {
+            "lead": "The goal",
+            "text": "In your words."
+          },
+          {
+            "lead": "The requirements",
+            "text": "As you confirm them on [[page:requirements]]: the ten promises with your answers, the quality targets with the numbers you set, the extension cases and the standing rules."
+          },
+          {
+            "lead": "The setting, as facts",
+            "text": "A show is one game of about two hours at one venue, with a few dozen devices. One show machine, a Raspberry Pi 5, drives the TV and the room's sound and must go from power-on to a running show with no technician. The room's outside programs (video, music, sound with Bluetooth speakers, the venue's lighting) can each crash or be missing. The devices are GM tablets, players' own phones (a web page, with no install and no accounts), hardware scanners and NFC tokens. The venue's Wi-Fi can drop at any moment, and no internet is assumed. A game's content is written in Notion today, with its large media files beside the pack. One owner, who is not an engineer, develops the engine with AI agents, and a future open-source community may join."
+          },
+          {
+            "lead": "Your decisions that bind any design",
+            "text": "[[dec:one-published-protocol-and-an-outside-test-bench]], [[dec:standalone-games-declared-never-mixed]], [[dec:four-words-for-the-game-s-live-facts]], [[dec:the-night-s-record-and-the-after-game-article]] and [[dec:the-role-question-starts-from-settled-roles]], if you agree ([[q:Q]])."
+          },
+          {
+            "lead": "The six decisions ahead, as the agenda",
+            "text": "If you agree ([[q:Q]]). An architect may add, split or merge decisions and must say why. How today's engine moves to the new design waits for the second round, when today's engine is known."
+          }
+        ],
+        "after": [
+          "Each architect writes a top-level design, decision by decision: the choice; one or two alternatives they rejected, with the cost of each; a table of how the design keeps each promise, meets each quality target and allows each extension case, naming any it cannot meet; its riskiest assumption; and the trial run, a throwaway prototype, that would test that assumption fastest."
+        ]
+      },
+      {
+        "title": "The second round: meeting today's engine",
+        "paragraphs": [
+          "After the blind round, each architect also gets:"
+        ],
+        "items": [
+          {
+            "lead": "Today's engine, as facts",
+            "text": "A fact sheet of what runs where, in what language, and what works today; and the code with its component guides, to read but not change, if you agree ([[q:R]])."
+          },
+          {
+            "lead": "The sixteen design flaws, as test situations",
+            "text": "What goes wrong at a show, the problems behind it and where in today's code they sit, with no fix attached."
+          },
+          {
+            "lead": "The other two proposals, and the earlier candidate",
+            "text": "The 17-part design drawn bottom-up from today's engine, as one more proposal."
+          }
+        ],
+        "after": [
+          "Each architect tests every proposal (their own, the other two and the earlier candidate) against the sixteen situations and today's facts: which situations it removes, which it leaves, and what moving today's engine to it would cost. They critique the others, then revise their own design and say what changed and why. The second round also gives the last decision ahead its real options: rebuild beside today's engine, change it in place piece by piece, or a mix."
+        ]
+      },
+      {
+        "title": "The synthesis",
+        "paragraphs": [
+          "One more agent, who proposed nothing, reads all of it and writes, for each decision ahead: the options the panel found, their costs, where the architects agreed and where they did not, the trial runs worth doing before choosing, and the questions only you can answer. A checker reads the synthesis against the proposals and corrects anything it misstates or leaves out. The synthesis becomes the agenda of the first design round, and a page on this site. The six proposals, three from each round, stay in the repository in full."
+        ]
+      },
+      {
+        "title": "What is withheld, and how",
+        "paragraphs": [
+          "Withheld from the blind round: the recommendations and leading guesses of the agent running the pass; the earlier candidate, which enters the second round as one more proposal; the earlier lists of design choices; today's engine and its review. Withheld from both rounds: the reasoning of the agent running the pass, the review's conclusions about fixes, and the earlier candidate's table of alternatives.",
+          "A script builds each round's folder from the sources (the requirements files, the standing rules, the decision record). Each architect is told to read only its folder, plus the code in the second round, and never the planning documents. Nothing technical stops an agent from opening a file it was told to leave alone, so the synthesis's checker also looks for traces of withheld material in every proposal."
+        ]
+      },
+      {
+        "title": "Size and cost",
+        "paragraphs": [
+          "About eight agents: three in the blind round, three in the second round, the synthesis and its checker. It takes two to three hours and several million tokens, about the size of one of the larger site workflows."
+        ]
+      }
+    ]
+  },
   "decided": [
     {
       "slug": "the-published-protocol",
@@ -108,7 +210,7 @@
       "alt": "alt-rules"
     },
     {
-      "text": "The equipment's interface: one per kind of job the room can do (play a video, light a scene), or one per outside program.",
+      "text": "The equipment's interface: one per kind of thing the room can do (play a video, light a scene), or one per outside program.",
       "alt": "alt-equipment"
     },
     {

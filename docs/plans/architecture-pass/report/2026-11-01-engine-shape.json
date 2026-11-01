@@ -304,7 +304,7 @@
       "runsOn": ["backend", "gm-tablet-standin"],
       "jobs": ["J4", "J9", "J8", "J10"],
       "flaws": ["C3", "C2", "C11"],
-      "seams": "One adapter per program, and one software stand-in for each kind of job (play a video, light a scene) for the trial copy of the engine and the test rig."
+      "seams": "One adapter per program, and one software stand-in for each kind of thing the room can do (play a video, light a scene) for the trial copy of the engine and the test rig."
     },
     {
       "id": "P9",
@@ -413,8 +413,8 @@
       "cost": "The candidate needs the engine's rules packaged so a browser can run them, and a generator for the tables; it removes [[flaw:C9]] for the tablet because of how it is built. The other way keeps today's two bodies and relies on a test that runs both and compares them; it notices when the copies come to differ and never stops it."
     },
     {
-      "title": "Equipment: an interface per kind of job or per program",
-      "a": "Per kind of job (play a video, set a volume, light a scene), with the programs, or software stand-ins, plugged in beneath.",
+      "title": "Equipment: an interface per kind of thing the room can do, or per program",
+      "a": "Per kind of thing the room can do (play a video, set a volume, light a scene), with the programs, or software stand-ins, plugged in beneath.",
       "b": "Per program (a program the engine keeps running, with its own commands), as today's seven adapters under one rule for keeping them running.",
       "cost": "The candidate gives the trial copy of the engine and the test rig a real second thing to plug in and lets the show runner ask one place whether a video is playing; it costs one interface over programs that work differently (a video queue is not a music playlist). The other way is nearer today's code and cheaper first, but leaves the stand-ins on paper only and the questions about several programs at once spread out."
     },
