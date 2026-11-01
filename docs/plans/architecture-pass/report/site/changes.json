@@ -1,0 +1,320 @@
+{
+  "intro": [
+    "This page keeps the history the other pages no longer carry: every published version of the owner page, each promise's first wording as a job, what changed on each design-flaw card, the three recommendations the map changed, and the words decision 27 replaced. Nothing here is open for decision; the open questions are on [[page:decisions]]."
+  ],
+  "versions": [
+    {
+      "version": "8",
+      "date": "2026-11-01",
+      "title": "Five linked pages and a change log",
+      "items": [
+        "One page became six: [[page:engine]] (the front page, the whole engine in one read), [[page:decisions]] (every open question with its evidence on the same screen), [[page:promises]], [[page:parts]], [[page:flaws]] and this change log, all built from one set of data and linked by title.",
+        "Each promise's \"earlier wording, as a job\" and each card's \"what changed\" note moved here from the promise entries and the flaw cards.",
+        "Decision 28 folded in: the night's-record half of [[promise:J3]] names the director and the players after the show; its goal says the record carries the game it ran and the texts the players saw, and that ALN's Director Console stays a separate program reading it, with room to run inside the Review stage later; its built-today line notes that ALN's article writer reads the GM tablet's report by hand, outside the engine.",
+        "The two clocks, finding X-08, joined [[flaw:C9]] under decision 28; the total is 358 findings, 337 of them under the sixteen flaws and 21 set aside.",
+        "The front page's \"Around the engine\" names what sits outside the engine, the after-game article and emailer among them; the step-3 list gains whether paper documents join the pack with \"unlocked\" recorded during play; the Decided list gains 28 and 29.",
+        "Every diagram is drawn when the site is built and written into the page, so no page depends on the viewer's diagram drawing."
+      ],
+      "prompt": "The owner answered the page-structure questions on 2026-11-01: \"five linked pages\"; \"move history to change log\"; and, asked whether anything in version 7 had to stay as it is, \"there's nothing I rely on in today's page yet. so no.\" The same day the owner answered the six questions of the after-game survey (decision 28)."
+    },
+    {
+      "version": "7",
+      "date": "2026-11-01",
+      "title": "The candidate engine drawn whole, and five moments followed through its parts",
+      "items": [
+        "The candidate shape now opens with one hand-drawn picture of the whole engine: the devices and tools on top; [[part:P4]] as the one door in and [[part:P6]] as the one door out, with [[part:P7]] between them; behind them the game's facts, the life of a game and the room, with the ring of equipment, verdict, lifecycle and show runner visible; the foundations below. Labelled arrows show what passes at a show.",
+        "Five sequence walkthroughs follow single moments through the parts: a GM taps a token; a cue plays or cannot; the GM ends the game; the doors-open preflight; the designer publishes a change. Each names the promises it keeps.",
+        "The 54-link dependency diagram stays below the picture, renamed.",
+        "The picture and the walkthroughs were checked against the shape twice. The first check applied 19 conflicts (the lifecycle gathers tonight's profile and what is running and asks the verdict, which calls nothing; Delivery reads what changed in each part, and no part sends to it; the night's record learns of the end from the lifecycle; a pack waits while a game is running or paused). The second confirmed 16 resolved and 3 partly and applied 10 new (the verdict's three answers, go, no-go or not tonight; only tablets and scanners keep a pack copy; a standalone tablet runs the same doors, record and lifecycle with stand-ins).",
+        "All 41 page diagrams render at 1200 and 400 pixels with no overflow."
+      ],
+      "prompt": "The owner said the 17-part shape was never diagrammed and the page did not show how everything comes together."
+    },
+    {
+      "version": "6",
+      "date": "2026-11-01",
+      "title": "The page in the owner's words",
+      "items": [
+        "The page is retitled \"What the Engine Promises\" (version 3 to 5 were \"What the Engine Must Do\") and organized around ten promises named by title alone: no number anywhere a reader sees. Each promise shows its earlier wording as a job under its title.",
+        "\"How the jobs fit together\" became \"How the promises fit together\". Parts keep promises and design flaws break them; each part card says which promises it mainly keeps and which also need it, and its Today line says how its work is done today. The shared work several promises depend on is folded into the parts; the qualities table says which promises each quality keeps.",
+        "The questions are rewritten in promise words with the same recommendations. The words box puts the page's own words first (promise, moment, design flaw, part, quality) and defines module, interface and seam without the word \"part\", which now names only the 17 candidate parts.",
+        "The person who fits a kit to a venue is the venue technician throughout.",
+        "The vocabulary check applied 28 conflicts, among them: two notes no longer call a promise a label; two metaphors are plain; decision 27 joins the decided list. Its verification settled five leftovers: the summary no longer says two promises are kept mostly by a quality; the table of moments is read by most promises, not every one; two long notes are split; the Connections and roles card says \"This part also says\"."
+      ],
+      "prompt": "The owner found \"job\" forced once the jobs were restated from people's side and the map split them into promises, qualities and parts (decision 27, 2026-11-01)."
+    },
+    {
+      "version": "5",
+      "date": "2026-11-01",
+      "title": "How the jobs fit together",
+      "items": [
+        "A new section carries the relationship map and the candidate shape: every job restated from the side of the people it serves, eleven shared mechanisms, thirteen tangles in today's code, and a candidate shape of 17 parts with one direction of dependency (54 links, no cycle), drawn in layers, with which part would run where and where a real alternative exists.",
+        "Each job entry leads with its restatement (who, when, what must happen). Each card names the parts that would remove its flaw and says what the map changed in its candidate design.",
+        "The map changed three recommendations: E (rename, not split), F (one promise, widened to release day), G (the route sits in neither promise if step 3 keeps one delivery part). A step-3 preview lists the choices the map leaves to the owner.",
+        "Every card's candidate design and every job's entry were brought into line with the shape (182 verdicts, 96 corrected). The cards and jobs were put into plain words and the whole page checked (57 conflicts applied; then 54 confirmed resolved, 3 partly, and 10 new settled).",
+        "The alternatives table is in plain words; question titles are in full colour; \"green run\" is said as a passing test run."
+      ],
+      "prompt": "The owner asked how the ten jobs relate, at both levels (the big components and the modules inside them), and said the venue job and the truth job ([[promise:J8]] and [[promise:J9]] today) read as mechanics, not what they do for people."
+    },
+    {
+      "version": "4",
+      "date": "2026-11-01",
+      "title": "The consistent page",
+      "items": [
+        "The consistency check found 39 conflicts: 29 across the list of design flaws, the standalone pass, the jobs document and the page data, all settled from code or records and applied (22 changes, 5 duplicates, 2 already gone, 1 left for the orchestrator and applied), and 10 in the page itself. Section 8 of the cause analysis lists every change.",
+        "The page's own ten fixes: question 4 covers [[flaw:C8|C8]]; question 23 is asked inside question C, with a recommendation; N1 is marked proposed, with no card; the standalone pass's 35 findings are counted as 27 under the sixteen flaws and 8 under the proposed N1; the built-today line says the standing test rig was lost with the old container; question 21 recommends 16 rig runs, one per design flaw, instead of about 17; questions E and F offer every option, including keeping one job; the phone's seen mark is described; each job's text points to the questions at the end."
+      ],
+      "prompt": "The owner asked for a consistency check of the page and the documents behind it (2026-10-31). The first run stalled and was lost; the rerun also covered the jobs document, its page data and the page rebuilt around the jobs."
+    },
+    {
+      "version": "3",
+      "date": "2026-11-01",
+      "title": "The page rebuilt around the engine's jobs",
+      "items": [
+        "The page is retitled \"What the Engine Must Do\" (versions 1 and 2 were \"ALN Cause Analysis\"). It opens with what the engine is for, then the ten jobs, each with what is built today and the long-term goal; the design flaws sit under the job each mainly breaks, with the cards nested under their main job; the standalone pass follows; the evidence moves to the back.",
+        "C1 to C16 are called design flaws in owner-facing text.",
+        "The questions are regrouped: the jobs (is the list right; A to G), the standalone questions (22's hardware-scanner reading, 24, 25), 19 and 21. Question 17 becomes the question about the list; 18 is folded into F and 23 into C.",
+        "Three changes applied in the jobs document for the owner to confirm (questions A, B, C): the pack job says nothing in the engine assumes ALN and every part of the kit runs the same version of the pack and says which; the roles job covers who may do what; the venue job says a standalone game is a choice the game declares, never mixed."
+      ],
+      "prompt": "The owner found the flaw-first structure hard to follow and asked to restructure step 1 around the engine's jobs first, under the frame of decision 26 (owner direction, 2026-10-31): design the best architecture for the next iteration of the engine, for long-term use and future development as its use grows beyond ALN; blue's fixes and findings are clues to where today's design is off, never the driver. The owner also said \"cause analysis\" does not land as a name."
+    },
+    {
+      "version": "2",
+      "date": "2026-10-31",
+      "title": "The standalone pass folded in",
+      "items": [
+        "Each card gains a line on what the flaw does in a whole standalone game (which device decides the fact there, and whether the first candidate design survives with no engine), with a standalone summary.",
+        "The hardware scanner's parity table (24 rows) and questions 23 to 25 are added: is \"nothing declares a game standalone\" a seventeenth flaw (N1); does a standalone game run on one GM tablet; what exposed evidence and video tokens do with no engine.",
+        "The cause analysis gains section 7 (the standalone pass) and two findings from the document fixes."
+      ],
+      "prompt": "Decision 22 (round 8, 2026-10-31): standalone games join the list every rule must serve, as a whole game run with no engine that a game can declare, never mixed. On the hardware scanner the owner's reasoning is parity between the two player scanners, so its missing standalone mode was recorded as a parity gap and the owner's explicit word asked for."
+    },
+    {
+      "version": "1",
+      "date": "2026-10-31",
+      "title": "Sixteen causes behind the engine's faults",
+      "items": [
+        "The first published page, titled \"ALN Cause Analysis\": sixteen cards, each with what it looks like at a show, why it happens, a before and after diagram, examples with their finding ids, blue's fixes, and the pass's questions it touches. Two checkers applied 42 corrections before publishing.",
+        "Every diagram was parsed and drawn in a real browser; the diagrams are stacked and drawn top-down at natural size so the page never widens past the screen; the lead counts all 357 findings."
+      ],
+      "prompt": "The owner asked for a visual report of the cause list; round 8's questions 17 (is the cause list right) and 18 (the three causes no question covers) waited for it, after the cause analysis was written and checked. The owner had also asked whether the architecture method skill was used for step 1; it was not (decision 12 put it on step 3), so the report presented the list by that method."
+    }
+  ],
+  "promises": [
+    {
+      "id": "J1",
+      "earlierTitle": "Run any game from its pack",
+      "changes": [
+        "Before, this promise covered any pack, proven by the toy pack. Now every device plays one version, checked when a device connects, since a mismatch is only logged today. The two-pack proof also keeps [[promise:J10]].",
+        "In version 3 it was widened to say that nothing in the engine assumes ALN and that every part of the kit runs the same version of the pack and can say which (applied for the owner to confirm, [[q:A]]). In the candidate shape (version 5) the first clause became a quality every part must have, Generic, and the second the pack channel's stamp on every copy, compared whenever a device connects.",
+        "Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6."
+      ]
+    },
+    {
+      "id": "J2",
+      "earlierTitle": "Keep one true record of the game, and show it truly everywhere",
+      "changes": [
+        "Before, this promise asked for one true record shown truly everywhere. Now the Game record is the one decider and Delivery the one route to every screen, live or after a reconnect, because a reloaded tablet can show different facts.",
+        "Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6."
+      ]
+    },
+    {
+      "id": "J3",
+      "earlierTitle": "Answer every action, and remember what happened",
+      "changes": [
+        "Before, the goal spoke only of the report. Now two parts keep it, Answering at the tap and The night's record after the end, because its two people need different things; whether that makes two promises stays [[q:D]].",
+        "Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6.",
+        "Decision 28 (version 8) changed its people, need and goal. Its people now name, after the show, the director who tells the night's story and the players it is told to, beside the owner and the designer. Its need now says the director tells the players the story of their night from what was captured during play, with the game and the texts they saw, not reconstructed, and that how the story reaches the players is the game's own business. Its goal now says the record of the night is stamped with the game it ran and the texts the players saw, and that ALN's telling, the Director Console, is a separate program that reads it, with room to run inside the engine's Review stage later. Its built-today line notes that ALN's article writer reads the GM tablet's report by hand, outside the engine."
+      ]
+    },
+    {
+      "id": "J4",
+      "earlierTitle": "Run the show's equipment, and know its true state",
+      "changes": [
+        "Before, the title also asked the engine to know each program's true state. Now Equipment keeps that dated picture here, beside the Show runner. Showing it truly on a screen belongs to another promise, [[promise:J9]], which the label on every fact keeps. Running the room and labelling a screen are different work.",
+        "Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6."
+      ]
+    },
+    {
+      "id": "J5",
+      "earlierTitle": "Move each game through its life cleanly",
+      "changes": [
+        "Before, this promise was said as a developer's table of facts against moments. Now it is the GM's trust in each button; the table stays, kept by one Lifecycle part that alone moves and resets the game, since start and Reset System differ today.",
+        "Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6."
+      ]
+    },
+    {
+      "id": "J6",
+      "earlierTitle": "Let designers build, change and try games safely",
+      "changes": [
+        "Before, a change could wait for a restart. Now the Design studio talks to the engine only by message, which applies a change between games or refuses, so the designer plays within minutes and the live show never notices.",
+        "Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6."
+      ]
+    },
+    {
+      "id": "J7",
+      "earlierTitle": "Give each person exactly what their role needs, and let each do only what their role allows",
+      "changes": [
+        "Before, this promise gave each role its screen; knowing who is connected had no home. Now one Connections and roles part knows every connection and one door checks every action, because today a connection's own word decides what it gets.",
+        "In version 3 it was widened to cover who may do what: starting, pausing, ending and score changes stay with the GM, and the stored secrets rotate before outsiders arrive (applied for the owner to confirm, [[q:B]]).",
+        "Restated from the side of the people it serves in version 5 and retitled under decision 27 in version 6; its people say venue technicians."
+      ]
+    },
+    {
+      "id": "J8",
+      "earlierTitle": "Run wherever the venue and the game need",
+      "changes": [
+        "Before, this promise covered every setup, engine or none. Now it is the venue technician fitting the game to tonight's venue, with a standalone game declared here (where it is kept is a step-3 choice) and Release checking each machine. You are asked to confirm this in [[q:E]].",
+        "In version 3 it gained the owner's words from decision 22: a game runs with or without an engine as a choice the game declares, never mixed (applied for the owner to confirm, [[q:C]]).",
+        "The map (version 5) found the earlier wording made the engine the subject and named places, with the people missing, and restated it as \"Fit the game to the venue it is in tonight\". Decision 27 made that seventh title a promise: [[promise:J8]] (version 6). The person in it is the venue technician."
+      ]
+    },
+    {
+      "id": "J9",
+      "earlierTitle": "Tell the truth about what it knows",
+      "changes": [
+        "Before, this promise asked the engine to tell the truth. Now a label on every fact and reply keeps it, and Delivery and Answering carry that label. One part of its own keeps it too: the Verdict, whose answer reaches no screen today.",
+        "The map (version 5) found the earlier wording made the engine the speaker and listed the four states a fact can be in, which are the mechanism, not the reader's need, and restated it from the reader's side. Retitled under decision 27 in version 6; the preflight's reader is the venue technician."
+      ]
+    },
+    {
+      "id": "J10",
+      "earlierTitle": "Stay trustworthy as it changes",
+      "changes": [
+        "Before, this promise was one sentence about tests, with release day inside. Now three parts keep it, Joins and proofs, Engine instance and Release, because the developer's proof and the owner's release day are different moments; [[q:F]] stays open.",
+        "Restated from the side of the people it serves in version 5, with release day named in the title, and retitled under decision 27 in version 6."
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "id": "C1",
+      "changes": [
+        "Before, the card let each tablet keep a list of claimed tokens. Now only the Game record decides claims, from the transactions; a tablet draws what it is sent and asks at each tap, so a delete or reset leaves no stale list."
+      ]
+    },
+    {
+      "id": "C2",
+      "changes": [
+        "Before, the card left the record and updates with the music service. Now Equipment keeps one dated record of each thing the room does and Delivery sends each change by one route, so every panel sees outages and recoveries."
+      ]
+    },
+    {
+      "id": "C3",
+      "changes": [
+        "Before, the card let the code that reads each program own the engine's picture of it. Now Equipment owns one dated picture per thing the room does; Show runner reads it and keeps no copy; Delivery carries every correction."
+      ]
+    },
+    {
+      "id": "C4",
+      "changes": [
+        "Before, the card's table of moments had no owner. Now Lifecycle owns it, alone moves the game and calls every reset; Delivery tells every screen and player device each moment as a fact, so none has to guess."
+      ]
+    },
+    {
+      "id": "C5",
+      "changes": [
+        "Before, the card proposed one routine for engine start and Reset System. Now a starting point builds every part once from one list, and Lifecycle runs both as one path, so music is never left out and nothing wired twice."
+      ]
+    },
+    {
+      "id": "C6",
+      "changes": [
+        "Before, the card had each engine part describe its facts. Now Delivery builds each fact once, for catch-up and live change, and a restore after a reload is sent like a change, so the History badge and clock wake."
+      ]
+    },
+    {
+      "id": "C7",
+      "changes": [
+        "Before, the card's reply part saved and answered. Now the Game record saves and Answering replies through one door for all devices, with one list of reply words, so a batch with no game gets one answer: stored or refused."
+      ]
+    },
+    {
+      "id": "C8",
+      "changes": [
+        "The card already gave each engine its own names. Now every test run and the designer's preview engine are engines too, built the same way under their own names, so a test or rehearsal never ends the show's video player."
+      ]
+    },
+    {
+      "id": "C9",
+      "changes": [
+        "Before, the card left the phone alone and had the standalone tablet load shared rules. Now one Game record judges every GM tap, on the engine or on a standalone tablet, and player devices draw the engine's reply, so a rule change lands once.",
+        "Finding X-08, the two clocks, joined this card under decision 28 (version 8). One game's money events carry two clocks: a sale carries the time the tablet put in its request, a manual score adjustment the engine computer's time. The GM enters the first-burial bonus and the transfers as adjustments, so on two games they printed nine hours away from the sales, and ALN's Director Console shifts them back before its writers read them. The card now has 19 findings."
+      ]
+    },
+    {
+      "id": "C10",
+      "changes": [
+        "Before, the health list alone said whether a fact was known, unknown or stale. Now every fact Delivery sends carries that label, so the TV clock and music card show old or down as the health panel does."
+      ]
+    },
+    {
+      "id": "C11",
+      "changes": [
+        "Before, the card wanted one answerer per question, as a part of its own. Now each answer lives inside the part that owns the fact, so Equipment says whether a video plays and the Game record says which teams exist."
+      ]
+    },
+    {
+      "id": "C12",
+      "changes": [
+        "Before, the design tool wrote the engine's files and the TV got its own notice. Now the Design studio applies a pack by message, Lifecycle says when, and Delivery tells every screen the version, so a tablet on another pack is told, not just logged."
+      ]
+    },
+    {
+      "id": "C13",
+      "changes": [
+        "Before, the card's role table both knew who was connected and sent facts. Now Connections and roles knows who each connection is, Delivery and Answering ask it, and every device, phones included, shows a pass, so three checks become one."
+      ]
+    },
+    {
+      "id": "C14",
+      "changes": [
+        "Before, the card checked on the tablet that every name had one definition. Now each shared shape is written once, by Delivery or Answering, and Joins and proofs checks both sides, so a mismatch fails a test before the show."
+      ]
+    },
+    {
+      "id": "C15",
+      "changes": [
+        "Before, the card's design was one install command for every piece. Now Release owns the installed set and swaps it whole between the blue and green machines, so a mismatch reads as a no-go before the show."
+      ]
+    },
+    {
+      "id": "C16",
+      "changes": [
+        "Before, the card fixed only the fakes and the skipped tests. Now each fact also gets one test from where it is decided to a screen, on an engine of its own, so no test touches the show."
+      ]
+    }
+  ],
+  "recommendations": [
+    {
+      "key": "E",
+      "before": "Split the venue promise, then \"Run wherever the venue and the game need\", into \"fit the game to the venue\" and \"run in any setup\": fitting a game to a room is the venue technician's work (the profile, the bindings, the one preflight); running in any setup is standalone games, other kits and the open-source release. Recommendation: split, because the venue technician is one of the engine's five users and had no job of their own. Version 4 added the alternative of keeping one job renamed \"Fit the game to the venue, whatever the setup\".",
+      "after": "One promise, titled [[promise:J8]], with standalone games kept in its first sentences. Two titles fit the map: \"The game fits the venue, whatever the setup\" keeps standalone games and other kits in the title; \"The game fits the venue it is in tonight\" names the venue technician's moment and leaves them to the sentences. The cost of not splitting is that the GM running a standalone game and a future operator with another kit are named in a sentence, not in a title.",
+      "why": "The map found that \"run in any setup\" has no part of its own. Fitting the game to tonight's venue is one part with an output, [[part:P12]]: the venue technician's profile, which says what the kit brings, binds each of the pack's names to a real instrument and says whether the engine starts each program; [[part:P10]] turns it into one go or no-go. Running with no engine is a switch every rule takes, declared as part of fitting the game. Running on another kit is each engine knowing its own names, [[part:P13]], the same part that keeps a test from touching the live show. A separate promise would own nothing."
+    },
+    {
+      "key": "F",
+      "before": "The change promise, then \"Stay trustworthy as it changes\", holds four kinds of work (tests that cannot hurt the live show, tests that prove the real path, checks that joined parts agree, checks that what is installed matches). Split it into \"Prove it works, away from the live show\" and \"Keep every part in step\", and give each half a question of its own in the pass. Version 4 added the option of widening one job's sentence to say a new version reaches the show only when the owner says it is ready, with rollback as plugging the old machine back in.",
+      "after": "One promise, as the title [[promise:J10]] has it, covering both moments, and give the proof and the release a question each in the pass. The other options stay listed: split release day into a promise of its own; file release day with the venue technician's deploy work under [[promise:J8]]; or go back to the earlier wording, about tests alone, at the cost of leaving the owner's release day unnamed.",
+      "why": "The map separates the promise's two moments, not its kinds of work. Before every change, the developer's tests pass and show the show still works for ALN and for the toy game; that is a quality every part must have, carried by [[part:P16]] and [[part:P13]], and checking that joined parts agree is part of it. On release day, the owner decides when a new version goes to the venue and can swap back by replugging a machine; that is one small part, [[part:P17]], which checks that everything installed matches. The earlier split into \"prove it works\" and \"keep every part in step\" does not match the map, because keeping joined parts in step is part of the proof. Both moments exist so that nothing reaches the live show unproven, or before the owner says so."
+    },
+    {
+      "key": "G",
+      "before": "Which job carries the equipment's state to every screen? The record job keeps the game's record true everywhere; the equipment job runs the equipment and knows its state; today the music or lights panel can stay wrong after a reconnect, and neither sentence says whose that is. Recommendation: the equipment job, because it keeps the game's record and the equipment's state apart and matches the pass's question 2 (does a service's state travel with its health). A first draft of version 5 instead recommended the record promise, since the game's running state already includes the video queue, music, held items, the clock and each service's health, and would have moved [[flaw:C2|C2]]'s card under it; the published version 5 withdrew that.",
+      "after": "Add the route to neither promise, as long as step 3 keeps one delivery part; both then hold through it, and [[flaw:C2|C2]]'s card stays under [[promise:J4]], where its moment at a show is felt. If step 3 chooses the other way, with the parts behind each promise delivering their own facts, the route belongs with the room promise, beside C2's card. If the owner still wants one promise to hold the words: under the room promise they sit with the equipment whose state it is, but that promise then names a route the other also needs; under [[promise:J2]] they match how the game's running state is already defined, but that promise then carries the equipment beside the game's record.",
+      "why": "One part, [[part:P6]], carries every fact to every screen, game facts and equipment alike, each with its label (how sure, how old). [[part:P8]] decides its own state and health as one dated fact; Delivery carries it; the screens draw it. The two promises already cover their halves: under the room promise the GM makes the room do a thing and sees it happen, or sees at once that it did not; under the record promise every screen agrees, also after a tablet comes back. So neither sentence needs to name the route."
+    }
+  ],
+  "vocabulary": [
+    "Promise, not job. A promise is what a person can count on at a given moment. The pass's word for the same list from 2026-10-31 was \"job\"; the owner found it forced once the jobs were restated from people's side and the map split them into promises, qualities and parts. The three dated records that say \"job\" keep their words and carry a note mapping each job to its promise title.",
+    "Venue technician, not \"installer\" or \"venue installer\": the person who fits a kit to a venue, satisfies the pack's tech rider, binds the installation profile and runs the preflight (decision 27).",
+    "Titles, not numbers. Promises carry their titles only, so a card reads without memorizing ids; the numbers appear nowhere a reader sees, and in the headings, the glance table, the cross-links and the diagrams' labels the titles replace them.",
+    "Parts keep promises; design flaws break them. \"Kept by\" and \"break\" are the page's words for that from version 6, and \"broken by\" from version 8; a part card says \"Mainly keeps\" and \"Also needed by\".",
+    "Quality: something every part must have so a promise holds everywhere, never a promise itself. The summary's line that two jobs were mostly qualities became two promises kept by a quality, because a quality is never a promise.",
+    "Moment: when a promise matters, a production stage (Author, Rehearse, Run, Review), a point inside a show, or release day.",
+    "Part: one of the 17 pieces of the candidate design, and only that. Before, \"part\" meant a piece of the engine at any size; a pack's holders are now places, today's code is modules or code, a kit's copies are copies, and module, interface and seam are defined without the word.",
+    "The seventh title becomes a promise: the map's restatement \"Fit the game to the venue it is in tonight\" became [[promise:J8]].",
+    "Shared work several promises depend on needs no word of its own: each piece becomes one part, so the map's \"shared mechanisms\" are folded into the part cards.",
+    "Design flaw, not cause, for C1 to C16 in owner-facing text, from version 3; the owner said \"cause analysis\" does not land. \"Green run\" is said as a passing test run from version 5."
+  ]
+}
