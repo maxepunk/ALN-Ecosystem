@@ -87,16 +87,21 @@ before acting.
   mechanisms, thirteen tangles, and a candidate shape of 17 parts with
   one direction of dependency (52 edges, no cycle). Its check
   (`2026-11-01-engine-shape-check.md`) held 122 claims and corrected
-  78; the fold applied them (section 8). Running now: workflow
+  78; the fold applied them (section 8). Done: workflow
   `wf_b02b162e-653` (`docs/agents/workflow-scripts/reconcile-shape.js`)
-  brings each flaw card's candidate design, design-terms line and
+  brought each flaw card's candidate design, design-terms line and
   standalone line, and each job's title, need, goal and standalone line,
-  into line with the shape, three card groups and the jobs, each checked
-  on its own; its overlays land in
-  `docs/plans/architecture-pass/report/2026-11-01-*-shape*.json` and are
-  merged into the page data by hand. Then a page-wide consistency check
-  (`docs/agents/workflow-scripts/page-consistency.js`), a rebuild and a
-  republish. The page builder already carries the new section "How the
+  into line with the shape (three card groups and the jobs, each checked
+  on its own: 182 verdicts, 96 corrected), merged into the page data at
+  `d4a938dd`. One departure from a ratified record is put to the owner
+  in the page's step-3 preview: the shape keeps the start-or-adopt
+  setting in the installer's profile, where the capability map gave it
+  a file of its own. Running now: workflow `wf_c3571dd0-522`
+  (`docs/agents/workflow-scripts/page-consistency.js`): three
+  plain-words editors with firm lengths (the checks left the cards'
+  notes long), a merge (`report/merge_plain.py`), then two
+  refute-by-default checks of the whole page; then fixes, a rebuild and
+  a republish. The page builder already carries the new section "How the
   jobs fit together" and the map's changed recommendations (E: rename
   J8 rather than split; F: widen J10; G: change neither sentence, one
   delivery part keeps both promises), each question with both sides'
