@@ -296,7 +296,7 @@ flowchart LR
   GM["GM tablet, networked: P14 Screens, P1 library, P2 client with its stamp, P4 and P6 as the client side of the doors"]
   GS["GM tablet, standalone: P14, P1, P2 client, P3 record, P11 lifecycle, P4 local answering, P6 local delivery, P5 a local night's record, P12 the standalone declaration"]
   PH["Phone and hardware scanner: P14 Screens, P2 client with its stamp, P4 reply words as data, P1 tables as data, the standalone declaration read"]
-  SB["Scoreboards, TV and Pi 4: P14 Screens under a display pass from P7; the TV's browser is also a P8 adapter on the backend"]
+  SB["Scoreboards, TV and Pi 4: P14 Screens under a display pass from P7, and the TV's browser is also a P8 adapter on the backend"]
   CT["Config tool: P15 Design studio, P1 for validation, P2 publish, P10 badges on paper, P12 the installer's editor, P13 a preview instance, P17 Deploy"]
   TS["Tests, CI and the rig: P16 on a P13 instance, P8 stand-ins, two packs"]
   PK["Pack data: P1 rules as data, P2 the published pack, P10 the needs"]

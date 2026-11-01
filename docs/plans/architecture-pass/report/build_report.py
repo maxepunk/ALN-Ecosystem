@@ -1,8 +1,12 @@
 """Build the owner-facing page for step 1, around the engine's jobs (decision 26).
 
-Inputs: 2026-10-31-engine-jobs.json (the jobs, from the engine-jobs workflow),
-        2026-10-31-cause-cards.json (one card per design flaw, with diagrams),
+Inputs: 2026-10-31-engine-jobs.json (the jobs, from the engine-jobs workflow;
+          reconciled with the engine shape on 2026-11-01),
+        2026-10-31-cause-cards.json (one card per design flaw, with diagrams;
+          reconciled with the engine shape on 2026-11-01),
         2026-10-31-standalone-lines.json (one standalone line per flaw),
+        2026-11-01-engine-shape.json (how the jobs fit together and the candidate
+          parts, from the engine-shape workflow),
         ../2026-10-31-standalone-pass.md (the ESP32 parity table).
 Output: 2026-10-31-cause-report.html, published as an Artifact page (same URL as before).
 
@@ -11,13 +15,20 @@ Run: python3 -I build_report.py   (from any directory)
 import html
 import json
 import pathlib
+import re
 
 HERE = pathlib.Path(__file__).resolve().parent
 CARDS = HERE / '2026-10-31-cause-cards.json'
 JOBS = HERE / '2026-10-31-engine-jobs.json'
 OUT = HERE / '2026-10-31-cause-report.html'
 STANDALONE = HERE / '2026-10-31-standalone-lines.json'
+SHAPE = HERE / '2026-11-01-engine-shape.json'
 PASS = HERE.parent / '2026-10-31-standalone-pass.md'
+
+# Where each candidate part runs, in the owner's words.
+RUNS_ON = {'backend': 'the engine', 'gm-tablet': 'GM tablets', 'player-devices': 'player scanners',
+           'scoreboards': 'the scoreboards', 'config-tool': 'the config tool', 'tests': 'the tests'}
+NAMES = {}  # part id -> plain name, filled from the shape by build()
 
 # What each job already does today: the orchestrator's addition, from the root CLAUDE.md
 # ("GM Scanner Admin Capabilities", "Event Architecture") and the capability map's "built" rows.
@@ -94,6 +105,7 @@ def card_html(c):
     <h3>{e(c["title"])}</h3>
     <div class="chips">{chips(c)}</div>
   </header>
+  {changed_html(c.get("shapeChange", ""))}
   <div class="story">
     <p><span class="tag">At a show</span> {e(c["atAShow"])}</p>
     <p><span class="tag">Why it happens</span> {e(c["whyItHappens"])}</p>
@@ -111,6 +123,7 @@ def card_html(c):
       <p class="after-note">{e(c["after"]["note"])}</p>
     </figure>
   </div>
+  {part_row(c.get("parts", []), NAMES, "Removed by these parts of the candidate shape")}
   <p class="design"><span class="tag">In design terms</span> {e(c["designTerms"])}</p>
   <details>
     <summary>The problems behind it, and the code they live in</summary>
@@ -178,13 +191,31 @@ def glance_html(jobs):
     for j in jobs:
         prim = ' '.join(f'<a href="#{f["id"].lower()}">{e(f["id"])}</a>' if f['id'] != 'N1' else 'N1 <span class="muted">(proposed)</span>' for f in j['flaws'] if f['primary']) or '<span class="muted">none yet</span>'
         sec = ' '.join(f['id'] for f in j['flaws'] if not f['primary'])
-        rows.append(f'<tr><th scope="row"><a href="#{j["id"].lower()}">{e(j["id"])}</a> {e(j["title"])}</th><td>{prim}</td><td class="muted">{e(sec)}</td></tr>')
-    return ('<div class="tablewrap"><table class="glance"><thead><tr><th>Job</th><th>Flaws that mainly block it</th><th>Also touched by</th></tr></thead>'
+        title = (j.get('functional') or {}).get('proposedTitle') or j['title']
+        parts = ', '.join(NAMES[p] for p in j.get('parts', []))
+        rows.append(f'<tr><th scope="row"><a href="#{j["id"].lower()}">{e(j["id"])}</a> {e(title)}</th><td>{prim}</td><td class="muted">{e(sec)}</td><td>{e(parts)}</td></tr>')
+    return ('<div class="tablewrap"><table class="glance"><thead><tr><th>Job</th><th>Flaws that mainly block it</th><th>Also touched by</th><th>Parts that would carry it</th></tr></thead>'
             f'<tbody>{"".join(rows)}</tbody></table></div>')
 
 
+def job_head(j):
+    """The job's title and its restatement from the side of the people it serves (the engine shape, section 1)."""
+    fn = j.get('functional')
+    if not fn:
+        roles = ''.join(f'<span class="chip role">{e(r)}</span>' for r in j['roles'])
+        return (f'<h2>{e(j["title"])}</h2>'
+                f'<p class="meaning">{e(j["meaning"].replace("section 4 asks", "a question at the end of this page asks"))}</p>'
+                f'<div class="chips">{roles}</div>')
+    proposed = fn.get('proposedTitle')
+    title = proposed or j['title']
+    was = (f'<p class="was">Proposed title. It was “{e(j["title"])}”.</p>' if proposed and proposed != j['title']
+           else '<p class="was">Title kept.</p>')
+    return (f'<h2>{e(title)}</h2>{was}'
+            f'<p class="meaning">{e(fn["need"])}</p>'
+            f'<dl class="who"><dt>Who</dt><dd>{e(fn["people"])}</dd><dt>When</dt><dd>{e(fn["moment"])}</dd></dl>')
+
+
 def job_html(j, by_id, home):
-    roles = ''.join(f'<span class="chip role">{e(r)}</span>' for r in j['roles'])
     needs = ''.join(f'<li>{e(n)}</li>' for n in j['needs'])
     tests = ''.join(f'<li>{e(t)}</li>' for t in j['tests'])
     shorts = []
@@ -205,10 +236,10 @@ def job_html(j, by_id, home):
 <section class="job" id="{j["id"].lower()}">
   <header class="job-head">
     <span class="jid">{e(j["id"])}</span>
-    <h2>{e(j["title"])}</h2>
-    <p class="meaning">{e(j["meaning"].replace("section 4 asks", "a question at the end of this page asks"))}</p>
-    <div class="chips">{roles}</div>
+    {job_head(j)}
   </header>
+  {changed_html(j.get("shapeChange", ""))}
+  {part_row(j.get("parts", []), NAMES, "Carried by these parts of the candidate shape")}
   <div class="job-facts">
     <div><span class="tag">Built today</span><p>{e(BUILT.get(j["id"], ""))}</p></div>
     <div><span class="tag">{goal_tag}</span><p>{e(j["goal"])}</p></div>
@@ -224,6 +255,193 @@ def job_html(j, by_id, home):
 </section>'''
 
 
+def job_links(ids):
+    return ' '.join(f'<a href="#{i.lower()}">{e(i)}</a>' for i in ids)
+
+
+def flaw_links(ids):
+    return ' '.join('N1' if i == 'N1' else f'<a href="#{i.lower()}">{e(i)}</a>' for i in ids)
+
+
+def part_link(pid, names):
+    return f'<a class="chip part" href="#{pid.lower()}">{e(names[pid])}</a>'
+
+
+def part_row(pids, names, label):
+    if not pids:
+        return ''
+    return f'<div class="partrow"><span class="tag">{e(label)}</span>{"".join(part_link(p, names) for p in pids)}</div>'
+
+
+def changed_html(text):
+    return f'<p class="changed"><span class="tag">Changed after the relationship map</span> {e(text)}</p>' if text else ''
+
+
+def part_layers(shape):
+    """Rows of parts, top row first: each part sits one row above the highest part it uses."""
+    deps = {}
+    for a, b in re.findall(r'^\s*(P\d+)\s*-->\s*(P\d+)\s*$', shape['partsMermaid'], re.M):
+        deps.setdefault(a, set()).add(b)
+    level = {}
+
+    def lv(x, path=()):
+        if x in path:
+            raise SystemExit(f'cycle in the parts diagram at {x}')
+        if x not in level:
+            level[x] = 1 + max((lv(y, path + (x,)) for y in deps.get(x, ())), default=0)
+        return level[x]
+
+    ids = [p['id'] for p in shape['parts']]
+    for i in ids:
+        lv(i)
+    return [[i for i in ids if level[i] == n] for n in range(max(level.values()), 0, -1)]
+
+
+def part_html(p):
+    runs = ', '.join(RUNS_ON.get(r, r) for r in p['runsOn'])
+    return f'''<article class="part" id="{p["id"].lower()}">
+  <h4>{e(p["name"])}</h4>
+  <p>{e(p["plain"])}</p>
+  <p class="pmeta"><span class="tag">Serves</span> {job_links(p["jobs"])}</p>
+  <p class="pmeta"><span class="tag">Removes</span> {flaw_links(p["flaws"])}</p>
+  <p class="pmeta"><span class="tag">Runs on</span> {e(runs)}</p>
+  <p class="pmeta muted"><span class="tag">Where it can be swapped</span> {e(p["seams"])}</p>
+</article>'''
+
+
+# The plain summary of the relationship map (the shape's section 2.1 and the end of its section 1).
+FIT_SUMMARY = [
+    ('A spine.', 'At every tap in a networked game, the designer\'s pack (J1) sets the rules, the game\'s record (J2) is what the tap is judged against, the answer (J3) comes back and the accepted tap joins the record, and the roles (J7) say who tapped and who may see the result.'),
+    ('A ring.', 'The equipment (J4) reports what it is doing, the installer\'s profile (J8) says what the room has tonight, the verdict (J9) turns both into go, no-go or "not installed tonight", and the life of a game (J5) says when to check again and what to reset, which feeds back into the equipment. In today\'s code this ring is a circle of seven backend modules that all call each other, with the game\'s record caught inside it.'),
+    ('Two jobs reach the show from outside.', 'The designer\'s week (J6) and the developer\'s proof (J10) reach a live show only through the pack and through each engine having its own names, so a test or a preview never touches the live show.'),
+    ('Not all ten are the same kind.', 'Seven jobs each produce something a person uses. J9 and J10 are qualities every other job must have: they become a label every fact carries (how sure, how old) and a proof every part must pass, not parts of their own. J5 is a table of moments (setup, start, pause, end, reset, restart, the next game) that every other job reads.'),
+]
+
+# The relationship map at a glance, drawn from the shape's section 2.1: the spine, the ring,
+# and the two jobs that reach the show from outside. The full diagram (25 dependencies) follows it.
+OVERVIEW = """flowchart TD
+  subgraph spine["The spine: every tap"]
+    J1["J1 The designer's game is what plays"]
+    J2["J2 One game on every screen"]
+    J3["J3 Every tap answered, the night told"]
+    J7["J7 Each person sees and does their part"]
+  end
+  subgraph ring["The ring: the engine's own machinery"]
+    J4["J4 The room does what was cued and asked"]
+    J8["J8 Fit to tonight's venue"]
+    J9["J9 Screens you can act on at a glance"]
+    J5["J5 Each button does what it says"]
+  end
+  subgraph outside["From outside the show"]
+    J6["J6 Designers change and try safely"]
+    J10["J10 Proven before it reaches the show"]
+  end
+  J1 -->|"the rules"| J2
+  J2 -->|"what a tap is judged against"| J3
+  J3 -->|"accepted taps"| J2
+  J7 -->|"who tapped"| J3
+  J7 -->|"who may see what"| J2
+  J1 -->|"the cues"| J4
+  J4 -->|"what it is doing"| J9
+  J8 -->|"what the room has tonight"| J9
+  J9 -->|"go or no-go"| J5
+  J5 -->|"what to reset"| J4
+  J5 -->|"what the record keeps or clears"| J2
+  J9 -->|"how sure, how old"| J2
+  J6 -->|"a published pack"| J1
+  J10 -->|"each engine's own names"| J6
+"""
+
+# Which parts run where (the shape's section 4.3), one line per device.
+FIT_DEVICES = [
+    ('The engine', 'decides every fact of a networked game, serves the pack, admits every connection, answers every request through one door and sends every fact to the screens through one route.'),
+    ('A GM tablet in a networked game', 'draws what it is sent, with each fact\'s label, and sends requests in one envelope. It keeps no list of its own and decides nothing before the engine answers.'),
+    ('A GM tablet in a standalone game', 'is the same app with the switch set. In the candidate it runs the same record, lifecycle, answering and delivery parts the engine runs. The other way is its own engine, kept equal by tests.'),
+    ('The phone and the ESP32', 'draw, send scans in one envelope, and read the reply words and the few rules they need as data made from the one source. They stay equal by sharing that data.'),
+    ('The scoreboards', 'are one page in two places, the TV and the Pi 4, drawing what they are sent and deciding nothing.'),
+    ('The config tool', 'holds the design studio and the installer\'s profile editor, and talks to the running engine only by message.'),
+    ('The tests', 'run on an engine of their own, with stand-ins for the equipment, and never touch the live one.'),
+]
+
+
+def fit_html(shape):
+    names = {p['id']: p['name'] for p in shape['parts']}
+    summary = ''.join(f'<p><strong>{e(h)}</strong> {e(t)}</p>' for h, t in FIT_SUMMARY)
+    mech = ''.join(f'<tr><th scope="row">{e(m["name"])}</th><td>{e(m["plain"])}</td><td class="idcell">{job_links(m["jobs"])}</td></tr>' for m in shape['mechanisms'])
+    qual = ''.join(f'<tr><th scope="row">{e(q["name"])}</th><td>{e(q["plain"])}</td><td class="idcell">{job_links(q["jobs"])}</td></tr>' for q in shape['qualities'])
+    tangles = ''.join(f'<li><strong>{e(t["title"])}.</strong> {e(t["plain"])} <span class="muted">Flaws: {flaw_links(t["flaws"])}</span></li>' for t in shape['today']['tangles'])
+    rows = part_layers(shape)
+    layers = ''.join(f'<li>{"".join(part_link(i, names) for i in row)}</li>' for row in rows)
+    order = [i for row in reversed(rows) for i in row]
+    by_id = {p['id']: p for p in shape['parts']}
+    parts = ''.join(part_html(by_id[i]) for i in order)
+    devices = ''.join(f'<li><strong>{e(h)}</strong> {e(t)}</li>' for h, t in FIT_DEVICES)
+    alts = ''.join(f'<tr><th scope="row">{e(a["title"])}</th><td>{e(a["a"])}</td><td>{e(a["b"])}</td><td>{e(a["cost"])}</td></tr>' for a in shape['alternatives'])
+    return f'''
+<section class="fit" id="fit" aria-labelledby="fit-h">
+  <h2 id="fit-h">How the jobs fit together</h2>
+  <p class="intro">You asked how the ten jobs relate, so that the design serves all of them at once and stays easy to keep building. This section answers at two levels: the jobs against each other, and the jobs against the pieces of the engine. It ends in one candidate shape for the whole engine. Every card further down now follows that shape, and each says what changed.</p>
+  <div class="fit-summary">{summary}</div>
+  <figure class="dia wide">
+    <figcaption>The jobs at a glance. An arrow runs from the job that produces something to the job that uses it; the label says what passes.</figcaption>
+    <div class="scroll"><pre class="mermaid">{e(present(OVERVIEW))}</pre></div>
+    <details>
+      <summary>Every dependency between the jobs ({len(re.findall(r"-->", shape["relationsMermaid"]))})</summary>
+      <p class="muted" style="margin:10px 0">The ones whose absence would break the job that uses them at a show tonight.</p>
+      <div class="scroll"><pre class="mermaid">{e(present(shape["relationsMermaid"]))}</pre></div>
+    </details>
+  </figure>
+
+  <div class="fit-block">
+    <h3>What several jobs share</h3>
+    <p>Most of today's problems sit in pieces of work that several jobs share, not inside one job: getting a fact onto a screen, answering a request, knowing who is connected, the boundary between one game and the next. Each is done several times today, in different places. These are the eleven the map found.</p>
+    <div class="tablewrap"><table class="mech"><thead><tr><th>Shared piece</th><th>What it is, and how it is done today</th><th>Jobs</th></tr></thead><tbody>{mech}</tbody></table></div>
+  </div>
+
+  <div class="fit-block">
+    <h3>Qualities every job must have</h3>
+    <p>These are not pieces of the engine. Each is something every piece must be.</p>
+    <div class="tablewrap"><table class="mech"><thead><tr><th>Quality</th><th>What it means</th><th>Jobs</th></tr></thead><tbody>{qual}</tbody></table></div>
+  </div>
+
+  <details>
+    <summary>Where the jobs live in today's code: {len(shape["today"]["tangles"])} tangles</summary>
+    <p class="muted" style="margin:10px 0">A tangle is one job spread over many places with nothing joining them, one place doing many jobs, or a dependency running the wrong way. Each causes some of the design flaws below.</p>
+    <ul class="examples">{tangles}</ul>
+  </details>
+
+  <div class="fit-block">
+    <h3>A candidate shape: {len(shape["parts"])} parts</h3>
+    <p>One part per job or per shared piece of work. A quality is not a part: every part carries it. Each part uses only the parts in the rows below it, so nothing loops back. A change low down can affect the parts above it; nothing above can break what sits below. The parts that are already well built today (the game rules, the verdict, the health words) are the pattern for the rest.</p>
+    <figure class="layers-fig">
+      <figcaption>The parts in layers, top row first. Tap a part to read it.</figcaption>
+      <ol class="layers">{layers}</ol>
+    </figure>
+    <div class="parts">{parts}</div>
+    <details>
+      <summary>The same parts as a diagram</summary>
+      <p class="muted" style="margin:10px 0">An arrow means "uses".</p>
+      <div class="scroll"><pre class="mermaid">{e(present(shape["partsMermaid"]))}</pre></div>
+    </details>
+  </div>
+
+  <div class="fit-block">
+    <h3>Which parts run where</h3>
+    <ul class="devices">{devices}</ul>
+    <details>
+      <summary>As a diagram</summary>
+      <div class="scroll"><pre class="mermaid">{e(present(shape["componentsMermaid"]))}</pre></div>
+    </details>
+  </div>
+
+  <div class="fit-block">
+    <h3>Where a real alternative exists</h3>
+    <p>For these, the map found two sound ways to build the part. Step 3 puts each in front of you with designs side by side; no answer is needed now.</p>
+    <div class="tablewrap"><table class="alts"><thead><tr><th>Choice</th><th>Candidate</th><th>The other way</th><th>What each costs</th></tr></thead><tbody>{alts}</tbody></table></div>
+  </div>
+</section>'''
+
+
 def build():
     cards = json.loads(CARDS.read_text())['cards']
     lines = json.loads(STANDALONE.read_text())['lines']
@@ -232,8 +450,16 @@ def build():
         c['inStandalone'] = t.split(':', 1)[1].strip() if t.lower().startswith('in a standalone game:') else t
     by_id = {c['id']: c for c in cards}
     assert len(by_id) == 16, f'expected 16 cards, got {len(by_id)}'
+    shape = json.loads(SHAPE.read_text())
+    NAMES.update({p['id']: p['name'] for p in shape['parts']})
     data = json.loads(JOBS.read_text())
     jobs = data['jobs']
+    for c in cards:
+        bad = [p for p in c.get('parts', []) if p not in NAMES]
+        assert not bad, f'{c["id"]} names unknown parts {bad}'
+    for j in jobs:
+        bad = [p for p in j.get('parts', []) if p not in NAMES]
+        assert not bad, f'{j["id"]} names unknown parts {bad}'
     home = {f['id']: j['id'] for j in jobs for f in j['flaws'] if f['primary']}
     missing = [c for c in by_id if c not in home]
     assert not missing, f'flaws with no main job: {missing}'
@@ -243,7 +469,7 @@ def build():
     purpose = ''.join(f'<p>{e(x)}</p>' for x in data['purpose'])
     page = TEMPLATE.format(
         total=total, total_all=total + aside_n, aside_n=aside_n, purpose=purpose,
-        glance=glance_html(jobs), jobs=''.join(job_html(j, by_id, home) for j in jobs),
+        glance=glance_html(jobs), fit=fit_html(shape), jobs=''.join(job_html(j, by_id, home) for j in jobs),
         grid=grid_html(sorted(cards, key=lambda c: int(c['id'][1:]))),
         aside=aside, parity=parity_html(), parity_n=len(parity_rows()))
     OUT.write_text(page)
@@ -364,18 +590,53 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
 .qgroup {{ display: grid; gap: 14px; }}
 .qgroup h3 {{ font-size: 17px; color: var(--muted); font-weight: 600; }}
 .q .applied {{ font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); }}
+.q .changedrec {{ font-family: var(--font-label); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--fault); }}
+.changed {{ font-size: 15px; max-width: 80ch; background: var(--chip); border-radius: 6px; padding: 10px 14px; }}
+.changed .tag {{ display: block; margin-bottom: 2px; color: var(--accent); }}
+.partrow {{ display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }}
+.partrow .tag {{ margin-right: 4px; }}
+a.chip.part {{ text-decoration: none; color: var(--fg); border: 1px solid var(--accent); background: transparent; }}
+a.chip.part:hover {{ background: var(--chip); }}
+.job-head .was {{ grid-column: 2; font-size: 14px; color: var(--muted); }}
+.job-head dl.who {{ grid-column: 2; display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0; font-size: 15px; max-width: 80ch; }}
+dl.who dt {{ font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 12px; font-weight: 600; color: var(--muted); padding-top: 3px; }}
+dl.who dd {{ margin: 0; }}
+.fit {{ display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; border-top: 2px solid var(--line); padding-top: 8px; }}
+.fit > * {{ min-width: 0; }}
+.fit-summary {{ display: grid; gap: 10px; max-width: 78ch; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 6px; padding: 16px 20px; }}
+.fit-block {{ display: grid; gap: 10px; min-width: 0; }}
+.fit-block > *, .fit details {{ min-width: 0; }}
+.fit-block > p {{ max-width: 76ch; }}
+.mech th, .mech td, .alts th, .alts td {{ border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }}
+.mech thead th, .alts thead th {{ font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.05em; font-size: 12px; color: var(--muted); }}
+.mech tbody th {{ font-weight: 600; min-width: 10em; }}
+.alts tbody th {{ font-weight: 600; min-width: 11em; }}
+.alts td {{ min-width: 14em; }}
+.idcell {{ font-family: var(--font-mono); font-size: 13px; min-width: 8em; }}
+.idcell a, .pmeta a {{ text-decoration: none; margin-right: 2px; }}
+.layers-fig {{ margin: 0; display: grid; gap: 8px; }}
+ol.layers {{ list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }}
+ol.layers li {{ display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }}
+.parts {{ display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }}
+.part {{ background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; scroll-margin-top: 16px; }}
+.part h4 {{ margin: 0; font-size: 16px; font-weight: 600; }}
+.part p {{ font-size: 14.5px; }}
+.pmeta .tag {{ margin-right: 6px; }}
+ul.devices {{ margin: 0; padding-left: 18px; display: grid; gap: 6px; max-width: 80ch; }}
+figure.dia.wide {{ padding: 12px; }}
 @media (prefers-reduced-motion: reduce) {{ * {{ scroll-behavior: auto; }} }}
 </style>
 <div class="wrap">
 <header class="top">
-  <p class="eyebrow">Architecture pass · phase 1, step 1 · rebuilt around the engine's jobs · 2026-11-01</p>
+  <p class="eyebrow">Architecture pass · phase 1, step 1 · the engine's jobs and how they fit together · 2026-11-01</p>
   <h1>What the engine must do</h1>
-  <p class="lead">The engine runs shows for any game, not only ALN. This page starts from its ten jobs: what each job means for any game, what is built today, the long-term goal, and where today's design falls short. The problems from blue's shows appear as evidence and as test cases, not as the plan.</p>
+  <p class="lead">The engine runs shows for any game, not only ALN. This page starts from its ten jobs: who each one serves, when, and what must happen for them. Then it maps how the jobs fit together, offers one candidate shape for the whole engine, and shows where today's design falls short. The problems from blue's shows appear as evidence and as test cases, not as the plan.</p>
 </header>
 
 <section class="decide" aria-labelledby="deciding">
   <h2 id="deciding">What you are deciding</h2>
-  <p><strong>The jobs.</strong> Are these the right ten jobs for the engine, and is one missing? Seven small questions, A to G, ask about their wording and whether three of them should split.</p>
+  <p><strong>The jobs.</strong> Are these the right ten jobs for the engine, said from the side of the people they serve, and is one missing? Seven small questions, A to G, ask about their wording and whether three of them should split. The relationship map changed three of those recommendations: E, F and G.</p>
+  <p><strong>How the jobs fit together.</strong> New since your last look: <a href="#fit">a map</a> of how the jobs depend on each other and on the pieces of the engine, and one candidate shape for the whole engine. The design on each card now follows that shape, and a note at the top of each card says what changed. Nothing in the shape is decided; it is where step 3 starts.</p>
   <p><strong>Standalone games, the game's record, the next step.</strong> Three questions about games with no engine, one about recording refused scans, and one about how much the test rig proves before design starts. Everything is <a href="#your-questions">at the end</a>, each with a recommendation.</p>
 </section>
 
@@ -387,8 +648,8 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
 <section class="howto" aria-label="How to read this page">
   <div>
     <h2>How to read a job</h2>
-    <p>Each job says what it means for any game and who relies on it, then what is built today and the long-term goal. Under it sit the design flaws that keep it from being done well, each with a card.</p>
-    <p>A card tells one moment at a show, why it happens, and shows two diagrams. <strong>Today</strong> shows how the problem happens now. <strong>Candidate, not decided</strong> shows one way the design could remove it. Step 3 puts competing designs in front of you; nothing on the right is decided.</p>
+    <p>Each job says who relies on it, when, and what must happen for them. Then come what is built today, the long-term goal, and the parts of the candidate shape that would carry it. Under it sit the design flaws that keep it from being done well, each with a card.</p>
+    <p>A card tells one moment at a show, why it happens, and shows two diagrams. <strong>Today</strong> shows how the problem happens now. <strong>Candidate, not decided</strong> shows how the candidate shape would remove it, and the card names the parts that would. Where the relationship map changed a card, a note at its top says what and why. Step 3 puts competing designs in front of you; nothing on the right is decided.</p>
     <div class="legend"><span><span class="sw"></span>where it goes wrong</span><span><span class="sw owner"></span>the one place that would own the fact</span></div>
   </div>
   <div>
@@ -401,6 +662,9 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
       <dt>Deep, shallow</dt><dd>A deep module does a lot behind a small interface. A shallow one makes its callers know almost as much as it does.</dd>
       <dt>Locality</dt><dd>A fix in one place fixes it everywhere.</dd>
       <dt>Leverage</dt><dd>One module serving many callers.</dd>
+      <dt>Adapter</dt><dd>The real thing plugged in at a seam, like VLC behind "play a video".</dd>
+      <dt>Part</dt><dd>A piece of the engine at any size. The candidate shape has 17.</dd>
+      <dt>Quality</dt><dd>Something every part must be, like honest or proven. Not a part.</dd>
     </dl>
   </div>
 </section>
@@ -410,6 +674,8 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
   <p class="intro" style="margin:8px 0 14px">Each design flaw has one job it mainly blocks; its card sits there. Flaws also listed under other jobs point back to their card.</p>
   {glance}
 </section>
+
+{fit}
 
 {jobs}
 
@@ -441,51 +707,56 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
   <div class="qgroup">
     <h3>About the jobs</h3>
     <div class="q">
-      <h3>Are these the right ten jobs?</h3>
-      <p>Is a job the engine must do for any game missing? Are two of them really one? This replaces question 17.</p>
+      <h3>Are these the right ten jobs, and does each now read from the side of the people it serves?</h3>
+      <p>Is a job the engine must do for any game missing? Are two of them really one? Each job now leads with who relies on it, when, and what must happen for them. Eight have a proposed new title written that way, J8 and J9 among them; the old title shows under each. This replaces question 17.</p>
     </div>
     <div class="q">
       <p class="applied">Applied, please confirm</p>
       <h3>A. J1 now says nothing in the engine assumes ALN, and every part of the kit runs the same version of the pack and says which.</h3>
+      <p>The relationship map agrees. The first is a quality every part carries. The second is the pack channel's version stamp on every copy, compared whenever a device connects.</p>
       <p class="rec">Recommendation: keep both. The first is what lets other games run; the second is the job that design flaw C12 breaks.</p>
     </div>
     <div class="q">
       <p class="applied">Applied, please confirm</p>
       <h3>B. J7 now also covers who may do what, not only who sees what.</h3>
-      <p>Starting, pausing and ending a game and changing scores stay with the GM, and the stored passwords and keys change before outsiders touch the system.</p>
+      <p>Starting, pausing and ending a game and changing scores stay with the GM, and the stored passwords and keys change before outsiders touch the system. The map agrees: one part, connections and roles, holds both the pass and what it allows.</p>
       <p class="rec">Recommendation: agree.</p>
     </div>
     <div class="q">
       <p class="applied">Applied, please confirm</p>
       <h3>C. J8 now says a standalone game is a choice the game declares, never mixed.</h3>
-      <p>These are your decision 22's words. With them, "nothing declares a game standalone" has a home under J8. Question 23 is folded in here: is it also a design flaw of its own, with its own rule? If not, its eight problems join C9, C11 and C14 and the ESP32 parity list.</p>
+      <p>These are your decision 22's words. The map adds where the declaration could live: the venue profile, which already says what the kit brings tonight. The other homes are the pack, the game's record or each device; step 3 asks you to pick.</p>
+      <p>Question 23 is folded in here: is "nothing declares a game standalone" a design flaw of its own, with its own rule? If not, its eight problems join C9, C11 and C14 and the ESP32 parity list. On the map it lands on the same two parts either way.</p>
       <p class="rec">Recommendation: agree. On question 23, yes: three other rules (game boundaries, one answer per question, how old a copy is) need the declared fact as an input, and would otherwise each invent their own answer.</p>
     </div>
     <div class="q">
-      <h3>D. Split J3 into "answer every action" and "keep the record of the night"?</h3>
-      <p>Answering a scan or a command is one thing. Keeping the night's record for review, reports and capture is a large planned area of its own: capture, the session bundle, the Review stage.</p>
-      <p class="rec">Recommendation: split. The record of the night is also where question 19 belongs.</p>
+      <h3>D. Split J3 into "every tap gets its answer" and "the night can be told afterwards"?</h3>
+      <p>Answering happens at the tap, for the GM or the player. The night's record is for you and the designer after the show: what is captured during play, the session bundle, the review. The map confirms the two share no part. Answering sits in the middle of the engine and serves five jobs. The night's record is written once, at the end of a game, and read by the designer's review.</p>
+      <p class="rec">Recommendation: split. Keeping one job also works, with the night's record filed as the end-of-game step of the lifecycle; the parts are the same either way. Question 19 belongs with the night's record.</p>
     </div>
     <div class="q">
-      <h3>E. Split J8 into "fit the game to the venue" and "run in any setup"?</h3>
-      <p>Fitting a game to a room is the venue installer's work: the profile, the bindings, the one preflight. Running in any setup is standalone games, other kits and the open-source release.</p>
-      <p>Or keep one job and rename it "Fit the game to the venue, whatever the setup".</p>
-      <p class="rec">Recommendation: split. The installer is one of the engine's five users and has no job of their own today.</p>
+      <p class="changedrec">Recommendation changed by the map</p>
+      <h3>E. Rename J8 rather than split it?</h3>
+      <p>Fitting the game to tonight's venue is one part with an output of its own: the installer's profile, which says what the kit brings, binds each of the pack's names to a real instrument, and gives one go or no-go. The map found that "run in any setup" has no part of its own. Running with no engine is a switch every rule takes, declared in the venue profile. Running on another kit is each engine knowing its own names, which the developer's job owns. A separate job for it would own nothing.</p>
+      <p class="rec">Recommendation: rename J8 to "Fit the game to the venue it is in tonight", keep the standalone declaration in it, and treat "nothing assumes one kit" as a quality of every job. This replaces the earlier recommendation to split.</p>
     </div>
     <div class="q">
-      <h3>F. J10 holds four kinds of work. Widen it, split it, or leave it?</h3>
+      <p class="changedrec">Recommendation changed by the map</p>
+      <h3>F. J10: widen it, split it, or leave it?</h3>
+      <p>The map splits J10 by moment, not by kind of work. Before every change, the developer's green run shows the show still works for ALN and for the toy game; that is a quality every part must pass, and checking that joined parts agree is part of it. On release day, you decide when a new version goes to the venue and can swap back by replugging a machine; that is one small part, the release, which checks that everything installed matches.</p>
       <ol type="a">
-        <li>"Prove it works, away from the live show": tests that use the real path and never touch the show.</li>
-        <li>"Keep every part in step": names two parts share, installed pieces that match, and a new version that reaches the show only when you say it is ready.</li>
+        <li>Widen J10's sentence to include release day. The proposed title does this: "A change is proven before it reaches anyone, and the owner alone sends it to the show".</li>
+        <li>Split release day into a job of its own.</li>
+        <li>File release day with the installer's deploy work under J8.</li>
       </ol>
-      <p>Widening instead keeps one job and adds to its sentence that a new version reaches the show only when you say it is ready, with rollback as plugging the old machine back in.</p>
       <p>Question 4 covers keeping tests away from the live show (C8). For the other three flaws under this job no question of the nine fits: question 5 is only the nearest for the names two parts share (C14), and the installed pieces (C15) and tests that prove the real path (C16) have none. This replaces question 18.</p>
-      <p class="rec">Recommendation: split, and give each half a question of its own in the pass.</p>
+      <p class="rec">Recommendation: widen, as the proposed title does, and give the proof and the release a question each in the pass. The earlier split into "prove it works" and "keep every part in step" does not match the map, because keeping joined parts in step is part of the proof.</p>
     </div>
     <div class="q">
+      <p class="changedrec">Recommendation changed by the map</p>
       <h3>G. Which job carries the equipment's state to every screen?</h3>
-      <p>J2 keeps the game's record true everywhere. J4 runs the equipment and knows its state. Today the music or lights panel can stay wrong after a reconnect, and neither job's sentence says whose that is.</p>
-      <p class="rec">Recommendation: J4. It keeps the game's record and the equipment's state apart, and matches the pass's question 2 (does a service's state travel with its health).</p>
+      <p>The map's answer: neither job's sentence should carry the route. One part, delivery, carries every fact to every screen, game facts and equipment alike, each with its label (how sure, how old). The equipment decides its own state and health as one dated fact; delivery carries it; the screens draw it.</p>
+      <p class="rec">Recommendation: let J2's "one game, the same on every screen" cover the equipment panels too, since the game's running state already includes the video queue, music, held items, the clock and each service's health. J4 keeps "the room does what was cued and asked", and delivery makes its "the GM sees it happen, or sees at once that it did not" true. This replaces the earlier recommendation of J4. If you agree, C2's card moves under J2.</p>
     </div>
   </div>
 
@@ -493,15 +764,16 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
     <h3>About standalone games</h3>
     <div class="q">
       <h3>22. The ESP32 gets a standalone mode matching the web scanner's.</h3>
-      <p>Recorded that way under your parity rule. Is that right?</p>
+      <p>Recorded that way under your parity rule. On the map, a yes means the standalone declaration must reach a device that has no idea of it today. Is that right?</p>
     </div>
     <div class="q">
       <h3>24. Does a standalone game run on one GM tablet?</h3>
-      <p>Today two standalone tablets are two separate games. Several tablets sharing one game with no engine would need them to talk to each other directly, a large new piece.</p>
+      <p>Today two standalone tablets are two separate games. Several tablets sharing one game with no engine would need them to talk to each other directly, a large new piece. This also decides whether a standalone tablet's record of the night can hold player scans: only if the standalone player scanners hand their scans to that tablet.</p>
       <p class="rec">Recommendation: one tablet, unless you plan standalone games with two GMs.</p>
     </div>
     <div class="q">
       <h3>25. With no engine and no TV, what do exposed evidence and video tokens do?</h3>
+      <p>This decides what the screens draw in those two cases.</p>
       <p class="rec">Suggestion: exposed evidence shows on the GM tablet's own scoreboard screen, which standalone already has. A video token shows its picture with a plain note instead of an error.</p>
     </div>
   </div>
@@ -510,7 +782,7 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
     <h3>About the game's record</h3>
     <div class="q">
       <h3>19. When a GM scan is refused, does the game keep a record of the attempt?</h3>
-      <p>For example, a token already used, or no game running. Today only the tablet that scanned hears about it.</p>
+      <p>For example, a token already used, or no game running. Today only the tablet that scanned hears about it. On the map this decides whether the game's record keeps refused attempts, or only the answer goes back to the tablet.</p>
       <p class="rec">Recommendation: yes. Record every attempt and its answer, and show it nowhere until a feature needs it.</p>
     </div>
   </div>
@@ -523,11 +795,30 @@ footer code {{ font-family: var(--font-mono); font-size: 13px; }}
       <p class="rec">Recommendation: one per design flaw, 16 runs.</p>
     </div>
   </div>
+
+  <div class="qgroup">
+    <h3>Coming in step 3, no answer needed now</h3>
+    <div class="q">
+      <h3>The map leaves these choices to you.</h3>
+      <p>Step 3 puts each in front of you with designs side by side. They are listed here so nothing arrives as a surprise.</p>
+      <ol>
+        <li>Where "this game is standalone" is declared: the venue profile (the map favours it), the pack, the game's record or each device.</li>
+        <li>The game rules as one shared body of code that the engine and the tablet both run, or two bodies kept equal by tests.</li>
+        <li>The equipment's interface: one per thing the room can do (play a video, light a scene), or one per outside program.</li>
+        <li>The standalone tablet: the same record and lifecycle parts the engine runs, or an engine of its own.</li>
+        <li>The scoreboard: one page in two places, or a view inside the GM app.</li>
+        <li>The config tool: a separate program that talks to the engine by message, or a surface the engine itself serves.</li>
+        <li>When a changed pack may be adopted while the engine runs: today, only before a game starts or after it ends.</li>
+        <li>The order of the work: by part, with the engine's own names and delivery first since most flaws land on them, or by block as the roadmap has it.</li>
+      </ol>
+    </div>
+  </div>
   <p class="muted">Decided so far: 20 (no rule for documents; documents are fixed as we go), 22 (standalone games join the requirements; never mixed) and 26 (the pass designs the best engine for the long term; blue's problems are clues, not the plan).</p>
 </section>
 
 <footer>
   <p>Built from <code>docs/plans/architecture-pass/2026-10-31-engine-jobs.md</code> (the jobs; its check held 171 claims and corrected 53), the list of design flaws in <code>2026-10-30-cause-analysis.md</code> with its checks, and the standalone pass, <code>2026-10-31-standalone-pass.md</code>. "Built today" is the orchestrator's summary from the root <code>CLAUDE.md</code> and the capability map.</p>
+  <p>How the jobs fit together, the candidate shape and the restated jobs come from <code>2026-11-01-engine-shape.md</code> and the four maps under <code>relationships/</code>, with that document's check. The cards and jobs were then reconciled with the shape, each group checked on its own.</p>
 </footer>
 </div>
 '''
