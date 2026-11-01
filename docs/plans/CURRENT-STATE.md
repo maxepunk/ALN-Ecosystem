@@ -245,8 +245,11 @@ touches blue's branch.
   captured; ruling R22 moved them into the truth-sweep work, whose
   purpose now moves into the pass's phase 2 ("The truth sweep's
   charter is retired").
-- **Block 2, hardening:** done and merged: the equipment families, the
-  dormancy core, the test-harness minimum. They stay; phase 2 changes
+- **Block 2, hardening:** done and merged: the kinds of equipment a
+  pack can ask for and a venue profile can name (the equipment
+  families), the code that marks equipment not installed tonight (the
+  dormancy core) and the smallest test set-up (the test-harness
+  minimum). They stay; phase 2 changes
   them only where a rule requires ("Corrections to the readers and the
   hardening pieces"). To be rebuilt inside the pass's phase 2 ("One
   program: design half, then build half"): the profile check, the dormancy-core

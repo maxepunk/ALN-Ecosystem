@@ -509,8 +509,9 @@ History:
 
 **Corrections to the readers and the hardening pieces**
 
-The merged hardening pieces (the equipment families, the dormancy core,
-the harness minimum) stay in the engine. The build half changes them
+The merged hardening pieces (the kinds of equipment a pack can ask for
+and a venue profile can name, the code that marks equipment not
+installed tonight, and the smallest test set-up) stay in the engine. The build half changes them
 only where a rule requires, and their standing review findings fed the
 cause analysis like every other finding. The cause analysis's readers
 were split by source (blue's records, the backend, the GM scanner, the
