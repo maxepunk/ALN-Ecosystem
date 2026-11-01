@@ -1,0 +1,164 @@
+{
+  "intro": [
+    "The standing rules are the constraints the owner has ratified that hold for every block of work and every design, now and later. They are not promises or quality targets: they say what the engine must do or must never do, whatever shape the design takes. The panel and the design rounds must respect every one of them, and a design that breaks one is out.",
+    "They come from the roadmap's section on standing constraints, in its six groups: identity and player data; growth without corners; the media model; the design-iteration loop; platform parity; and the engine holds no opinion. The identity rules are also the privacy defaults that every future operator of the open-source engine inherits. Each rule below says where it comes from and, where the roadmap gives one, the date the owner ratified it."
+  ],
+  "groups": [
+    {
+      "slug": "identity-and-player-data",
+      "title": "Identity and player data",
+      "rules": [
+        {
+          "slug": "players-never-have-accounts",
+          "title": "Players never have accounts",
+          "line": "Players never have accounts. Nothing a player uses, a phone or a scanner, ever asks a player to log in.",
+          "source": "Roadmap, standing constraints, identity and player data, rule 1; ratified 2026-08-29, reaffirming the engine's one design for who gets access."
+        },
+        {
+          "slug": "the-engine-knows-devices-not-people",
+          "title": "The engine knows devices, not people",
+          "line": "The only identity built into the engine is a device id or a session id. Naming a person is game policy, never an engine default.",
+          "source": "Roadmap, standing constraints, identity and player data, rule 2."
+        },
+        {
+          "slug": "how-players-are-identified-is-the-game-s-choice",
+          "title": "How players are identified is the game's choice",
+          "line": "A game may add its own ways to identify players with whatever its hardware allows: a typed name on a personal phone, a scanned object such as a band or a character token at a shared station, or nothing at all. Letting a player claim credit is one optional pattern for games on personal devices, not a platform rule.",
+          "source": "Roadmap, standing constraints, identity and player data, rule 2."
+        },
+        {
+          "slug": "game-data-stays-on-the-kit",
+          "title": "Game data stays on the kit",
+          "line": "Game data stays on the kit unless the owner moves it.",
+          "source": "Roadmap, standing constraints, identity and player data, rule 3."
+        },
+        {
+          "slug": "the-owner-sets-how-long-data-is-kept",
+          "title": "The owner sets how long data is kept",
+          "line": "How long old game data is kept is the owner's decision, made per game.",
+          "source": "Roadmap, standing constraints, identity and player data, rule 4."
+        }
+      ]
+    },
+    {
+      "slug": "growth-without-corners",
+      "title": "Growth without corners",
+      "rules": [
+        {
+          "slug": "never-assume-one-kit-one-pack-one-production",
+          "title": "Never assume one kit, one pack, one production",
+          "line": "No block may build in the assumption of one kit, one pack or one production where avoiding it costs little. The seams that make more possible are built now; the features that use them belong to the operations era.",
+          "source": "Roadmap, standing constraints, growth without corners; ratified 2026-08-29."
+        },
+        {
+          "slug": "pack-and-venue-profile-chosen-never-assumed",
+          "title": "Pack and venue profile chosen, never assumed",
+          "line": "The pack is chosen by path or id and never assumed to be the only one. The venue profile is chosen the same way.",
+          "source": "Roadmap, standing constraints, growth without corners, the design-document checklist."
+        },
+        {
+          "slug": "no-one-kit-s-names-inside-engine-code",
+          "title": "No one kit's names inside engine code",
+          "line": "Engine code never contains an identifier that belongs to one kit.",
+          "source": "Roadmap, standing constraints, growth without corners, the design-document checklist."
+        },
+        {
+          "slug": "network-names-and-addresses-work-per-kit",
+          "title": "Network names and addresses work per kit",
+          "line": "The way the kit's devices find each other by name and address works for each kit on its own.",
+          "source": "Roadmap, standing constraints, growth without corners, the design-document checklist."
+        }
+      ]
+    },
+    {
+      "slug": "the-media-model",
+      "title": "The media model",
+      "rules": [
+        {
+          "slug": "media-never-lives-inside-the-pack",
+          "title": "Media never lives inside the pack",
+          "line": "Media files never live inside the pack, and carrying them there is out of this era entirely. The pack names its media files, each with a fingerprint of its contents.",
+          "source": "Roadmap, standing constraints, the media model; ratified 2026-08-29, with the out-of-era ruling of the same date."
+        },
+        {
+          "slug": "a-managed-media-bundle-carries-the-files",
+          "title": "A managed media bundle carries the files",
+          "line": "A managed media bundle, kept apart from the pack, carries the actual files. The hardware scanner already gets its files this way, and that is the model.",
+          "source": "Roadmap, standing constraints, the media model; ratified 2026-08-29."
+        },
+        {
+          "slug": "a-designer-can-upload-the-pack-s-media",
+          "title": "A designer can upload the pack's media",
+          "line": "A designer can work through the files their pack needs and upload them through the design tool.",
+          "source": "Roadmap, standing constraints, the media model, requirement (a) on the final tool."
+        },
+        {
+          "slug": "media-bundles-move-between-machines",
+          "title": "Media bundles move between machines",
+          "line": "A bundle can be checked against the pack's list of files and moved easily between engine machines for different game instances.",
+          "source": "Roadmap, standing constraints, the media model, requirement (b) on the final tool."
+        }
+      ]
+    },
+    {
+      "slug": "the-design-iteration-loop",
+      "title": "The design-iteration loop",
+      "rules": [
+        {
+          "slug": "games-are-playtested-without-code-or-settings-files",
+          "title": "Games are playtested without code or settings files",
+          "line": "A designer makes a game playtestable without writing code or editing a settings file: change a value in the tool, apply it, playtest, repeat. Making this possible is the point of the engine work.",
+          "source": "Roadmap, standing constraints, the design-iteration loop; ratified 2026-08-29."
+        },
+        {
+          "slug": "the-editor-and-live-apply-ship-together",
+          "title": "The editor and live apply ship together",
+          "line": "The mechanics editor is where the loop happens, and applying a change while the engine runs, between games, is what makes the loop fast instead of a restart per change. The editor and that apply ship together as one deliverable.",
+          "source": "Roadmap, standing constraints, the design-iteration loop, the ratified floor."
+        }
+      ]
+    },
+    {
+      "slug": "platform-parity",
+      "title": "Platform parity",
+      "rules": [
+        {
+          "slug": "phones-and-hardware-scanners-stay-equal-in-ability",
+          "title": "Phones and hardware scanners stay equal in ability",
+          "line": "Phones and other web devices stay equal to the hardware scanners in what the engine lets them do. Both can drive the same interactions the pack declares, including multi-tap player actions.",
+          "source": "Roadmap, standing constraints, platform parity; ratified 2026-08-29, reaffirming the ruling of 2026-07-18 that the hardware scanner is a first-class platform."
+        },
+        {
+          "slug": "equal-in-ability-not-in-screens",
+          "title": "Equal in ability, not in screens",
+          "line": "Parity does not mean identical screens: a keyboard, a screen size and a personal or shared device differ. A game's kit declares which kinds of device its players use and what part each plays.",
+          "source": "Roadmap, standing constraints, platform parity; ratified 2026-08-29."
+        },
+        {
+          "slug": "hardware-scanner-work-waits-on-no-game",
+          "title": "Hardware scanner work waits on no game",
+          "line": "Bringing the hardware scanner's code up to parity is platform work the engine commits to. It does not wait on any one game's design.",
+          "source": "Roadmap, standing constraints, platform parity; ratified 2026-08-29."
+        },
+        {
+          "slug": "designers-change-pack-data-never-device-code",
+          "title": "Designers change pack data, never device code",
+          "line": "Everything a designer iterates on is pack data, never the code built into a device. Never design a mechanic that can only be tuned by reloading the code on every hardware scanner.",
+          "source": "Roadmap, standing constraints, platform parity, the standing principle; ratified 2026-08-29."
+        }
+      ]
+    },
+    {
+      "slug": "the-engine-holds-no-opinion",
+      "title": "The engine holds no opinion",
+      "rules": [
+        {
+          "slug": "the-engine-holds-no-opinion-on-game-design",
+          "title": "The engine holds no opinion on game design",
+          "line": "Game-design choices are pack and kit parameters, never engine defaults: how players are identified, rosters, how scarce stations are, what is tracked, and whether more engagement is better.",
+          "source": "Roadmap, standing constraints, the engine holds no opinion; reaffirmed 2026-08-29."
+        }
+      ]
+    }
+  ]
+}
