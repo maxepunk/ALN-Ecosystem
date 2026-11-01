@@ -1,9 +1,9 @@
 {
   "intro": [
     "Everything still open for you is on this page, each question with its evidence on the same screen. Answer in the chat, by the question's letter or by its title. Each question stands alone: answer any of them, in any order, and leave the rest for later.",
-    "Three tags say where a question stands. Open: no answer yet. Applied, please confirm: the change is already in the promise's wording, and one word from you keeps it or undoes it. Recommendation changed by the earlier candidate: drawing the earlier candidate (the shape of the engine's parts drawn from today's engine, now one input among the panel's) changed what we recommend, and the [[page:changes]] has the earlier recommendation.",
+    "Three tags say where a question stands. Open: no answer yet. Applied, please confirm: the change is already in the promise's wording, and one word from you keeps it or undoes it. Recommendation changed by the earlier candidate: working out the earlier candidate (a set of the engine's parts drawn from today's engine, now one input among the panel's) changed what we recommend, and the [[page:changes]] has the earlier recommendation.",
     "Under each question, \"What we know\" lists the facts the answer rests on: the requirements, the decisions already made, the earlier candidate, and today's engine, which is evidence and never the reason for a design. Most facts link to the promise, quality target, extension case, decision, part or design flaw they come from, so you can read more before you answer.",
-    "The letters are new in this version. The withdrawn question on how much the test rig proves before design, the earlier letters and numbers, and every earlier wording live in the [[page:changes]]. Only the list at the end, Decided, records what you have decided."
+    "The letters are new in this version. The [[page:changes]] maps the earlier letters and numbers to these titles and keeps the withdrawn question on how much the test rig proves before design. Only the list at the end, Decided, records what you have decided."
   ],
   "groups": [
     {
@@ -19,14 +19,14 @@
             "A quality is something every part of the engine must have so that a promise holds everywhere, not in one place. Each target tells a situation at a show, in rehearsal, at the desk or in development, so that it can be tested: what happens, then what must be true. The targets say what is needed, never how to build it.",
             "There are forty-two targets under twelve qualities: staying up through a live show; every screen telling the truth; the designer's iteration speed; operating it without technical help; easy to understand and change, for people and for AI agents; easy to extend; testable without the live show; privacy and access; running well on the show machine and the venue network at the size of a show; standalone and offline; safe release and rollback; and more than one copy, kit or pack without rework.",
             "Each target names the promises it serves, and every promise is served by at least four targets.",
-            "Most targets rest on a decision you have already made or a roadmap section you ratified. Three are proposed in full, [[qt:QT3]], [[qt:QT5]] and [[qt:QT17]]: they rest on the pass's questions and on the promises' test situations, which you have not ruled on one by one. Five are proposed in part: [[qt:QT13]] (that building the machine itself needs no terminal), [[qt:QT19]] (a page per piece of the engine, and the newcomer measure), [[qt:QT31]] (the automatic check for a committed secret), [[qt:QT33]] (the sizes and limits, and a preflight that refuses a start over a load limit) and [[qt:QT34]] (that the profile declares the number of phones and the preflight counts them).",
+            "Most targets rest on a decision you have already made or a roadmap section you ratified. Four are proposed in full, [[qt:QT3]], [[qt:QT5]], [[qt:QT17]] and [[qt:QT27]]: they rest on the pass's questions and on the promises' test situations, which you have not ruled on one by one. Six are proposed in part: [[qt:QT7]] (all but the standalone case), [[qt:QT13]] (that building the machine itself needs no terminal), [[qt:QT19]] (a page per piece of the engine, and the newcomer measure), [[qt:QT31]] (the automatic check for a committed secret), [[qt:QT33]] (the sizes and limits, and a preflight that refuses a start over a load limit) and [[qt:QT34]] (that the profile declares the number of phones and the preflight counts them).",
             "Two targets wait on questions on this page: [[qt:QT37]] on [[q:M]], and [[qt:QT39]] on [[q:L]], [[q:M]] and [[q:N]]. The other open point of [[qt:QT37]], where the standalone fact is kept, belongs to the design rounds. [[qt:QT3]] leaves what a disconnected tablet does with a scan to the design round on where authority lives across devices.",
             "The panel gets the confirmed targets in its brief, beside the promises and the extension cases, and runs only after you confirm them ([[dec:what-the-architects-panel-sees-and-when]]).",
             "Fourteen targets leave a number for you to set. They follow, one per line.",
             "[[qt:QT1]]: how long the engine may take from power back to a running show.",
             "[[qt:QT2]]: how many restarts the program watcher tries, and over how long, before it shows red; and to confirm ten seconds for the controls to come back, from the promise's test situation.",
             "[[qt:QT3]]: to confirm five seconds for a tablet to be back under its own station name, from the promise's test situation.",
-            "[[qt:QT5]]: how long after the engine goes silent a screen must say so (today, the scanners' polling interval).",
+            "[[qt:QT5]]: how long after the engine goes silent a screen must say so (today, how often the scanners check on the engine).",
             "[[qt:QT9]]: the minutes from publish to playing, the promise's \"within minutes\".",
             "[[qt:QT13]]: how long the venue technician may need from an unpacked kit to a go.",
             "[[qt:QT14]]: how long from power on to a running show.",
@@ -59,16 +59,30 @@
           "decides": "Whether the twenty-four extension cases on [[page:requirements]] are the ways the platform must grow that the panel and the design rounds design for, and whether any way of growing you plan is missing.",
           "evidence": [
             "Each case tells who grows the platform, what they should need to touch, what must stay untouched, and when it is due: a designer making a whole second game ([[ex:EX1]]), a designer adding a third thing a team can do with a token ([[ex:EX3]]), a venue technician fitting the kit to a new room ([[ex:EX13]]), an operator with a second kit ([[ex:EX16]]), a director telling the night from the record ([[ex:EX19]]), a developer from outside the team ([[ex:EX21]]).",
-            "The cases say what is needed, never how to build it. Every case rests on a decision you have made or a roadmap section you ratified, except [[ex:EX15]], a new lighting system or video player, whose need rests on the room promise and the glossary and whose how (how the engine reaches its programs, and where the start-or-use setting lives) waits for the design rounds.",
+            "The cases say what is needed, never how to build it. Every case rests on a decision you have made or a roadmap section you ratified, except [[ex:EX15]], whose need rests on the room promise and the glossary and whose how (how the engine reaches its programs, and where the start-or-use setting lives) waits for the design rounds. [[ex:EX12]] also waits on [[q:L]] and [[q:N]].",
             "Each case names the promises it serves, and every promise is served by at least three cases.",
-            "Two cases carry a number for you to set: [[ex:EX10]], how many phones one kit carries at once, which is the same number as [[qt:QT34]]; and [[ex:EX12]], how many GM tablets one standalone game may run, which [[q:M]] decides.",
+            "[[ex:EX10]] needs the number of phones one kit carries at once, which [[qt:QT34]] asks you to set; how many GM tablets [[ex:EX12]] may run is [[q:M]].",
             "Three cases name choices kept for the design rounds, listed under Coming in the design rounds below: where the standalone declaration lives ([[ex:EX12]]), where the designer's trial copy of the engine runs ([[ex:EX14]]) and where the start-or-use setting lives ([[ex:EX15]]).",
             "The panel gets the confirmed cases in its brief, beside the promises and the quality targets ([[dec:what-the-architects-panel-sees-and-when]])."
           ],
-          "options": [],
+          "options": [
+            {
+              "label": "Confirm the twenty-four as the base.",
+              "cost": "The panel designs for these ways of growing."
+            },
+            {
+              "label": "Add or change cases now.",
+              "cost": "The brief waits for them; a case added after the panel's first proposals reaches the design rounds but not the panel."
+            }
+          ],
           "recommendation": "Confirm the twenty-four as the base. If a way of growing you plan is missing, name it now, before the panel's brief is written: the panel designs against the cases it is given, and a case added later reaches the design rounds but not the panel's first proposals.",
           "recKind": "Recommendation"
-        },
+        }
+      ]
+    },
+    {
+      "title": "Confirming earlier decisions",
+      "questions": [
         {
           "letter": "C",
           "anchor": "q-c",
@@ -94,7 +108,12 @@
           ],
           "recommendation": "Confirm all four. The later decisions set the order the design half now follows; the earlier wordings stay in the record's history, and the nine questions keep their work as checks on every design.",
           "recKind": "Recommendation"
-        },
+        }
+      ]
+    },
+    {
+      "title": "Confirming the promises",
+      "questions": [
         {
           "letter": "D",
           "anchor": "q-d",
@@ -107,10 +126,10 @@
             "The panel designs against the promises with your answers, so it runs only after you confirm them ([[dec:what-the-architects-panel-sees-and-when]]).",
             "Whether running in any setup needs an eleventh promise is [[q:I]].",
             "The earlier candidate on [[page:design]] names, for each promise, the parts that would keep it; every promise is kept by parts of its own.",
-            "On [[page:today]], each design flaw mainly breaks exactly one promise. No flaw mainly breaks [[promise:J6]] today; [[flaw:C8]] and [[flaw:C12]] break it beside others."
+            "On [[page:today]], each design flaw mainly breaks exactly one promise. Today no flaw mainly breaks the promise [[promise:J6]]. Two flaws break it beside others: [[flaw:C8]], and [[flaw:C12]]."
           ],
           "options": [],
-          "recommendation": "Keep these ten as the base, with these titles, and settle [[q:H]] to [[q:K]] below. In the earlier candidate every promise is kept by parts of its own, and the one candidate for an eleventh, \"run in any setup\", owns no part ([[q:I]]).",
+          "recommendation": "Keep these ten as the base, with these titles, and settle the four wording questions below, H to K. In the earlier candidate every promise is kept by parts of its own, and the one candidate for an eleventh, \"run in any setup\", owns no part ([[q:I]]).",
           "recKind": "Recommendation"
         },
         {
@@ -158,7 +177,7 @@
             "The earlier candidate supports the clause: whether a game is standalone is something every design choice must take into account (the quality \"Who decides when there is no engine\"), and it is declared where the game is fitted to tonight's setup, under [[promise:J8]].",
             "Where the declaration is kept is a choice for the design rounds: the venue profile, the pack, the game's record or each device. The earlier candidate favours the profile, because a profile that lists no engine equipment already makes every service the engine runs (video, music, lights) read \"not installed tonight\". Whichever is chosen, [[part:P2]] carries the declaration to every device.",
             "Today the declaration is each tablet's own tap, the phone's web address and nothing on the hardware scanner; the pack has no field for it ([[flaw:N1]]).",
-            "The proposed flaw \"[[flaw:N1]]\" holds eight findings from the review of standalone games. If it is not a flaw of its own, they join [[flaw:C9]], [[flaw:C11]] and [[flaw:C14]] and the table comparing the hardware scanner with the phone's scanner. In the earlier candidate it is fixed in [[part:P2]] and [[part:P12]], or in [[part:P3]] if the declaration is kept there; your answer on the second point does not move it."
+            "The proposed flaw \"[[flaw:N1]]\" holds eight findings from the review of standalone games. If it is not a flaw of its own, they join three flaws ([[flaw:C9]]; [[flaw:C11]]; [[flaw:C14]]) and the table comparing the hardware scanner with the phone's scanner. In the earlier candidate it is fixed in [[part:P2]] and [[part:P12]], or in [[part:P3]] if the declaration is kept there; your answer on the second point does not move it."
           ],
           "options": [],
           "recommendation": "Agree. On the second point, yes: three other design choices (what each fact does between games, one answer per question, how old a copy is) need the declared fact as an input, and would otherwise each invent their own answer.",
@@ -175,7 +194,7 @@
             "The requirements already test the two halves at two moments: the tap's answer at the tap ([[qt:QT4]], [[qt:QT7]]); the night's record when the game ends ([[qt:QT16]]) and when the director reads it afterwards ([[ex:EX19]]).",
             "Answering happens at the tap, for the GM or the player. The night's record is for after the show: what is captured during play, the record written when the game ends, the review. The earlier candidate confirms the two share no part: [[part:P4]] sits in the middle of the engine, and five promises depend on it; [[part:P5]] is written once, at the end of a game, and read afterwards.",
             "[[part:P5]] carries the game the night ran and the texts the players saw (the same decision). The designer's Review reads it inside the engine; the game's own telling, for ALN the Director Console, reads it from outside, with room to run inside the Review stage later.",
-            "The tap's answer is mainly broken by [[flaw:C7]]: a reply never says which request it answers, or whether the answer is final or the scan was saved to send later. No design flaw mainly breaks the night's record half yet.",
+            "The tap's answer is mainly broken by the flaw [[flaw:C7]]: the tablet cannot tell whether an answer is final or the scan was only saved to send later. No design flaw mainly breaks the night's record half yet.",
             "The alternatives table on [[page:design#alt-answer-and-record]] has this row: the tap's answer and the night's record, one part or two."
           ],
           "options": [
@@ -231,27 +250,27 @@
           "evidence": [
             "The requirements test the two moments apart. Every change runs the full set of tests twice, once with ALN's pack and once with the toy game's, and a skipped test never counts as a pass ([[qt:QT26]]). On release day the show machine carries one written list of what it should hold, and rolling back moves every piece ([[qt:QT41]], [[ex:EX17]]).",
             "You have since decided that the tests become a test bench outside the engine, with Proof kept as a quality every part must meet ([[dec:one-published-protocol-and-an-outside-test-bench]]).",
-            "The earlier candidate separates this promise's two moments. Before every change, the developer's tests pass and show the show still works for ALN and for the toy game, the small second game kept for tests; that is a quality every part must have (Proof, on [[page:design]]), and checking that parts which pass things to each other agree is part of it. [[part:P16]] and [[part:P13]] carry it.",
+            "The earlier candidate separates this promise's two moments. Before every change, the developer's tests pass and show the show still works for ALN and for the toy game, the small second game kept for tests; that is a quality every part must have (Proof, on [[page:design]]), and checking that parts which pass things to each other agree is part of it. In the earlier candidate, [[part:P16]] (since replaced by the published protocol and the outside test bench) and [[part:P13]] carried it.",
             "On release day, you decide when a new version goes to the venue and can swap back by replugging a machine. That is one small part, [[part:P17]]: what is installed is one written list of what the machine should carry, which the engine compares at start, so a rollback moves everything or says what it did not.",
             "Four flaws mainly break this promise. The pass's question \"Only the live engine touches the show\" covers keeping tests away from it ([[flaw:C8]]). For the other three none of the nine questions fits: \"One question gets one answer\" is only the nearest for the names two parts share ([[flaw:C14]]), and the installed pieces ([[flaw:C15]]) and tests that prove the real path ([[flaw:C16]]) have none ([[dec:the-nine-questions-the-pass-answers]]).",
-            "Every option below gives [[flaw:C15]] a part to be fixed in; [[flaw:C16]] is fixed in [[part:P16]] whichever you choose.",
+            "Every option below gives [[flaw:C15]] a part to be fixed in; [[flaw:C16]] falls to the outside test bench whichever you choose.",
             "The alternatives table on [[page:design#alt-release]] has this row: release day as its own part beside the developer's tests, or in [[part:P12]]'s hand-off from designer to venue technician to GM. The earlier recommendation is in the [[page:changes#rec-f]]."
           ],
           "options": [
             {
-              "label": "a. Keep one promise covering both moments, as the title does.",
+              "label": "Keep one promise covering both moments, as the title does.",
               "cost": "One title covers two people at two moments, the developer's tests and your release day; the recommendation gives each a question of its own among the pass's questions."
             },
             {
-              "label": "b. Split release day into a promise of its own.",
+              "label": "Split release day into a promise of its own.",
               "cost": "It gives your release day its own sentence, kept by one small part."
             },
             {
-              "label": "c. File release day with the venue technician's set-up work, under \"[[promise:J8]]\".",
+              "label": "File release day with the venue technician's set-up work, under \"[[promise:J8]]\".",
               "cost": "The check of what is installed sits where the venue technician works, but your decision to send a version moves away from the developer's tests."
             },
             {
-              "label": "d. Go back to the earlier wording, about tests alone.",
+              "label": "Go back to the earlier wording, about tests alone.",
               "cost": "The parts fit that too; the cost is that your release day stays unnamed."
             }
           ],
@@ -269,7 +288,7 @@
             "If the design rounds keep one delivery part, neither promise needs to name the route: in the earlier candidate [[part:P6]] carries every fact to every screen, game facts and equipment alike, each with its label (how sure, how old); six promises use it.",
             "[[part:P8]] decides each program's state and health as one dated fact; [[part:P6]] carries it; [[part:P14]] draw it.",
             "The two promises already cover their halves. Under [[promise:J4]], the GM makes the room do a thing and sees it happen, or sees at once that it did not. Under [[promise:J2]], every screen agrees, also after a tablet comes back. The game's running state there already includes the video queue, music, held items, the clock and each service's health.",
-            "This question places [[flaw:C2]], where today health and state travel on separate routes, so the music card keeps its playing look while the health row turns red.",
+            "Your answer also decides which promise the flaw [[flaw:C2]] sits under: today the music card keeps its playing look while the health row turns red.",
             "The design rounds choose between one delivery part and the parts behind each promise delivering their own facts; the alternatives table on [[page:design#alt-delivery]] has that row. The earlier answer is in the [[page:changes#rec-g]]."
           ],
           "options": [
@@ -388,7 +407,7 @@
             "Today a refused GM scan is told to the tablet that scanned and recorded nowhere else. The review that named the design flaws set this aside as a product choice no design flaw decides.",
             "In the earlier candidate [[part:P3]] is where the game's facts are decided and the answer goes back through [[part:P4]].",
             "Where [[promise:J3]] lists [[flaw:C9]] among its flaws, it leaves this to you: whether refused scans belong in the night's record is your open question, not that flaw's.",
-            "A standalone tablet records refused duplicates and unknown tokens nowhere either; a yes needs a standalone counterpart, which the change for [[flaw:C7]] carries."
+            "A standalone tablet records refused duplicates and unknown tokens nowhere either; a yes needs the same on a standalone tablet; the design choice that removes the flaw [[flaw:C7]] would carry it."
           ],
           "options": [
             {
@@ -415,7 +434,7 @@
           "status": "open",
           "decides": "Which lens each of the three independent architects takes, so that their proposals differ where it matters for your goal.",
           "evidence": [
-            "[[dec:what-the-architects-panel-sees-and-when]] fixes three architects with different lenses who propose blind, then critique each other and the earlier candidate. It does not name the lenses.",
+            "Your decision [[dec:what-the-architects-panel-sees-and-when]] sets three architects with different lenses who propose blind, then critique each other and the earlier candidate. It does not name the lenses.",
             "The draft lenses, on [[page:design#panel|the panel's brief]]: state and authority; growth and extension; living with it. A lens says where an architect looks hardest; every architect still answers to every requirement.",
             "Your goal names three things the design must make easy: maintaining the engine, continuing its development, and extending it. The quality targets add staying up through a live show and standalone and offline play."
           ],
@@ -426,7 +445,7 @@
             },
             {
               "label": "Add a fourth architect, on live-show reliability.",
-              "cost": "One more proposal in each round, a longer synthesis, and about a third more time and cost."
+              "cost": "One more proposal in each round, so ten agents in place of eight, and a longer synthesis."
             },
             {
               "label": "Replace \"living with it\" with a lens on the smallest possible engine.",
@@ -443,9 +462,11 @@
           "status": "open",
           "decides": "Whether the panel's blind round also gets the decisions you have made that bind any design, and the six decisions ahead as its agenda, or only the goal, the requirements and the setting.",
           "evidence": [
-            "[[dec:what-the-architects-panel-sees-and-when]] lists the goal, the requirements and the setting for the blind round, and names nothing else.",
+            "Your decision [[dec:what-the-architects-panel-sees-and-when]] lists the goal, the requirements and the setting for the blind round, and names nothing else.",
             "The decisions that bind any design: [[dec:one-published-protocol-and-an-outside-test-bench]], [[dec:standalone-games-declared-never-mixed]], [[dec:four-words-for-the-game-s-live-facts]], [[dec:the-night-s-record-and-the-after-game-article]] and [[dec:the-role-question-starts-from-settled-roles]]. They are your decisions, not the reasoning of the agent running the pass.",
             "The six decisions ahead are your list, from [[dec:design-top-down-hardest-to-reverse-choices-first]].",
+            "The last decision ahead, how today's engine moves to the new design, waits for the second round, where today's engine is known.",
+            "The panel runs only after you approve its brief and confirm the requirements.",
             "If anything else should be added to what the panel sees, or kept from it, say so with this question."
           ],
           "options": [
@@ -468,7 +489,7 @@
           "status": "open",
           "decides": "Whether, in the second round, the architects may read today's code and its component guides, or only a fact sheet about today's engine.",
           "evidence": [
-            "[[dec:what-the-architects-panel-sees-and-when]] gives the second round today's engine as facts and the sixteen design flaws as test situations. It does not say in what form.",
+            "Your decision [[dec:what-the-architects-panel-sees-and-when]] gives the second round today's engine as facts and the sixteen design flaws as test situations. It does not say in what form.",
             "The code is the most exact fact about today's engine. It is also large, and reading it can pull a design toward small changes to today's engine."
           ],
           "options": [
@@ -545,7 +566,7 @@
       "text": "Where the setting lives that says whether the engine starts each outside program or uses one already running: in the venue technician's profile, as the earlier candidate has it, or in a file of its own, as the list of planned capabilities you approved has it."
     },
     {
-      "text": "The order of the build half's work, for the build plan: by part, with [[part:P13]] (each running copy of the engine keeping its own files, network ports and settings) and [[part:P6]] first since most flaws fall to them, or by the roadmap's blocks, each by its name."
+      "text": "The order of the build half's work, for the build plan: by part, with [[part:P13]] (each running copy of the engine keeping its own files, network ports and settings) and [[part:P6]] first since most flaws fall to them, or block by block, in the roadmap's order."
     },
     {
       "text": "Whether paper documents join the pack, with \"unlocked\" recorded during play, so the night's record can say which documents the players opened. [[dec:the-night-s-record-and-the-after-game-article]] left this to the design rounds; today the director marks them by hand after the show."
@@ -590,7 +611,7 @@
           "slug": "promises-qualities-moments-venue-technician",
           "title": "Promises, qualities, moments, venue technician",
           "date": "2026-11-01",
-          "line": "A promise is what a person can count on at a given moment; a quality is something every part must have so a promise holds everywhere; a moment is when a promise matters; the person who fits a kit to a venue is the venue technician; promises carry titles only."
+          "line": "A promise is what a person can count on at a given moment; parts keep promises and design flaws break them; a quality is something every part must have so a promise holds everywhere; a moment is when a promise matters; the person who fits a kit to a venue is the venue technician; promises carry titles only."
         },
         {
           "slug": "name-each-step-by-what-it-does",
@@ -608,7 +629,7 @@
           "slug": "the-nine-questions-the-pass-answers",
           "title": "The nine questions the pass answers",
           "date": "2026-10-30",
-          "line": "The pass answers nine questions for the whole engine, from who decides each fact to whether a reconnecting screen's catch-up is built like its live update; the nine stand, and since the design went top-down they are read as checks on each design ([[q:C]])."
+          "line": "The pass answers nine questions for the whole engine, from who decides each fact to whether a reconnecting screen's catch-up is built like its live update; the nine stand, and since the design went top-down the record reads them as checks on each design, which [[q:C]] asks you to confirm."
         },
         {
           "slug": "the-role-question-starts-from-settled-roles",
@@ -656,13 +677,13 @@
           "slug": "the-truth-sweep-s-charter-is-retired",
           "title": "The truth sweep's charter is retired",
           "date": "2026-10-30",
-          "line": "The truth sweep's charter is retired; its purpose, proving that every screen tells the truth, moves into the build work the pass plans, and its census and five recorded desync bugs are evidence for the pass."
+          "line": "The truth sweep's charter is retired; its purpose, proving that every screen tells the truth, moves into the build work the pass plans, and its survey of every screen and its five recorded bugs where a screen fell out of step with the engine are evidence for the pass."
         },
         {
           "slug": "five-documents-the-design-half-hands-over",
           "title": "Five documents the design half hands over",
           "date": "2026-10-30",
-          "line": "The design half hands over the design choices, one per question, with proof tests in plain words, the review that named the design flaws with every fix and finding assigned or set aside, proposals for the written lists of messages between the engine and the devices, one decision note per hard-to-reverse choice, and the new roadmap; two parts are read as overtaken ([[q:C]])."
+          "line": "The design half hands over the design choices, one per question, with proof tests in plain words, the review that named the design flaws with every fix and finding assigned or set aside, proposals for the written lists of messages between the engine and the devices, one decision note per hard-to-reverse choice, and the new roadmap; two parts may be overtaken, which [[q:C]] asks you to confirm."
         },
         {
           "slug": "the-design-half-s-method-and-tools",
@@ -674,13 +695,13 @@
           "slug": "when-the-design-half-is-finished",
           "title": "When the design half is finished",
           "date": "2026-10-30",
-          "line": "The design half ends at your sign-off once every finding and blue fix is assigned or set aside with a reason, every design choice says how it serves the planned capabilities and standalone games, the hostile review's blocking findings are resolved, every question has its design choice and proof test, and the rig reproduces each finding marked for live proof; the last two conditions are read as overtaken ([[q:C]])."
+          "line": "The design half ends at your sign-off once every finding and blue fix is assigned or set aside with a reason, every design choice says how it serves the planned capabilities and standalone games, the hostile review's blocking findings are resolved, every question has its design choice and proof test, and the rig reproduces each finding marked for live proof; the last two conditions may be overtaken, which [[q:C]] asks you to confirm."
         },
         {
           "slug": "corrections-to-the-readers-and-the-hardening-pieces",
           "title": "Corrections to the readers and the hardening pieces",
           "date": "2026-10-30",
-          "line": "The merged hardening pieces (the equipment families, the core that marks equipment not installed tonight, the harness minimum) stay in the engine and change only where a design choice requires; the review's readers were split by source, merged by cause and checked, and that work is done."
+          "line": "The pieces of the hardening block already built (the kinds of equipment a pack can ask for and a venue profile can name, the code that marks equipment not installed tonight, the smallest test set-up) stay in the engine and change only where a design choice requires; the review's reading of today's code was split by source, merged by cause and checked, and that work is done."
         },
         {
           "slug": "build-the-test-rig-when-building-starts",
@@ -704,7 +725,7 @@
           "slug": "what-the-architects-panel-sees-and-when",
           "title": "What the architects' panel sees, and when",
           "date": "2026-11-01",
-          "line": "The panel first gets the goal, the requirements and the setting; only after its first proposals does it get today's engine as facts and the sixteen design flaws as test situations; withheld are the recommendations of the agent running the pass, the earlier candidate (it enters a second round as one more proposal) and the earlier lists of design choices. It runs after you confirm the requirements."
+          "line": "In the blind round the panel gets the goal, the requirements and the setting; only after its first proposals does it get today's engine as facts and the sixteen design flaws as test situations; withheld are the recommendations of the agent running the pass, the earlier candidate (it enters the second round as one more proposal) and the earlier lists of design choices. It runs after you confirm the requirements."
         }
       ]
     },
@@ -716,7 +737,7 @@
           "slug": "the-owner-s-site-five-linked-pages",
           "title": "The owner's site: five linked pages",
           "date": "2026-11-01",
-          "line": "Your page is linked pages built from one set of data, with a change log for earlier wordings; the same decision asks for the long-term frame and for titles in place of numbers, which this version applies, regrouping the pages as the engine, decisions, requirements, design, today's engine and the change log."
+          "line": "Your site is a set of linked pages built from one set of data, with earlier wordings and changes kept in a change log; nothing in the single page it replaced had to stay. The same decision asks for the site to take the long-term frame and to use titles in place of numbers."
         }
       ]
     },
@@ -728,7 +749,7 @@
           "slug": "green-s-follow-ups-ship-when-the-definition-session-ends",
           "title": "Green's follow-ups ship when the definition session ends",
           "date": "2026-10-30",
-          "line": "Green's three follow-ups (a false boot warning on a correct green, the second show machine being built, two lines missing from the environment template, an install instruction the new operating system refuses) shipped as one small task when the definition session ended; merged 2026-10-30."
+          "line": "Green's three follow-ups, from the second show machine being built (a false boot warning on a correct green, two lines missing from the settings template, an install instruction the new operating system refuses), shipped as one small task when the definition session ended, on 2026-10-30."
         },
         {
           "slug": "decide-in-question-rounds-never-at-sign-off",
@@ -740,7 +761,7 @@
           "slug": "the-owner-ratified-the-program-document",
           "title": "The owner ratified the program document",
           "date": "2026-10-30",
-          "line": "You ratified the program document, the plan for this review, on 2026-10-30; the definition session closed and the pass became the current work, design half first."
+          "line": "You ratified the program document, the plan for the architecture pass, on 2026-10-30; the definition session closed and the pass became the current work, design half first."
         },
         {
           "slug": "no-rule-for-documents-fix-as-we-go",

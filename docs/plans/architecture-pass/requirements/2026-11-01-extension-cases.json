@@ -30,7 +30,7 @@
         "Each lifecycle button does exactly what its name says",
         "The designer's game is the game the whole kit plays"
       ],
-      "status": "settled by the owner (the roadmap's design-iteration loop and the deferral registry's row on applying a change while the engine runs; the owner's decision \"Standalone games: declared, never mixed\" keeps it on the list every design choice must serve)",
+      "status": "settled by the owner (the roadmap's design-iteration loop and the roadmap's row for deferred work on applying a change while the engine runs; the owner's decision \"Standalone games: declared, never mixed\" keeps it on the list every design choice must serve)",
       "statusKind": "settled",
       "why": "Making games playable without code or settings files is the point of the engine work, and speed is what makes the loop usable."
     },
@@ -62,7 +62,7 @@
         "The designer's game is the game the whole kit plays",
         "One game, the same on every screen"
       ],
-      "status": "settled by the owner (the roadmap's second game's modules block; glossary, the abilities a pack requires (the Capability entry) and Parity surface)",
+      "status": "settled by the owner (the roadmap's second game's modules block; glossary, the abilities a pack requires (the Capability entry) and the entry on the rules the engine and a standalone tablet share)",
       "statusKind": "settled",
       "why": "The rules are written once and run by the engine and by a standalone tablet alike, so a new model is one addition, not two."
     },
@@ -78,7 +78,7 @@
         "The designer's game is the game the whole kit plays",
         "The room does what the designer cued and the GM asked"
       ],
-      "status": "settled by the owner (the roadmap's media model and the deferral registry's row on media reference checking; glossary, Media bundle and the asset channel)",
+      "status": "settled by the owner (the roadmap's media model and the roadmap's row for deferred work on media reference checking; glossary, Media bundle and the channel the hardware scanner fetches its files on)",
       "statusKind": "settled",
       "why": "The pack stays small and names its media; the files travel in a bundle that can be checked and moved between machines."
     },
@@ -95,7 +95,7 @@
         "The game fits the venue it is in tonight",
         "Anyone reading a screen can act on it without a second question"
       ],
-      "status": "settled by the owner (glossary, Cue and Lighting role / binding / fallback; the deferral registry's row on the last speaker name in pack content)",
+      "status": "settled by the owner (glossary, Cue and Lighting role / binding / fallback; the roadmap's row for deferred work on the last speaker name in pack content)",
       "statusKind": "settled",
       "why": "Venue details never enter the pack, so one game's cues play in any room the pack's names can be bound to."
     },
@@ -111,7 +111,7 @@
         "The designer's game is the game the whole kit plays",
         "Anyone reading a screen can act on it without a second question"
       ],
-      "status": "settled by the owner (glossary, the pack's strings file (the strings sidecar entry), Theme, and entity versus team; roadmap, the depth-and-close block)",
+      "status": "settled by the owner (glossary, the pack's strings file (the strings sidecar entry), Theme, and the entry on the word for a score-holder; roadmap, the depth-and-close block)",
       "statusKind": "settled",
       "why": "Even the word for a score-holder comes from the pack, so no screen carries ALN's vocabulary."
     },
@@ -127,7 +127,7 @@
         "The room does what the designer cued and the GM asked",
         "Each lifecycle button does exactly what its name says"
       ],
-      "status": "settled by the owner (the deferral registry's row on the GM scanner redesign; the promise 'One game, the same on every screen', whose needs name the phase as a new fact the GM writes)",
+      "status": "settled by the owner (the roadmap's row for deferred work on the GM scanner redesign; the promise 'One game, the same on every screen', whose needs name the phase as a new fact the GM writes)",
       "statusKind": "settled",
       "why": "The phase is a fact the GM writes, so it needs a decider, a saved home and a defined fate at every lifecycle moment, like any other game fact."
     },
@@ -144,7 +144,7 @@
         "Each person sees their part and can do only their part",
         "The designer's game is the game the whole kit plays"
       ],
-      "status": "settled by the owner (glossary, 'surface', its word for a kind of screen; the roadmap's second game's modules block and the deferral registry's row on new kinds of screen defined by the pack, which keeps the general case as room left beyond the constellation screen)",
+      "status": "settled by the owner (glossary, 'surface', its word for a kind of screen; the roadmap's second game's modules block and the roadmap's row for deferred work on new kinds of screen defined by the pack, which keeps the general case as room left beyond the constellation screen)",
       "statusKind": "settled",
       "why": "Packs can configure the three built-in screens today but cannot define new ones; the second game's constellation screen is the first new kind, and the only one with a slot."
     },
@@ -152,10 +152,10 @@
       "id": "EX10",
       "title": "Players' own phones and two-tap actions",
       "who": "designer; developer for each device kind's support",
-      "case": "A game lets players use their own phones: tap a token, a web page opens, no account, no login, no app. The same game asks for a two-tap action: a player taps their own token, then another player's, and something happens between them. The designer declares which device kinds its players use, what each may do, and the two-tap action's rules, in the pack. The phone and the hardware scanner both perform the action, each in its own way on its own screen. A developer builds each device kind's support once, as platform work, never per game. number to set: how many phones one kit carries at once.",
+      "case": "A game lets players use their own phones: tap a token, a web page opens, no account, no login, no app. The same game asks for a two-tap action: a player taps their own token, then another player's, and something happens between them. The designer declares which device kinds its players use, what each may do, and the two-tap action's rules, in the pack. The phone and the hardware scanner both perform the action, each in its own way on its own screen. A developer builds each device kind's support once, as platform work, never per game. How many phones one kit carries at once is the number [[qt:QT34]] leaves for you to set.",
       "throughWhat": "The pack (device classes, what each may do, the multi-tap actions); the published protocol; everything the designer iterates on reaches the device as pack data, never firmware.",
       "mustNotNeed": "New firmware for each game, a second hand-written copy of the rules inside a device, player accounts or logins, or a change to another game's pack.",
-      "when": "later (the roadmap's players' phones block; the deferral registry's row on the kit's network name and certificate)",
+      "when": "later (the roadmap's players' phones block; the roadmap's row for deferred work on the kit's network name and certificate)",
       "promises": [
         "Every tap gets its answer, and the night can be told afterwards",
         "Each person sees their part and can do only their part",
@@ -184,8 +184,8 @@
       "id": "EX12",
       "title": "A small game with no show machine",
       "who": "designer declares it; the GM runs it",
-      "case": "A small game runs in a room with no show machine: one GM tablet and the player scanners each work alone. The designer declares the game standalone. The tablet says 'standalone', never 'disconnected', runs the same rules the engine would, and its record names the pack version it played. No game mixes devices on an engine with devices working alone. Today the hardware scanner cannot work alone; the owner reads that as a parity gap between the two player scanners, and the owner's explicit word on it is still asked for. What becomes of exposure and of video tokens in a game with no engine is an open question. Where the declaration lives, and how many tablets a standalone game may have, are the owner's open choices. number to set: how many GM tablets one standalone game may run.",
-      "throughWhat": "A declaration carried with the pack, the venue profile or the game's record (the owner chooses where), read by every device; the same rules module on the tablet.",
+      "case": "A small game runs in a room with no show machine: one GM tablet and the player scanners each work alone. The designer declares the game standalone. The tablet says 'standalone', never 'disconnected', runs the same rules the engine would, and its record names the pack version it played. No game mixes devices on an engine with devices working alone. Today the hardware scanner cannot work alone; that is recorded as a parity gap, on the owner's rule that the two player scanners keep feature parity, and the owner's explicit word on it is still asked for. What becomes of exposure and of video tokens in a game with no engine is an open question. Where the declaration lives (the venue profile, the pack, the game's record or each device) is a question for the design rounds; how many GM tablets one standalone game may run is the open question [[q:M]].",
+      "throughWhat": "A declaration held in the venue profile, the pack, the game's record or each device (the design rounds choose where), read by every device; the same rules module on the tablet.",
       "mustNotNeed": "An engine, venue equipment, a second hand-kept copy of the rules on the tablet, or any engine code.",
       "when": "the design must allow it now; nothing builds it yet, and where the declaration lives is a design-rounds question",
       "promises": [
@@ -204,7 +204,7 @@
       "case": "The kit goes to a new venue. The technician reads the pack's tech rider, fills in a profile of what the room has tonight (which speakers, which lights, which network, how many stations and how many extra scoreboard screens), binds each of the pack's names to a real instrument on one page, and runs one preflight that says go or no-go. Each line says what it checked and whether it checked paper or the live room. Equipment left at home shows as not installed tonight, grey, never red. A second venue is a second profile; the pack is the same.",
       "throughWhat": "A venue profile, edited in the venue technician's tool, with its bindings page, its profile manager and the preflight; the tech rider derived from the pack.",
       "mustNotNeed": "The pack, the engine's code, kit-unique names inside code, or a developer.",
-      "when": "now for the profile and the hand-run checklist; the one-button preflight with paper or live on every line is hardening work rebuilt inside the architecture pass (today only a minimal check exists); a planned block, the depth-and-close block, for the bindings page and the profile manager; later (the deferral registry's row on the planning view) for 'what does bringing hardware X unlock'",
+      "when": "now for the profile and the hand-run checklist; the one-button preflight with paper or live on every line is hardening work rebuilt inside the architecture pass (today only a minimal check exists); a planned block, the depth-and-close block, for the bindings page and the profile manager; later (the roadmap's row for deferred work on the planning view) for 'what does bringing hardware X unlock'",
       "promises": [
         "The game fits the venue it is in tonight",
         "Anyone reading a screen can act on it without a second question",
@@ -286,13 +286,13 @@
       "case": "A designer writes their game's corpus in a different tool, or in the platform's own content database once it exists: tokens and characters, timeline, puzzles and lore. A developer writes one source adapter for that tool; it feeds the same pack through the same check that refuses a broken pack. The scanners, the engine and the night's record never notice where the content came from, and the game's own after-game telling reads the record, not the content tool.",
       "throughWhat": "A source adapter behind a published interface for content sources; the pack it produces is the ordinary pack.",
       "mustNotNeed": "The engine's code, the pack's formats, the check at publish, the scanners, or the after-game telling.",
-      "when": "later (the roadmap's content tooling block; the deferral registry's row on the source adapter)",
+      "when": "later (the roadmap's content tooling block; the roadmap's row for deferred work on the source adapter)",
       "promises": [
         "The designer's game is the game the whole kit plays"
       ],
-      "status": "settled by the owner (the roadmap's content tooling block and the deferral registry's row on the source adapter; glossary, Source adapter)",
+      "status": "settled by the owner (the roadmap's content tooling block and the roadmap's row for deferred work on the source adapter; glossary, Source adapter)",
       "statusKind": "settled",
-      "why": "Content tooling is a convenience, never a dependency: the pack is the data spine, and Notion is only its first source."
+      "why": "Content tooling is a convenience, never a dependency: the pack is the one source every tool feeds, and Notion is only its first source."
     },
     {
       "id": "EX19",
@@ -301,11 +301,11 @@
       "case": "The game ends. The engine writes one record of the night: the facts it decided, with the roster, the GM's notes, the accusation and the photos captured during play, the pack the game ran and the texts the players saw. ALN's Director Console, a separate program on the director's computer, reads that record, and the director writes the players' story from it, quoting what they held, with no retyping and no reading of Notion. The record is shaped so that a game's telling can later run inside the engine's Review stage. What reaches the players afterwards, and their emails, stay the game's business outside the engine.",
       "throughWhat": "The night's record, a published file format read from outside the engine; later, if the owner chooses, a module of the game's own inside the Review stage.",
       "mustNotNeed": "The engine's code, the GM tablet's report pasted and parsed back into lists, Notion, players' emails or consent inside the engine, or the live machine.",
-      "when": "a planned block: the capture block (writing the record when the game ends); later (the deferral registry's row on the report pipeline's move) for the console reading it, owner-paced",
+      "when": "a planned block: the capture block (writing the record when the game ends); later (the roadmap's row for deferred work on the report pipeline's move) for the console reading it, owner-paced",
       "promises": [
         "Every tap gets its answer, and the night can be told afterwards"
       ],
-      "status": "settled by the owner (the owner's decision \"The night's record and the after-game article\"; the deferral registry's row on the report pipeline's move; glossary, Review)",
+      "status": "settled by the owner (the owner's decision \"The night's record and the after-game article\"; the roadmap's row for deferred work on the report pipeline's move; glossary, Review)",
       "statusKind": "settled",
       "why": "The platform owns the record, the intake and the hand-over to the game; the game owns the telling, and it must be able to tell from what was captured, not reconstructed."
     },
@@ -322,7 +322,7 @@
         "One game, the same on every screen",
         "Each person sees their part and can do only their part"
       ],
-      "status": "settled by the owner (the roadmap's second game's modules block and the deferral registry's row on new kinds of screen defined by the pack)",
+      "status": "settled by the owner (the roadmap's second game's modules block and the roadmap's row for deferred work on new kinds of screen defined by the pack)",
       "statusKind": "settled",
       "why": "The platform delivers all the technology the second game needs, so its design finishes without software engineering, and a third game can reuse the same modules."
     },
@@ -333,12 +333,12 @@
       "case": "A stranger downloads the platform, stands it up from the guide, opens the toy game and builds something new: support for a device, support for a program the engine drives, a scoring model or a content source. They work from the published protocol and the toy game as a worked example, and send their change back with the developer's tests, which show that the show still runs for both games. They never see our secrets, our pack or our venue, and the privacy defaults every operator inherits are written down for them.",
       "throughWhat": "The published protocol (what devices may ask, what the engine answers and tells screens, the pack, the venue profile, the night's record, the media list); the places a developer adds a device, a program, a scoring model or a content source; the human-facing designer and operator guides; the toy game; a license.",
       "mustNotNeed": "Private knowledge of the team, our pack, our venue profile, our live machine, or a committed password or token in the repository.",
-      "when": "later (the roadmap's release block, and its readiness ladder's adoptable state); the committed secrets rotate before the first outsider touches the system",
+      "when": "later (the roadmap's release block, and its readiness state adoptable); the committed secrets rotate before the first outsider touches the system",
       "promises": [
         "A change is proven before it reaches anyone, and the owner alone sends it to the show",
         "Each person sees their part and can do only their part"
       ],
-      "status": "settled by the owner (the roadmap's final outcome, its readiness ladder's adoptable and previewable states, and its release block)",
+      "status": "settled by the owner (the roadmap's final outcome, its readiness states, adoptable and previewable, and its release block)",
       "statusKind": "settled",
       "why": "The end goal is an open-source show platform that non-technical designers can use and technical people can extend."
     },
@@ -354,7 +354,7 @@
         "The room does what the designer cued and the GM asked",
         "The designer's game is the game the whole kit plays"
       ],
-      "status": "settled by the owner (the roadmap's rule that the engine holds no opinion and the deferral registry's row on GM-scan video cueing; glossary, Idle loop vs game-event video)",
+      "status": "settled by the owner (the roadmap's rule that the engine holds no opinion and the roadmap's row for deferred work on GM-scan video cueing; glossary, the entry on the resting video versus a video a game event plays)",
       "statusKind": "settled",
       "why": "The engine holds no opinion about game design, so which scan triggers which consequence is a pack value, not an engine rule keyed to one kind of scanner."
     },

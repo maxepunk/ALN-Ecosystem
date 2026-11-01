@@ -75,17 +75,15 @@ BUILT = {
     'J7': 'The GM password and its login token; a watch-only pass for the Pi 4 scoreboard; anonymous player scans.',
     'J8': 'Venue profiles and "not installed tonight"; standalone modes on the GM tablet and the phone\'s scanner; the blue and green machine method: a new show machine is built beside the one in use and swapped in by replugging.',
     'J9': 'Health words healthy, down and not installed tonight (grey) for each service on the health panel; a first, minimal preflight.',
-    'J10': 'Automated tests at four levels, from single pieces of code to the whole system in a browser; an automatic test run of the real engine and its programs, at the level of real programs with stand-in hardware, started by hand or by a change to its own files (the standing test rig was lost when the cloud computer it ran on was wiped; its recipe survives, and the rig is built again when the build half starts); an automatic test run on every proposed change before it joins the main code; and a rule that the share of code the tests reach may not fall.',
+    'J10': 'Four kinds of automated test, from small tests of single pieces of code to full run-through tests of the whole system in a browser; an automatic test run of the real engine and its programs, at the level of real programs with stand-in hardware, started by hand or by a change to its own files (the standing test rig was lost when the cloud computer it ran on was wiped; its recipe survives, and the rig is built again when the build half starts); an automatic test run on every proposed change before it joins the main code; and a rule that the share of code the tests reach may not fall.',
 }
 # The pieces already well built (plan v2 section 3.5 item 2), from the decision record: "Corrections to the
 # readers and the hardening pieces" and "Blue's fixes are evidence of design causes".
 WELL_BUILT = [
-    'The hardening block\'s merged pieces stay in the engine and change only where a design choice requires: the '
-    'equipment families, the core that marks equipment not installed tonight, and the smallest test set-up '
+    'Three pieces finished in the hardening block, the roadmap\'s work to make the show machine safer, stay in the '
+    'engine and change only where a design choice requires: the list of kinds of equipment a pack says it needs, '
+    'the code that marks equipment not installed tonight, and the smallest test set-up '
     '([[dec:corrections-to-the-readers-and-the-hardening-pieces]]).',
-    'Blue, the show machine in use now, runs every show until the new engine is ready; its fixes and the problems '
-    'found in it are evidence of where today\'s design is weak, never the reason for a design '
-    '([[dec:blue-s-fixes-are-evidence-of-design-causes]]).',
 ]
 
 # Where a flaw lives: a card's module paths, sorted into the parts of the engine. Row F163: "Contracts" is
@@ -184,11 +182,11 @@ def present(src, keep_direction=False):
 # The findings set aside (rows F158 to F162; "phase 2" is the build half, plan v2 section 2; the question and
 # the decision go by their titles).
 SET_ASIDE = [
-    ('Already fixed in today\'s code', 7, 'Odd characters in the after-game report\'s tables made safe; the health word for not installed tonight, in both written lists of messages and on the tablet; four items the review raised about the smallest test set-up; a guard on the audio routing in the catch-up; two machine settings the deployment guide asks for, now in the settings template (fixed in this work\'s first follow-ups on green).'),
-    ('Plain fixes for the build half', 5, 'A built-in programming word such as "constructor" mistaken for a real service, station or token; the phone\'s scanner loading its QR library from the internet; a test helper that switches off the check that a device is talking to the real engine; standalone mode\'s red "Disconnected" pill.'),
+    ('Already fixed in today\'s code', 7, 'Odd characters in the after-game report\'s tables made safe; the health word for not installed tonight, in both written lists of messages and on the tablet; four items the review raised about the smallest test set-up; a guard on the audio routing in the catch-up; two machine settings the deployment guide asks for, now in the settings template (fixed on 2026-10-30, with three small fixes for green, the new show machine).'),
+    ('Plain fixes for the build half', 5, 'A built-in programming word such as "constructor" mistaken for a real service, station or token; the phone\'s scanner loading its QR library from the internet; a test helper that switches off the check that a device is talking to the real engine; standalone mode\'s red "Disconnected" label.'),
     ('Code-structure notes, no game symptom', 2, 'A second piece of code for starting programs, inside the code that runs the TV\'s browser; the sound panel drawn by the admin page\'s own code instead of its own drawing code.'),
     ('No fault', 2, 'Two identical catch-ups sent on connect; planned config-tool functions not built yet.'),
-    ('A question for you', 1, 'A rejected or duplicate GM scan is recorded nowhere. It is [[q:O]] on [[page:decisions]].'),
+    ('A question for you', 1, 'A rejected or duplicate GM scan is recorded nowhere. It is your open question [[q:O]] on Decisions.'),
     ('Documents', 4, 'Plans, briefs and two of the developers\' guide files that disagree with the code. Documents are fixed as we go ([[dec:no-rule-for-documents-fix-as-we-go]]).'),
 ]
 
@@ -203,7 +201,8 @@ PARITY_WORDS = {
     '4': {1: 'The pack\'s own format', 2: 'A different format, the list one level deeper',
           3: 'Read the pack\'s format, or convert it when loading the card'},
     '6': {1: None,   # PARITY_PREFIX: the cell's start only
-          2: 'Kept only while switched on, taken from the engine\'s list of pictures and sounds, which today does not say which pack it is, and shown only by a command typed over a cable'},
+          2: 'Kept only while switched on, taken from the engine\'s list of pictures and sounds, which today does not say which pack it is, and shown only by a command typed over a cable',
+          3: 'Read which pack it is from a file on the card and show it on the status screen'},
     '7': {1: 'Lowercase, keeping only letters, digits and underscores'},
     '8': {1: '3-second pop-up with the id'},
     '9': {1: 'The picture named in the token list', 2: 'A picture file named after the token'},
@@ -217,7 +216,10 @@ PARITY_WORDS = {
            3: 'Decide what a standalone record of player scans is before matching either side.'},
     '15': {2: 'A dummy date in 1970, because it never gets the time from the network'},
     '16': {2: 'Queue and token list until cleared by a command typed over a cable, or sent to the engine'},
-    '18': {2: None},   # PARITY_PREFIX: the cell's start only
+    '18': {2: None,    # PARITY_PREFIX: the cell's start only
+           3: 'Shorten or drop the window when standalone (an empty Wi-Fi name already skips Wi-Fi and the check-in with the engine)'},
+    '20': {2: 'Double-tap, after a 1-second opening screen'},
+    '23': {2: 'Required by the settings check, which does not stop start-up; whatever value was read, or nothing, is written on each queued scan'},
     '19': {1: 'QR camera, NFC, typed entry, a link carrying the token',
            2: 'NFC reader only; a test command typed over a cable in test mode'},
     '17': {1: 'A fixed "Offline" label', 2: 'Red Wi-Fi and engine lines, queue count'},
@@ -229,8 +231,8 @@ PARITY_WORDS = {
 # Rows F142 and F153 quote only the start of a cell ("..."): the rest of the cell is kept and its start replaced.
 PARITY_PREFIX = {
     ('6', 1): ('Reads ./data/pack-manifest.json, which is absent,', 'Reads the pack\'s file list, which is missing,'),
-    ('18', 2): ('A 30 s window on every boot with DEBUG_MODE off; with a WiFi name set, up to 10 s WiFi and up to about 61 s health retry;',
-                'A 30 s window at every start in normal show mode; with a Wi-Fi name set, up to 10 s for Wi-Fi and up to about 61 s retrying the check-in with the engine;'),
+    ('18', 2): ('A 30 s window on every boot with DEBUG_MODE off; with a WiFi name set, up to 10 s WiFi and up to about 61 s health retry; with no WiFi name both are skipped',
+                'A 30 s window at every start in normal show mode; with a Wi-Fi name set, up to 10 s for Wi-Fi and up to about 61 s retrying the check-in with the engine; with no Wi-Fi name both are skipped'),
 }
 
 
@@ -752,6 +754,7 @@ TITLES = {}         # promise id -> its title; ids never reach a page
 TITLE_TO_PROMISE = {}
 FLAW_TITLES = {}    # flaw id -> its title
 QUESTIONS = {}      # question letter -> its anchor
+Q_TITLES = {}       # question letter -> its title
 QT = {}             # quality target id -> the target
 EX = {}             # extension case id -> the case
 DEC = {}            # decision slug -> its decided entry
@@ -807,7 +810,12 @@ def part_link(pid):
 def part_row(pids, label):
     if not pids:
         return ''
-    return f'<div class="partrow"><span class="tag">{e(label)}</span>{"".join(part_link(p) for p in pids)}</div>'
+    note = ''
+    if JOINS in pids:   # replaced by the decision "One published protocol and an outside test bench"
+        note = (f'<p class="replaced muted">{e(NAMES[JOINS])} is since replaced by '
+                f'<a href="{href("design", "decided-the-published-protocol")}">the published protocol</a> and '
+                f'<a href="{href("design", "decided-the-test-bench-outside-the-engine")}">the test bench outside the engine</a>.</p>')
+    return f'<div class="partrow"><span class="tag">{e(label)}</span>{"".join(part_link(p) for p in pids)}</div>{note}'
 
 
 def flaw_a(fid, text=None, cls=''):
@@ -830,6 +838,8 @@ def q_text(key, capital):
 def q_a(key, capital=False, text=None):
     if key not in QUESTIONS:
         raise SystemExit(f'unknown question {key}')
+    if text is None and CUR not in ('decisions', 'changes'):
+        text = Q_TITLES[key]   # questions carry letters only on Decisions (and as history on the change log)
     return f'<a href="{href("decisions", QUESTIONS[key])}">{e(text if text is not None else q_text(key, capital))}</a>'
 
 
@@ -1011,12 +1021,30 @@ EARLIER_NOTE = ('Every promise was restated from the side of the people it serve
                 'decision 27 in version 6. Each note says what the candidate shape changed. "Now" means the candidate '
                 'shape, which is not decided.')   # row C35
 NOW_NOTE = 'Each note says what the candidate shape changed. "Now" means the candidate shape, which is not decided.'   # row C47
+# Version 8's Parts introduction, in the candidate's past tense (design check row 24; "Step 3 starts from this
+# frame" left out, as the design rounds no longer start from the candidate).
+PARTS_KEY = ('Most of today\'s problems sit in work several promises depend on: getting a fact onto a screen, answering '
+             'a request, knowing who is connected, the line between one game and the next. Each is done several times '
+             'today, in different places. The earlier candidate made each such piece of work one part, and the work '
+             'only one promise needs got a part too: seventeen parts in all. The parts already well built today (the game rules, and '
+             'the verdict with its health words) were its pattern for the rest. On each card, Mainly keeps names the '
+             'promises the part exists for, and Also needed by the promises that use it; Today, on the cards that carry '
+             'it, says how the part\'s work is done now; Removes names the design flaws the part would take away; Runs on '
+             'says which devices would host it; and Where it can be swapped names what plugs into it, where behaviour can '
+             'change without touching the rest.')
+# The guide to a card (today check rows 3 and 4): version 8's intro, in plain words.
+CARD_GUIDE = ('Each card tells one moment at a show and why it happens, then what it does in a standalone game. The '
+              'drawing shows where it goes wrong today. The card\'s head names the architecture pass\'s own questions it '
+              'touches (the nine questions the pass answers, not the questions on Decisions). Folded under the drawing '
+              'is how the earlier candidate would remove it, with "In design terms", which restates the cause in the '
+              'words listed on [[page:engine#words|The engine page]]. "The problems behind it" lists a few of the card\'s '
+              'problems and the code they live in.')
 GRID_NOTE = 'A dot means the situation\'s problems sit in that part of the engine.'
 LATER_INTRO = ('Inside the design rounds come these later choices. They are listed here so nothing arrives as a surprise. '
                'The six with a row in the earlier candidate\'s alternatives table on [[page:design]] link to it, where '
                'both designs and their costs are compared.')   # rows D45 and D46, as plan v2 frames them
-DECIDED_HISTORY = ('Each decision is written as it stands today. Its old number, and the versions of this site that '
-                   'recorded it, are in the [[page:changes#numbers|change log]].')
+DECIDED_HISTORY = ('Each decision is written as it stands today, with its dated history in the decision record. The '
+                   '[[page:changes#numbers|change log]] maps each old number to its title.')
 TODAY_GROUP_TAG = 'Mainly touches'
 
 # Each page names the documents it is built from, by name (plan v1 section 2; rows I54, D56, P107, P108, A119,
@@ -1032,14 +1060,14 @@ FOOTERS = {
         '7, the earlier one-page report; the quality targets and the extension cases (2026-11-01); the earlier '
         'candidate (2026-11-01, its alternatives and the choices it leaves to the design rounds); the review that '
         'named the design flaws (2026-10-30); the review of standalone games (2026-10-31); the survey of ALN\'s '
-        'after-game tools (2026-11-01); and the promises (2026-10-31).',
+        'after-game tools (2026-11-01); the promises (2026-10-31); and the panel\'s brief (2026-11-01).',
     ],
     'requirements': [
         'Built from the promises (2026-10-31; a check confirmed 171 of its statements and corrected 53), the quality '
         'targets and the extension cases (2026-11-01, each with its own check), the roadmap\'s standing '
         'constraints, and the review of standalone games (2026-10-31).',
         'Where today\'s engine falls short comes from the review that named the design flaws (2026-10-30); what the '
-        'planned capabilities need comes from the list of planned capabilities you approved.',
+        'planned capabilities need comes from the list of planned capabilities drawn from the roadmap you approved.',
     ],
     'design': [
         'Built from the decision record (the design half\'s order, the published protocol, the test bench, the test '
@@ -1051,8 +1079,8 @@ FOOTERS = {
         'Built from the review that named the design flaws (2026-10-30) and its two checks; the review of standalone '
         'games (2026-10-31), with the table comparing the hardware scanner with the phone\'s scanner; the promises '
         '(2026-10-31; which promise each flaw touches, and what each already has); the earlier candidate '
-        '(2026-11-01; the folded side of each situation); the survey of ALN\'s after-game tools (2026-11-01; the two '
-        'clocks); and the decision record (the pieces already well built). "What each promise already has" is '
+        '(2026-11-01; the folded side of each situation); the survey of ALN\'s after-game tools (2026-11-01; the sale and '
+        'adjustment times printed hours apart); and the decision record (the pieces already well built). "What each promise already has" is '
         'summarized from the project\'s guide for developers and the list of planned capabilities.',
     ],
     'changes': [
@@ -1060,7 +1088,9 @@ FOOTERS = {
         'first wording of each promise (the promises, 2026-10-31), the notes each card and promise carried after the '
         'candidate shape was drawn, the review that named the design flaws (2026-10-30: the two clocks and the '
         'totals), the questions of version 7 (E, F and G, after the candidate shape), the survey of ALN\'s after-game '
-        'tools (2026-11-01), the jargon check of 2026-11-01, and the glossary.',
+        'tools (2026-11-01), the jargon check of 2026-11-01, the glossary, the roadmap (the blocks, the older phase '
+        'names and the test stages), the plan for the architecture pass (its old steps), the quality targets and the '
+        'extension cases (2026-11-01, the counts), and the panel\'s brief (2026-11-01).',
     ],
 }
 
@@ -1339,23 +1369,23 @@ def shell(page, title, body, css, open_n):
 # published protocol on its way to or from the engine; the operator and the developer reach the engine below the
 # band, as front.worldKey describes; the outside programs sit on the engine's far side. The text is the picture's
 # only source; the front-page check reads it against the requirements and front.worldKey.
-WORLD_CAPTION = ('The engine in its world: the people and their devices, the published protocol every message and file '
-                 'crosses, the engine, and the outside programs it drives')
+WORLD_CAPTION = 'The people and their devices, the published protocol, the engine, and the outside programs it drives.'
 WORLD_PEOPLE = {   # name -> (wide sublines, narrow sublines)
     'Designer': (['makes the game in the design tool,', 'with content from Notion today'], ['the design tool,', 'content from Notion']),
+    'Operator': (['you, or a future one: installs and picks', 'packs; swaps machines between events'], ['installs and picks packs,', 'swaps machines']),
     'Venue technician': (["fits the venue: tonight's kit"], ['the venue profile']),
+    'Director': (['tells the night afterwards,', "in the Director's console"], ["Director's console"]),
     'GM': (['runs the game on the GM tablets'], ['GM tablets']),
     'Players': (['tap tokens on phones and scanners'], ['phones and scanners']),
     'Audience': (['watch the TV and scoreboards'], ['TV and scoreboards']),
-    'Director': (['tells the night afterwards,', "in the Director's console"], ["Director's console"]),
-    'Operator': (['you, or a future one: installs', 'packs and swaps machines'], ['you, or a future one:', 'installs packs,', 'swaps machines']),
-    'Developer': (['changes the code and tests it', 'on the test bench'], ['changes the code,', 'tests it on the', 'test bench']),
+    'Stranger': (['on the venue wifi'], ['on the venue wifi']),
+    'Developer': (['on the team or from outside: changes the', 'code and tests it from the test bench'], ['on the team or outside:', 'code, and its tests']),
 }
-WORLD_PROGRAMS = ['Video player', 'Music player', 'Audio and Bluetooth', 'Lighting']
+WORLD_PROGRAMS = ['Video player', 'Music player', 'Audio and Bluetooth', 'Lighting', "The TV's browser"]
 
 
 def world_svg(layout):
-    """One layout of the world picture: 'wide' (1000 x 576) or 'narrow' (360 x 742)."""
+    """One layout of the world picture: 'wide' (1000 x 590) or 'narrow' (360 x 786)."""
     out = []
     mk, mka = ('wmk', 'wmkA') if layout == 'wide' else ('nmk', 'nmkA')
 
@@ -1394,80 +1424,91 @@ def world_svg(layout):
         if label:
             text(at[0], at[1], label, size=11, anchor=anchor, op='.9')
 
+    def stopped(a, b, label=None, at=None, anchor='middle'):
+        """A line that ends at a bar: nothing gets through (the stranger on the venue wifi)."""
+        (x1, y1), (x2, y2) = a, b
+        out.append(f'<path d="M{x1},{y1} L{x2},{y2}" fill="none" style="stroke: currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>')
+        if y1 == y2:
+            out.append(f'<path d="M{x2},{y2 - 9} L{x2},{y2 + 9}" fill="none" style="stroke: currentColor" stroke-width="2.6"/>')
+        else:
+            out.append(f'<path d="M{x2 - 9},{y2} L{x2 + 9},{y2}" fill="none" style="stroke: currentColor" stroke-width="2.6"/>')
+        if label:
+            text(at[0], at[1], label, size=11, anchor=anchor, op='.9')
+
     def head(x, y, t):
         text(x, y, t.upper(), size=10.5, weight='600', op='.7')
 
     if layout == 'wide':
-        W, H = 1000, 576
+        W, H = 1000, 590
         head(28, 26, 'The people and their devices')
         head(444, 26, 'The published protocol')
         head(680, 26, 'The engine')
         head(848, 26, 'Outside programs')
-        band(16, 36, 302, 530)
-        band(432, 36, 186, 380, accent=True)
-        band(836, 36, 154, 226)
-        rows = [('Designer', 52, 58), ('Venue technician', 122, 44), ('GM', 178, 44), ('Players', 234, 44),
-                ('Audience', 290, 44), ('Director', 346, 58), ('Operator', 430, 58), ('Developer', 498, 58)]
+        band(16, 36, 302, 544)
+        band(432, 36, 186, 500, accent=True)
+        band(836, 36, 154, 272)
+        rows = [('Designer', 52, 58), ('Operator', 118, 58), ('Venue technician', 184, 44), ('Director', 236, 58),
+                ('GM', 302, 44), ('Players', 354, 44), ('Audience', 406, 44), ('Stranger', 458, 44), ('Developer', 510, 58)]
         for name, y, h in rows:
             person(28, y, 278, h, name, WORLD_PEOPLE[name][0])
-        item(444, 50, 162, 32, 'The pack')
-        item(444, 88, 162, 32, 'Media list and bundle')
-        item(444, 128, 162, 32, 'Venue profile')
-        item(444, 178, 162, 156, 'Messages', ['what a device may ask,', 'what the engine answers,', 'what it tells screens'])
-        item(444, 346, 162, 58, "The night's record", ['written at the end', 'of a game'])
-        item(680, 50, 120, 506, 'The engine', ['its inside is what', 'the design decides'], accent=True, name_size=16)
+        item(444, 50, 162, 32, 'Media list and bundle')
+        item(444, 88, 162, 72, 'The pack')
+        item(444, 190, 162, 32, 'Venue profile')
+        item(444, 236, 162, 58, "The night's record", ['written at the end', 'of a game'])
+        item(444, 302, 162, 226, 'Messages', ['what a device may ask,', 'what the engine answers,', 'what it tells screens'])
+        item(680, 50, 120, 520, 'The engine', ['its inside is what', 'the design decides'], accent=True, name_size=16)
         for i, name in enumerate(WORLD_PROGRAMS):
             item(848, 52 + i * 42, 130, 34, name, name_size=12)
             arrow([(800, 69 + i * 42), (848, 69 + i * 42)], both=True)
-        text(913, 234, 'the engine drives each', size=10.5, anchor='middle', op='.8')
-        text(913, 248, 'and asks how it is', size=10.5, anchor='middle', op='.8')
+        text(913, 280, 'the engine drives each', size=10.5, anchor='middle', op='.8')
+        text(913, 294, 'and asks how it is', size=10.5, anchor='middle', op='.8')
         # people and the protocol
         arrow([(306, 66), (444, 66)], 'publishes', (375, 60))
-        arrow([(306, 104), (444, 104)])
-        arrow([(306, 144), (444, 144)], 'writes', (375, 138))
-        arrow([(306, 200), (444, 200)], 'commands, answers', (375, 194), both=True)
-        arrow([(306, 256), (444, 256)], 'scans, answers', (375, 250), both=True)
-        arrow([(444, 312), (306, 312)], 'scores, evidence', (375, 306))
-        arrow([(444, 375), (306, 375)], 'read after the show', (375, 369))
+        arrow([(306, 100), (444, 100)])
+        arrow([(306, 146), (444, 146)], 'installs, picks', (375, 140))
+        arrow([(306, 206), (444, 206)], 'writes', (375, 200))
+        arrow([(444, 265), (306, 265)], 'read after the show', (375, 259))
+        arrow([(306, 324), (444, 324)], 'commands, answers', (375, 318), both=True)
+        arrow([(306, 376), (444, 376)], 'scans, answers', (375, 370), both=True)
+        arrow([(444, 428), (306, 428)], 'scores, evidence', (375, 422))
+        stopped((306, 480), (428, 480), 'gets nothing', (367, 474))
+        arrow([(306, 520), (444, 520)], 'tests', (375, 514))
         # the protocol and the engine
         arrow([(606, 66), (680, 66)])
-        arrow([(606, 104), (680, 104)])
-        arrow([(606, 144), (680, 144)])
-        arrow([(606, 256), (680, 256)], both=True, accent=True)
-        arrow([(680, 375), (606, 375)])
-        # below the band
-        arrow([(306, 459), (680, 459)], 'between events', (493, 453))
-        arrow([(306, 527), (680, 527)], 'code and tests', (493, 521))
+        arrow([(606, 124), (680, 124)])
+        arrow([(606, 206), (680, 206)])
+        arrow([(680, 265), (606, 265)])
+        arrow([(606, 415), (680, 415)], both=True, accent=True)
+        # below the band: the code itself
+        arrow([(306, 558), (680, 558)], 'changes the code', (493, 553))
     else:
-        W, H = 360, 742
-        head(14, 18, 'The people and their devices')
-        band(6, 26, 348, 204)
-        grid = [('Designer', 14, 36), ('Venue technician', 184, 36), ('GM', 14, 100), ('Players', 184, 100),
-                ('Audience', 14, 164), ('Director', 184, 164)]
+        W, H = 360, 786
+        head(26, 18, 'The people and their devices')
+        band(18, 26, 336, 318)
+        grid = [('Designer', 26, 36), ('Venue technician', 190, 36), ('GM', 26, 100), ('Players', 190, 100),
+                ('Audience', 26, 164), ('Director', 190, 164), ('Developer', 26, 228), ('Operator', 190, 228)]
         for name, x, y in grid:
-            person(x, y, 162, 56, name, WORLD_PEOPLE[name][1], size=13)
-        arrow([(95, 232), (95, 260)], both=True)
-        arrow([(265, 232), (265, 260)], both=True)
-        text(180, 250, 'sends and receives', size=11, anchor='middle', op='.9')
-        band(6, 262, 348, 162, accent=True)
-        head(14, 280, 'The published protocol')
-        item(14, 288, 332, 48, 'Messages', ['what a device asks, the answers, what screens show'])
-        item(14, 344, 162, 32, 'The pack')
-        item(184, 344, 162, 32, 'Media list and bundle')
-        item(14, 384, 162, 32, 'Venue profile')
-        item(184, 384, 162, 32, "The night's record")
-        arrow([(95, 426), (95, 454)], both=True, accent=True)
-        item(14, 456, 162, 150, 'The engine', ['its inside is what', 'the design decides'], accent=True, name_size=16)
-        band(192, 440, 162, 176)
-        head(200, 458, 'Outside programs')
+            person(x, y, 156, 56, name, WORLD_PEOPLE[name][1], size=13)
+        person(190, 292, 156, 44, 'Stranger', WORLD_PEOPLE['Stranger'][1], size=13)
+        arrow([(104, 346), (104, 374)], both=True)
+        text(114, 364, 'sends and receives', size=11, op='.9')
+        stopped((268, 338), (268, 370), 'gets nothing', (278, 362), anchor='start')
+        band(18, 376, 336, 162, accent=True)
+        head(26, 394, 'The published protocol')
+        item(26, 402, 320, 48, 'Messages', ['what a device asks, the answers, what screens show'])
+        item(26, 458, 156, 32, 'The pack')
+        item(190, 458, 156, 32, 'Media list and bundle')
+        item(26, 498, 156, 32, 'Venue profile')
+        item(190, 498, 156, 32, "The night's record")
+        arrow([(104, 540), (104, 568)], both=True, accent=True)
+        item(26, 570, 150, 196, 'The engine', ['its inside is what', 'the design decides'], accent=True, name_size=16)
+        band(192, 552, 162, 226)
+        head(200, 570, 'Outside programs')
         for i, name in enumerate(WORLD_PROGRAMS):
-            item(200, 466 + i * 36, 146, 30, name, name_size=12)
-            arrow([(176, 481 + i * 36), (200, 481 + i * 36)], both=True)
-        band(6, 640, 348, 94)
-        person(14, 650, 162, 74, 'Operator', WORLD_PEOPLE['Operator'][1], size=13)
-        person(184, 650, 162, 74, 'Developer', WORLD_PEOPLE['Developer'][1], size=13)
-        arrow([(95, 648), (95, 608)])
-        arrow([(265, 648), (265, 628), (150, 628), (150, 608)])
+            item(200, 578 + i * 38, 146, 32, name, name_size=11.5)
+            arrow([(176, 594 + i * 38), (200, 594 + i * 38)], both=True)
+        # the developer's code change goes round the protocol, not through it
+        arrow([(26, 262), (9, 262), (9, 740), (26, 740)])
     defs = ('<defs>'
             f'<marker id="{mk}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>'
             f'<marker id="{mka}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent)"/></marker>'
@@ -1693,7 +1734,29 @@ def state_html(item):
     if k not in STATUS_KIND:
         raise SystemExit(f'{item["id"]}: unknown statusKind {k}')
     return (f'<p class="state"><span class="stag k-{slug(k)}">{e(STATUS_KIND[k])}</span>'
-            f'<span class="small">{rich(cap1(item["status"]))}</span></p>')
+            f'<span class="small">{rich(status_grounds(item["status"]))}</span></p>')
+
+
+def status_grounds(s):
+    """The status sentence without the word its tag already shows (requirements check row 16): "settled by the
+    owner (X)" reads "On: X"; a qualified "settled by the owner in part (X); ..." reads "Your word in part (X); ..."."""
+    for lead in ('settled by the owner', 'proposed'):
+        if not s.startswith(lead):
+            continue
+        open_at = s.find('(')
+        qual = s[len(lead):open_at].strip()
+        if open_at < 0 or (qual and lead == 'proposed'):
+            break
+        depth = 0
+        for i in range(open_at, len(s)):
+            depth += {'(': 1, ')': -1}.get(s[i], 0)
+            if depth == 0:
+                break
+        inner, rest = s[open_at + 1:i], s[i + 1:]
+        if qual:
+            return f'Your word {qual} ({inner}){rest}'
+        return f'On: {inner}{rest}'
+    return cap1(s)
 
 
 def promise_served_list(ids):
@@ -1729,6 +1792,8 @@ def promise_html(j, D):
         return f'<li{cls}>{flaw_a(fid)}{note}: {e(f["how"])}</li>'
     main = ''.join(short(f) for f in j['flaws'] if f['primary'])
     also = ''.join(short(f) for f in j['flaws'] if not f['primary'])
+    if not main and also:   # version 8's "Main: None yet" (requirements check row 6)
+        main = '<li class="muted">None yet: its planned capabilities are not built.</li>'
     shorts = ([f'<span class="tag">Mainly</span><ul>{main}</ul>'] if main else []) + \
              ([f'<span class="tag">Also</span><ul>{also}</ul>'] if also else [])
     standalone = re.sub(r'^In a standalone game:\s*', '', j['standalone'])
@@ -1763,7 +1828,7 @@ def qt_html(t):
     num = ''
     if t.get('numberToSet', '').strip():
         num = (f'<p class="numset"><span class="tag">Number to set</span>{rich(cap1(t["numberToSet"]))}. '
-               f'{rich("[[q:A|One of the numbers question A asks you to set]]")}</p>')
+               f'{rich("Listed with the other numbers to set on [[q:A|Decisions]].")}</p>')
     return f'''<article class="req" id="{t["id"].lower()}">
   <h4>{e(t["title"])}</h4>
   <p>{rich(t["situation"])}</p>
@@ -1841,7 +1906,7 @@ def page_requirements(D):
 
 <section id="qualities" aria-labelledby="qualities-h">
   <h2 id="qualities-h">How well it must work</h2>
-  <p class="lead-in">{len(D["qt_list"])} quality targets under {len(order)} qualities. {cap1(NUM_WORD[n_num] if n_num < len(NUM_WORD) else str(n_num))} leave a number for you to set; {rich("[[q:A]]")} lists them in one place.</p>
+  <p class="lead-in">{len(D["qt_list"])} quality targets under {len(order)} qualities. {cap1(NUM_WORD[n_num] if n_num < len(NUM_WORD) else str(n_num))} leave a number for you to set; {rich("Decisions lists them in one place, under the question [[q:A]].")}</p>
   {"".join(quality_groups)}
 </section>
 
@@ -1995,12 +2060,17 @@ def earlier_html(D):
 
 <section class="fit-block" id="the-parts" aria-labelledby="the-parts-h">
   <h3 id="the-parts-h">The seventeen parts</h3>
+  <p>{e(PARTS_KEY)}</p>
   <div class="parts">{parts}</div>
 </section>
 
 <section class="fit-block" id="where-they-run" aria-labelledby="where-they-run-h">
   <h3 id="where-they-run-h">Which part would run where</h3>
   <ul class="devices">{devices}</ul>
+  <details>
+    <summary>In a standalone game, promise by promise</summary>
+    <ul class="devices">{"".join(f'<li><strong>{promise_a(j["id"])}</strong> {e(j["standaloneCandidate"])}</li>' for j in jobs)}</ul>
+  </details>
   <details>
     <summary>As a diagram</summary>
     <div class="scroll">{diagram(present(shape["componentsMermaid"]), "Which part would run where, as a diagram")}</div>
@@ -2044,7 +2114,7 @@ def page_design(D):
     later = []
     for x in g['later']:
         alt = (x.get('alt') or '').strip()
-        link = f' <a href="{href("design", alt)}">Both designs compared.</a>' if alt else ''
+        link = f' <a href="{href("design", alt)}">The earlier candidate compares both.</a>' if alt else ''
         later.append(f'<li>{rich(x["text"])}{link}</li>')
     pb = g['panel']
     if pb['slug'] != 'panel':
@@ -2123,11 +2193,11 @@ def card_html(c):
     <figure class="dia after">
       <figcaption>{e(c["after"]["caption"])}</figcaption>
       <div class="scroll">{diagram(present(c["after"]["mermaid"]), c["after"]["caption"])}</div>
-      <p class="after-note">{e(c["after"]["note"])}</p>
+      <p class="after-note">{e(c["after"]["note"].replace(" Or: ", " The other way the earlier candidate weighed: "))}</p>
     </figure>
     {part_row(c.get("parts", []), "Removed by these parts of the earlier candidate")}
+    <p class="design"><span class="tag">In design terms</span> {e(c["designTerms"])}</p>
   </details>
-  <p class="design"><span class="tag">In design terms</span> {e(c["designTerms"])}</p>
   <details>
     <summary>The problems behind it, and the code they live in</summary>
     <ul class="examples">{ex}</ul>
@@ -2157,7 +2227,7 @@ def n1_html(D):
     <summary>How the earlier candidate would remove it</summary>
     {part_row(D["n1_parts"], "Removed by these parts of the earlier candidate")}
   </details>
-  <p class="design"><span class="tag">Proposed, with no card</span> {rich("Whether it is a design flaw of its own, needing its own design choice, is [[q:G]]. Its problems come from the review of standalone games.")}</p>
+  <p class="design"><span class="tag">Waiting for your answer</span> {rich("Whether it is a design flaw of its own, needing its own design choice, is part of your question [[q:G]]. Its problems come from the review of standalone games.")}</p>
 </article>'''
 
 
@@ -2175,11 +2245,11 @@ def grid_html(cards):
 
 def parity_html():
     body = ''.join(
-        f'<tr{" class=both-weak" if weak else ""}><td class="num">{n}</td><th scope="row">{e(c[0])}</th><td>{e(c[1])}</td><td>{e(c[2])}</td><td>{e(c[3])}</td></tr>'
+        f'<tr{" class=both-weak" if weak else ""}><th scope="row">{e(c[0])}</th><td>{e(c[1])}</td><td>{e(c[2])}</td><td>{e(c[3])}</td></tr>'
         for n, c, weak in parity_rows())
     # Row F137.
-    return ('<div class="tablewrap"><table class="parity"><thead><tr><th>Row</th><th>Behaviour</th>'
-            '<th>Phone\'s scanner, standalone</th><th>Hardware scanner, no engine</th><th>What the hardware scanner would need (candidate)</th>'
+    return ('<div class="tablewrap"><table class="parity"><thead><tr><th>Behaviour</th>'
+            '<th>Phone\'s scanner, standalone</th><th>Hardware scanner, no engine</th><th>What the hardware scanner would need (a proposal, not decided)</th>'
             f'</tr></thead><tbody>{body}</tbody></table></div>')
 
 
@@ -2194,7 +2264,8 @@ def page_today(D):
             if not f['primary']:
                 others.setdefault(f['id'], []).append(j['id'])
     rows = []
-    entries = [(c['id'], c['findings'], seen_label(c)) for c in sorted(cards, key=lambda c: int(c['id'][1:]))]
+    order = [f['id'] for j in jobs for f in j['flaws'] if f['primary'] and f['id'] != 'N1']   # the cards' order below
+    entries = [(i, by_id[i]['findings'], seen_label(by_id[i])) for i in order]
     entries.append(('N1', D['n1_findings'], ''))
     n_live = sum(1 for x in entries if x[2] == SEEN_LIVE)
     n_test = sum(1 for x in entries if x[2] == SEEN_TEST)
@@ -2243,7 +2314,7 @@ def page_today(D):
 
 <section id="situations" aria-labelledby="situations-h">
   <h2 id="situations-h">Sixteen situations any new design must handle</h2>
-  <p class="lead-in">Each is a design flaw of today's engine, kept as a situation every design is checked against. Under each card's first drawing, where it goes wrong today, the second is folded: the earlier candidate's way of removing it.</p>
+  <p class="lead-in">{rich(CARD_GUIDE)}</p>
   {LEGEND}
   {table}
   <div class="family">{"".join(groups)}</div>
@@ -2338,7 +2409,7 @@ def page_changes(D):
 </section>
 
 <section id="recommendations" aria-labelledby="recommendations-h">
-  <h2 id="recommendations-h">Recommendations the candidate shape changed</h2>
+  <h2 id="recommendations-h">Recommendations the earlier candidate changed</h2>
   {"".join(recs)}
 </section>
 
@@ -2670,6 +2741,7 @@ def load():
     for g in decisions['groups']:
         for q in g['questions']:
             QUESTIONS[q['letter']] = q['anchor']
+            Q_TITLES[q['letter']] = q['title']
     for t in decisions['decided']:
         if t['slug'] != slug(t['topic']):
             raise SystemExit(f'decided topic slug {t["slug"]} is not the slug of "{t["topic"]}"')

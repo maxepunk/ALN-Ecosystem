@@ -1,6 +1,6 @@
 {
   "intro": [
-    "The standing rules are the constraints the owner has ratified that hold for every block of work and every design, now and later. They are not promises or quality targets: they say what every block of work and every design must do or must never do, whatever shape the design takes. The panel and the design rounds must respect every one of them, and a design that breaks one is out.",
+    "The standing rules are the constraints the owner has ratified. They bind every block of work and every design, now and later: what each must do or must never do, whatever shape the design takes. They are not promises or quality targets. The panel and the design rounds must respect every one of them, and a design that breaks one is out.",
     "They come from the roadmap's section on standing constraints, in its six groups: identity and player data; growth without corners; the media model; the design-iteration loop; platform parity; and the engine holds no opinion. The identity rules are also the privacy defaults that everyone who runs the open-source engine in future inherits. Each rule below says where it comes from and, where the roadmap gives one, the date the owner ratified it."
   ],
   "groups": [

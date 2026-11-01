@@ -199,7 +199,7 @@
         "flaws": ["C8", "C15"]
       },
       {
-        "title": "The tablet is a command center and a second engine in one, and the standalone choice is not a seam",
+        "title": "The tablet is a command center and a second engine in one, and nothing in the tablet's code keeps the standalone choice in one place",
         "plain": "Four files carry a second copy of the rules; thirty of the tablet's sixty-seven files would carry a standalone game; the one place built to switch between standalone and networked covers only where data is saved, and twenty places in six modules check the mode themselves; the app's four main sections each reach everything through one shared handle; in three places a lower layer relies on a higher one, so dependencies run both ways.",
         "flaws": ["C9", "N1", "C14", "C11"]
       },

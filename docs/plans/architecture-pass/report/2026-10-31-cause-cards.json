@@ -309,7 +309,7 @@
       "title": "Reconnect snapshot and live update are built apart",
       "atAShow": "A GM reloads a tablet mid-game. The History badge stays hidden until the next scan, and a rebuilt admin panel can show the clock as --:-- until the next change. The device list flips between every device ever seen and only those connected now, depending on which message came last.",
       "whyItHappens": "For each fact the engine has one piece of code that writes the catch-up a tablet gets when it connects and another that writes the live message, and six places send the catch-up with hand-picked contents. The tablet applies each by a different rule, and a restore after a reload sends screens none of the notices they wait for before they redraw.",
-      "designTerms": "Delivery should own one piece of code per fact, building the catch-up and the live message from each deciding part's changes; Lifecycle's restore sends the same, and Screens draws only what that interface defines. Today the code that builds the catch-up is shallow: whoever uses it must hand it every module, and five adapters on the tablet reshape what it builds: no locality.",
+      "designTerms": "Delivery should own one piece of code per fact, building the catch-up and the live message from each deciding part's changes; Lifecycle's restore sends the same, and Screens draws only what that interface defines. Today the code that builds the catch-up is shallow: whoever uses it must hand it every module, and five pieces of tablet code reshape what it builds: no locality.",
       "modules": [
         "backend/src/websocket/syncHelpers.js",
         "backend/src/websocket/broadcasts.js",
@@ -320,7 +320,7 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  fact[\"Engine fact<br/>clock, session, devices\"]\n  snapB[\"Catch-up builder<br/>six places send it, each put together by hand\"]\n  liveB[\"Live messages<br/>separate code per fact\"]\n  replace[\"Tablet: replaces<br/>loses anything missing\"]\n  merge[\"Tablet: merges<br/>ignores a repeat\"]\n  adapter[\"Five adapters<br/>reshape before drawing\"]\n  hist[\"History restore<br/>tells no screen\"]\n  screen[\"Screen<br/>stale or blank\"]\n  fact -->|\"on connect\"| snapB\n  fact -->|\"on change\"| liveB\n  snapB -->|\"one format\"| replace\n  liveB -->|\"another format\"| merge\n  snapB -->|\"transaction list\"| hist\n  replace -->|\"reshaped\"| adapter\n  merge -->|\"reshaped\"| adapter\n  adapter -->|\"values it does not name are lost\"| screen\n  hist -.->|\"badge never told\"| screen\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class snapB,liveB,adapter,hist fault;"
+        "mermaid": "flowchart LR\n  fact[\"Engine fact<br/>clock, session, devices\"]\n  snapB[\"Catch-up builder<br/>six places send it, each put together by hand\"]\n  liveB[\"Live messages<br/>separate code per fact\"]\n  replace[\"Tablet: replaces<br/>loses anything missing\"]\n  merge[\"Tablet: merges<br/>ignores a repeat\"]\n  adapter[\"Five pieces of tablet code<br/>reshape before drawing\"]\n  hist[\"History restore<br/>tells no screen\"]\n  screen[\"Screen<br/>stale or blank\"]\n  fact -->|\"on connect\"| snapB\n  fact -->|\"on change\"| liveB\n  snapB -->|\"one format\"| replace\n  liveB -->|\"another format\"| merge\n  snapB -->|\"transaction list\"| hist\n  replace -->|\"reshaped\"| adapter\n  merge -->|\"reshaped\"| adapter\n  adapter -->|\"values it does not name are lost\"| screen\n  hist -.->|\"badge never told\"| screen\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class snapB,liveB,adapter,hist fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
@@ -346,7 +346,7 @@
         },
         {
           "ids": "A-32 / C-44",
-          "text": "The catch-up and the live message come in different formats for the clock and cues; five adapters reshape them, and the clock's adapter loses the values it does not name."
+          "text": "The catch-up and the live message come in different formats for the clock and cues; five pieces of tablet code reshape them, and the clock's piece loses the values it does not name."
         },
         {
           "ids": "D-01",
@@ -430,7 +430,7 @@
     {
       "id": "C8",
       "title": "Engine and tests both assume they own the machine",
-      "atAShow": "On 2026-09-15 a small test stopped the live show's video player on the blue machine's code. In this code the same test run kills the live engine's watcher for the video player and overwrites the files that say which programs are running. A killed engine leaves a full-screen player behind. Twenty-one groups of tests open a browser on the show TV. The health check shown to staff who log in, such as the GM, says \"VLC not found\" while the player runs.",
+      "atAShow": "On 2026-09-15 a small test stopped the live show's video player on the blue machine's code. In today's code the same test run kills the live engine's watcher for the video player and overwrites the files that say which programs are running. A killed engine leaves a full-screen player behind. Twenty-one groups of tests open a browser on the show TV. The health check shown to staff who log in, such as the GM, says \"VLC not found\" while the player runs.",
       "whyItHappens": "The engine finds and ends its helper programs by fixed file names and by searching the whole machine for programs by name, as if it were the only engine on the machine. The tests take over whatever display, sound and Bluetooth exist; that a test is safe is claimed in a note in the code, never checked.",
       "designTerms": "Engine instance should own every file, network port and setting this engine holds, behind one interface; the settings file, a test's settings and the trial copy's settings are adapters at its seam, and one start-up step builds every part with them. Today no such seam exists: modules write fixed files every engine shares, and stop programs by searching the whole machine for their names: no locality.",
       "modules": [
@@ -453,7 +453,7 @@
       "examples": [
         {
           "ids": "A-75 / D-64 / B-63 / D-52",
-          "text": "A small test stopped the live video player on blue's code; in this code it stops the video player's watcher and overwrites the files listing running programs."
+          "text": "A small test stopped the live video player on blue's code; in today's code it stops the video player's watcher and overwrites the files listing running programs."
         },
         {
           "ids": "A-64 / D-70",
@@ -827,7 +827,7 @@
       "title": "Names joining two places are kept by hand",
       "atAShow": "A GM opens Team Details: the score box is wrong, GM adjustments never appear, completed groups read In Progress with a $0 bonus, while the scoreboard screen on the same tablet shows the real total. Game Activity shows Unknown, no stars, $0 for a token no player scanned first. The video Playing badge never appears, because the page never had a place to draw it.",
       "whyItHappens": "A screen reads a field the fact never carries; a screen looks for a spot the page never had; a module waits for a message nothing sends; the written list of messages between the engine and the devices names messages nobody sends. Each name is written on both sides, and a wrong side yields nothing instead of an error.",
-      "designTerms": "Joins and proofs should own the check that both sides of every shared name agree; Delivery and Answering own the formats, written once, and Screens read them, so a missing side fails the developer's tests before the show. Today nothing checks the seam inside the tablet app: Team Details silently reads a value the layer above it never passes on.",
+      "designTerms": "Joins and proofs (since replaced by the published protocol and the test bench outside the engine) should own the check that both sides of every shared name agree; Delivery and Answering own the formats, written once, and Screens read them, so a missing side fails the developer's tests before the show. Today nothing checks the seam inside the tablet app: Team Details silently reads a value the tablet's store of game data never passes on.",
       "modules": [
         "ALNScanner/src/ui/renderers/GameOpsRenderer.js",
         "ALNScanner/src/core/unifiedDataManager.js",
@@ -838,17 +838,17 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  td[\"Team Details screen<br/>wrong score\"]\n  fac[\"Tablet data layer<br/>no score-box value\"]\n  strat[\"Networked half<br/>holds the score-box value\"]\n  vr[\"Video drawing code<br/>looks for the badge's place\"]\n  page[\"GM page<br/>no place for the badge\"]\n  lis[\"Tablet code<br/>waits for a state message\"]\n  eng[\"Engine<br/>never sends it\"]\n  td -->|\"asks for the value, gets nothing\"| fac\n  fac -.->|\"value never passed on\"| strat\n  vr -->|\"finds nothing, no error\"| page\n  eng -.->|\"no sender\"| lis\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class td,vr,lis fault;"
+        "mermaid": "flowchart LR\n  td[\"Team Details screen<br/>wrong score\"]\n  fac[\"Tablet's store of game data<br/>no score-box value\"]\n  strat[\"Its part for networked games<br/>holds the score-box value\"]\n  vr[\"Video drawing code<br/>looks for the badge's place\"]\n  page[\"GM page<br/>no place for the badge\"]\n  lis[\"Tablet code<br/>waits for a state message\"]\n  eng[\"Engine<br/>never sends it\"]\n  td -->|\"asks for the value, gets nothing\"| fac\n  fac -.->|\"value never passed on\"| strat\n  vr -->|\"finds nothing, no error\"| page\n  eng -.->|\"no sender\"| lis\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class td,vr,lis fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart LR\n  del[\"Delivery<br/>one piece of code per fact,<br/>the format written once\"]\n  ans[\"Answering<br/>reply words, one fixed list\"]\n  joins[\"Joins and proofs<br/>checks built from those formats,<br/>both sides checked\"]\n  eng[\"Engine<br/>sends only those formats\"]\n  scr[\"Screens on the tablet<br/>draw the delivered format,<br/>keep no copy\"]\n  td[\"Team Details and Game Activity<br/>draw the facts as delivered\"]\n  badge[\"Video badge<br/>drawn from the video fact,<br/>or the check fails\"]\n  dead[\"A message with no sender<br/>or no reader<br/>fails the developer's tests, not the show\"]\n  del -->|\"fact formats\"| joins\n  ans -->|\"reply words\"| joins\n  joins -->|\"checks\"| eng\n  joins -->|\"checks\"| scr\n  del -->|\"delivered facts\"| scr\n  scr -->|\"draws\"| td\n  scr -->|\"draws\"| badge\n  joins -->|\"lists\"| dead\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;",
-        "note": "Every format is written once, facts by Delivery, replies by Answering, and Joins and proofs checks both sides against them. Screens keep no copy; Team Details draws only delivered facts. A message nothing sends fails the developer's tests. Or: the parts keeping each promise send their own facts."
+        "note": "Every format is written once, facts by Delivery, replies by Answering, and Joins and proofs (since replaced by the published protocol and the test bench outside the engine) checks both sides against them. Screens keep no copy; Team Details draws only delivered facts. A message nothing sends fails the developer's tests. Or: the parts keeping each promise send their own facts."
       },
       "examples": [
         {
           "ids": "A-03 / A-04 / C-06",
-          "text": "Team Details reads a value and asks for a step that the tablet's data layer does not have; wrong score, groups always In Progress."
+          "text": "Team Details reads a value and asks for a step that the tablet's store of game data does not have; wrong score, groups always In Progress."
         },
         {
           "ids": "A-07 / C-15",
@@ -950,7 +950,7 @@
       "title": "A green test run proves nothing about the show",
       "atAShow": "This flaw shows nothing at a show; it is why the other fifteen flaws reached one. The small tests kept passing while Team Details showed the wrong score, because their stand-in had a value the real code lacks. A delete step in a full run-through test had been silently skipped, because it looked for the Team Details cards under a name the page never used. Blue's last full run skipped 62 tests, and group completion has no test on real content.",
       "whyItHappens": "Test stand-ins are written by hand, and nothing compares them to the real code they stand for. A test step that finds nothing on the page, or checks only that no error appeared, passes. Every test engine runs with a switch that changes what Reset System does, so no test runs the reset the show runs.",
-      "designTerms": "Joins and proofs should own every test: each part is tested through its interface, a test stand-in is an adapter checked against the real part at the same seam, and one test per fact runs from the part that decides it to a screen, on its own running copy of the engine. Today stand-ins are checked against nothing and no test crosses that path.",
+      "designTerms": "Joins and proofs (since replaced by the published protocol and the test bench outside the engine) should own every test: each part is tested through its interface, a test stand-in is an adapter checked against the real part at the same seam, and one test per fact runs from the part that decides it to a screen, on its own running copy of the engine. Today stand-ins are checked against nothing and no test crosses that path.",
       "modules": [
         "ALNScanner/tests/unit/ui/uiManager.test.js",
         "ALNScanner/tests/unit/core/gameActivityBuilder.test.js",
@@ -961,12 +961,12 @@
       ],
       "before": {
         "caption": "Today",
-        "mermaid": "flowchart LR\n  real[\"Real tablet data layer<br/>no score-box value\"]\n  fake[\"Hand-written stand-in<br/>has the score-box value\"]\n  unit[\"Small test<br/>passes\"]\n  screen[\"Team Details screen<br/>wrong score\"]\n  sel[\"Test's search for the cards<br/>never matches\"]\n  e2e[\"Full run-through test<br/>delete step skipped, passes\"]\n  flag[\"Test switch on every test engine<br/>reset clears the engine's connections\"]\n  prod[\"Show machine<br/>reset clears none\"]\n  fake -->|\"stands in for\"| real\n  unit -->|\"tests against\"| fake\n  unit -.->|\"nothing compares\"| real\n  real -->|\"renders\"| screen\n  sel -->|\"finds no card, reports no failure\"| e2e\n  flag -.->|\"never tested as run\"| prod\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class fake,sel,flag fault;"
+        "mermaid": "flowchart LR\n  real[\"Real tablet store of game data<br/>no score-box value\"]\n  fake[\"Hand-written stand-in<br/>has the score-box value\"]\n  unit[\"Small test<br/>passes\"]\n  screen[\"Team Details screen<br/>wrong score\"]\n  sel[\"Test's search for the cards<br/>never matches\"]\n  e2e[\"Full run-through test<br/>delete step skipped, passes\"]\n  flag[\"Test switch on every test engine<br/>reset clears the engine's connections\"]\n  prod[\"Show machine<br/>reset clears none\"]\n  fake -->|\"stands in for\"| real\n  unit -->|\"tests against\"| fake\n  unit -.->|\"nothing compares\"| real\n  real -->|\"renders\"| screen\n  sel -->|\"finds no card, reports no failure\"| e2e\n  flag -.->|\"never tested as run\"| prod\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class fake,sel,flag fault;"
       },
       "after": {
         "caption": "Candidate, not decided",
         "mermaid": "flowchart LR\n  joins[\"Joins and proofs<br/>each part is tested through its interface\"]\n  real[\"Real part<br/>declares its interface\"]\n  fake[\"Stand-in<br/>an adapter at the same seam,<br/>checked against the real part\"]\n  path[\"One test per fact<br/>from the part that decides it to a screen,<br/>on the test rig\"]\n  inst[\"Engine instance<br/>each run with its own files, ports and settings\"]\n  stand[\"Equipment stand-ins<br/>real second adapters\"]\n  life[\"Lifecycle<br/>one reset path,<br/>tested as the show runs it\"]\n  packs[\"Two packs<br/>the same tests on each\"]\n  skips[\"Skipped tests<br/>listed loudly, never counted as passing\"]\n  joins -->|\"checks\"| fake\n  real -->|\"its interface\"| fake\n  joins -->|\"runs\"| path\n  path -->|\"on\"| inst\n  path -->|\"with\"| stand\n  path -->|\"through\"| life\n  joins -->|\"runs on\"| packs\n  joins -->|\"lists\"| skips\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;",
-        "note": "Joins and proofs checks every test stand-in against the real part, lists every skipped test, and runs one test per fact from the part that decides it to a screen, on its own running copy of the engine, with Equipment stand-ins and the show's own reset path. Or: an interface per program, leaving stand-ins unbuilt."
+        "note": "Joins and proofs (since replaced by the published protocol and the test bench outside the engine) checks every test stand-in against the real part, lists every skipped test, and runs one test per fact from the part that decides it to a screen, on its own running copy of the engine, with Equipment stand-ins and the show's own reset path. Or: an interface per program, leaving stand-ins unbuilt."
       },
       "examples": [
         {
