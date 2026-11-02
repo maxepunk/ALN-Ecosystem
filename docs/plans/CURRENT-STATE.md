@@ -5,7 +5,7 @@ else is required reading: the pointers at the bottom say what to open
 and when. Check every claim of a summary against git and this page
 before acting.
 
-## 0. Resume here (2026-11-01)
+## 0. Resume here (2026-11-02)
 
 - **The current unit** is the architecture pass, in its design half,
   under the owner's proactive goal: "design a long-term optimal
@@ -18,22 +18,25 @@ before acting.
   build plan, the hostile review, the final questions, the owner's
   sign-off; then the build half. Working log (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
-- **Now: the requirements.** The owner confirms them on the owner
-  site's Decisions page: the ten promises (their questions are listed
-  below by title); the quality targets (42, fourteen with a number the
-  owner sets) and the extension cases (24), drafted and checked in
-  `docs/plans/architecture-pass/requirements/`; and the readings the
-  decision record marks "to be confirmed". The site is being rewritten
-  to the proactive frame for this (plan
-  `docs/plans/architecture-pass/report/site/2026-11-01-site-plan-v2.md`).
-  Then the panel: its brief goes to the owner before it runs.
+- **Now: waiting for the owner's answers** on the owner site's
+  Decisions page (version 9, published 2026-11-02): the requirements
+  (the quality targets, 42 with fourteen numbers to set, and the
+  extension cases, 24, in `docs/plans/architecture-pass/requirements/`;
+  the readings the decision record marks "to be confirmed"; the ten
+  promises and their wording questions), the standalone questions, the
+  game's record, and the panel's brief (its lenses, what the blind round
+  gets, whether the second round reads today's code; the brief:
+  `docs/plans/architecture-pass/panel/2026-11-01-panel-brief.md`). The
+  panel runs only after the owner confirms the requirements and approves
+  the brief. Answers go into the decision record first, then the
+  requirements files and the site.
 - **Done so far.** Green's three follow-ups merged on 2026-10-30 at
   `089dd527` (full backend suite, coverage check and lint passed). The
   review of today's engine
   (`docs/plans/architecture-pass/2026-10-30-cause-analysis.md`:
   sixteen design flaws over 358 findings, 21 set aside) is now
-  evidence and test situations, not the design's input. The owner
-  site, version 8. The decision record by topic.
+  evidence and test situations, not the design's input. The decision
+  record by topic. The owner site, version 9, in the proactive frame.
 - **The decisions** live in `docs/plans/architecture-pass/DECISIONS.md`,
   by topic: what stands now, each written as current truth with a
   dated history beneath, and the superseded ones in their own section.
@@ -41,15 +44,20 @@ before acting.
   documents (`docs/agents/process.md` §5). Open for the owner, by
   title, each with its evidence on the owner site's Decisions page
   ("What the Engine Promises",
-  https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL): about the
-  promises, "Are these the right ten promises?", "Two clauses added to
+  https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), lettered A to R
+  there: about the requirements, "Do the quality targets say how well
+  the engine must work?", "Do the extension cases say how the engine
+  must grow?" and "Four readings of earlier decisions, to confirm";
+  about the promises, "Are these the right ten promises?", "Two clauses added to
   the pack promise", "The roles promise covers who may act", "The venue
   promise names declared standalone", "Split the tap promise in two?",
   "Keep the venue promise whole?", "Proof and release in one promise?"
   and "Which promise carries equipment state on screens?"; about
   standalone games, "The ESP32's standalone mode", "One GM tablet per
   standalone game?" and "Exposed evidence and video with no engine";
-  about the game's record, "Record every refused GM scan attempt?".
+  about the game's record, "Record every refused GM scan attempt?";
+  about the panel, "The panel's three lenses", "What the panel gets in
+  its blind round" and "The second round reads today's code".
   Kept for the design rounds, not questions now: the page's twelve
   design choices, from where "this game is standalone" is declared to
   whether paper documents join the pack. "How much the rig proves
@@ -103,42 +111,50 @@ before acting.
   shape is silent on a short offline claim list on a disconnected
   tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
   worktrees, no test rig.
-- **In flight** (2026-11-01): the owner site's rewrite to the proactive
-  frame (version 9: Requirements, Design and Today's engine in place of
-  Promises, Parts and Design flaws; titles, not numbers; the sequencing
-  names; the jargon table's wordings). Version 8 stays live until it
-  ships. Done: its content (`wf_e076baba-f34`, overlays in
-  `report/site/v9/`, each with a writer's log; 99 conflicts, 95
-  applied). Running: the build (`wf_0a97fbef-eae`: the standing rules
-  in `site/v9/rules.json`, the requirements in plain words with a
-  settled/proposed kind per item, `build_site.py` restructured for the
-  six pages). Next: the panel's brief joins the Design page with three
-  questions on Decisions (its draft:
-  `docs/plans/architecture-pass/panel/2026-11-01-panel-brief.md`; its site
-  content, merged into the overlays once the build lands:
-  `docs/plans/architecture-pass/panel/2026-11-01-panel-site-content.json`), then the page checks
-  (`docs/agents/workflow-scripts/site-v9-check.js`), then publish.
+- **In flight:** nothing; waiting for the owner's answers.
 - **The owner's site.** "What the Engine Promises"
-  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), version 8 live
-  (version id 1793525496-560c, 2026-11-01): five linked pages and a
-  change log ("The owner's site: five linked pages"), `index.html` (the engine), `decisions.html`,
-  `promises.html`, `parts.html`, `flaws.html`, `changes.html`, all in
-  `docs/plans/architecture-pass/report/site/`. Built by
-  `report/build_site.py` from the four page-data files in `report/`
-  and three overlays (`site/front.json`, `site/decisions.json`,
-  `site/changes.json`, whose `[[markers]]` become links); every diagram
-  is drawn at build time (`report/render_diagrams.js`, themed by
-  `report/diagram_theme.py`), so no page loads a script. Rebuild:
-  `cd docs/plans/architecture-pass/report && MERMAID_JS=<a local
-  mermaid 11.4.1 mermaid.min.js, optional> python3 -I build_site.py`,
-  then `node site_smoke.js site <shots dir>` (24 loads). Plan:
-  `site/2026-11-01-site-plan.md`; what each element of version 7 became:
-  `site/inventory.md`; checks: `site/checks/`. Workflows
-  `wf_d5c8c6db-981` (content), `wf_c3df370d-0dc` (build),
-  `wf_73d06a3f-69f` (six page checks, 116 applied), `wf_88aa92da-12e`
-  (fix round), `wf_2d4b9ada-f47` (final check). `report/build_report.py`
-  and `report/2026-10-31-cause-report.html` are version 7's builder and
-  page, retired. Version 7 history follows.
+  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), version 9 live
+  (version id 1793578135-ee03, 2026-11-02), in the proactive frame:
+  six linked pages in `docs/plans/architecture-pass/report/site/`:
+  `index.html` (the engine), `decisions.html` (questions A to R; the
+  design rounds; every decision by topic), `requirements.html` (the
+  promises, the quality targets, the extension cases, the standing
+  rules), `design.html` (the decisions ahead, the panel's brief, the
+  decided directions, the later choices, the earlier candidate folded),
+  `today.html` (what works, the sixteen design flaws as situations,
+  standalone today, the evidence) and `changes.html`. Built by
+  `report/build_site.py` from the four page-data files in `report/`,
+  the two requirements files, and the overlays in `site/v9/`
+  (`front.json`, `decisions.json`, `design.json`, `changes.json`,
+  `rules.json`, whose `[[markers]]` become links; each has a writer's
+  log beside it). Every diagram is drawn at build time
+  (`report/render_diagrams.js`, themed by `report/diagram_theme.py`);
+  the world picture is hand-drawn in the builder (`world_svg`, a wide
+  and a phone layout). Rebuild: `cd docs/plans/architecture-pass/report
+  && MERMAID_JS=<a local mermaid 11.4.1 mermaid.min.js, optional>
+  python3 -I build_site.py`, then `node site_smoke.js site <shots dir>`
+  (24 loads). Plan: `site/2026-11-01-site-plan-v2.md`; build log:
+  `site/v9/build-log.md`; checks: `site/checks/v9-*`. Workflows
+  (`docs/agents/workflow-scripts/`): `site-v9-content.js`
+  (`wf_e076baba-f34`), `site-v9-build.js` (`wf_0a97fbef-eae`),
+  `site-v9-check.js` (`wf_43876844-7d9`: 141 conflicts applied),
+  `site-v9-fix.js` (`wf_efe6dc9f-89b`: 30), `site-v9-final.js`
+  (`wf_f857198c-557`: 20; two slips fixed by hand). Wording rules the
+  last rounds settled: the site's own prose says "you"; the shared texts
+  the panel also reads (requirements, standing rules, promise data,
+  cards, the earlier candidate) keep "the owner" as a role, except the
+  requirements' status lines, which say "you" (the panel's folder
+  builder adapts them); "the agent running the pass", never
+  "orchestrator"; no numbered lists of decisions, steps or choices.
+- **Version 8** (five linked pages, version id 1793525496-560c,
+  2026-11-01) is in git history: its overlays (`site/front.json`,
+  `site/decisions.json`, `site/changes.json`) and its plan
+  `site/2026-11-01-site-plan.md` with `site/inventory.md`; its pages
+  were last built at commit `72b4f813`. Workflows `wf_d5c8c6db-981`,
+  `wf_c3df370d-0dc`, `wf_73d06a3f-69f`, `wf_88aa92da-12e`,
+  `wf_2d4b9ada-f47`. `report/build_report.py` and
+  `report/2026-10-31-cause-report.html` are version 7's builder and
+  page, retired.
 - **Version 7 and before** (the single page): "What the Engine Promises"
   (same link; version 7 was live until version 8 replaced it;
   published 2026-11-01 after the owner said the 17-part shape was never
