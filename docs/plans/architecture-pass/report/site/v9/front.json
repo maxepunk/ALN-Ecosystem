@@ -470,7 +470,7 @@
     },
     {
       "term": "The show machine in use now, the new show machine",
-      "def": "The show machine in use now is left untouched by this work; the game runs on it until the new engine is ready. The new show machine is the one this work builds. Swapping in the new machine is done by replugging, and replugging swaps back. A “green” test run, as in the flaw “[[flaw:C16]]”, is a passing test run, unrelated to the machines. Two decision titles from October, “Blue's fixes are evidence of design causes” and “Green's follow-ups ship when the definition session ends”, keep the record's older names for the two machines.",
+      "def": "The show machine in use now is left untouched by this work; the game runs on it until the new engine is ready. The new show machine is the one this work builds. Swapping in the new machine is done by replugging, and replugging swaps back.",
       "group": "page"
     },
     {
@@ -612,7 +612,7 @@
     ],
     "today": [
       "This page is evidence. It says what today's engine already does for each promise, which pieces are already well built, and where it falls short: sixteen design flaws, each a situation any new design must handle, with whether it was seen live or reproduced in a test. Every design from the panel and the design rounds is checked against these situations.",
-      "Nothing here is the reason for a design. The show machine in use now runs every show until the new engine is ready. Its fixes, and the problems found in it and left unfixed, are evidence of where today's design is weak ([[dec:blue-s-fixes-are-evidence-of-design-causes]]). The panel meets these situations only in its second round, as facts with no fix attached. Under each flaw, folded, is how [[page:design#earlier|the earlier candidate]] would remove it; that candidate is one input among the panel's, not a decision.",
+      "Nothing here is the reason for a design. The show machine in use now runs every show until the new engine is ready. Its fixes, and the problems found in it and left unfixed, are evidence of where today's design is weak ([[dec:fixes-to-today-s-engine-are-evidence-of-design-causes]]). The panel meets these situations only in its second round, as facts with no fix attached. Under each flaw, folded, is how [[page:design#earlier|the earlier candidate]] would remove it; that candidate is one input among the panel's, not a decision.",
       "The page ends with standalone games today, with the table comparing the two player scanners, and the evidence: the totals, the problems set aside and why, and where each situation lives in today's code."
     ]
   }

@@ -495,7 +495,7 @@ Primary counts: J1 8, J2 2, J3 5, J4 4, J5 0, J6 10, J7 6, J8 10, J9 2, J10 5; t
 | C13 | The engine does not know who is connected | J7 | J3 |
 | C14 | Names joining two places are kept by hand | J10 | J2, J1 |
 | C15 | The deployed game is many parts nothing compares | J10 | J8, J1 |
-| C16 | A green test run proves nothing about the show | J10 | none |
+| C16 | A passing test run proves nothing about the show | J10 | none |
 | N1 | Nobody declares that a game is standalone (proposed; the owner's question 23) | J8 | J1, J9, J3 |
 
 Primary counts: J1 1, J2 4, J3 1, J4 2, J5 2, J6 0, J7 1, J8 1, J9 1, J10 4; total 17, counting the proposed N1 (JF:47). The standalone pass's 35 new findings are filed by job in JF:248: J1 7, J2 4, J3 4, J5 2, J8 8, J9 8, J10 2. J4, J6 and J7 have none: the main flaws of J4 and J7 (C2, C3, C13) produce no fault with no engine, and J6 has no standalone shortfall of its own (a standalone tablet runs no engine to rehearse against; the nearby SG-03 is filed under J1).

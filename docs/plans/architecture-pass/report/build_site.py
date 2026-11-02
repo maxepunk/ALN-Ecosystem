@@ -84,7 +84,7 @@ BUILT = {
     'J10': 'Four kinds of automated test, from small tests of single pieces of code to full run-through tests of the whole system in a browser; an automatic test run of the real engine and its programs, at the level of real programs with stand-in hardware, started by hand or by a change to its own files (the standing test rig was lost when the cloud computer it ran on was wiped; its recipe survives, and the rig is built again when the build half starts); an automatic test run on every proposed change before it joins the main code; and a rule that the share of code the tests reach may not fall.',
 }
 # The pieces already well built (plan v2 section 3.5 item 2), from the decision record: "Corrections to the
-# readers and the hardening pieces" and "Blue's fixes are evidence of design causes".
+# readers and the hardening pieces" and "Fixes to today's engine are evidence of design causes".
 WELL_BUILT = [
     'Three pieces finished in the hardening block (the engine checks itself and restarts what crashes) stay in the '
     'engine, and the build half changes them only where a rule requires: the kinds of equipment a pack can ask for '
@@ -1036,7 +1036,8 @@ LEGEND = ('<div class="legend"><span><span class="sw"></span>where it goes wrong
           '<span><span class="sw owner"></span>the one place that would own the fact</span></div>')
 STANDALONE_P1 = ('The decision “[[dec:standalone-games-declared-never-mixed]]” adds a requirement: a whole game can run '
                  'with no engine, as a choice the game declares and never mixed, for a room where a network connection '
-                 'is not feasible or where only GM scanners, player scanners or both are wanted. Which of those shapes '
+                 'is not feasible, or where other logistics make it better to use only GM scanners, player scanners or '
+                 'both. Which of those shapes '
                  'the engine must run is your question “Which standalone games the engine must run” on '
                  '[[page:decisions#q-g|Decisions]]. Today a standalone game is the GM tablet and the player scanners, '
                  'each working alone. The GM tablet decides everything about the game (used tokens, scores, teams, the '

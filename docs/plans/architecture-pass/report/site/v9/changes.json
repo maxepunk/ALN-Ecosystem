@@ -14,6 +14,7 @@
         "Five decisions from your comments of that day are folded into every page: “[[dec:no-technical-failure-stops-a-game]]”; the purpose of “[[dec:standalone-games-declared-never-mixed]]”, whose words also answer the hardware scanner's standalone mode; “[[dec:the-engine-is-hardware-flexible-the-roadmap-sets-the-bounds]]”; “[[dec:two-kinds-of-game-extension]]”; “[[dec:the-engine-says-what-is-fixed-and-what-each-production-sets]]”. Two of your comments reset questions the agent had put wrongly: on standalone games (“I don't understand the distinction between the two scenarios you presented”) and on extensions (“you may be conflating a couple of different framings”); the questions on those topics start again from your words.",
         "The requirements change with them: a new quality target, “[[qt:QT44]]”, the test of your decision “No technical failure stops a game”; “[[qt:QT3]]” now says the game carries on while a tablet is disconnected; every number a target needs is sorted as the engine's requirement or limit, a production's setting with ALN's as the first set, or a technical default, shown with the target; four new extension cases, your two examples (“[[ex:EX25]]”, “[[ex:EX26]]”), another production adopting the engine (“[[ex:EX27]]”) and other hardware (“[[ex:EX28]]”); every case says which of the two kinds of extension it is, or that it is neither. The standing rules do not change, because the roadmap did not.",
         "The panel's brief is revised: its state lens names keeping the game going through a failure, its growth lens names hardware flexibility and both kinds of extension, its setting gives ALN's kit as the first production's hardware, and its binding decisions add your four of 2026-11-02; what the blind round gets stays your question, and the lenses and the second round's reading of the code are the agent's calls. The Design page's decisions ahead, decided directions and later choices carry the same decisions; three later choices are new.",
+        "Two decision titles and one flaw title no longer use the old code names for the two show machines: “[[dec:fixes-to-today-s-engine-are-evidence-of-design-causes]]” was “Blue's fixes are evidence of design causes”, “[[dec:the-new-show-machine-s-follow-ups-ship-when-the-definition-session-ends]]” was “Green's follow-ups ship when the definition session ends”, and the flaw “[[flaw:C16]]” was “A green test run proves nothing about the show”. Every page but this change log now names the machines “the show machine in use now” and “the new show machine”.",
         "The table [[page:changes#letters|Where version 9's eighteen questions went]] maps each of the earlier letters to the question that now asks it, to the agent's call that replaced it, to the review it became, or to the decision that answered it."
       ],
       "prompt": "On 2026-11-02 you asked whether all eighteen questions on version 9's Decisions page were really yours to make, and whether they were the questions the top-down frame needs. The agent answered that four were yours, plus the business half of the quality targets' numbers, and that most of the eighteen came from the bottom-up period; it proposed seven questions it saw still open. You said to rework the page and commented on the seven first: a game paused for a lost connection is “the worst possible scenario”; standalone games are “a capability of the ‘engine’” for rooms where a network connection is not feasible, or where other logistics make it better to use only GM scanners, player scanners or both; “the hardware is fixed only insofar as I have the hardware I have”; there are two kinds of game mechanic extension, one that “should probably” be built by the game's own maker inside the game and one that “probably requires a developer” to add for every game; and the engine “should be relatively agnostic” about one production's numbers, saying instead “what is a fixes requirement vs what affordances the engine allows”. Your comments became five decisions, and your question became the decision that the Decisions page holds only your decisions ([[dec:the-decisions-page-holds-only-your-decisions]])."
@@ -415,7 +416,7 @@
     },
     {
       "was": "blue; green; cutover; \"blue's line\", \"blue's tree\"",
-      "now": "blue and green kept and defined in the words list on [[page:engine#words|The engine]] (blue, the show machine in use now; green, the new machine); \"blue\", \"blue's code\"; a bare cutover is \"swapping in the new machine\""
+      "now": "blue and green kept and defined in the words list on [[page:engine#words|The engine]] (blue, the show machine in use now; green, the new machine), until version 10 dropped them for “the show machine in use now” and “the new show machine”; \"blue\", \"blue's code\"; a bare cutover is \"swapping in the new machine\""
     },
     {
       "was": "capability numbers, as in \"(capability 16)\" or \"(capabilities 30 and 31)\"",
@@ -644,7 +645,7 @@
     },
     {
       "was": "Decision 4",
-      "title": "[[dec:green-s-follow-ups-ship-when-the-definition-session-ends]]",
+      "title": "[[dec:the-new-show-machine-s-follow-ups-ship-when-the-definition-session-ends]]",
       "where": "Decided, by topic: How the work runs"
     },
     {
@@ -664,7 +665,7 @@
     },
     {
       "was": "Decision 8",
-      "title": "[[dec:blue-s-fixes-are-evidence-of-design-causes]]",
+      "title": "[[dec:fixes-to-today-s-engine-are-evidence-of-design-causes]]",
       "where": "Decided, by topic: The goal and the frame"
     },
     {

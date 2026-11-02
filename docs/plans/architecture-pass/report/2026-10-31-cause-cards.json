@@ -947,7 +947,7 @@
     },
     {
       "id": "C16",
-      "title": "A green test run proves nothing about the show",
+      "title": "A passing test run proves nothing about the show",
       "atAShow": "This flaw shows nothing at a show; it is why the other fifteen flaws reached one. The small tests kept passing while Team Details showed the wrong score, because their stand-in had a value the real code lacks. A delete step in a full run-through test had been silently skipped, because it looked for the Team Details cards under a name the page never used. The last full test run of today's engine skipped 62 tests, and group completion has no test on real content.",
       "whyItHappens": "Test stand-ins are written by hand, and nothing compares them to the real code they stand for. A test step that finds nothing on the page, or checks only that no error appeared, passes. Every test engine runs with a switch that changes what Reset System does, so no test runs the reset the show runs.",
       "designTerms": "Joins and proofs should own every test: each part is tested through its interface, a test stand-in is an adapter checked against the real part at the same seam, and one test per fact runs from the part that decides it to a screen, on its own running copy of the engine. Today stand-ins are checked against nothing and no test crosses that path.",
