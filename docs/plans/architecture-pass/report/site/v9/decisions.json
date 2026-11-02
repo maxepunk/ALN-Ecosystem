@@ -20,7 +20,7 @@
             "There are forty-two targets under twelve qualities: staying up through a live show; every screen telling the truth; the designer's iteration speed; operating it without technical help; easy to understand and change, for people and for AI agents; easy to extend; testable without the live show; privacy and access; running well on the show machine and the venue network at the size of a show; standalone and offline; safe release and rollback; and more than one copy, kit or pack without rework.",
             "Each target names the promises it serves, and every promise is served by at least four targets.",
             "Most targets rest on a decision you have already made or a roadmap section you ratified. Four are proposed in full, [[qt:QT3]], [[qt:QT5]], [[qt:QT17]] and [[qt:QT27]]: they rest on the pass's questions and on the promises' test situations, which you have not ruled on one by one. Six are proposed in part: [[qt:QT7]] (all but the standalone case), [[qt:QT13]] (that building the machine itself needs no terminal), [[qt:QT19]] (a page per piece of the engine, and the newcomer measure), [[qt:QT31]] (the automatic check for a committed secret), [[qt:QT33]] (the sizes and limits, and a preflight that refuses a start over a load limit) and [[qt:QT34]] (that the profile declares the number of phones and the preflight counts them).",
-            "Two targets wait on questions on this page: [[qt:QT37]] on [[q:M]], and [[qt:QT39]] on [[q:L]], [[q:M]] and [[q:N]]. The other open point of [[qt:QT37]], where the standalone fact is kept, belongs to the design rounds. [[qt:QT3]] leaves what a disconnected tablet does with a scan to the design round on where authority lives across devices.",
+            "Two targets wait on questions on this page: “[[qt:QT37]]” on [[q:M]], and “[[qt:QT39]]” on [[q:L]], [[q:M]] and [[q:N]]. The other open point of “[[qt:QT37]]”, where the standalone fact is kept, belongs to the design rounds. The quality target “[[qt:QT3]]” leaves what a disconnected tablet does with a scan to the design round on where authority lives across devices.",
             "The panel gets the confirmed targets in its brief, beside the promises and the extension cases, and runs only after you confirm them ([[dec:what-the-architects-panel-sees-and-when]]).",
             "Fourteen targets leave a number for you to set. They follow, one per line.",
             "[[qt:QT1]]: how long the engine may take from power back to a running show.",
@@ -61,7 +61,7 @@
             "Each case tells who grows the platform, what they should need to touch, what must stay untouched, and when it is due: a designer making a whole second game ([[ex:EX1]]), a designer adding a third thing a team can do with a token ([[ex:EX3]]), a venue technician fitting the kit to a new room ([[ex:EX13]]), an operator with a second kit ([[ex:EX16]]), a director telling the night from the record ([[ex:EX19]]), a developer from outside the team ([[ex:EX21]]).",
             "The cases say what is needed, never how to build it. Every case rests on a decision you have made or a roadmap section you ratified, except [[ex:EX15]], whose need rests on the room promise and the glossary and whose how (how the engine reaches its programs, and where the start-or-use setting lives) waits for the design rounds. [[ex:EX12]] also waits on [[q:L]] and [[q:N]].",
             "Each case names the promises it serves, and every promise is served by at least three cases.",
-            "[[ex:EX10]] needs the number of phones one kit carries at once, which [[qt:QT34]] asks you to set; how many GM tablets [[ex:EX12]] may run is [[q:M]].",
+            "The case “[[ex:EX10]]” needs the number of phones one kit carries at once, which the quality target “[[qt:QT34]]” asks you to set; how many GM tablets the case “[[ex:EX12]]” may run is [[q:M]].",
             "Three cases name choices kept for the design rounds, listed under Coming in the design rounds below: where the standalone declaration lives ([[ex:EX12]]), where the designer's trial copy of the engine runs ([[ex:EX14]]) and where the start-or-use setting lives ([[ex:EX15]]).",
             "The panel gets the confirmed cases in its brief, beside the promises and the quality targets ([[dec:what-the-architects-panel-sees-and-when]])."
           ],
@@ -90,10 +90,10 @@
           "status": "open",
           "decides": "Whether four earlier decisions are read as overtaken by later ones, as the decision record reads them. The record keeps each earlier decision as made and flags the reading; nothing inferred is written as if you had said it.",
           "evidence": [
-            "[[dec:one-program-design-half-then-build-half]] had each build area start with its proof test failing on today's engine. Read as overtaken by [[dec:build-the-test-rig-when-building-starts]], which builds the rig as part of the new test bench where a thin first version of the new design runs end to end; the failing-test start returns only if the move from today's engine chooses to change it in place.",
-            "[[dec:the-nine-questions-the-pass-answers]], [[dec:five-documents-the-design-half-hands-over]] and [[dec:when-the-design-half-is-finished]] had one design choice per question, with the four questions on the game's live facts designed together. Read as overtaken by [[dec:design-top-down-hardest-to-reverse-choices-first]], which orders the design rounds by the hardest decisions to reverse, not by question. The record's reading is that the nine questions become checks on every design.",
-            "[[dec:five-documents-the-design-half-hands-over]] had proposals for the written lists of messages between the engine and the devices, drafted before code, as the third document the design half hands over. Read as overtaken by [[dec:one-published-protocol-and-an-outside-test-bench]]: one published, versioned protocol in place of today's scattered message lists and file formats.",
-            "[[dec:when-the-design-half-is-finished]] had the rig reproduce each finding marked for live proof before the design half ends. Read as overtaken by [[dec:build-the-test-rig-when-building-starts]], which moves the rig after design.",
+            "Your decision “[[dec:one-program-design-half-then-build-half]]” had each build area start with its proof test failing on today's engine. Read as overtaken by your decision “[[dec:build-the-test-rig-when-building-starts]]”, which builds the rig as part of the new test bench where a thin first version of the new design runs end to end; the failing-test start returns only if the move from today's engine chooses to change it in place.",
+            "Your decisions “[[dec:the-nine-questions-the-pass-answers]]”, “[[dec:five-documents-the-design-half-hands-over]]” and “[[dec:when-the-design-half-is-finished]]” had one design choice per question, with the four questions on the game's live facts designed together. Read as overtaken by your decision “[[dec:design-top-down-hardest-to-reverse-choices-first]]”, which orders the design rounds by the hardest decisions to reverse, not by question. The record's reading is that the nine questions become checks on every design.",
+            "Your decision “[[dec:five-documents-the-design-half-hands-over]]” had proposals for the written lists of messages between the engine and the devices, drafted before code, as the third document the design half hands over. Read as overtaken by your decision “[[dec:one-published-protocol-and-an-outside-test-bench]]”: one published, versioned protocol in place of today's scattered message lists and file formats.",
+            "Your decision “[[dec:when-the-design-half-is-finished]]” had the rig reproduce each finding marked for live proof before the design half ends. Read as overtaken by your decision “[[dec:build-the-test-rig-when-building-starts]]”, which moves the rig after design.",
             "Each reading is flagged in its decision's entry under Decided, by topic, below."
           ],
           "options": [
@@ -253,7 +253,7 @@
             "The earlier candidate separates this promise's two moments. Before every change, the developer's tests pass and show the show still works for ALN and for the toy game, the small second game kept for tests; that is a quality every part must have (Proof, on [[page:design]]), and checking that parts which pass things to each other agree is part of it. In the earlier candidate, [[part:P16]] (since replaced by the published protocol and the outside test bench) and [[part:P13]] carried it.",
             "On release day, you decide when a new version goes to the venue and can swap back by replugging a machine. That is one small part, [[part:P17]]: what is installed is one written list of what the machine should carry, which the engine compares at start, so a rollback moves everything or says what it did not.",
             "Four flaws mainly break this promise. The pass's question \"Only the live engine touches the show\" covers keeping tests away from it ([[flaw:C8]]). For the other three none of the nine questions fits: \"One question gets one answer\" is only the nearest for the names two parts share ([[flaw:C14]]), and the installed pieces ([[flaw:C15]]) and tests that prove the real path ([[flaw:C16]]) have none ([[dec:the-nine-questions-the-pass-answers]]).",
-            "Every option below gives [[flaw:C15]] a part to be fixed in; [[flaw:C16]] falls to the outside test bench whichever you choose.",
+            "Every option below gives the flaw “[[flaw:C15]]” a part to be fixed in; the flaw “[[flaw:C16]]” falls to the outside test bench whichever you choose.",
             "The alternatives table on [[page:design#alt-release]] has this row: release day as its own part beside the developer's tests, or in [[part:P12]]'s hand-off from designer to venue technician to GM. The earlier recommendation is in the [[page:changes#rec-f]]."
           ],
           "options": [
@@ -287,7 +287,7 @@
             "The requirements name the need without naming a promise: when the engine is killed, no screen anywhere shows a calm, current-looking value for a fact it cannot confirm ([[qt:QT5]]); for any fact a screen shows, one place decides it and every screen traces to it ([[qt:QT17]]). The pass's question \"Service state travels with its health\" asks the same ([[dec:the-nine-questions-the-pass-answers]]).",
             "If the design rounds keep one delivery part, neither promise needs to name the route: in the earlier candidate [[part:P6]] carries every fact to every screen, game facts and equipment alike, each with its label (how sure, how old); six promises use it.",
             "[[part:P8]] decides each program's state and health as one dated fact; [[part:P6]] carries it; [[part:P14]] draw it.",
-            "The two promises already cover their halves. Under [[promise:J4]], the GM makes the room do a thing and sees it happen, or sees at once that it did not. Under [[promise:J2]], every screen agrees, also after a tablet comes back. The game's running state there already includes the video queue, music, held items, the clock and each service's health.",
+            "The two promises already cover their halves. Under the promise “[[promise:J4]]”, the GM makes the room do a thing and sees it happen, or sees at once that it did not. Under “[[promise:J2]]”, every screen agrees, also after a tablet comes back. The game's running state there already includes the video queue, music, held items, the clock and each service's health.",
             "Your answer also decides which promise the flaw [[flaw:C2]] sits under: today the music card keeps its playing look while the health row turns red.",
             "The design rounds choose between one delivery part and the parts behind each promise delivering their own facts; the alternatives table on [[page:design#alt-delivery]] has that row. The earlier answer is in the [[page:changes#rec-g]]."
           ],
@@ -406,7 +406,7 @@
             "The requirements say the result screen never says complete for a refused scan and shows the engine's reason ([[qt:QT7]]), and that the night's record carries what was sold and exposed, by whom and when ([[qt:QT16]]); neither says whether a refused attempt is kept.",
             "Today a refused GM scan is told to the tablet that scanned and recorded nowhere else. The review that named the design flaws set this aside as a product choice no design flaw decides.",
             "In the earlier candidate [[part:P3]] is where the game's facts are decided and the answer goes back through [[part:P4]].",
-            "Where [[promise:J3]] lists [[flaw:C9]] among its flaws, it leaves this to you: whether refused scans belong in the night's record is your open question, not that flaw's.",
+            "The promise “[[promise:J3]]” lists the flaw “[[flaw:C9]]” among its flaws, but leaves this to you: whether refused scans belong in the night's record is your open question, not that flaw's.",
             "A standalone tablet records refused duplicates and unknown tokens nowhere either; a yes needs the same on a standalone tablet, carried by the design choice that removes the flaw [[flaw:C7]]."
           ],
           "options": [
@@ -434,7 +434,7 @@
           "status": "open",
           "decides": "Which lens each of the three independent architects takes, so that their proposals differ where it matters for your goal.",
           "evidence": [
-            "Your decision [[dec:what-the-architects-panel-sees-and-when]] sets three architects with different lenses who propose blind, then critique each other and the earlier candidate. It does not name the lenses.",
+            "Your decision “[[dec:what-the-architects-panel-sees-and-when]]” sets three architects with different lenses who propose blind, then critique each other and the earlier candidate. It does not name the lenses.",
             "The draft lenses, on [[page:design#panel|the panel's brief]]: state and authority; growth and extension; living with it. A lens says where an architect looks hardest; every architect still answers to every requirement.",
             "Your goal names three things the design must make easy: maintaining the engine, continuing its development, and extending it. The quality targets add staying up through a live show and standalone and offline play."
           ],
@@ -462,7 +462,7 @@
           "status": "open",
           "decides": "Whether the panel's blind round also gets the decisions you have made that bind any design, and the six decisions ahead as its agenda, or only the goal, the requirements and the setting.",
           "evidence": [
-            "Your decision [[dec:what-the-architects-panel-sees-and-when]] lists the goal, the requirements and the setting for the blind round, and names nothing else.",
+            "Your decision “[[dec:what-the-architects-panel-sees-and-when]]” lists the goal, the requirements and the setting for the blind round, and names nothing else.",
             "The decisions that bind any design: [[dec:one-published-protocol-and-an-outside-test-bench]], [[dec:standalone-games-declared-never-mixed]], [[dec:four-words-for-the-game-s-live-facts]], [[dec:the-night-s-record-and-the-after-game-article]] and [[dec:the-role-question-starts-from-settled-roles]]. They are your decisions, not the reasoning of the agent running the pass.",
             "The six decisions ahead are your list, from [[dec:design-top-down-hardest-to-reverse-choices-first]].",
             "The last decision ahead, how today's engine moves to the new design, waits for the second round, where today's engine is known.",
@@ -489,7 +489,7 @@
           "status": "open",
           "decides": "Whether, in the second round, the architects may read today's code and its component guides, or only a fact sheet about today's engine.",
           "evidence": [
-            "Your decision [[dec:what-the-architects-panel-sees-and-when]] gives the second round today's engine as facts and the sixteen design flaws as test situations. It does not say in what form.",
+            "Your decision “[[dec:what-the-architects-panel-sees-and-when]]” gives the second round today's engine as facts and the sixteen design flaws as test situations. It does not say in what form.",
             "The code is the most exact fact about today's engine. It is also large, and reading it can pull a design toward small changes to today's engine."
           ],
           "options": [
@@ -563,7 +563,7 @@
       "text": "When a new version of the game may be loaded while the engine runs. That is not built yet; the plan allows it only before a game starts or after it ends."
     },
     {
-      "text": "Where the setting lives that says whether the engine starts each outside program or uses one already running: in the venue technician's profile, as the earlier candidate has it, or in a file of its own, as the list of planned capabilities you approved has it."
+      "text": "Where the setting lives that says whether the engine starts each outside program or uses one already running: in the venue technician's profile, as the earlier candidate has it, or in a file of its own, as the list of planned capabilities drawn from the roadmap has it."
     },
     {
       "text": "The order of the build half's work, for the build plan: by part, with [[part:P13]] (each running copy of the engine keeping its own files, network ports and settings) and [[part:P6]] first since most flaws fall to them, or block by block, in the roadmap's order."
@@ -647,7 +647,7 @@
           "slug": "the-night-s-record-and-the-after-game-article",
           "title": "The night's record and the after-game article",
           "date": "2026-11-01",
-          "line": "What the players receive after the show is the game's business, outside the engine; the second half of the promise [[promise:J3]], that the night can be told afterwards, names the director and the players after the show; the night's record carries the pack the game ran and the texts the players saw; players' emails stay outside the engine; the Director Console stays a separate program that reads the record; the two clocks (a sale stamped with the tablet's time, an adjustment with the engine computer's) join [[flaw:C9]]."
+          "line": "What the players receive after the show is the game's business, outside the engine; the second half of the promise “[[promise:J3]]” names the director and the players after the show; the night's record carries the pack the game ran and the texts the players saw; players' emails stay outside the engine; the Director Console stays a separate program that reads the record; the two clocks (a sale stamped with the tablet's time, an adjustment with the engine computer's) join the flaw “[[flaw:C9]]”."
         },
         {
           "slug": "one-published-protocol-and-an-outside-test-bench",

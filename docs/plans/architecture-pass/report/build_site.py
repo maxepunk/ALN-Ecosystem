@@ -186,7 +186,7 @@ SET_ASIDE = [
     ('Plain fixes for the build half', 5, 'A built-in programming word such as "constructor" mistaken for a real service, station or token; the phone\'s scanner loading its QR library from the internet; a test helper that switches off the check that a device is talking to the real engine; standalone mode\'s red "Disconnected" label.'),
     ('Code-structure notes, no game symptom', 2, 'A second piece of code for starting programs, inside the code that runs the TV\'s browser; the sound panel drawn by the admin page\'s own code instead of its own drawing code.'),
     ('No fault', 2, 'Two identical catch-ups sent on connect; planned config-tool functions not built yet.'),
-    ('A question for you', 1, 'A rejected or duplicate GM scan is recorded nowhere. It is your open question [[q:O]] on Decisions.'),
+    ('A question for you', 1, 'A rejected or duplicate GM scan is recorded nowhere. It is your open question “[[q:O]]” on Decisions.'),
     ('Documents', 4, 'Plans, briefs and two of the developers\' guide files that disagree with the code. Documents are fixed as we go ([[dec:no-rule-for-documents-fix-as-we-go]]).'),
 ]
 
@@ -360,7 +360,7 @@ OVERVIEW = """flowchart TD
 # Which parts would run where (the shape's section 4.3), one line per device. Rows A57 to A61 applied, with "the
 # design rounds" for step 3.
 FIT_DEVICES = [
-    ('The engine', 'would decide every fact of a networked game, serve the pack, admit every connection, answer every request through one door and send every fact to the screens through one route.'),
+    ('The engine', 'would decide every fact of a networked game, serve the pack, admit every connection, answer every request in one place and send every fact to the screens through one route.'),
     ('A GM tablet in a networked game', 'would draw what it is sent, with each fact\'s label, and send requests in one shared format. It would keep no list of its own and decide nothing before the engine answers. Today it decides before the engine answers.'),
     ('A GM tablet in a standalone game', 'would be the same app with its standalone setting on. In the earlier candidate it runs the same record, lifecycle, answering and delivery parts the engine runs, with small stand-ins that report every service the engine runs (video, music, lights) as not installed tonight. The other way is an engine of its own, kept equal by tests.'),
     ('The phone and the hardware scanner', 'would draw, send scans in one shared format, and read the reply words and the few rules they need as data made from the one source. They would stay equal by sharing that data.'),
@@ -426,22 +426,22 @@ def shape_svg():
     box(580, 50, 128, 80, 'Design studio', ('the config tool,', 'sends requests only'))
     box(716, 50, 116, 80, 'Release', ('what each', 'machine carries'))
     box(840, 50, 136, 80, 'Joins and proofs', ('the tests, on an', 'engine of their own'), name_size=13)
-    # the doors
+    # Answering and Delivery
     arrow([(150, 140), (150, 210)], 'requests and replies', (158, 180), accent=True, both=True)
     arrow([(500, 140), (500, 210)], 'a pass at every connection', (492, 196), anchor='end')
     arrow([(760, 210), (760, 175), (545, 175), (545, 130)], 'every fact, labelled', (652, 168), anchor='middle', accent=True)
-    box(20, 210, 270, 62, 'Answering', ('the one door in:', 'one reply per request'), accent=True)
+    box(20, 210, 270, 62, 'Answering', ('every request comes in here,', 'one reply per request'), accent=True)
     box(345, 210, 310, 62, 'Connections and roles', ('who is connected,', 'who may do or see what'))
-    box(710, 210, 270, 62, 'Delivery', ('the one door out:', 'every fact, with its label'), accent=True)
+    box(710, 210, 270, 62, 'Delivery', ('every fact goes out here,', 'with its label'), accent=True)
     arrow([(345, 241), (290, 241)], 'may do', (317, 233), anchor='middle')
     arrow([(655, 241), (710, 241)], 'may see', (682, 233), anchor='middle')
-    # from the doors to what sits behind them (the band first, so the arrows sit on top)
+    # from Answering and Delivery to what sits behind them (the band first, so the arrows sit on top)
     band(20, 350, 960, 300)
     arrow([(200, 272), (200, 390)], 'game actions', (192, 330), anchor='end')
     arrow([(240, 272), (240, 330), (560, 330), (560, 390)], 'start, pause, end, reset', (400, 347), anchor='middle')
     arrow([(275, 272), (275, 310), (800, 310), (800, 390)], 'room commands', (660, 303), anchor='middle')
     arrow([(940, 350), (940, 272)], 'read by Delivery', (932, 340), anchor='end')
-    # behind the doors
+    # behind Answering and Delivery
     text(36, 372, "THE GAME'S FACTS", size=10.5, weight='600', op='.7')
     text(376, 372, 'THE LIFE OF A GAME', size=10.5, weight='600', op='.7')
     text(716, 372, 'THE ROOM', size=10.5, weight='600', op='.7')
@@ -474,8 +474,8 @@ def shape_svg():
             '<marker id="shp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>'
             '<marker id="shpA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill: var(--accent)"/></marker>'
             '</defs>')
-    label = ('The earlier candidate as a whole: devices and tools on top; Answering, the one door in, and Delivery, the '
-             "one door out; behind them the game's facts, the life of a game and the room; the foundations below.")
+    label = ('The earlier candidate as a whole: devices and tools on top; Answering, where every request comes in, and '
+             "Delivery, where every fact goes out; behind them the game's facts, the life of a game and the room; the foundations below.")
     return (f'<svg class="shape-svg" viewBox="0 0 1000 800" role="img" aria-label="{e(label)}" '
             f'font-family="IBM Plex Sans, system-ui, sans-serif">{defs}{"".join(out)}</svg>')
 
@@ -742,7 +742,7 @@ PAGE_NAME = {k: n for k, _, n in PAGES}
 RETIRED_MARKER_PAGES = ('promises', 'parts', 'flaws')
 SITE_NAME = 'What the Engine Promises'
 STATUS_LINE = ('Architecture pass, design half: the requirements. Nothing in the design is decided unless a page '
-               'says so. Updated 2026-11-01.')
+               'says so. Updated 2026-11-02.')
 
 PROMISE_ANCHOR = {'J1': 'designers-game', 'J2': 'one-game', 'J3': 'every-tap', 'J4': 'the-room',
                   'J5': 'lifecycle-buttons', 'J6': 'change-a-value', 'J7': 'each-person', 'J8': 'the-venue',
@@ -974,14 +974,14 @@ TANGLE_NOTE = ('A tangle is one piece of work spread over many places with nothi
                'design flaws named under it.')   # row A75
 WHOLE_KEY = ('Every request comes in through Answering and gets one reply; every fact goes out to the screens through '
              'Delivery, with its label (how old, how sure). Delivery reads what changed in the game record, the '
-             'lifecycle, the room and the pack channel; no part sends to it. Behind the two doors sit the game\'s facts, '
+             'lifecycle, the room and the pack channel; no part sends to it. Behind Answering and Delivery sit the game\'s facts, '
              'the life of a game and the room; the parts above build on the foundations, directly or through another '
              'part. The arrows show what passes at a show. Before a start, the lifecycle hands the verdict tonight\'s '
              'profile and what is running, and asks for go, no-go or not installed tonight; it also takes up a new pack '
-             'from the pack channel, only between games. The two doors and their arrows are drawn in teal; the dashed '
+             'from the pack channel, only between games. Answering, Delivery and their arrows are drawn in teal; the dashed '
              'box is an outside program, not a part. The rows group the parts by what they do; they are not the layers '
              'of which part uses which, shown [[page:design#layers|below]]. In a standalone game the GM tablet runs the '
-             'same doors, game record and lifecycle itself, with small stand-ins for connections, the room, the verdict '
+             'same Answering, Delivery, game record and lifecycle itself, with small stand-ins for connections, the room, the verdict '
              'and the engine\'s own files and settings. The [[page:design#walks|five walkthroughs]] below follow single '
              'moments step by step.')   # rows I17, I18
 MOMENTS_KEY = ('Each moment follows one thing that happens at a show through the parts that handle it, in order. Solid '
@@ -1907,7 +1907,7 @@ def page_requirements(D):
 
 <section id="qualities" aria-labelledby="qualities-h">
   <h2 id="qualities-h">How well it must work</h2>
-  <p class="lead-in">{len(D["qt_list"])} quality targets under {len(order)} qualities. {cap1(NUM_WORD[n_num] if n_num < len(NUM_WORD) else str(n_num))} leave a number for you to set; {rich("Decisions lists them in one place, under the question [[q:A]].")}</p>
+  <p class="lead-in">{len(D["qt_list"])} quality targets under {len(order)} qualities. {cap1(NUM_WORD[n_num] if n_num < len(NUM_WORD) else str(n_num))} leave a number for you to set; {rich("Decisions lists them in one place, under the question “[[q:A]]”")}</p>
   {"".join(quality_groups)}
 </section>
 

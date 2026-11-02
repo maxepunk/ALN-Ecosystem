@@ -106,7 +106,7 @@
     {
       "name": "Answering a request",
       "jobs": ["J3", "J2", "J4", "J5", "J7", "J1", "J8", "J9"],
-      "plain": "A reply that says which request it answers, whether it is final, and whether anything was stored. Today three reply formats at three doors, the tablet matching a reply to its request by the command's name alone, and the phone and the hardware scanner reading one status differently."
+      "plain": "A reply that says which request it answers, whether it is final, and whether anything was stored. Today three kinds of request get three reply formats, the tablet matching a reply to its request by the command's name alone, and the phone and the hardware scanner reading one status differently."
     },
     {
       "name": "Keeping engines apart",
@@ -148,12 +148,12 @@
     {
       "name": "Who decides when there is no engine",
       "jobs": ["J1", "J2", "J3", "J5", "J9"],
-      "plain": "Every design choice says who decides when there is no engine, and a standalone game is a declared fact, never mixed. Carried by hosting the same record, lifecycle and answering modules on the tablet, with the declaration held wherever the design rounds place it; the venue technician's profile is the candidate favoured here."
+      "plain": "Every design choice says who decides when there is no engine, and a standalone game is a declared fact, never mixed. Carried by hosting the same record, lifecycle and answering modules on the tablet, with the declaration held wherever the design rounds place it; the earlier candidate favours the venue technician's profile."
     },
     {
       "name": "Only the GM moves the game",
       "jobs": ["J2", "J3", "J4", "J5"],
-      "plain": "Lifecycle, show control and score changes stay in the GM's hands. Carried by checking once, at the one door every request passes, what each connection may do."
+      "plain": "Lifecycle, show control and score changes stay in the GM's hands. Carried by checking once, at the one place every request passes, what each connection may do."
     }
   ],
   "today": {
@@ -174,7 +174,7 @@
         "flaws": ["C6", "C2", "C10"]
       },
       {
-        "title": "Three doors, three reply formats, replies matched to requests by name",
+        "title": "Three kinds of request, three reply formats, replies matched to requests by name",
         "plain": "A player scan, a GM scan and a GM command each get a differently shaped reply. The tablet matches the engine's reply to a GM command by the command's name alone, so two quick presses cannot be told apart. The phone and the hardware scanner read the same status differently.",
         "flaws": ["C7"]
       },
@@ -214,7 +214,7 @@
         "flaws": ["C14", "C16", "C15"]
       },
       {
-        "title": "Long chains of code, and front doors that do too much",
+        "title": "Long chains of code, and code that takes in requests and does too much",
         "plain": "The Skip video button passes through five of the tablet's modules to reach the one that does the work; one piece of code that handles every GM command serves six promises; the code that takes a player scan decides, all by itself, whether the token exists, whether a game is on and whether its video may play, and keeps a memory of uploaded batches of offline scans that is lost at restart; the engine's parts are connected by hand in about ten places, and one of them already left music out.",
         "flaws": ["C11", "C5", "C7"]
       },
@@ -264,7 +264,7 @@
       "runsOn": ["backend", "gm-tablet", "player-devices", "config-tool"],
       "jobs": ["J3", "J2", "J4", "J5", "J7"],
       "flaws": ["C7", "C13", "C11"],
-      "seams": "Web requests and the live connection both plug into one door; the player scanners read every reply from the same list of words."
+      "seams": "Web requests and the live connection both reach the same Answering; the player scanners read every reply from the same list of words."
     },
     {
       "id": "P5",

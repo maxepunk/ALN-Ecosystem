@@ -425,7 +425,7 @@
       "parts": [
         "P4"
       ],
-      "shapeChange": "Before, the card's reply part saved and answered. Now the Game record saves and Answering replies through one door for all devices, with one list of reply words, so a batch with no game gets one answer: stored or refused."
+      "shapeChange": "Before, the card's reply part saved and answered. Now the Game record saves and Answering replies in one place for all devices, with one list of reply words, so a batch with no game gets one answer: stored or refused."
     },
     {
       "id": "C8",

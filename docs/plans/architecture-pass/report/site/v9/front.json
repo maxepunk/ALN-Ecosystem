@@ -32,7 +32,7 @@
       "when": "In the days before a show, on a laptop or on the show machine between games, when a designer builds a game, changes a value, publishes and plays a round.",
       "people": [
         "The game designer",
-        "The owner, designing the second game",
+        "You, designing the second game",
         "A new designer, learning from the toy game",
         "The designer reading a go or no-go badge in the editor"
       ],
@@ -153,7 +153,7 @@
       "people": [
         "The director who tells the night's story",
         "The players it is told to",
-        "The owner and the designer"
+        "You and the designer"
       ],
       "promises": [
         {
@@ -164,15 +164,15 @@
     },
     {
       "name": "Release day",
-      "when": "Before every change reaches anyone, and on the day the owner sends a new version to the venue.",
+      "when": "Before every change reaches anyone, and on the day you send a new version to the venue.",
       "people": [
         "The developer changing the engine",
-        "The owner sending a version to the venue"
+        "You, sending a version to the venue"
       ],
       "promises": [
         {
           "id": "J10",
-          "why": "When every test passes, the show still runs for ALN and for the toy game; the owner decides when a new version goes to the venue, the machine carries everything on one written list of what it should carry (the engine's version, the tablet and phone apps, the pack, the media and the venue profile), and the owner can swap back by replugging a machine."
+          "why": "When every test passes, the show still runs for ALN and for the toy game; you decide when a new version goes to the venue, the machine carries everything on one written list of what it should carry (the engine's version, the tablet and phone apps, the pack, the media and the venue profile), and you can swap back by replugging a machine."
         }
       ]
     }
@@ -408,11 +408,6 @@
       "group": "page"
     },
     {
-      "term": "Door",
-      "def": "A way into or out of the engine that requests or facts pass through. Today's code has several. The earlier candidate had two: [[part:P4]], the one door every request comes in by, and [[part:P6]], the one door every fact goes out by; the published protocol now defines what crosses the engine's edge. It is not the reason a service is not installed tonight, which the code also calls a door; see Not installed tonight.",
-      "group": "page"
-    },
-    {
       "term": "Not installed tonight",
       "def": "Grey, absent on purpose, never a fault: tonight's profile leaves the service out. The code calls this state dormant. A service the GM takes out of service during the show is dormant too, for its own reason, and reads \"Out of service\", also grey.",
       "group": "page"
@@ -429,7 +424,7 @@
     },
     {
       "term": "Blue, green",
-      "def": "Blue is the show machine in use now, left untouched by this work; the game runs on it until the new engine is ready. Green is the new machine this work builds. Swapping in green is done by replugging, and replugging swaps back. A \"green\" test run, as in the title of [[flaw:C16]], is a passing one, unrelated.",
+      "def": "Blue is the show machine in use now, left untouched by this work; the game runs on it until the new engine is ready. Green is the new machine this work builds. Swapping in green is done by replugging, and replugging swaps back. A \"green\" test run, as in the flaw “[[flaw:C16]]”, is a passing one, unrelated.",
       "group": "page"
     },
     {
@@ -439,7 +434,7 @@
     },
     {
       "term": "Planned capability",
-      "def": "One thing the engine is planned to be able to do, such as restarting a crashed program by itself. The roadmap you approved lists 52; each promise shows the ones that need something from it.",
+      "def": "One thing the engine is planned to be able to do, such as restarting a crashed program by itself. A list drawn from the roadmap you approved names 52; each promise shows the ones that need something from it.",
       "group": "page"
     },
     {
