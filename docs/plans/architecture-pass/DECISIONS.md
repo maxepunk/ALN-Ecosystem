@@ -978,68 +978,85 @@ the owner:
 
 The open questions live on the owner site's Decisions page ("What the
 Engine Promises", https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL),
-each with its evidence on the same screen. By title:
+each explained by what it means at a show, with its options, what each
+costs, and a recommendation or a line on what is needed from the owner.
+By title, as version 10 of the page asks them (2026-11-02, "The
+Decisions page holds only your decisions"):
 
-About the promises:
-- Are these the right ten promises? (This holds the earlier question
-  "Is the list of design flaws right?", folded in when the promises
-  replaced the flaw list as the front of the work.)
-- Two clauses added to the pack promise (applied; the owner's word
-  asked).
-- The roles promise covers who may act (applied; the owner's word
-  asked).
-- The venue promise names declared standalone (applied; the owner's
-  word asked). It holds "Is the missing standalone declaration a flaw?".
-- Split the tap promise in two?
-- Keep the venue promise whole?
-- Proof and release in one promise? It holds "Flaws none of the pass's
-  questions covers" (joins kept by hand on two sides, the deployed
-  kit's unchecked pieces, tests that pass without proving the real
-  path).
-- Which promise carries equipment state on screens?
+Where the qualities pull against each other:
+- A GM tablet cut off from the engine: what a tablet does with a scan
+  while it cannot reach the engine, what the GM may tell the team, and
+  who wins when two tablets sold one token while apart.
+- The show machine fails mid-game: which fallbacks the engine offers,
+  what the players may lose and must never lose, whether the TV may
+  keep counting while the engine is silent, and whether a game may be
+  re-declared standalone once (which would amend "Standalone games:
+  declared, never mixed").
+- Release day: what must update together, and how long older devices
+  work. The owner leans toward everything updating together
+  ("Generally speaking, yes") and asked what it means in practice.
+- What a game's maker may build inside the pack: tables of values,
+  when-then rules or scripts, and whether pack rules must run on a
+  hardware scanner alone.
+- How an extension for all games reaches a production: the main release
+  only, add-ons, or a production's own build. Needed now: whether a
+  production may ever run an extension the engine did not ship.
+- Where the trial copy runs while a show runs. The sources disagree
+  here (see the question).
 
-About standalone games:
-- One GM tablet per standalone game?
-- Exposed evidence and video with no engine.
+Standalone games:
+- Which standalone games the engine must run: one GM tablet, player
+  scanners alone, both, a GM tablet acting as the engine for other
+  devices, several GM tablets; and whether "standalone" means no show
+  machine or no network.
+- What a standalone game gives up, and what it keeps: which of a pack's
+  effects a standalone game may use, and whether it leaves a record of
+  what the players found.
 
-About the game's record:
-- Record every refused GM scan attempt? The owner asked for the
-  orchestrator's view; it is yes, record every attempt and its answer
-  and show it nowhere until a feature needs it.
+Hardware:
+- Which hardware the first new engine requires, and what it must allow
+  replacing (the GM's station above all).
 
-Raised on 2026-11-02, and being written into the reworked Decisions
-page ("The Decisions page holds only your decisions"), which will also
-move several questions above into the agent's calls:
-- Where the qualities pull against each other: the owner asked to see
-  the specific conflicts and what each means in practice before
-  answering.
-- Whether everything updates together on release day: the owner leans
-  yes ("Generally speaking, yes") and asked what it means in practice,
-  now and once the new engine runs ALN.
-- How a networked game carries on if the show machine fails mid-game,
-  against "Standalone games: declared, never mixed" (from "No technical
-  failure stops a game").
-- Which shapes of standalone game the engine supports (GM scanners,
-  player scanners or both; how many GM tablets).
-- Where the current roadmap draws the line between hardware flexibility
-  built now and specific hardware requirements ("The engine is
-  hardware-flexible; the roadmap sets the bounds").
-- How an extension made for all games relates to the engine's main
-  release, and which piece each kind of extension changes ("Two kinds
-  of game extension").
-- Which numbers are the engine's fixed requirements and limits, and
-  which are ALN's own settings ("The engine says what is fixed and what
-  each production sets").
+The panel:
+- What the panel gets in its blind round: whether it also gets the
+  binding decisions and the six decisions ahead.
+
+To confirm, the agent's readings of the owner's words of 2026-11-02,
+listed on the same page: a standalone game may have no GM tablet at
+all; a GM tablet cut off from the engine keeps taking scans; the design
+must say how a networked game carries on if the show machine itself
+fails.
+
+Offered for review on the same page: the ten promises; the quality
+targets (43, each number sorted as an engine requirement or limit, a
+production's setting or a technical default); the extension cases (28,
+each marked as one of the two kinds of extension or neither); the
+standing rules.
+
+Settled as the agent's calls on the same page, each with its reason,
+for the owner to overrule: the four readings of earlier decisions; the
+sorting of the quality targets' numbers; the program watcher's retries;
+how long before a screen says the engine is silent; the show machine's
+limits; the missing standalone declaration as a design flaw of its own;
+the tap promise split in two; the venue promise kept whole; proof and
+release kept in one promise; the route for equipment state named in
+neither promise; exposed evidence and video with no engine; every
+refused GM scan attempt recorded; the panel's three lenses; the second
+round reading today's code. Where each of version 9's eighteen
+questions went is in the change log's "letters" table.
 
 Kept for the design rounds, not questions now: the Decisions page's
-list of twelve design choices, from where "this game is standalone" is
+fifteen later choices, from where "this game is standalone" is
 declared (the venue profile, the pack, the game's record or each
-device) to whether paper documents join the pack, with "unlocked"
-recorded during play. Between them: how facts reach screens, the life
-of a game, the game rules as shared code, the equipment's interface,
-the standalone tablet, the scoreboard, the config tool, when a changed
-pack may be adopted, where the start-or-adopt setting lives, and the
-order of the work.
+device) to how the owner's answers on the two kinds of extension are
+built. Between them: how facts reach screens, the life of a game, the
+game rules as shared code, the equipment's interface, the standalone
+tablet, how the chosen fallback for a failed show machine is built,
+the scoreboard, the config tool, when a changed pack may be adopted,
+where the start-or-adopt setting lives, where a production's own
+settings live (and where the build plan places the owner's hardware
+answer in the roadmap), the order of the work, and whether paper
+documents join the pack, with "unlocked" recorded during play.
 
 One item on the page is no longer open: "How much the rig proves before
 design" was withdrawn (see "Superseded and withdrawn").
