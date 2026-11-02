@@ -1,14 +1,20 @@
-"""Build the owner's site, version 9: six linked pages in the proactive frame (2026-11-01).
+"""Build the owner's site, version 10: six linked pages in the proactive frame (2026-11-02).
 
 Plan: site/2026-11-01-site-plan-v2.md (the pages, anchors, markers and checks of version 9); where it is silent,
 site/2026-11-01-site-plan.md sections 2, 4, 5 and 6 (the frame, the design system, the diagram pipeline).
-Log: site/v9/build-log.md (where each version 8 section went, the jargon rows applied, the checks).
+Version 10 (2026-11-02) renders the reworked Decisions page ("The Decisions page holds only your decisions" in the
+decision record): ten questions in four groups, each group with an intro and each option with what it means and what
+it costs; then the readings of the owner's words to confirm, the agent's calls with their reasons (the [[call:]]
+marker links one) and the requirements for review. It also shows each quality target's number with its sort
+(numberKind) and each extension case's kind.
+Logs: site/v9/build-log.md (version 9: where each version 8 section went, the jargon rows applied, the checks) and
+site/v9/build-log-v10.md (version 10's changes and checks).
 
 Inputs: the page data in this folder (2026-10-31-cause-cards.json, 2026-10-31-engine-jobs.json,
         2026-10-31-standalone-lines.json, 2026-11-01-engine-shape.json), the parity table in
         ../2026-10-31-standalone-pass.md, the requirements (../requirements/2026-11-01-quality-targets.json and
-        ../requirements/2026-11-01-extension-cases.json), and the version 9 overlays in site/v9/ (front.json,
-        decisions.json, design.json, changes.json, rules.json).
+        ../requirements/2026-11-01-extension-cases.json), and the overlays in site/v9/ (front.json, decisions.json,
+        design.json, changes.json, rules.json; the folder keeps its name from version 9).
 Output: site/index.html (the artifact's main page: no doctype, html, head or body tags), and site/decisions.html,
         requirements.html, design.html, today.html, changes.html (full documents). Version 8's promises.html,
         parts.html and flaws.html are deleted when the build succeeds.
@@ -73,7 +79,7 @@ BUILT = {
     'J5': 'Create, start, pause and end a game; Reset System; a game restored after an engine restart; the game clock.',
     'J6': 'The config tool; a store for drafting and publishing packs.',
     'J7': 'The GM password and its login token; a watch-only pass for the Pi 4 scoreboard; anonymous player scans.',
-    'J8': 'Venue profiles and "not installed tonight"; standalone modes on the GM tablet and the phone\'s scanner; the blue and green machine method: a new show machine is built beside the one in use and swapped in by replugging.',
+    'J8': 'Venue profiles and "not installed tonight"; standalone modes on the GM tablet and the phone\'s scanner; the method for a new show machine: it is built beside the one in use now and swapped in by replugging.',
     'J9': 'Health words healthy, down and not installed tonight (grey) for each service on the health panel; a first, minimal preflight.',
     'J10': 'Four kinds of automated test, from small tests of single pieces of code to full run-through tests of the whole system in a browser; an automatic test run of the real engine and its programs, at the level of real programs with stand-in hardware, started by hand or by a change to its own files (the standing test rig was lost when the cloud computer it ran on was wiped; its recipe survives, and the rig is built again when the build half starts); an automatic test run on every proposed change before it joins the main code; and a rule that the share of code the tests reach may not fall.',
 }
@@ -81,8 +87,8 @@ BUILT = {
 # readers and the hardening pieces" and "Blue's fixes are evidence of design causes".
 WELL_BUILT = [
     'Three pieces finished in the hardening block (the engine checks itself and restarts what crashes) stay in the '
-    'engine and change only where a design choice requires: the kinds of equipment a pack can ask for and a venue '
-    'profile can name, the code that marks equipment not installed tonight, and the smallest test set-up '
+    'engine, and the build half changes them only where a rule requires: the kinds of equipment a pack can ask for '
+    'and a venue profile can name, the code that marks equipment not installed tonight, and the smallest test set-up '
     '([[dec:corrections-to-the-readers-and-the-hardening-pieces]]).',
 ]
 
@@ -107,7 +113,19 @@ OUTSIDE_NINE = {'C14', 'C15', 'C16'}  # the review: no question of the nine cove
 # A card's seenLive note is either a problem seen live or, where the card sets reproducedInTest, one the review
 # reproduced only by running the engine's code in a test.
 SEEN_LIVE, SEEN_TEST = 'Seen live', 'Reproduced in a test'
-NUM_WORD = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
+NUM_WORD = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve',
+            'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty']
+TENS_WORD = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
+
+
+def num_word(n):
+    """A count as a word, 0 to 99 (the pages spell their counts: "Forty-three quality targets")."""
+    if n < len(NUM_WORD):
+        return NUM_WORD[n]
+    if n < 100:
+        tens, units = divmod(n, 10)
+        return TENS_WORD[tens] + (f'-{NUM_WORD[units]}' if units else '')
+    return str(n)
 
 # The nine architecture pass questions by name (jargon wording 24 and the words box's revision 1; rows P21 to
 # P30 replace the numbers in each promise's test summary, and the cards' chips take the same names).
@@ -141,12 +159,12 @@ def seen_label(card):
 
 def chips(card):
     out = [f'<span class="chip">{card["findings"]} problems found</span>']
-    # Row F6: blue's fix codes become a count.
+    # Row F6: blue's fix codes become a count. Version 10: no code names on the page; blue is today's engine.
     n = len(card.get('blueFixes') or [])
     if n == 1:
-        out.append('<span class="chip">A fix on blue points here</span>')
+        out.append('<span class="chip">A fix to today\'s engine points here</span>')
     elif n > 1:
-        out.append(f'<span class="chip">{NUM_WORD[n].capitalize()} fixes on blue point here</span>')
+        out.append(f'<span class="chip">{NUM_WORD[n].capitalize()} fixes to today\'s engine point here</span>')
     if card.get('seenLive'):
         out.append(f'<span class="chip">{SEEN_TEST}</span>' if card.get('reproducedInTest')
                    else f'<span class="chip live">{SEEN_LIVE}</span>')
@@ -179,14 +197,15 @@ def present(src, keep_direction=False):
     return INIT + '\n' + '\n'.join(lines)
 
 
-# The findings set aside (rows F158 to F162; "phase 2" is the build half, plan v2 section 2; the question and
-# the decision go by their titles).
+# The findings set aside (rows F158 to F162; "phase 2" is the build half, plan v2 section 2; the decision and the
+# agent's call go by their titles). Version 10: the refused-scan finding, version 9's question for the owner, is
+# settled by the agent's call that every refused GM scan attempt is recorded.
 SET_ASIDE = [
-    ('Already fixed in today\'s code', 7, 'Odd characters in the after-game report\'s tables made safe; the health word for not installed tonight, in both written lists of messages and on the tablet; four items the review raised about the smallest test set-up; a guard on the audio routing in the catch-up; two machine settings the deployment guide asks for, now in the settings template (fixed on 2026-10-30, with three small fixes for green, the new show machine).'),
+    ('Already fixed in today\'s code', 7, 'Odd characters in the after-game report\'s tables made safe; the health word for not installed tonight, in both written lists of messages and on the tablet; four items the review raised about the smallest test set-up; a guard on the audio routing in the catch-up; two machine settings the deployment guide asks for, now in the settings template (fixed on 2026-10-30, with three small fixes for the new show machine).'),
     ('Plain fixes for the build half', 5, 'A built-in programming word such as "constructor" mistaken for a real service, station or token; the phone\'s scanner loading its QR library from the internet; a test helper that switches off the check that a device is talking to the real engine; standalone mode\'s red "Disconnected" label.'),
     ('Code-structure notes, no game symptom', 2, 'A second piece of code for starting programs, inside the code that runs the TV\'s browser; the sound panel drawn by the admin page\'s own code instead of its own drawing code.'),
     ('No fault', 2, 'Two identical catch-ups sent on connect; planned config-tool functions not built yet.'),
-    ('A question for you', 1, 'A rejected or duplicate GM scan is recorded nowhere. It is your open question “[[q:O]]” on Decisions.'),
+    ('Settled by the agent\'s call', 1, 'A rejected or duplicate GM scan is recorded nowhere today. The agent\'s call “[[call:every-refused-gm-scan-attempt-is-recorded]]” settles it: the engine records every attempt and its answer. You can overrule the call.'),
     ('Documents', 4, 'Plans, briefs and two of the developers\' guide files that disagree with the code. Documents are fixed as we go ([[dec:no-rule-for-documents-fix-as-we-go]]).'),
 ]
 
@@ -211,7 +230,8 @@ PARITY_WORDS = {
            2: 'Plays a sound file named after the token if one exists, whatever the token says',
            3: 'Read the sound the token names, and accept both sound formats'},
     '12': {1: '"New Memory!" or "Memory Revisited", kept in the phone\'s browser for good',
-           3: 'Optional. One design for the situation "Tablets and phones decide facts the engine owns" takes the seen mark away from player devices instead.'},
+           3: 'Optional. One design for the situation “Tablets and phones decide facts the engine owns” takes the seen mark away from player devices instead.'},
+    '13': {3: 'Neither is right. The agent\'s call “Exposed evidence and video with no engine” sets the same default for both: the token\'s picture with a plain note, never an error'},
     '14': {2: 'One line in the queue on the memory card, at most 100, oldest dropped',
            3: 'Decide what a standalone record of player scans is before matching either side.'},
     '15': {2: 'A dummy date in 1970, because it never gets the time from the network'},
@@ -748,6 +768,10 @@ PROMISE_ANCHOR = {'J1': 'designers-game', 'J2': 'one-game', 'J3': 'every-tap', '
                   'J5': 'lifecycle-buttons', 'J6': 'change-a-value', 'J7': 'each-person', 'J8': 'the-venue',
                   'J9': 'read-a-screen', 'J10': 'proven-change'}
 N1_TITLE = 'Nothing declares a game standalone'   # the question's words for the proposed flaw (it has no card)
+# Version 10: whether it is a flaw of its own was version 9's question for the owner; it is now the agent's call.
+N1_CALL = ('It stays a design flaw of its own rather than joining three others, by the agent\'s call '
+           '“[[call:the-missing-standalone-declaration-is-a-design-flaw-of-its-own]]”, which you can overrule. Its '
+           'problems come from the review of standalone games.')
 
 CUR = None          # the page being rendered; links within it are bare #anchors
 TITLES = {}         # promise id -> its title; ids never reach a page
@@ -758,6 +782,7 @@ Q_TITLES = {}       # question letter -> its title
 QT = {}             # quality target id -> the target
 EX = {}             # extension case id -> the case
 DEC = {}            # decision slug -> its decided entry
+CALLS = {}          # call slug -> the agent's call (version 10: decisions.json "calls")
 
 
 def slug(text):
@@ -861,6 +886,14 @@ def dec_a(s, text=None):
     return f'<a href="{href("decisions", "dec-" + s)}">{e(text if text is not None else DEC[s]["title"])}</a>'
 
 
+def call_a(s, text=None):
+    """An agent's call by its title, linked to its entry on Decisions (version 10; the slug is the title's, as for
+    a decision)."""
+    if s not in CALLS:
+        raise SystemExit(f'unknown call [[call:{s}]]')
+    return f'<a href="{href("decisions", "call-" + s)}">{e(text if text is not None else CALLS[s]["title"])}</a>'
+
+
 def page_a(name, text=None):
     """A page by its name; "page#anchor" lands on that id of the page (the check finds every id)."""
     name, _, anchor = name.partition('#')
@@ -898,6 +931,8 @@ def rich(text):
             out.append(ex_a(key, label))
         elif kind == 'dec':
             out.append(dec_a(key, label))
+        elif kind == 'call':
+            out.append(call_a(key, label))
         else:
             raise SystemExit(f'unknown marker kind in [[{kind}:{key}]]: {text[:80]}')
         pos = m.end()
@@ -999,23 +1034,29 @@ WORDS_INTRO = ('The site\'s own words come first, then the names of the steps of
                'rounds use; each situation on [[page:today]] ends with the reason restated in them.')   # row I49
 LEGEND = ('<div class="legend"><span><span class="sw"></span>where it goes wrong</span>'
           '<span><span class="sw owner"></span>the one place that would own the fact</span></div>')
-STANDALONE_P1 = ('The decision [[dec:standalone-games-declared-never-mixed]] adds a requirement: a whole game can run with no '
-                 'engine, the GM tablet and the player scanners each working alone, as a choice the game declares and '
-                 'never mixed. In a standalone game the GM tablet decides everything about the game (used tokens, '
-                 'scores, teams, the game\'s start, pause and end) from its own hand-kept copies of the engine\'s rules. '
-                 'Each player scanner decides only whether a token is known, and the phone also whether it has seen '
-                 'that token before.')
+STANDALONE_P1 = ('The decision “[[dec:standalone-games-declared-never-mixed]]” adds a requirement: a whole game can run '
+                 'with no engine, as a choice the game declares and never mixed, for a room where a network connection '
+                 'is not feasible or where only GM scanners, player scanners or both are wanted. Which of those shapes '
+                 'the engine must run is your question “Which standalone games the engine must run” on '
+                 '[[page:decisions#q-g|Decisions]]. Today a standalone game is the GM tablet and the player scanners, '
+                 'each working alone. The GM tablet decides everything about the game (used tokens, scores, teams, the '
+                 'game\'s start, pause and end) from its own hand-kept copies of the engine\'s rules. Each player '
+                 'scanner decides only whether a token is known, and the phone also whether it has seen that token '
+                 'before. No channel joins the player scanners to the tablet, and nothing records what players found.')
 STANDALONE_P2 = ('Four design flaws cause no problem in a standalone game, four apply in part and eight in full. Each '
                  'promise and each situation says what changes. The two biggest gaps: nothing says that a game is '
                  'standalone, and every device shows the missing engine as a failure ("Offline" on the phone all night, '
                  'red "DISCONNECTED" on the hardware scanner, "VIDEO UNAVAILABLE, Rescan later" for a video that can '
                  'never play).')   # row F135
-PARITY_NOTE = ('Your parity rule says the two player scanners match wherever possible. Shaded rows are ones where both '
-               'are weak, or the phone\'s scanner is the weaker side, so matching it would copy a gap.')
-EVIDENCE_INTRO = ('{total_all} problems came from blue\'s records, the review\'s survey of today\'s code and, for one, the '
+PARITY_NOTE = ('Your parity rule says the two player scanners match wherever possible, and your words of 2026-11-02, '
+               '“player scanners (phone or hardware)”, settle that the hardware scanner plays standalone games as the '
+               'phone\'s scanner does: its missing standalone mode is a parity gap to close. What each row would need is '
+               'a proposal, not decided. Shaded rows are ones where both are weak, or the phone\'s scanner is the weaker '
+               'side, so matching it would copy a gap.')
+EVIDENCE_INTRO = ('{total_all} problems came from the records of the show machine in use now, the review\'s survey of today\'s code and, for one, the '
                   'survey of ALN\'s after-game tools; {total} of them sit under the sixteen situations above, and '
-                  '{aside_n} needed no change to the design. The review of standalone games added {sa_all} more: '
-                  '{sa_cards} placed under the same situations, and {sa_n1} under the proposed seventeenth, '
+                  '{aside_n} were set aside, each with its reason below. The review of standalone games added {sa_all} more: '
+                  '{sa_cards} placed under the same situations, and {sa_n1} under the seventeenth, '
                   '[[flaw:N1]].')   # row F157
 EARLIER_NOTE = ('Every promise was restated from the side of the people it serves in version 5 and retitled under '
                 'decision 27 in version 6. Each note says what the candidate shape changed. "Now" means the candidate '
@@ -1036,8 +1077,8 @@ PARTS_KEY = ('Most of today\'s problems sit in work several promises depend on: 
 CARD_GUIDE = ('Each card tells one moment at a show and why it happens, then what it does in a standalone game. The '
               'drawing shows where it goes wrong today. The card\'s head names the architecture pass\'s own questions it '
               'touches (the nine questions the pass answers, not the questions on Decisions). Folded under the drawing '
-              'is how the earlier candidate would remove it, with "In design terms", which restates the cause in the '
-              'words listed on [[page:engine#words|The engine page]]. "The problems behind it" lists a few of the card\'s '
+              'is how the earlier candidate would remove it, with “In design terms”, which restates the cause in the '
+              'words listed on [[page:engine#words|The engine page]]. “The problems behind it” lists a few of the card\'s '
               'problems and the code they live in.')
 GRID_NOTE = 'A dot means the situation\'s problems sit in that part of the engine.'
 LATER_INTRO = ('Inside the design rounds come these later choices. They are listed here so nothing arrives as a surprise. '
@@ -1056,16 +1097,19 @@ FOOTERS = {
         'the decision record (by topic), and the glossary (the words).',
     ],
     'decisions': [
-        'Built from the decision record (by topic, with the old numbers mapped to titles); the questions of version '
-        '7, the earlier one-page report; the quality targets and the extension cases (2026-11-01); the earlier '
+        'Built from the decision record (by topic, with the old numbers mapped to titles); your comments of '
+        '2026-11-02 and the agent\'s sorting that day of version 9\'s eighteen questions into your questions, the '
+        'readings of your words to confirm, the agent\'s calls and the requirements for review; the questions of version '
+        '7, the earlier one-page report; the quality targets and the extension cases (2026-11-01, revised 2026-11-02); the earlier '
         'candidate (2026-11-01, its alternatives and the choices it leaves to the design rounds); the review that '
         'named the design flaws (2026-10-30); the review of standalone games (2026-10-31); the survey of ALN\'s '
         'after-game tools (2026-11-01); the promises (2026-10-31); and the panel\'s brief (2026-11-01).',
     ],
     'requirements': [
-        'Built from the promises (2026-10-31; a check confirmed 171 of its statements and corrected 53), the quality '
-        'targets and the extension cases (2026-11-01, each with its own check), the roadmap\'s standing '
-        'constraints, and the review of standalone games (2026-10-31).',
+        'Built from the promises (2026-10-31, revised 2026-11-02 for your decisions of that day; a check confirmed 171 '
+        'of its statements and corrected 53), the quality targets and the extension cases (2026-11-01, revised '
+        '2026-11-02 for your decisions of that day, each with its own check), the roadmap\'s standing constraints, and '
+        'the review of standalone games (2026-10-31).',
         'Where today\'s engine falls short comes from the review that named the design flaws (2026-10-30); what the '
         'planned capabilities need comes from the list of planned capabilities drawn from the roadmap you approved.',
     ],
@@ -1080,7 +1124,7 @@ FOOTERS = {
         'games (2026-10-31), with the table comparing the hardware scanner with the phone\'s scanner; the promises '
         '(2026-10-31; which promise each flaw touches, and what each already has); the earlier candidate '
         '(2026-11-01; the folded side of each situation); the survey of ALN\'s after-game tools (2026-11-01; the sale and '
-        'adjustment times printed hours apart); and the decision record (the pieces already well built). "What each promise already has" is '
+        'adjustment times printed hours apart); and the decision record (the pieces already well built). “What each promise already has” is '
         'summarized from the project\'s guide for developers and the list of planned capabilities.',
     ],
     'changes': [
@@ -1090,7 +1134,8 @@ FOOTERS = {
         'totals), the questions of version 7 (E, F and G, after the candidate shape), the survey of ALN\'s after-game '
         'tools (2026-11-01), the jargon check of 2026-11-01, the glossary, the roadmap (the blocks, the older phase '
         'names and the test stages), the plan for the architecture pass (its old steps), the quality targets and the '
-        'extension cases (2026-11-01, the counts), and the panel\'s brief (2026-11-01).',
+        'extension cases (2026-11-01, the counts), the panel\'s brief (2026-11-01), and the agent\'s sorting of '
+        'version 9\'s eighteen questions (2026-11-02: where each letter went).',
     ],
 }
 
@@ -1180,15 +1225,36 @@ section > * { min-width: 0; }
 @media (max-width: 700px) { .world-wide { display: none; } .world-narrow { display: block; } }
 /* Decisions. */
 .q { scroll-margin-top: var(--anchor-gap); }
-.q h3 { font-size: 19px; font-weight: 600; line-height: 1.25; margin: 0; color: var(--fg); }
-.q h3 .letter { color: var(--accent); margin-right: 4px; }
+.q h4 { font-size: 19px; font-weight: 600; line-height: 1.25; margin: 0; color: var(--fg); }
+.q h4 .letter { color: var(--accent); margin-right: 4px; }
 .q ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; }
 .q .block { display: grid; gap: 4px; }
-.q ul.options { list-style: none; padding-left: 0; gap: 8px; }
-.q ul.options li { border-left: 3px solid var(--line); padding-left: 10px; }
-.q ul.options strong { font-weight: 600; }
-.q .rec { border-top: 1px solid var(--line); padding-top: 10px; }
-.q .rec .tag { display: block; color: var(--accent); margin-bottom: 2px; }
+.q ul.options { list-style: none; padding-left: 0; gap: 10px; }
+.q ul.options li { border-left: 3px solid var(--line); padding-left: 12px; display: grid; gap: 4px; }
+.q ul.options .olabel { font-weight: 600; }
+.q ul.options .opart { font-size: 15px; }
+.q ul.options .opart .tag { margin-right: 2px; }
+.q .rec { display: grid; gap: 4px; }
+.q .rec .tag { display: block; margin-bottom: 2px; }
+.q .rec-advice { border-top: 1px solid var(--line); padding-top: 10px; }
+.q .rec-advice .tag { color: var(--accent); }
+.q .rec-need { background: var(--chip); border: 1px solid var(--warm); border-left: 4px solid var(--warm); border-radius: 6px; padding: 10px 14px; }
+.q .rec-need .tag { color: var(--warm); font-size: 13px; }
+.q .rec-need p { font-weight: 500; }
+.onpage { display: grid; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; max-width: 86ch; }
+.onpage ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 15px; }
+.qintro { max-width: 86ch; }
+.qintro p { font-size: 15.5px; }
+.readings { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.readings li { background: var(--surface); border: 1px dashed var(--line-strong); border-radius: 6px; padding: 12px 16px; display: grid; gap: 6px; max-width: 92ch; }
+.readings .src, .call .why { font-size: 14.5px; color: var(--muted); }
+.readings .src .tag, .call .why .tag { margin-right: 2px; }
+.calls, .reviews { display: grid; gap: 12px; }
+.call, .review-item { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 18px; display: grid; gap: 8px; }
+.call h3, .review-item h3 { font-size: 17px; font-weight: 600; }
+.call p, .review-item p { max-width: 86ch; font-size: 15px; }
+.review-item .block { display: grid; gap: 4px; }
+.review-item ul.numbers { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14.5px; max-width: 92ch; }
 .stag { justify-self: start; font-family: var(--font-label); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-radius: 999px; padding: 2px 10px; border: 1px solid var(--line); color: var(--muted); }
 .stag.s-applied, .stag.k-settled { color: var(--accent); border-color: var(--accent); }
 .stag.s-changed { color: var(--fault); border-color: var(--fault); background: var(--chip-live); }
@@ -1197,7 +1263,8 @@ section > * { min-width: 0; }
 .q.q-applied { border-left-color: var(--accent); }
 .q.q-changed { border-left-color: var(--fault); }
 .q.q-open { border-left-color: var(--line-strong); }
-.qgroup > h3 { font-size: 17px; color: var(--muted); font-weight: 600; }
+.qgroup { border-top: 2px solid var(--line); padding-top: 12px; }
+.qgroup > h3 { font-size: 21px; font-weight: 600; }
 ul.rounds, ul.later { margin: 0; padding-left: 22px; display: grid; gap: 8px; max-width: 88ch; }
 ul.rounds li a.round { font-weight: 600; }
 .topic { display: grid; gap: 10px; }
@@ -1215,8 +1282,9 @@ ul.rounds li a.round { font-weight: 600; }
 .req h4 { font-size: 17px; font-weight: 600; }
 .req p { max-width: 82ch; font-size: 15px; }
 .req .tag { margin-right: 6px; }
-.req .numset { background: var(--chip); border-radius: 6px; padding: 8px 12px; }
-.req .numset a { font-size: 14px; white-space: nowrap; }
+.req .numset { background: var(--chip); border-radius: 6px; padding: 8px 12px; display: grid; gap: 4px; }
+.req .numset .nkind { font-weight: 600; font-size: 14.5px; }
+.req .numset .small { font-size: 13.5px; color: var(--muted); }
 .req .state { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
 .req .state .small { font-size: 13.5px; color: var(--muted); flex: 1 1 20em; }
 .served { display: grid; gap: 6px; }
@@ -1645,30 +1713,103 @@ ALT_TITLE_START = ['Getting state onto screens', 'The rules', 'Equipment', 'The 
                    "The tap's answer and the night's record", 'The lifecycle', 'The scoreboard', 'Release day']
 
 
+# Version 10: the tag each recommendation carries (decisions.json recKind) and its style. "What we need from you"
+# marks a call only the owner can make; "Recommendation" is the agent's advice.
+REC_KIND = {'Recommendation': 'advice', 'What we need from you': 'need'}
+# The builder's own lead-ins to the three sections version 10 adds below the questions (they address the owner).
+READINGS_LEAD = ('Each of these is the agent\'s reading of your words, not something you said. Nothing is built on a '
+                 'reading until you confirm it.')
+CALLS_LEAD = ('By your ruling these choices are the agent\'s to make, so the agent running the pass made them. Each '
+              'stands unless you overrule it by its title in the chat.')
+REVIEW_LEAD = ('The requirements the panel and the design rounds design against, each to read on '
+               '[[page:requirements]]. Flag in the chat anything wrong or missing.')
+
+
 def question_html(q):
-    opts = ''
-    if q.get('options'):
-        opts = ('<div class="block"><span class="tag">The options, and what each costs</span><ul class="options">'
-                + ''.join(f'<li><strong>{rich(o["label"])}</strong> {rich(o["cost"])}</li>' for o in q['options'])
-                + '</ul></div>')
+    """A question in version 10's shape: status, letter and title; what it decides; what we know; each option with
+    its label, what it means and what it costs; the recommendation under its recKind."""
     if q['anchor'] != 'q-' + q['letter'].lower():
         raise SystemExit(f'question {q["letter"]}: anchor {q["anchor"]} is not q-<letter>')
-    return f'''<article class="q q-{q["status"]}" id="{q["anchor"]}">
-  <p class="stag s-{q["status"]}">{e(STATUS_TEXT[q["status"]])}</p>
-  <h3><span class="letter">{e(q["letter"])}.</span> {rich(q["title"])}</h3>
+    if q['recKind'] not in REC_KIND:
+        raise SystemExit(f'question {q["letter"]}: recKind "{q["recKind"]}" is neither of {list(REC_KIND)}')
+    if not q.get('options'):
+        raise SystemExit(f'question {q["letter"]} has no options')
+    opts = []
+    for o in q['options']:
+        for f in ('label', 'means', 'cost'):
+            if not (o.get(f) or '').strip():
+                raise SystemExit(f'question {q["letter"]}: an option has no {f}: {o.get("label", "")[:60]}')
+        opts.append(f'<li><p class="olabel">{rich(o["label"])}</p>'
+                    f'<p class="opart"><span class="tag">What it means</span> {rich(o["means"])}</p>'
+                    f'<p class="opart"><span class="tag">What it costs</span> {rich(o["cost"])}</p></li>')
+    kind = REC_KIND[q['recKind']]
+    # Version 10 check: every question is open, so a tag saying "Open" above each title is noise; the tag is drawn
+    # only for a question whose status is something else.
+    stag = '' if q['status'] == 'open' else f'\n  <p class="stag s-{q["status"]}">{e(STATUS_TEXT[q["status"]])}</p>'
+    return f'''<article class="q q-{q["status"]}" id="{q["anchor"]}">{stag}
+  <h4><span class="letter">{e(q["letter"])}.</span> {rich(q["title"])}</h4>
   <div class="block"><span class="tag">What it decides</span><p>{rich(q["decides"])}</p></div>
-  <div class="block"><span class="tag">What we know</span><ul>{li(q["evidence"])}</ul></div>
-  {opts}
-  <p class="rec"><span class="tag">{e(q["recKind"])}</span>{rich(q["recommendation"])}</p>
+  <div class="block"><span class="tag">What it means in practice</span><ul>{li(q["evidence"])}</ul></div>
+  <div class="block"><span class="tag">The options</span><ul class="options">{"".join(opts)}</ul></div>
+  <div class="rec rec-{kind}"><span class="tag">{e(q["recKind"])}</span><p>{rich(q["recommendation"])}</p></div>
 </article>'''
+
+
+def readings_html(d):
+    items = []
+    for r in d['readings']:
+        if not (r.get('source') or '').strip():
+            raise SystemExit(f'a reading has no source: {r["text"][:60]}')
+        items.append(f'<li><p>{rich(r["text"])}</p>'
+                     f'<p class="src"><span class="tag">Where the reading comes from</span> {rich(r["source"])}</p></li>')
+    return f'<ul class="readings">{"".join(items)}</ul>'
+
+
+def calls_html(d):
+    out = []
+    for c in d['calls']:
+        s = slug(c['title'])
+        out.append(f'''<article class="call">
+    <h3 id="call-{s}">{e(c["title"])}</h3>
+    <p>{rich(c["call"])}</p>
+    <p class="why"><span class="tag">Why</span> {rich(c["why"])}</p>
+  </article>''')
+    return f'<div class="calls">{"".join(out)}</div>'
+
+
+def review_html(d):
+    out = []
+    for r in d['review']:
+        nums = ''
+        if r.get('numbers'):
+            nums = (f'<div class="block"><span class="tag">How each number is sorted</span>'
+                    f'<ul class="numbers">{li(r["numbers"])}</ul></div>')
+        out.append(f'''<article class="review-item" id="review-{slug(r["title"])}">
+    <h3>{e(r["title"])}</h3>
+    <p>{rich(r["what"])}</p>
+    <p class="go">Read them on {rich(r["link"])}.</p>
+    {nums}
+  </article>''')
+    return f'<div class="reviews">{"".join(out)}</div>'
 
 
 def page_decisions(D):
     d = D['decisions']
     groups = ''.join(f'''<div class="qgroup" id="g-{slug(g["title"])}">
     <h3>{e(g["title"])}</h3>
+    <div class="prose qintro">{paras(g["intro"])}</div>
     {"".join(question_html(q) for q in g["questions"])}
   </div>''' for g in d['groups'])
+    contents = ''.join([
+        f'<li><a href="{href("decisions", "open")}">Open now</a>: '
+        + '; '.join(f'<a href="{href("decisions", "g-" + slug(g["title"]))}">{e(g["title"])}</a>' for g in d['groups'])
+        + '</li>',
+        f'<li><a href="{href("decisions", "readings")}">Readings of your words, to confirm</a></li>',
+        f'<li><a href="{href("decisions", "calls")}">The agent\'s calls, for you to overrule</a></li>',
+        f'<li><a href="{href("decisions", "review")}">The requirements, for your review</a></li>',
+        f'<li><a href="{href("decisions", "design-rounds")}">Coming in the design rounds</a></li>',
+        f'<li><a href="{href("decisions", "decided")}">Decided, by topic</a></li>',
+    ])
     rounds = []
     for r in d['designRounds']:
         head, sep, rest = r['text'].partition(':')
@@ -1696,11 +1837,30 @@ def page_decisions(D):
     return f'''<header class="page-head">
   <h1>Decisions</h1>
   <div class="prose">{paras(d["intro"])}</div>
+  <nav class="onpage" aria-label="On this page"><span class="tag">On this page</span><ul>{contents}</ul></nav>
 </header>
 
 <section class="questions" id="open" aria-labelledby="open-h">
   <h2 id="open-h">Open now</h2>
   {groups}
+</section>
+
+<section id="readings" aria-labelledby="readings-h">
+  <h2 id="readings-h">Readings of your words, to confirm</h2>
+  <p class="lead-in">{rich(READINGS_LEAD)}</p>
+  {readings_html(d)}
+</section>
+
+<section id="calls" aria-labelledby="calls-h">
+  <h2 id="calls-h">The agent's calls, for you to overrule</h2>
+  <p class="lead-in">{rich(CALLS_LEAD)}</p>
+  {calls_html(d)}
+</section>
+
+<section id="review" aria-labelledby="review-h">
+  <h2 id="review-h">The requirements, for your review</h2>
+  <p class="lead-in">{rich(REVIEW_LEAD)}</p>
+  {review_html(d)}
 </section>
 
 <section id="design-rounds" aria-labelledby="design-rounds-h">
@@ -1733,8 +1893,13 @@ def state_html(item):
     k = item['statusKind']
     if k not in STATUS_KIND:
         raise SystemExit(f'{item["id"]}: unknown statusKind {k}')
+    grounds = rich(status_grounds(item['status']))
+    # Version 10 check (R3): a question named by its title in a status line links to its place on Decisions; the
+    # link shows the title only, never the letter.
+    for key, title in Q_TITLES.items():
+        grounds = grounds.replace(f'“{e(title)}”', f'“{q_a(key)}”')
     return (f'<p class="state"><span class="stag k-{slug(k)}">{e(STATUS_KIND[k])}</span>'
-            f'<span class="small">{rich(status_grounds(item["status"]))}</span></p>')
+            f'<span class="small">{grounds}</span></p>')
 
 
 def status_grounds(s):
@@ -1788,7 +1953,7 @@ def promise_html(j, D):
 
     def short(f):
         fid = f['id']
-        note = ' <span class="muted">(proposed)</span>' if fid == 'N1' else ''
+        note = ' <span class="muted">(from the review of standalone games)</span>' if fid == 'N1' else ''
         cls = '' if f['primary'] else ' class="secondary"'
         return f'<li{cls}>{flaw_a(fid)}{note}: {e(f["how"])}</li>'
     main = ''.join(short(f) for f in j['flaws'] if f['primary'])
@@ -1825,11 +1990,58 @@ def promise_html(j, D):
 </section>'''
 
 
+# Version 10: each number a quality target needs carries its sort (numberKind), and each extension case its kind
+# (one of the owner's two kinds of extension, or neither: "Two kinds of game extension" in the decision record).
+NUMBER_KIND = {
+    'engine': 'An engine requirement or limit',
+    'production': 'A production\'s setting',
+    'default': 'A technical default',
+    'mixed': 'Mixed: the text gives each part\'s sort',
+}
+NUMBER_WHERE = ('The agent running the pass sorted every number as an engine requirement or limit, a production\'s '
+                'setting or a technical default; [[page:decisions#review|Decisions]] lists the sorts in one place, under '
+                'the review, for you to overrule.')
+NUMBER_LINK = '[[page:decisions#review|All the sorts, on Decisions]]'   # under each number; the sentence above once
+# Version 10 check (M2): the growth section's lead-in says what the two kinds are and whose words they are.
+GROWTH_LEAD = ('{n} extension cases, grouped by who does the growing. Each is marked with one of your two kinds of game '
+               'extension (“[[dec:two-kinds-of-game-extension]]”) or neither. In the first, a game\'s own maker builds a '
+               'new mechanic inside the game from what the engine can already do: a new action for the players, or a new '
+               'way the game responds to a trigger the engine already has. In the second, a developer extends the engine '
+               'so that any game can use a response it cannot give yet. Your words were tentative (“should probably”, '
+               '“probably”), and the cases keep them so. A case is neither when it adds no game mechanic: a designer\'s '
+               'content or values, fitting the engine to a venue or a production, a developer\'s support for a program, a '
+               'content tool or other hardware, or work around the game such as rehearsing it, releasing a new engine '
+               'version or telling the night from its record.')
+CASE_KIND = {'inside the game': 'A mechanic made inside the game', 'for all games': 'An extension for all games'}
+
+
+def number_kind(t):
+    """The sort of a quality target's number; a number with no sort, or a sort with no number, fails the build."""
+    has, k = bool(t.get('numberToSet', '').strip()), t.get('numberKind')
+    if has and k not in NUMBER_KIND:
+        raise SystemExit(f'{t["id"]}: numberToSet with {"no" if k is None else "an unknown"} numberKind {k!r}')
+    if not has and k is not None:
+        raise SystemExit(f'{t["id"]}: numberKind {k!r} with no numberToSet')
+    return NUMBER_KIND.get(k)
+
+
+def case_kind(x):
+    k = x.get('kind')
+    if not isinstance(k, str) or not k.strip():
+        raise SystemExit(f'{x["id"]}: no kind')
+    if k in CASE_KIND:
+        return CASE_KIND[k]
+    if k.startswith('neither: ') and k[len('neither: '):].strip():
+        return 'Neither kind: ' + k[len('neither: '):].strip()
+    raise SystemExit(f'{x["id"]}: unknown kind {k!r}')
+
+
 def qt_html(t):
     num = ''
-    if t.get('numberToSet', '').strip():
-        num = (f'<p class="numset"><span class="tag">Number to set</span>{rich(cap1(t["numberToSet"]))}. '
-               f'{rich("Listed with the other numbers to set on [[q:A|Decisions]].")}</p>')
+    kind = number_kind(t)
+    if kind:
+        num = (f'<div class="numset"><p><span class="tag">The number</span><span class="nkind">{e(kind)}</span></p>'
+               f'<p>{rich(cap1(t["numberToSet"]))}.</p><p class="small">{rich(NUMBER_LINK)}</p></div>')
     return f'''<article class="req" id="{t["id"].lower()}">
   <h4>{e(t["title"])}</h4>
   <p>{rich(t["situation"])}</p>
@@ -1844,6 +2056,7 @@ def ex_html(x):
     return f'''<article class="req" id="{x["id"].lower()}">
   <h4>{e(x["title"])}</h4>
   <p><span class="tag">Who</span>{rich(cap1(x["who"]))}</p>
+  <p><span class="tag">Kind</span>{e(case_kind(x))}</p>
   <p>{rich(x["case"])}</p>
   <p><span class="tag">Goes through</span>{rich(x["throughWhat"])}</p>
   <p><span class="tag">Must not need</span>{rich(x["mustNotNeed"])}</p>
@@ -1855,10 +2068,13 @@ def ex_html(x):
 
 
 def growth_groups(D):
-    """Each extension case in exactly one group: the growth item whose line links it with an [[ex:]] marker."""
+    """Each extension case in exactly one group: the growth item whose line links it with an [[ex:]] marker. A case
+    linked more than once in one group's line counts once, at its last place (version 10: the designers' line names
+    the owner's example before its list, which ends with it); a case in two different groups fails the build."""
     groups, seen = [], {}
     for g in D['front']['growth']:
-        ids = re.findall(r'\[\[ex:(EX\d+)(?:\|[^\]]*)?\]\]', g['line'])
+        found = re.findall(r'\[\[ex:(EX\d+)(?:\|[^\]]*)?\]\]', g['line'])
+        ids = list(reversed(dict.fromkeys(reversed(found))))
         for x in ids:
             if x in seen:
                 raise SystemExit(f'extension case {x} falls in two groups: "{seen[x]}" and "{g["who"]}"')
@@ -1907,13 +2123,13 @@ def page_requirements(D):
 
 <section id="qualities" aria-labelledby="qualities-h">
   <h2 id="qualities-h">How well it must work</h2>
-  <p class="lead-in">{len(D["qt_list"])} quality targets under {len(order)} qualities. {cap1(NUM_WORD[n_num] if n_num < len(NUM_WORD) else str(n_num))} leave a number for you to set; {rich("Decisions lists them in one place, under the question “[[q:A]]”")}</p>
+  <p class="lead-in">{cap1(num_word(len(D["qt_list"])))} quality targets under {num_word(len(order))} qualities. {cap1(num_word(n_num))} need a number. {rich(NUMBER_WHERE)}</p>
   {"".join(quality_groups)}
 </section>
 
 <section id="growth" aria-labelledby="growth-h">
   <h2 id="growth-h">How it must grow</h2>
-  <p class="lead-in">{len(EX)} extension cases, grouped by the kind of person who does the growing.</p>
+  <p class="lead-in">{rich(GROWTH_LEAD.format(n=cap1(num_word(len(EX)))))}</p>
   {growth}
 </section>
 
@@ -2208,7 +2424,8 @@ def card_html(c):
 
 
 def n1_html(D):
-    """The proposed seventeenth, a short entry: no card, no record in the cards data (row F82)."""
+    """The seventeenth, from the review of standalone games, a short entry: no card, no record in the cards data
+    (row F82). Version 10: it is no longer "proposed"; the agent's call settled that it stays a flaw of its own."""
     lines = D['n1_lines']
     main = [(j, h) for j, h, p in lines if p]
     also = [(j, h) for j, h, p in lines if not p]
@@ -2217,7 +2434,7 @@ def n1_html(D):
 <article class="card proposed" id="n1">
   <header class="card-head">
     <h3>{e(N1_TITLE)}</h3>
-    <div class="chips"><span class="chip">Proposed</span><span class="chip">{D["n1_findings"]} problems found</span></div>
+    <div class="chips"><span class="chip">From the review of standalone games</span><span class="chip">{D["n1_findings"]} problems found</span></div>
   </header>
   <div class="story">
     <p><span class="tag">What breaks</span> {e(main[0][1])}</p>
@@ -2228,7 +2445,7 @@ def n1_html(D):
     <summary>How the earlier candidate would remove it</summary>
     {part_row(D["n1_parts"], "Removed by these parts of the earlier candidate")}
   </details>
-  <p class="design"><span class="tag">Waiting for your answer</span> {rich("Whether it is a design flaw of its own, needing its own design choice, is part of your question [[q:G]]. Its problems come from the review of standalone games.")}</p>
+  <p class="design"><span class="tag">Settled by the agent's call</span> {rich(N1_CALL)}</p>
 </article>'''
 
 
@@ -2271,7 +2488,7 @@ def page_today(D):
     n_live = sum(1 for x in entries if x[2] == SEEN_LIVE)
     n_test = sum(1 for x in entries if x[2] == SEEN_TEST)
     for fid, n, live in entries:
-        note = ' <span class="muted">(proposed)</span>' if fid == 'N1' else ''
+        note = ' <span class="muted">(from the review of standalone games)</span>' if fid == 'N1' else ''
         oth = '<br/>'.join(promise_a(x, quotes=True) for x in others.get(fid, []))
         rows.append(f'<tr><th scope="row">{flaw_a(fid)}{note}</th><td>{promise_a(home[fid], quotes=True)}</td>'
                     f'<td class="muted">{oth}</td><td class="num">{n}</td><td>{live}</td></tr>')
@@ -2280,7 +2497,7 @@ def page_today(D):
              f'<tbody>{"".join(rows)}</tbody></table></div>'
              f'<p class="muted">{NUM_WORD[n_live].capitalize()} situations were seen live; '
              f'{NUM_WORD[n_test]} more were reproduced in a test.</p>')
-    # The sixteen, grouped under the promise each mainly touches; the proposed seventeenth after them.
+    # The sixteen, grouped under the promise each mainly touches; the seventeenth, from the review of standalone games, after them.
     groups = []
     for j in jobs:
         mine = [f['id'] for f in j['flaws'] if f['primary'] and f['id'] != 'N1']
@@ -2319,7 +2536,7 @@ def page_today(D):
   {LEGEND}
   {table}
   <div class="family">{"".join(groups)}</div>
-  <h3>The proposed seventeenth</h3>
+  <h3>The seventeenth, from the review of standalone games</h3>
   {n1_html(D)}
 </section>
 
@@ -2371,13 +2588,20 @@ def page_changes(D):
 </article>''' for x in c['cards'])
     recs = []
     for r in c['recommendations']:
-        m = re.fullmatch(r'\[\[q:([A-Z])\]\]', r['question'].strip())
-        if not m:
-            raise SystemExit(f'recommendation {r["key"]}: "question" is not a [[q:X]] marker')
-        title = next(q['title'] for g in D['decisions']['groups'] for q in g['questions'] if q['letter'] == m.group(1))
+        # The question is a plain title (version 10: version 9's letters are history, not links to version 10's
+        # questions) or a marker to a question on Decisions; the build's source check refuses that marker outside
+        # decisions.json, so today every entry is a plain title.
+        m = re.fullmatch(r'\[\[q' r':([A-Z])\]\]', r['question'].strip())
+        if m:
+            title = next(q['title'] for g in D['decisions']['groups'] for q in g['questions'] if q['letter'] == m.group(1))
+            head = f'{rich(r["question"])}: {rich(title)}'
+        elif r['question'].strip() and '[[' not in r['question']:
+            head = rich(r['question'].strip())
+        else:
+            raise SystemExit(f'recommendation {r["key"]}: "question" is neither a plain title nor a question marker')
         recs.append(f'''<article class="log-entry" id="rec-{r["key"].lower()}">
   <p class="when">Earlier question {e(r["key"])}</p>
-  <h3>{rich(r["question"])}: {rich(title)}</h3>
+  <h3>{head}</h3>
   <div class="beforeafter">
     <div><span class="tag">Before</span><p>{rich(r["before"])}</p></div>
     <div><span class="tag">After</span><p>{rich(r["after"])}</p></div>
@@ -2387,6 +2611,14 @@ def page_changes(D):
     jargon = ''.join(f'<tr><th scope="row">{rich(x["was"])}</th><td>{rich(x["now"])}</td></tr>' for x in c['jargon'])
     numbers = ''.join(f'<tr><th scope="row">{rich(x["was"])}</th><td>{rich(x["title"])}</td><td>{rich(x["where"])}</td></tr>' for x in c['numbers'])
     seq = ''.join(f'<tr><th scope="row">{rich(x["was"])}</th><td>{rich(x["now"])}</td></tr>' for x in c['sequence'])
+    # Version 10: where each of version 9's eighteen letters went. The letters are version 9's history: plain
+    # text, never links to version 10's questions.
+    for x in c['letters']:
+        if not re.match(r'[A-R]\. \S', x['was']) or '[[' in x['was']:
+            raise SystemExit(f'changes.letters: "was" is not version 9\'s letter and title: {x["was"][:60]}')
+    if len(c['letters']) != 18:
+        raise SystemExit(f'changes.letters has {len(c["letters"])} rows, not version 9\'s eighteen')
+    letters = ''.join(f'<tr><th scope="row">{e(x["was"])}</th><td>{rich(x["where"])}</td></tr>' for x in c['letters'])
     return f'''<header class="page-head">
   <h1>Change log</h1>
   <div class="prose">{paras(c["intro"])}</div>
@@ -2417,6 +2649,12 @@ def page_changes(D):
 <section id="vocabulary" aria-labelledby="vocabulary-h">
   <h2 id="vocabulary-h">The words</h2>
   <ul class="plain-list">{li(c["vocabulary"])}</ul>
+</section>
+
+<section id="letters" aria-labelledby="letters-h">
+  <h2 id="letters-h">Where version 9's eighteen questions went</h2>
+  <p>Version 9 put eighteen questions to you, by letter. On 2026-11-02 the Decisions page was reworked to hold only your decisions; this table says where each letter went. The letters here are version 9's, not the letters of the questions on Decisions now.</p>
+  <div class="tablewrap"><table class="logtable"><thead><tr><th>Version 9's question</th><th>Where it went</th></tr></thead><tbody>{letters}</tbody></table></div>
 </section>
 
 <section id="jargon" aria-labelledby="jargon-h">
@@ -2484,7 +2722,7 @@ def index_sentences_without(s):
 
 # Visible ids no page but the change log may show (plan v2 section 5).
 VISIBLE_IDS = re.compile(r'\b(?:J(?:10|[1-9])|C(?:1[0-6]|[1-9])|N1|QT\d+|EX\d+|[A-Z]{1,2}-\d{2,3})\b')
-BARE_NUMBERS = re.compile(r'\b(?:phase|step|round|block|decision|question)s? \d+\b', re.I)
+BARE_NUMBERS = re.compile(r'\b(?:phase|step|round|block|decision|question)s? \d+\b(?!-\d\d-\d\d)', re.I)  # a date after a title is no number
 # Retired words: allowed on changes.html only (the brief's list, then every other term of the jargon table's
 # "Term as it appears" column a pattern matches without false positives). No exceptions: the three phrases the
 # first build let through ("kind of job", "a developer's job", "orchestrator" for the agent running the pass) were
@@ -2645,7 +2883,11 @@ def check(pages, D):
         + [f'd-{a["slug"]}' for a in D['design']['ahead']] + [f'decided-{x["slug"]}' for x in D['design']['decided']],
         'today': ['c%d' % i for i in range(1, 17)] + ['n1', 'works', 'situations', 'standalone', 'evidence'],
         'decisions': [q['anchor'] for g in D['decisions']['groups'] for q in g['questions']]
-        + ['design-rounds', 'decided'] + [f't-{t["slug"]}' for t in D['decisions']['decided']],
+        + ['open', 'readings', 'calls', 'review', 'design-rounds', 'decided']
+        + [f'g-{slug(g["title"])}' for g in D['decisions']['groups']]
+        + [f'call-{slug(c["title"])}' for c in D['decisions']['calls']]
+        + [f't-{t["slug"]}' for t in D['decisions']['decided']],
+        'changes': ['letters', 'jargon', 'numbers', 'sequence'],
     }
     for page, anchors in want.items():
         for anc in anchors:
@@ -2690,6 +2932,7 @@ def check(pages, D):
     for k in pages:
         if k != 'engine' and not pages[k].startswith('<!doctype html>'):
             fails.append(f'{FILE[k]} is not a full document')
+    fails.extend(check_v10(pages, D, ids))
     # The evidence totals come from the data.
     total, aside_n, total_all = D['totals']
     if (total, aside_n, total_all) != (337, 21, 358):
@@ -2706,6 +2949,157 @@ def check(pages, D):
             print('  ' + f, file=sys.stderr)
         raise SystemExit(1)
     print(f'checks passed: {n_links} links resolve; markers, ids, entries, titles, diagrams and words as the plan asks')
+
+
+def source_texts(D):
+    """Every string in every source the pages are built from, as (file name, text)."""
+    sources = {
+        FRONT.name: D['front'], DECISIONS.name: D['decisions'], DESIGN.name: D['design'], CHANGES.name: D['changes'],
+        RULES.name: D['rules'], JOBS.name: D['jobs_data'], STANDALONE.name: json.loads(STANDALONE.read_text()),
+        CARDS.name: json.loads(CARDS.read_text()), SHAPE.name: D['shape'],
+        QUALITY_TARGETS.name: {'targets': D['qt_list']}, EXTENSION_CASES.name: {'cases': D['ex_list']},
+    }
+    out = []
+
+    def walk(name, o):
+        if isinstance(o, str):
+            out.append((name, o))
+        elif isinstance(o, dict):
+            for v in o.values():
+                walk(name, v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(name, v)
+    for name, o in sources.items():
+        walk(name, o)
+    return out
+
+
+# The builder's own texts: every module-level string constant (a text, or a list, tuple or dict of texts).
+def builder_texts():
+    out = []
+
+    def walk(name, o):
+        if isinstance(o, str):
+            out.append((name, o))
+        elif isinstance(o, (list, tuple)):
+            for v in o:
+                walk(name, v)
+        elif isinstance(o, dict):
+            for v in o.values():
+                walk(name, v)
+    for name, o in list(globals().items()):
+        if name.isupper() and not name.startswith('_'):
+            walk(f'build_site.py {name}', o)
+    return out
+
+
+MARKER_KINDS = {'promise', 'part', 'flaw', 'q', 'page', 'qt', 'ex', 'dec', 'call'}
+
+
+def check_v10(pages, D, ids):
+    """Version 10's checks: question markers only in decisions.json and none in the builder's texts; every marker
+    in every source resolves; the Decisions page's new shape is whole and shows every field; the numbers' sorts
+    and the cases' kinds; the change log's letters are history, never links to version 10's questions."""
+    fails = []
+    texts = source_texts(D)
+    own = pathlib.Path(__file__).read_text()
+    if '[[' + 'q:' in own:
+        fails.append('build_site.py: a question marker in the builder\'s own text')
+    for name, t in builder_texts():
+        if '[[' + 'q:' in t:
+            fails.append(f'{name}: a question marker in the builder\'s own text')
+    known = {'promise': TITLES, 'part': NAMES, 'flaw': FLAW_TITLES, 'q': QUESTIONS, 'qt': QT, 'ex': EX, 'dec': DEC,
+             'call': CALLS}
+    for name, t in texts + builder_texts():
+        for m in MARKER.finditer(t):
+            kind, key = m.group(1), m.group(2).strip()
+            if kind not in MARKER_KINDS:
+                fails.append(f'{name}: unknown marker kind [[{kind}:{key}]]')
+            elif kind == 'q' and name != DECISIONS.name:
+                fails.append(f'{name}: a question marker [[{kind}:{key}]] outside decisions.json')
+            elif kind == 'page':
+                pg, _, anchor = key.partition('#')
+                if pg not in FILE:
+                    fails.append(f'{name}: [[page:{key}]] names no page')
+                elif anchor and anchor not in ids[pg]:
+                    fails.append(f'{name}: [[page:{key}]] finds no id "{anchor}" on {FILE[pg]}')
+            elif key not in known[kind]:
+                fails.append(f'{name}: [[{kind}:{key}]] does not resolve')
+    d = D['decisions']
+    qs = [q for g in d['groups'] for q in g['questions']]
+    page = pages['decisions']
+    for g in d['groups']:
+        if not g.get('intro'):
+            fails.append(f'decisions.json: group "{g["title"]}" has no intro')
+    for q in qs:
+        if q['recKind'] not in REC_KIND:
+            fails.append(f'question {q["letter"]}: recKind "{q["recKind"]}"')
+        for o in q.get('options') or []:
+            for f in ('label', 'means', 'cost'):
+                if not (o.get(f) or '').strip():
+                    fails.append(f'question {q["letter"]}: an option without its {f}')
+        if not q.get('options'):
+            fails.append(f'question {q["letter"]}: no options')
+    for r in d['readings']:
+        if not (r.get('source') or '').strip():
+            fails.append(f'a reading without its source: {r["text"][:60]}')
+    call_ids = [f'call-{slug(c["title"])}' for c in d['calls']]
+    if len(call_ids) != len(set(call_ids)):
+        fails.append(f'two calls share an anchor: {sorted({x for x in call_ids if call_ids.count(x) > 1})}')
+    # Every field of decisions.json on the page: count what the renderer draws against the data.
+    n_opts = sum(len(q['options']) for q in qs)
+    counts = [
+        ('question', len(re.findall(r'<article class="q q-', page)), len(qs)),
+        ('"What it decides"', page.count('<span class="tag">What it decides</span>'), len(qs)),
+        ('"What it means in practice"', page.count('<span class="tag">What it means in practice</span>'), len(qs)),
+        ('option label', page.count('<p class="olabel">'), n_opts),
+        ('"What it means"', page.count('<span class="tag">What it means</span>'), n_opts),
+        ('"What it costs"', page.count('<span class="tag">What it costs</span>'), n_opts),
+        ('recommendation', len(re.findall(r'<div class="rec rec-(?:advice|need)">', page)), len(qs)),
+        ('"What we need from you"', page.count('<div class="rec rec-need"><span class="tag">What we need from you</span>'),
+         sum(1 for q in qs if q['recKind'] == 'What we need from you')),
+        ('group intro', page.count('<div class="prose qintro">'), len(d['groups'])),
+        ('reading', page.count('<span class="tag">Where the reading comes from</span>'), len(d['readings'])),
+        ('call', page.count('<article class="call">'), len(d['calls'])),
+        ('call reason', len(re.findall(r'<p class="why"><span class="tag">Why</span>', page)), len(d['calls'])),
+        ('review item', page.count('<article class="review-item"'), len(d['review'])),
+        ('review number', sum(len(r.get('numbers') or []) for r in d['review']),
+         len(re.findall(r'<li>', ''.join(re.findall(r'<ul class="numbers">(.*?)</ul>', page, re.S))))),
+    ]
+    for what, got, want in counts:
+        if got != want:
+            fails.append(f'decisions.html: {got} {what} entries drawn, {want} in decisions.json')
+    order = [page.find(f'id="{a}"') for a in ('open', 'readings', 'calls', 'review', 'design-rounds', 'decided')]
+    if -1 in order or order != sorted(order):
+        fails.append('decisions.html: the sections are not in the order open, readings, calls, review, design rounds, decided')
+    # The numbers' sorts and the cases' kinds (the renderers fail first; this keeps the rule with the checks).
+    for t in D['qt_list']:
+        has, k = bool(t.get('numberToSet', '').strip()), t.get('numberKind')
+        if has != (k is not None) or (k is not None and k not in NUMBER_KIND):
+            fails.append(f'{t["id"]}: numberToSet and numberKind disagree ({k!r})')
+    for x in D['ex_list']:
+        k = x.get('kind') or ''
+        if k not in CASE_KIND and not (k.startswith('neither: ') and k[9:].strip()):
+            fails.append(f'{x["id"]}: kind {k!r}')
+    if pages['requirements'].count('<span class="tag">The number</span>') != sum(1 for t in D['qt_list'] if t.get('numberKind')):
+        fails.append('requirements.html: a number is drawn without its sort')
+    if pages['requirements'].count('<span class="tag">Kind</span>') != len(D['ex_list']):
+        fails.append('requirements.html: an extension case is drawn without its kind')
+    # No page tells you a number is yours to set.
+    for k, s in pages.items():
+        if k == 'changes':
+            continue
+        t = reader_text(s)
+        for m in re.finditer(r'\bnumbers? (?:left )?(?:for you )?to set\b|\bfor you to set\b', t, re.I):
+            fails.append(f'{FILE[k]}: a number left for you to set: ...{t[max(0, m.start() - 50):m.end() + 30]!r}')
+    # The change log's letters are version 9's history: no link from that table to a question on Decisions.
+    letters = pages['changes'].split('id="letters"')[1].split('</section>')[0]
+    if re.search(r'href="decisions\.html#q-', letters):
+        fails.append('changes.html: the letters table links a version 9 letter to a question of version 10')
+    if letters.count('<tr><th scope="row">') != len(D['changes']['letters']):
+        fails.append('changes.html: the letters table does not show every row of changes.letters')
+    return fails
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -2744,6 +3138,11 @@ def load():
         for q in g['questions']:
             QUESTIONS[q['letter']] = q['anchor']
             Q_TITLES[q['letter']] = q['title']
+    for c in decisions['calls']:
+        cs = slug(c['title'])
+        if cs in CALLS:
+            raise SystemExit(f'two calls share the anchor call-{cs}')
+        CALLS[cs] = c
     for t in decisions['decided']:
         if t['slug'] != slug(t['topic']):
             raise SystemExit(f'decided topic slug {t["slug"]} is not the slug of "{t["topic"]}"')

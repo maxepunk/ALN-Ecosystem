@@ -1,10 +1,15 @@
-// Smoke test for the owner's site, version 9 (site/2026-11-01-site-plan-v2.md): load each of the six pages as a
-// browser would see it, at 1100 and 400 pixels wide, in light and in dark, and fail on:
+// Smoke test for the owner's site, version 10 (site/2026-11-01-site-plan-v2.md; version 10's Decisions page in
+// site/v9/build-log-v10.md): load each of the six pages as a browser would see it, at 1100 and 400 pixels wide, in
+// light and in dark, and fail on:
 //   - any console error or page error;
 //   - document.documentElement.scrollWidth wider than the viewport (the body scrolling sideways);
 //   - any .dia-svg box without its svg;
 //   - any link to another page of the site whose file or anchor is missing;
-//   - any link to version 8's retired pages (promises.html, parts.html, flaws.html).
+//   - any link to version 8's retired pages (promises.html, parts.html, flaws.html);
+//   - a section of the page's own anchors (SECTIONS below) missing, without a visible heading, or not reached when
+//     its anchor is followed (version 10: the Decisions page's readings, calls and review, every call's own
+//     anchor, and the change log's letters table);
+//   - an inline tag (a span.tag that opens a paragraph) left alone on its line, with its text below it.
 // It saves one full-page screenshot per page, width and theme: <shotsDir>/<page>-<width>-<theme>.png (24 files).
 //
 // index.html is the artifact's main page and has no document skeleton; it is wrapped here as the publish step
@@ -21,6 +26,13 @@ const { chromium } = require('playwright');
 const PAGES = ['index', 'decisions', 'requirements', 'design', 'today', 'changes'];
 const RETIRED = new Set(['promises.html', 'parts.html', 'flaws.html']);
 const WIDTHS = [1100, 400];
+// The anchors each page must carry, each with a visible heading, and that following them reaches. "call-*" stands
+// for every call's own anchor on Decisions.
+const SECTIONS = {
+  decisions: ['open', 'readings', 'calls', 'review', 'design-rounds', 'decided', 'call-*'],
+  requirements: ['promises', 'qualities', 'growth', 'rules'],
+  changes: ['versions', 'letters', 'jargon', 'numbers', 'sequence'],
+};
 const THEMES = ['light', 'dark'];
 const BASE_RESET = ':root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);'
   + 'padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}';
@@ -51,6 +63,7 @@ async function main() {
 
   const failures = [];
   let loads = 0;
+  let anchorsChecked = 0;
   const browser = await chromium.launch();
   try {
     for (const p of PAGES) {
@@ -80,6 +93,56 @@ async function main() {
             }).slice(0, 5).map(el => `${el.tagName.toLowerCase()}.${el.className && el.className.baseVal === undefined ? el.className : ''}`);
             return out;
           });
+          // Inline tags left alone on their line: the tag's box ends above the first line of what follows it.
+          const lonely = await page.evaluate(() => {
+            const out = [];
+            for (const t of document.querySelectorAll('p > span.tag:first-child')) {
+              if (getComputedStyle(t).display !== 'inline' || t.closest('details:not([open])')) continue;
+              let n = t.nextSibling;
+              while (n && !n.textContent.trim()) n = n.nextSibling;   // skip blank text and empty elements such as <br>
+              if (!n) continue;
+              let r;
+              if (n.nodeType === 3) {
+                const i = n.textContent.search(/\S/);
+                const range = document.createRange();
+                range.setStart(n, i); range.setEnd(n, i + 1);
+                r = range.getClientRects()[0];
+              } else r = n.getClientRects()[0];
+              const tr = t.getClientRects();
+              const last = tr[tr.length - 1];
+              if (r && last && r.top >= last.bottom - 1) out.push(`${t.textContent.trim()} (${t.closest('[id]') ? t.closest('[id]').id : ''})`);
+            }
+            return out.slice(0, 8);
+          });
+          for (const l of lonely) failures.push(`${tag}: a tag alone on its line: ${l}`);
+          // The page's own sections: present, headed, and reached by their anchors.
+          const want = SECTIONS[p] || [];
+          if (want.length) {
+            const anchors = await page.evaluate((want) => want.flatMap(a => a.endsWith('*')
+              ? [...document.querySelectorAll(`[id^="${a.slice(0, -1)}"]`)].map(el => el.id) : [a]), want);
+            if (want.includes('call-*') && anchors.filter(a => a.startsWith('call-')).length === 0) failures.push(`${tag}: no call anchors`);
+            for (const a of anchors) {
+              const head = await page.evaluate((a) => {
+                const el = document.getElementById(a);
+                if (!el) return 'missing';
+                const h = /^H[1-4]$/.test(el.tagName) ? el : el.querySelector('h2, h3, h4');
+                if (!h) return 'no heading';
+                const b = h.getBoundingClientRect();
+                const cs = getComputedStyle(h);
+                if (b.height < 8 || cs.visibility === 'hidden' || cs.display === 'none') return 'heading not visible';
+                return '';
+              }, a);
+              if (head) { failures.push(`${tag}: #${a}: ${head}`); continue; }
+              await page.evaluate((a) => { location.hash = a; }, a);
+              const reached = await page.waitForFunction((a) => {
+                const b = document.getElementById(a).getBoundingClientRect();
+                return b.top >= -2 && b.top < window.innerHeight * 0.5;
+              }, a, { timeout: 3000 }).then(() => true, () => false);
+              if (!reached) failures.push(`${tag}: following #${a} does not bring it into view`);
+            }
+            anchorsChecked += anchors.length;
+            await page.evaluate(() => { history.replaceState(null, '', location.pathname); window.scrollTo(0, 0); });
+          }
           for (const err of errors) failures.push(`${tag}: ${err}`);
           if (r.scrollWidth > r.innerWidth) failures.push(`${tag}: page scrolls sideways (${r.scrollWidth} > ${r.innerWidth}); wide: ${r.wide.join(', ')}`);
           for (const label of r.diaEmpty) failures.push(`${tag}: .dia-svg without an svg: ${label}`);
@@ -108,7 +171,7 @@ async function main() {
     console.error(`SMOKE FAILED (${failures.length}):\n` + failures.join('\n'));
     process.exit(1);
   }
-  console.log(`smoke passed: ${loads} loads, ${loads} screenshots in ${shotsDir}`);
+  console.log(`smoke passed: ${loads} loads, ${loads} screenshots in ${shotsDir}; ${anchorsChecked} section anchors followed`);
 }
 
 main().catch(err => { console.error(err && err.stack || err); process.exit(1); });

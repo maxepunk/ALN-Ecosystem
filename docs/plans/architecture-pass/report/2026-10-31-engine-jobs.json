@@ -5,8 +5,8 @@
     "A venue technician fills in a profile of what the venue has, connects the pack's names to the real instruments in the room on one page, and runs one preflight that answers go or no-go, with every line showing where its answer comes from.",
     "A GM runs the show from four sections (Game Ops, Show Control, Environment, Game Admin), and the post-game report builds itself from what was captured during play.",
     "A player taps tokens on a phone or a shared station with no account, no login, no app to install and no recorded identity unless the game designs an identification moment.",
-    "The business is one production, one kit and many games on it; a second kit or operator is not planned, but must stay cheap to start, so nothing in the engine may assume one kit, one pack or one production.",
-    "Some rules hold throughout: players' data stays on the kit; media never lives inside the pack; phones and hardware scanners stay equal; the engine holds no opinion about game design; red always means act now; the preflight states its own limits; nothing deploys to the live machine until the owner says the new engine is ready.",
+    "The business is one production, one kit and many games on it; a second kit or operator is not planned, but must stay cheap to start, so nothing in the engine may assume one kit, one pack or one production. The engine is meant to be open-sourced for many games in many production settings, so it says which requirements are fixed and which each production sets for itself. ALN is the first production: one game, one venue, the hardware the owner bought. The engine does not take ALN's hardware as its own requirements. The mature engine is flexible about hardware; the current roadmap sets how much of that flexibility is built now and where it names specific hardware requirements, and where it draws that line is open.",
+    "Some rules hold throughout: players' data stays on the kit; media never lives inside the pack; phones and hardware scanners stay equal; the engine holds no opinion about game design; no technical failure stops a game, and the GMs know their fallbacks at a failure; red always means act now; the preflight states its own limits; nothing deploys to the live machine until the owner says the new engine is ready.",
     "A second, toy game stays with the engine's code for good, so every change is proven on two games and ALN stays one pack among others."
   ],
   "jobs": [
@@ -28,7 +28,7 @@
         "The pack's media files and clearing three old stopgaps from the code: the pack names its files by a fingerprint of their contents and carries no venue-hardware name.",
         "Applying a change while the engine runs, between games, and the way each copy of the pack is kept current: one complete list of every place that holds a copy of the pack. No document has this list today.",
         "Tools for writing the game's content: a replacement for Notion feeds the same pack through the same check.",
-        "Hardware-scanner parity: a game mechanic that needs new firmware loaded onto every hardware scanner breaks the designer's edit-and-play loop, so everything a designer changes is pack data."
+        "Hardware-scanner parity: a game mechanic that needs new firmware loaded onto every hardware scanner breaks the designer's edit-and-play loop, so everything a designer changes is pack data. In the owner's tentative words, a mechanic built from what the engine already does should probably be the game maker's own, inside the game; a response the engine cannot give yet probably needs a developer to extend the engine for every game."
       ],
       "flaws": [
         {
@@ -111,12 +111,12 @@
         {
           "id": "C9",
           "primary": true,
-          "how": "Tablets and phones work out claims, points and 'seen before' from their own copy of the rules, so the result screen shows a verdict the engine has not given."
+          "how": "Tablets and phones work out claims, points and “seen before” from their own copy of the rules, so the result screen shows a verdict the engine has not given."
         },
         {
           "id": "C11",
           "primary": true,
-          "how": "One question has several answerers inside the engine or on one tablet, so 'is a video playing', 'which teams exist' and 'may I scan' get different answers in different places."
+          "how": "One question has several answerers inside the engine or on one tablet, so “is a video playing”, “which teams exist” and “may I scan” get different answers in different places."
         },
         {
           "id": "C2",
@@ -149,7 +149,7 @@
           "how": "Team Details reads the score from a place the tablet never fills, so it shows the wrong score while the scoreboard screen shows the right one."
         }
       ],
-      "standalone": "In a standalone game: one tablet holds the only copy, so tablets cannot disagree, but not every screen refreshes. Two tablets are two separate games; whether a game may have only one tablet is your open question [[q:M]]",
+      "standalone": "In a standalone game: one tablet holds the only copy, so tablets cannot disagree, but not every screen refreshes. Two tablets are two separate games; which shapes of standalone game the engine supports, and how many tablets, is the owner's open question.",
       "standaloneCandidate": "In the earlier candidate the tablet runs the engine's Game record and Delivery, or its own engine kept equal by tests.",
       "questions": [
         1,
@@ -161,7 +161,7 @@
         "Delete a transaction on one tablet, then rescan its token on a second tablet with no reload: the scan is accepted.",
         "Drop a tablet's connection without reloading it, press Reset All Scores from another tablet, reconnect the first and rescan an old token: accepted.",
         "For each fact, build the live message and the connect-time entry from the same state: the same fields with the same values.",
-        "Scan a token the engine will refuse: the result screen never says 'complete' and shows the engine's reason."
+        "Scan a token the engine will refuse: the result screen never says “complete” and shows the engine's reason."
       ],
       "parts": [
         "P3",
@@ -187,7 +187,7 @@
         "the owner, who reviews and reports the night",
         "the designer, whose Review stage tells the story of the night"
       ],
-      "goal": "Every request gets one reply in the same form: which request it answers, the outcome, whether it is final, whether anything was stored. At the end, one record of the night is written from the facts decided and the roster, notes, accusation and photos captured during play. It carries the game it ran and the texts the players saw. The tablet's report and the game's own telling both read it; for ALN that telling is the Director Console, a separate program, and the record leaves room for it to run inside the engine's Review stage later. Whether refused scans are recorded stays open.",
+      "goal": "Every request gets one reply in the same form: which request it answers, the outcome, whether it is final, whether anything was stored. At the end, one record of the night is written from the facts decided and the roster, notes, accusation and photos captured during play. It carries the game it ran and the texts the players saw. The tablet's report and the game's own telling both read it; for ALN that telling is the Director Console, a separate program, and the record leaves room for it to run inside the engine's Review stage later. Whether refused scans are recorded is a call of the agent running the pass, which the owner can overrule.",
       "goalOpen": false,
       "needs": [
         "Multi-tap player actions: each is a request that gets the same form of reply.",
@@ -209,7 +209,7 @@
         {
           "id": "C9",
           "primary": false,
-          "how": "The tablet shows its own verdict before the engine answers, so the GM can see 'Transaction Complete' for a scan the engine then refuses; in a standalone game a scan into a paused game shows complete and records nothing. Whether refused scans belong in the night's record is the owner's open question, not this flaw."
+          "how": "The tablet shows its own verdict before the engine answers, so the GM can see “Transaction Complete” for a scan the engine then refuses; in a standalone game a scan into a paused game shows complete and records nothing. Whether refused scans belong in the night's record is a separate call of the agent running the pass, not this flaw."
         },
         {
           "id": "C11",
@@ -219,7 +219,7 @@
         {
           "id": "C13",
           "primary": false,
-          "how": "The device list records a hardware scanner as a phone scanner, because the address it checks in on assumes 'player' when a device does not say what it is."
+          "how": "The device list records a hardware scanner as a phone scanner, because the address it checks in on assumes “player” when a device does not say what it is."
         },
         {
           "id": "N1",
@@ -234,7 +234,7 @@
         8
       ],
       "tests": [
-        "Send a batch of player scans while no game exists: the engine either refuses it so the device keeps the scans, or stores them. Never 'processed' with nothing kept.",
+        "Send a batch of player scans while no game exists: the engine either refuses it so the device keeps the scans, or stores them. Never “processed” with nothing kept.",
         "Send a batch, restart the engine, send the same batch again: the scans appear once.",
         "End a game and reconnect a tablet: it still shows its history, its scans and Download Report, and the wall scoreboard keeps the final scores until a new game starts.",
         "Press Skip twice quickly when the second press must fail: one success and one failure, each matched to its own press."
@@ -246,7 +246,7 @@
       "functional": {
         "people": "The GM at a token or button and the player at a token; after the show, the director who tells the night's story, the players it is told to, and the owner and designer",
         "moment": "During play at every tap, and after the game when the night is reviewed",
-        "need": "At a tap on a token or a button they learn at once whether it counted, why not if it did not, or that it is held for later or must be tried again; nothing is silently lost or doubled. Afterwards the director tells the players the story of their night from what was captured during play, with the game and the texts they saw, not reconstructed; how that story reaches the players is the game's own business.",
+        "need": "At a tap on a token or a button they learn at once whether it counted, why not if it did not, or that it is kept for later or must be tried again; a connection lost mid-game never stops the game; nothing is silently lost or doubled. Afterwards the director tells the players the story of their night from what was captured during play, with the game and the texts they saw, not reconstructed; how that story reaches the players is the game's own business.",
         "proposedTitle": "Every tap gets its answer, and the night can be told afterwards"
       },
       "shapeChange": "Before, the goal spoke only of the report. Now two parts keep it, Answering at the tap and The night's record after the end, because its two people need different things; whether that makes two promises stays question D."
@@ -258,24 +258,24 @@
       "roles": [
         "the GM, who runs the venue from the Environment and Show Control sections",
         "the audience, who watch the TV and hear the speakers",
-        "the venue installer, whose profile says what is installed tonight",
+        "the venue technician, whose profile says what is installed tonight",
         "players, whose video tokens start a video"
       ],
-      "goal": "The engine reaches each outside program through one interface and keeps a dated picture of it, checked against the program. One program watcher restarts a crashed program a few times, then shows a red row with a Restart button. A setting says whether the engine starts each program itself or uses one already running. Held cues and videos are kept in one place.",
+      "goal": "The engine reaches each outside program through one interface and keeps a dated picture of it, checked against the program. One program watcher restarts a crashed program a few times, then shows a red row with a Restart button. A setting says whether the engine starts each program itself or uses one already running. Held cues and videos are kept in one place. A new service, such as audio in several rooms, is added once for every game at the place a new program plugs in.",
       "goalOpen": false,
       "needs": [
         "The program watcher: each program gets one restart rule with a limited number of tries and then a red row, and the engine tells its own video or music player from one it did not start. Today four different kinds of restart rule exist and the TV's browser has none.",
         "The setting that says whether the engine starts each program or uses one already running: a plain setting, read once at start. The list of planned capabilities gives it a file of its own; where the setting lives is left to the design rounds.",
         "Self-heal: the engine fixes a crashed program silently and raises a red row only for what it cannot fix.",
         "Not installed tonight: a verdict that sticks, silences the cues that depend on it and is never restarted, plus a decision about what a reset and a restart do to a service the GM has taken out of service.",
-        "The updates that carry each service's state: no service keeps a private 'connected' note beside the shared health list, and one place, not two, decides when a held item runs out.",
+        "The updates that carry each service's state: no service keeps a private “connected” note beside the shared health list, and one place, not two, decides when a held item runs out.",
         "Remote displays and the pack's media files: the engine knows whether a second screen is alive and whether the named video files exist on its disk."
       ],
       "flaws": [
         {
           "id": "C2",
           "primary": true,
-          "how": "'Is it working' and 'what is it doing' reach the screens by different routes, so the music panel can keep a calm playing look while the engine knows the player is down."
+          "how": "“Is it working” and “what is it doing” reach the screens by different routes, so the music panel can keep a calm playing look while the engine knows the player is down."
         },
         {
           "id": "C3",
@@ -290,12 +290,12 @@
         {
           "id": "C10",
           "primary": false,
-          "how": "When the venue profile fails to load, six services that are installed read 'not installed', and the panel shows a calm green count."
+          "how": "When the venue profile fails to load, six services that are installed read “not installed”, and the panel shows a calm green count."
         },
         {
           "id": "C11",
           "primary": false,
-          "how": "'Is a video playing' has eight answers, and a paused video counts as not playing for four of them."
+          "how": "“Is a video playing” has eight answers, and a paused video counts as not playing for four of them."
         }
       ],
       "standalone": "In a standalone game: no outside program runs; the service panels are hidden on the tablet and each player device plays its own audio, so nothing here fails.",
@@ -306,9 +306,9 @@
         5
       ],
       "tests": [
-        "Play a video: the engine reports 'started' within half a second every time, whichever order the player sends its signals.",
+        "Play a video: the engine reports “started” within half a second every time, whichever order the player sends its signals.",
         "Kill the music player during play: the next live message says stopped with no track, and the controls come back within about ten seconds with no reload.",
-        "Stop the lighting system, then start it again: the lighting panel shows 'unavailable', then its scene tiles, with no reload.",
+        "Stop the lighting system, then start it again: the lighting panel shows “unavailable”, then its scene tiles, with no reload.",
         "Pause a video, then run the queue: the paused video is not replaced, and a player who scans while a video is paused is not told the video was triggered."
       ],
       "parts": [
@@ -318,7 +318,7 @@
       "functional": {
         "people": "The audience who see and hear the show; the GM at the Environment and Show Control sections",
         "moment": "When the game says so, and whenever the GM presses a control",
-        "need": "The room does what the designer cued and what the GM asked; the GM sees it happen, or sees at once that it did not and what to press; a dead program comes back by itself before anyone notices.",
+        "need": "The room does what the designer cued and what the GM asked; the GM sees it happen, or sees at once that it did not and what to press; a dead program comes back by itself before anyone notices, and when it cannot, the GM sees what to do to keep the game going.",
         "proposedTitle": "The room does what the designer cued and the GM asked"
       },
       "shapeChange": "Before, the title also asked the engine to know each program's true state. Now Equipment keeps that dated picture here, beside the Show runner. Showing it truly on a screen belongs to another promise, \"Anyone reading a screen can act on it without a second question\", which the label on every fact keeps. Running the room and labelling a screen are different work."
@@ -343,7 +343,7 @@
         "Writing the record of the night when the game ends, and capturing the roster, notes and accusation: every fact that exists only on a tablet reaches the engine before the game ends.",
         "The GM scanner redesign: the new phase fact has a defined fate at pause, end and reset.",
         "The second game: hidden facts survive a restart.",
-        "Swapping the new show machine (green) in for the one in use (blue): the engine updates only between events; the test environment: reset runs the same steps in tests as at a show."
+        "Swapping the new show machine in for the one in use now: the engine updates only between events; the test environment: reset runs the same steps in tests as at a show."
       ],
       "flaws": [
         {
@@ -378,7 +378,7 @@
         6
       ],
       "tests": [
-        "End a game, restart the engine, scan a player token: refused with 'no game', and the engine reports no current game.",
+        "End a game, restart the engine, scan a player token: refused with “no game”, and the engine reports no current game.",
         "Fire a once-only cue in game one, end it, create and start game two by the plain flow, trigger the cue again: it fires.",
         "Run Reset System with tablets connected: every tablet at once shows an empty game with no scores, claims or history.",
         "Scan three tokens, run Reset System, create and start a game, scan two, press Reset All Scores: the GM history and the TV evidence are empty."
@@ -424,7 +424,7 @@
           "how": "Publishing a pack from the config tool tells the running engine nothing; the engine scores by the change only after a restart, while a reloaded TV already shows it."
         }
       ],
-      "standalone": "In a standalone game: no engine exists to rehearse against, so this promise has no gap here; a mid-game reload that takes a newer pack breaks \"The designer's game is the game the whole kit plays\".",
+      "standalone": "In a standalone game: no engine exists to rehearse against, so this promise has no gap here; a mid-game reload that takes a newer pack breaks “The designer's game is the game the whole kit plays”.",
       "standaloneCandidate": "In the earlier candidate the same Pack channel brings a published pack to the tablet, so the designer's publish is what it plays.",
       "questions": [
         4,
@@ -481,7 +481,7 @@
         1
       ],
       "tests": [
-        "Open a connection with no password or pass and a device type of 'scanner', then ask for the state: refused, nothing arrives.",
+        "Open a connection with no password or pass and a device type of “scanner”, then ask for the state: refused, nothing arrives.",
         "Ask the engine for the game state with no password or pass from the kit network: refused, or only what a player needs.",
         "Connect as a TV: it receives only the events its role needs, and what it receives on connecting holds only exposed evidence and team totals.",
         "Drop a tablet's network, or kill its browser without a clean close, then reload it mid-game: it reconnects under its own station name within five seconds."
@@ -500,19 +500,19 @@
     {
       "id": "J8",
       "title": "Run wherever the venue and the game need",
-      "meaning": "On the show machine with this venue's equipment, fitted by the installer through a profile; with or without an engine, as a choice the game declares and never mixed; and on another kit, another pack or another operating system later. Nothing in the engine assumes one kit, one pack or one production.",
+      "meaning": "On the show machine with this venue's equipment, fitted by the venue technician through a profile; with or without an engine, as a choice the game declares for a room where a network connection is not feasible, or where only GM scanners, player scanners or both are wanted, and never mixed; and on another kit, other hardware, another pack or another operating system later. Nothing in the engine assumes one kit, one pack or one production, and the engine says what is fixed and what each production sets.",
       "roles": [
-        "the venue installer, who fits the game to the room",
-        "the GM running a standalone game on one tablet",
+        "the venue technician, who fits the game to the room",
+        "the GMs running a standalone game, and the players alone with their scanners if the owner confirms that a standalone game may have no GM tablet",
         "players on standalone devices",
-        "a future operator with a second kit"
+        "another production with its own kit, venue and hardware"
       ],
-      "goal": "The venue technician picks the pack and the profile by name, fills the profile, binds each pack name to an instrument and runs one preflight. The equipment's names live only in the venue technician's profile and in each running copy of the engine's own settings, so new kits and machines need no code. A check at start compares what each machine carries with its written list. Phones and hardware scanners stay equal. Standalone is declared, never mixed; where, and how many tablets, stays open.",
+      "goal": "The venue technician picks the pack and the profile by name, fills the profile, binds each pack name to an instrument and runs one preflight. The equipment's names live only in the venue technician's profile and in each running copy of the engine's own settings, so new kits, other hardware and new machines need no change to the rest of the code. A check at start compares what each machine carries with its written list. Phones and hardware scanners stay equal. Standalone is declared, never mixed, for rooms with no feasible network or where only scanners are wanted; where the declaration is kept, and which shapes the engine supports (GM scanners, player scanners or both; how many tablets), stay open. Another production finds in one place what is fixed and what it may set.",
       "goalOpen": false,
       "needs": [
         "Venue profiles, the page that binds the pack's names to real instruments, the equipment editor and tech rider, and the hand-off from designer to venue technician to GM: the profile is read once at start, and the design says what a profile change leads to, since a pack change can be applied while the engine runs and a profile change cannot.",
         "The setting that says whether the engine starts each program or uses one already running, support for more kits, and the kit's own network: no names unique to one kit in engine code, each running copy of the engine keeping its own files, network ports and settings, and a name server (the kit network's address book) that the engine reads but does not run.",
-        "Hardware-scanner parity: every new game mechanic has matching firmware, and a decision on the hardware scanner's missing standalone mode.",
+        "Hardware-scanner parity: every ability a developer adds for all games has matching firmware, so a mechanic made inside the game needs none; the hardware scanner plays standalone games as the phone's scanner does, in the owner's words “player scanners (phone or hardware)”; its missing standalone mode is a parity gap to close.",
         "Standalone games need something that says a game is standalone; today nothing in the pack says so.",
         "The planning view, which answers for an imagined venue on paper, needs nothing from the running engine."
       ],
@@ -557,7 +557,7 @@
       "tests": [
         "In a standalone game, pause the game and scan: refused with a reason and the token not used; end the game and scan: refused.",
         "On a new machine whose operating system gives the speaker's audio rule and the TV's browser their new names, start the engine: it logs no warning and the TV page opens.",
-        "Start a player device with no engine in a game declared standalone: it says 'standalone', not 'offline' or 'disconnected'.",
+        "Start a player device with no engine in a game declared standalone: it says “standalone”, not “offline” or “disconnected”.",
         "Build a clean machine from the deployment guide: it pairs a speaker and plays through it, and the install line works on the new operating-system image."
       ],
       "parts": [
@@ -565,9 +565,9 @@
         "P17"
       ],
       "functional": {
-        "people": "The venue technician; a GM running a game with no engine; a future operator with a second kit",
+        "people": "The venue technician; the GMs running a game with no engine; another production with its own kit, venue and hardware",
         "moment": "In the days before an event, and on the night when the engine is absent by choice",
-        "need": "The venue technician states what the kit brings tonight, binds the pack's names to real instruments and gets one go or no-go. A game declared standalone knows it is standalone instead of showing a lost connection all night. A second kit or a new machine needs no change to engine code.",
+        "need": "The venue technician states what the kit brings tonight, binds the pack's names to real instruments and gets one go or no-go. A game declared standalone, for a room with no feasible network or where only scanners are wanted, knows it is standalone instead of showing a lost connection all night. A second kit, other hardware or a new machine needs no change to the rest of the engine's code, and another production finds what is fixed and what it may set.",
         "proposedTitle": "The game fits the venue it is in tonight"
       },
       "shapeChange": "Before, this promise covered every setup, engine or none. Now it is the venue technician fitting the game to tonight's venue, with a standalone game declared here (where it is kept is a step-3 choice) and Release checking each machine. Question E asks you to confirm."
@@ -585,7 +585,7 @@
       "goal": "Every fact and reply carries a label: how old, how sure, paper or live. Red means act now; grey means absent on purpose; an unreadable equipment list shows unknown. One answer (healthy, down or not installed tonight) serves the editor, the preflight and the start check, and reaches the screen. The preflight says what it cannot check; a broken profile blocks starting.",
       "goalOpen": false,
       "needs": [
-        "The single check of what the game needs against what the venue has, and the preflight: unknown for an equipment list the engine cannot read; a missing or broken profile is a failed check, not 'nothing installed'; each line labeled paper or live.",
+        "The single check of what the game needs against what the venue has, and the preflight: unknown for an equipment list the engine cannot read; a missing or broken profile is a failed check, not “nothing installed”; each line labeled paper or live.",
         "Not installed tonight: grey for intentional absence, so that red keeps meaning act now.",
         "Go/no-go badges in the editor: the same words in the editor as at the show.",
         "The check of every screen for false statements, and saved pictures of each screen: an audit that finds screens that say something false, and pictures that catch accidental change.",
@@ -595,7 +595,7 @@
         {
           "id": "C10",
           "primary": true,
-          "how": "Facts do not carry whether they are known, unknown, old or partial, so a screen shows a calm normal value where the truth is 'I do not know' or 'this is broken'."
+          "how": "Facts do not carry whether they are known, unknown, old or partial, so a screen shows a calm normal value where the truth is “I do not know” or “this is broken”."
         },
         {
           "id": "C2",
@@ -610,7 +610,7 @@
         {
           "id": "N1",
           "primary": false,
-          "how": "No screen can tell 'standalone by choice' from 'engine down'."
+          "how": "No screen can tell “standalone by choice” from “engine down”."
         }
       ],
       "standalone": "In a standalone game: the phone says Offline all night, the hardware scanner shows a red Disconnected and a growing queue, a video token says Rescan later, which never works; nothing says a standalone tablet is ready.",
@@ -620,9 +620,9 @@
         2
       ],
       "tests": [
-        "Start the engine with a mistyped profile path: the tablet shows a red 'profile failed to load' row, not a green summary.",
+        "Start the engine with a mistyped profile path: the tablet shows a red “profile failed to load” row, not a green summary.",
         "Fire a mixed standing cue with lighting not installed tonight: the finish message and the standing-cue row name the skipped command.",
-        "Cut a tablet's connection for a minute: every live panel shows its numbers are old, and the header turns 'disconnected'.",
+        "Cut a tablet's connection for a minute: every live panel shows its numbers are old, and the header turns “disconnected”.",
         "Kill the engine: each player scanner shows offline within one check (the scanners check every ten seconds), and the TV shows its clock as unconfirmed, not counting."
       ],
       "parts": [
@@ -648,20 +648,20 @@
         "the people building the engine, whose green run must mean something",
         "the GM, whose live show no test may touch"
       ],
-      "goal": "Tests run in levels, from logic alone, through the real engine and its programs with stand-ins for the room's equipment, to a home test bed and the venue. Each test run, trial copy of the engine and second kit keeps its own files, network ports and settings, so none reaches a live show. The formats two parts share are written once and stand-ins are checked against the real thing; every change runs on two packs. The owner alone sends a checked machine, and can replug the old one.",
+      "goal": "Tests run in levels, from logic alone, through the real engine and its programs with stand-ins for the room's equipment, to a home test bed and the venue. Each test run, trial copy of the engine and second kit keeps its own files, network ports and settings, so none reaches a live show. The formats two parts share are written once and stand-ins are checked against the real thing; every change runs on two packs. How an extension a developer makes for all games relates to the engine's main release is the owner's open question. The owner alone sends a checked machine, and can replug the old one.",
       "goalOpen": false,
       "needs": [
         "The test environment: tests cannot touch the live machine's files that list its running programs, the TV or its players; a test that cannot run says so, and why, instead of passing quietly. Today nothing stops a test copy of the engine from starting the sound system.",
         "Support for more kits and the separate trial copy of the engine: one way, shared with test runs and built once, for each running copy of the engine to keep its own files, network ports and settings. Today sixteen temporary files have the same fixed names for every copy, written by eight pieces of code, and two commands stop programs across the whole machine.",
         "The program watcher: when it stops leftover programs, it can never stop the wrong one.",
         "Saved pictures of each screen, and running every change on two packs (ALN and the toy game): guards against changes the owner did not choose.",
-        "Swapping the new show machine (green) in for the one in use (blue), and two roadmap milestones: the live machine stays frozen, and nothing goes to the show until the owner says so."
+        "Swapping the new show machine in for the one in use now, and two roadmap milestones: the live machine stays frozen, and nothing goes to the show until the owner says so."
       ],
       "flaws": [
         {
           "id": "C8",
           "primary": true,
-          "how": "The engine keeps its helper files in fixed places and stops programs by name across the whole machine, and the tests take over the show machine's real display and audio, so a test run killed the live show's video player on blue (the show machine in use now), and in today's code the same run kills the live engine's video-signal watcher and overwrites its helper files."
+          "how": "The engine keeps its helper files in fixed places and stops programs by name across the whole machine, and the tests take over the show machine's real display and audio, so a test run killed the live show's video player on the show machine in use now, and in today's code the same run kills the live engine's video-signal watcher and overwrites its helper files."
         },
         {
           "id": "C14",

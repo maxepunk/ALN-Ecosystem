@@ -394,7 +394,7 @@
       "runsOn": ["backend", "config-tool"],
       "jobs": ["J10", "J8", "J1"],
       "flaws": ["C15"],
-      "seams": "Swapping the machines, blue for green, on the day the new machine replaces the old one; one list of what is installed, checked with the health words."
+      "seams": "Swapping the machines, the new show machine in for the one in use now, on the day the new machine replaces the old one; one list of what is installed, checked with the health words."
     }
   ],
   "partsMermaid": "flowchart TD\n  P1[\"P1 Game rules\"]\n  P2[\"P2 Pack channel\"]\n  P3[\"P3 Game record\"]\n  P4[\"P4 Answering\"]\n  P5[\"P5 The night's record\"]\n  P6[\"P6 Delivery\"]\n  P7[\"P7 Connections and roles\"]\n  P8[\"P8 Equipment\"]\n  P9[\"P9 Show runner\"]\n  P10[\"P10 Verdict\"]\n  P11[\"P11 Lifecycle\"]\n  P12[\"P12 Venue fit\"]\n  P13[\"P13 Engine instance\"]\n  P14[\"P14 Screens\"]\n  P15[\"P15 Design studio\"]\n  P16[\"P16 Joins and proofs\"]\n  P17[\"P17 Release\"]\n  P12 --> P1\n  P2 --> P1\n  P2 --> P13\n  P10 --> P1\n  P10 --> P12\n  P7 --> P13\n  P8 --> P12\n  P8 --> P13\n  P3 --> P1\n  P3 --> P2\n  P9 --> P8\n  P9 --> P3\n  P9 --> P1\n  P9 --> P10\n  P11 --> P3\n  P11 --> P8\n  P11 --> P9\n  P11 --> P2\n  P11 --> P10\n  P11 --> P12\n  P11 --> P13\n  P4 --> P11\n  P4 --> P3\n  P4 --> P9\n  P4 --> P8\n  P4 --> P7\n  P6 --> P3\n  P6 --> P8\n  P6 --> P9\n  P6 --> P7\n  P6 --> P11\n  P6 --> P2\n  P5 --> P3\n  P5 --> P11\n  P14 --> P4\n  P14 --> P6\n  P14 --> P7\n  P15 --> P2\n  P15 --> P10\n  P15 --> P13\n  P15 --> P4\n  P15 --> P12\n  P15 --> P5\n  P16 --> P4\n  P16 --> P6\n  P16 --> P13\n  P16 --> P1\n  P16 --> P14\n  P16 --> P11\n  P16 --> P8\n  P17 --> P2\n  P17 --> P13\n  P17 --> P10\n  P17 --> P12",

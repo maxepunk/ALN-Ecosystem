@@ -114,7 +114,7 @@
         9
       ],
       "findings": 6,
-      "seenLive": "The owner reports the GM panel falling behind live music on blue until a refresh.",
+      "seenLive": "The owner reports the GM panel falling behind live music on the show machine in use now until a refresh.",
       "parts": [
         "P8",
         "P6"
@@ -181,7 +181,7 @@
         5
       ],
       "findings": 25,
-      "seenLive": "Blue's worst live incident, the video that stayed stopped about 28 seconds, happened on the show machine.",
+      "seenLive": "The worst live incident on the show machine in use now: a video stayed stopped about 28 seconds.",
       "parts": [
         "P8",
         "P9"
@@ -430,7 +430,7 @@
     {
       "id": "C8",
       "title": "Engine and tests both assume they own the machine",
-      "atAShow": "On 2026-09-15 a small test stopped the live show's video player on the blue machine's code. In today's code the same test run kills the live engine's watcher for the video player and overwrites the files that say which programs are running. A killed engine leaves a full-screen player behind. Twenty-one groups of tests open a browser on the show TV. The health check shown to staff who log in, such as the GM, says \"VLC not found\" while the player runs.",
+      "atAShow": "On 2026-09-15 a small test stopped the live show's video player on the show machine in use now. In today's code the same test run kills the live engine's watcher for the video player and overwrites the files that say which programs are running. A killed engine leaves a full-screen player behind. Twenty-one groups of tests open a browser on the show TV. The health check shown to staff who log in, such as the GM, says \"VLC not found\" while the player runs.",
       "whyItHappens": "The engine finds and ends its helper programs by fixed file names and by searching the whole machine for programs by name, as if it were the only engine on the machine. The tests take over whatever display, sound and Bluetooth exist; that a test is safe is claimed in a note in the code, never checked.",
       "designTerms": "Engine instance should own every file, network port and setting this engine holds, behind one interface; the settings file, a test's settings and the trial copy's settings are adapters at its seam, and one start-up step builds every part with them. Today no such seam exists: modules write fixed files every engine shares, and stop programs by searching the whole machine for their names: no locality.",
       "modules": [
@@ -453,7 +453,7 @@
       "examples": [
         {
           "ids": "A-75 / D-64 / B-63 / D-52",
-          "text": "A small test stopped the live video player on blue's code; in today's code it stops the video player's watcher and overwrites the files listing running programs."
+          "text": "A small test stopped the live video player on the show machine in use now; in today's code it stops the video player's watcher and overwrites the files listing running programs."
         },
         {
           "ids": "A-64 / D-70",
@@ -473,7 +473,7 @@
         },
         {
           "ids": "X-07",
-          "text": "Correcting the leftover cleaner's program name alone brings back blue's small-test kill; each run must first get its own folder for these files."
+          "text": "Correcting the leftover cleaner's program name alone brings back the small test's kill of the live video player; each run must first get its own folder for these files."
         }
       ],
       "blueFixes": [
@@ -918,7 +918,7 @@
         },
         {
           "ids": "A-88 / X-03",
-          "text": "The project's own documents give the Bluetooth setting blue found to be wrong, so a new machine pairs a silent speaker."
+          "text": "The project's own documents give a Bluetooth setting found wrong on the show machine in use now, so a new machine pairs a silent speaker."
         },
         {
           "ids": "A-95",
@@ -936,7 +936,7 @@
       "blueFixes": [],
       "questions": [],
       "findings": 12,
-      "seenLive": "Blue hit a half-done rollback, a tablet app from before the rollback still served after a restart, and a speaker paired with no sound set up.",
+      "seenLive": "The show machine in use now hit a half-done rollback, a tablet app from before the rollback still served after a restart, and a speaker paired with no sound set up.",
       "parts": [
         "P17",
         "P2",
@@ -948,7 +948,7 @@
     {
       "id": "C16",
       "title": "A green test run proves nothing about the show",
-      "atAShow": "This flaw shows nothing at a show; it is why the other fifteen flaws reached one. The small tests kept passing while Team Details showed the wrong score, because their stand-in had a value the real code lacks. A delete step in a full run-through test had been silently skipped, because it looked for the Team Details cards under a name the page never used. Blue's last full run skipped 62 tests, and group completion has no test on real content.",
+      "atAShow": "This flaw shows nothing at a show; it is why the other fifteen flaws reached one. The small tests kept passing while Team Details showed the wrong score, because their stand-in had a value the real code lacks. A delete step in a full run-through test had been silently skipped, because it looked for the Team Details cards under a name the page never used. The last full test run of today's engine skipped 62 tests, and group completion has no test on real content.",
       "whyItHappens": "Test stand-ins are written by hand, and nothing compares them to the real code they stand for. A test step that finds nothing on the page, or checks only that no error appeared, passes. Every test engine runs with a switch that changes what Reset System does, so no test runs the reset the show runs.",
       "designTerms": "Joins and proofs should own every test: each part is tested through its interface, a test stand-in is an adapter checked against the real part at the same seam, and one test per fact runs from the part that decides it to a screen, on its own running copy of the engine. Today stand-ins are checked against nothing and no test crosses that path.",
       "modules": [
@@ -979,7 +979,7 @@
         },
         {
           "ids": "A-82",
-          "text": "Blue's last full run skipped 62 tests; group completion has no full run-through test on the real game."
+          "text": "The last full test run of today's engine skipped 62 tests; group completion has no full run-through test on the real game."
         },
         {
           "ids": "X-04",
@@ -997,7 +997,7 @@
       "blueFixes": [],
       "questions": [],
       "findings": 23,
-      "seenLive": "Blue's last full run skipped 62 tests; a delete step had been skipping silently in blue's full run-through tests.",
+      "seenLive": "The last full test run of today's engine skipped 62 tests; a delete step had been skipping silently in its full run-through tests.",
       "parts": [
         "P16"
       ],

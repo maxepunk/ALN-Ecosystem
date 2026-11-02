@@ -107,13 +107,17 @@ Each architect gets one prepared folder and nothing else:
   hardware-flexible and the roadmap sets the bounds; two kinds of game
   extension; the engine says what is fixed and what each production
   sets. Each goes to the panel in the owner's own words from the
-  decision record. The agent's readings of those words that the record
-  marks to be confirmed (that a tablet keeps taking scans while
+  decision record. Two of the agent's readings of those words that the
+  record marks to be confirmed (that a tablet keeps taking scans while
   disconnected; that a standalone game may have no GM tablet) are
   withheld; the panel gets the open questions instead. The requirements
   the panel gets state only what the owner settled and name the open
-  questions; the one reading that reaches it, the sorting of the
-  numbers, is marked in the requirements as the agent's call.
+  questions. Two readings reach it, each marked as the agent's: the
+  sorting of the numbers, in the requirements; and that the design must
+  say how a networked game carries on if the show machine fails, through
+  the target "The GMs know their fallbacks at a failure" and the
+  failures each architect must answer for, beside the owner's question
+  "The show machine fails mid-game".
 - **The six decisions ahead, as the agenda** (see "What the blind round
   gets", below): how the engine holds the game's state; the published
   protocol's form; where authority lives across devices, offline and
@@ -166,8 +170,8 @@ the agenda of the first design round.
 ## What is withheld, and how
 
 Withheld from the blind round: the recommendations and leading guesses
-of the agent running the pass, among them its readings of the owner's
-words of 2026-11-02 that the record marks to be confirmed; the earlier
+of the agent running the pass, among them the two readings of the
+owner's words of 2026-11-02 named under "The blind round"; the earlier
 candidate (it enters the second round as one more proposal); the
 earlier lists of design choices; today's engine and its review.
 Withheld from both rounds: the reasoning of the agent running the pass,
