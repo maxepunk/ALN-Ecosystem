@@ -9,14 +9,14 @@
       "date": "2026-11-02",
       "title": "Your decisions of 2026-11-02, and a Decisions page that holds only your decisions",
       "items": [
-        "On 2026-11-02 you asked: 'are all of them real decisions for me to make? ... And have we captured the actual questions based on the proactive, top-down architectural design paradigm we've been shifting our approach to adopt.' They were not, and the Decisions page is reworked ([[dec:the-decisions-page-holds-only-your-decisions]]): it asks only what you alone can decide, each question explained by what it means in practice at a show, for the GM at a failure, for the designer and for a production that adopts the engine; the agent's calls are listed with their reasons for you to overrule; the readings of your words that the record marks to be confirmed are listed for you to confirm; the requirements are offered for review.",
-        "Ten questions in four groups. The first group is the conflicts between the qualities, which you asked to see before saying which win: 'I would need to understand the specific conflicts and what they mean functionally'. Its introduction names the conflicts your decisions already settle, and its six questions are the open ones: a GM tablet cut off from the engine; the show machine failing mid-game; release day, with the explanation you asked for of what everything updating together means in practice and in the long term; what a game's maker may build inside the pack; how an extension for all games reaches a production; where the trial copy runs while a show runs. Then standalone games (which shapes the engine must run; what a standalone game gives up and keeps), hardware (which hardware the first new engine requires, and what it must allow replacing) and the panel (what its blind round gets). Each question but the last says which decision ahead waits on it; the last, on the panel, is yours because adding to what the blind round gets changes your decision on what the panel sees. Where the answer is a values call of yours, the page says in one line what we need from you instead of recommending.",
-        "Five decisions from your comments of that day are folded into every page: [[dec:no-technical-failure-stops-a-game]]; the purpose of [[dec:standalone-games-declared-never-mixed]], whose words also answer the hardware scanner's standalone mode; [[dec:the-engine-is-hardware-flexible-the-roadmap-sets-the-bounds]]; [[dec:two-kinds-of-game-extension]]; [[dec:the-engine-says-what-is-fixed-and-what-each-production-sets]]. Two of your comments reset questions the agent had put wrongly: on standalone games ('I don't understand the distinction between the two scenarios you presented') and on extensions ('you may be conflating a couple of different framings'); the questions on those topics start again from your words.",
+        "On 2026-11-02 you asked: “are all of them real decisions for me to make? ... And have we captured the actual questions based on the proactive, top-down architectural design paradigm we've been shifting our approach to adopt.” They were not, and the Decisions page is reworked ([[dec:the-decisions-page-holds-only-your-decisions]]): it asks only what you alone can decide, each question explained by what it means in practice at a show, for the GM at a failure, for the designer and for a production that adopts the engine; the agent's calls are listed with their reasons for you to overrule; the readings of your words that the record marks to be confirmed are listed for you to confirm; the requirements are offered for review.",
+        "Ten questions in four groups. The first group is the conflicts between the qualities, which you asked to see before saying which win: “I would need to understand the specific conflicts and what they mean functionally”. Its introduction names the conflicts your decisions already settle, and its six questions are the open ones: a GM tablet cut off from the engine; the show machine failing mid-game; release day, with the explanation you asked for of what everything updating together means in practice and in the long term; what a game's maker may build inside the pack; how an extension for all games reaches a production; where the trial copy runs while a show runs. Then standalone games (which shapes the engine must run; what a standalone game gives up and keeps), hardware (which hardware the first new engine requires, and what it must allow replacing) and the panel (what its blind round gets). Each question but the last says which decision ahead waits on it; the last, on the panel, is yours because adding to what the blind round gets changes your decision on what the panel sees. Where the answer is a values call of yours, the page says in one line what we need from you instead of recommending.",
+        "Five decisions from your comments of that day are folded into every page: [[dec:no-technical-failure-stops-a-game]]; the purpose of [[dec:standalone-games-declared-never-mixed]], whose words also answer the hardware scanner's standalone mode; [[dec:the-engine-is-hardware-flexible-the-roadmap-sets-the-bounds]]; [[dec:two-kinds-of-game-extension]]; [[dec:the-engine-says-what-is-fixed-and-what-each-production-sets]]. Two of your comments reset questions the agent had put wrongly: on standalone games (“I don't understand the distinction between the two scenarios you presented”) and on extensions (“you may be conflating a couple of different framings”); the questions on those topics start again from your words.",
         "The requirements change with them: a new quality target, “[[qt:QT44]]”, so that the GMs know their fallbacks at a failure; “[[qt:QT3]]” now says the game carries on while a tablet is disconnected; every number a target needs is sorted as the engine's requirement or limit, a production's setting with ALN's as the first set, or a technical default, and carries that sort as a field; four new extension cases, your two examples (“[[ex:EX25]]”, “[[ex:EX26]]”), another production adopting the engine (“[[ex:EX27]]”) and other hardware (“[[ex:EX28]]”); every case says which of the two kinds of extension it is, or that it is neither. The standing rules do not change, because the roadmap did not.",
         "The panel's brief is revised: its state lens names keeping the game going through a failure, its growth lens names hardware flexibility and both kinds of extension, its setting gives ALN's kit as the first production's hardware, and its binding decisions add your four of 2026-11-02; what the blind round gets stays your question, and the lenses and the second round's reading of the code are the agent's calls. The Design page's decisions ahead, decided directions and later choices carry the same decisions; three later choices are new.",
         "The table [[page:changes#letters|Where version 9's eighteen questions went]] maps each of the earlier letters to its new letter, to the agent's call that replaced it, to the review it became, or to the decision that answered it."
       ],
-      "prompt": "On 2026-11-02 the owner asked whether all eighteen questions on version 9's Decisions page were really theirs to make, and whether they were the questions the top-down frame needs. The agent answered no to both and proposed seven questions it saw still open. The owner said to rework the page and commented on the seven first: a game paused for a lost connection is 'the worst possible scenario'; standalone games are 'a capability of the \"engine\"' for rooms where a network is not feasible or only scanners are wanted; 'the hardware is fixed only insofar as I have the hardware I have'; there are two kinds of game mechanic extension, one that 'should probably' be built by the game's own maker inside the game and one that 'probably requires a developer' to add for every game; and the engine 'should be relatively agnostic' about one production's numbers, saying instead 'what is a fixes requirement vs what affordances the engine allows'. Those comments became five decisions and the ruling that the Decisions page holds only the owner's decisions."
+      "prompt": "On 2026-11-02 the owner asked whether all eighteen questions on version 9's Decisions page were really theirs to make, and whether they were the questions the top-down frame needs. The agent answered no to both and proposed seven questions it saw still open. The owner said to rework the page and commented on the seven first: a game paused for a lost connection is “the worst possible scenario”; standalone games are “a capability of the ‘engine’” for rooms where a network is not feasible or only scanners are wanted; “the hardware is fixed only insofar as I have the hardware I have”; there are two kinds of game mechanic extension, one that “should probably” be built by the game's own maker inside the game and one that “probably requires a developer” to add for every game; and the engine “should be relatively agnostic” about one production's numbers, saying instead “what is a fixes requirement vs what affordances the engine allows”. Those comments became five decisions and the ruling that the Decisions page holds only the owner's decisions."
     },
     {
       "version": "9",
@@ -1109,7 +1109,7 @@
   "letters": [
     {
       "was": "A. Do the quality targets say how well the engine must work?",
-      "where": "A review: the quality targets, on [[page:decisions]] under the requirements for review. The fourteen numbers are no longer yours to set; each is sorted as the engine's requirement or limit, a production's setting or a technical default (the agent's call 'The quality targets' numbers are sorted, not asked')."
+      "where": "A review: the quality targets, on [[page:decisions]] under the requirements for review. The fourteen numbers are no longer yours to set; each is sorted as the engine's requirement or limit, a production's setting or a technical default (the agent's call “The quality targets' numbers are sorted, not asked”)."
     },
     {
       "was": "B. Do the extension cases say how the engine must grow?",
@@ -1117,7 +1117,7 @@
     },
     {
       "was": "C. Four readings of earlier decisions, to confirm",
-      "where": "The agent's call 'Four readings of earlier decisions are confirmed'; they follow from your later decisions on the order of the work."
+      "where": "The agent's call “Four readings of earlier decisions are confirmed”; they follow from your later decisions on the order of the work."
     },
     {
       "was": "D. Are these the right ten promises?",
@@ -1133,51 +1133,51 @@
     },
     {
       "was": "G. The venue promise names declared standalone",
-      "where": "Answered by [[dec:standalone-games-declared-never-mixed]], whose words the clause quotes. The second point, whether the missing standalone declaration is a flaw of its own, is the agent's call 'The missing standalone declaration is a design flaw of its own'."
+      "where": "Answered by [[dec:standalone-games-declared-never-mixed]], whose words the clause quotes. The second point, whether the missing standalone declaration is a flaw of its own, is the agent's call “The missing standalone declaration is a design flaw of its own”."
     },
     {
       "was": "H. Split the tap promise in two?",
-      "where": "The agent's call 'The tap promise is split in two'."
+      "where": "The agent's call “The tap promise is split in two”."
     },
     {
       "was": "I. Keep the venue promise whole?",
-      "where": "The agent's call 'The venue promise stays one'."
+      "where": "The agent's call “The venue promise stays one”."
     },
     {
       "was": "J. Proof and release in one promise?",
-      "where": "The agent's call 'Proof and release stay one promise'; what release day means in practice is your new question C, 'Release day: what must update together, and how long older devices work'."
+      "where": "The agent's call “Proof and release stay one promise”; what release day means in practice is your new question C, “Release day: what must update together, and how long older devices work”."
     },
     {
       "was": "K. Which promise carries equipment state on screens?",
-      "where": "The agent's call 'The route for equipment state is named in neither promise'."
+      "where": "The agent's call “The route for equipment state is named in neither promise”."
     },
     {
       "was": "L. The hardware scanner's standalone mode",
-      "where": "Answered by [[dec:standalone-games-declared-never-mixed]]: your words of 2026-11-02 name 'player scanners (phone or hardware)'."
+      "where": "Answered by [[dec:standalone-games-declared-never-mixed]]: your words of 2026-11-02 name “player scanners (phone or hardware)”."
     },
     {
       "was": "M. One GM tablet per standalone game?",
-      "where": "The new question G, 'Which standalone games the engine must run', which asks the fuller version: which shapes of standalone game the engine supports, and how many GM tablets."
+      "where": "The new question G, “Which standalone games the engine must run”, which asks the fuller version: which shapes of standalone game the engine supports, and how many GM tablets."
     },
     {
       "was": "N. Exposed evidence and video with no engine",
-      "where": "The agent's call 'Exposed evidence and video with no engine', a technical default; the rule above it is the new question H, 'What a standalone game gives up, and what it keeps'."
+      "where": "The agent's call “Exposed evidence and video with no engine”, a technical default; the rule above it is the new question H, “What a standalone game gives up, and what it keeps”."
     },
     {
       "was": "O. Record every refused GM scan attempt?",
-      "where": "The agent's call 'Every refused GM scan attempt is recorded'; you had asked for the agent's view, and the view is the call."
+      "where": "The agent's call “Every refused GM scan attempt is recorded”; you had asked for the agent's view, and the view is the call."
     },
     {
       "was": "P. The panel's three lenses",
-      "where": "The agent's call 'The panel's three lenses', changed: the state lens now names keeping the game going through a failure, and the growth lens names hardware flexibility and both kinds of extension."
+      "where": "The agent's call “The panel's three lenses”, changed: the state lens now names keeping the game going through a failure, and the growth lens names hardware flexibility and both kinds of extension."
     },
     {
       "was": "Q. What the panel gets in the blind round",
-      "where": "The new question J, 'What the panel gets in its blind round', with the binding decisions now including your four of 2026-11-02."
+      "where": "The new question J, “What the panel gets in its blind round”, with the binding decisions now including your four of 2026-11-02."
     },
     {
       "was": "R. The second round reads today's code",
-      "where": "The agent's call 'The second round reads today's code'."
+      "where": "The agent's call “The second round reads today's code”."
     }
   ]
 }

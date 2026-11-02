@@ -115,7 +115,7 @@
         },
         {
           "id": "J9",
-          "why": "Red means act now, grey means absent on purpose, old looks old, and whether the TV's clock may keep counting while the engine is silent waits on your answer to 'The show machine fails mid-game'."
+          "why": "Red means act now, grey means absent on purpose, old looks old, and whether the TV's clock may keep counting while the engine is silent waits on your answer to “The show machine fails mid-game”."
         },
         {
           "id": "J8",
@@ -304,7 +304,7 @@
     },
     {
       "slug": "one-published-protocol-and-an-outside-test-bench",
-      "line": "One published, versioned protocol defines everything that crosses the engine's edge, and every program is generated from it or checked against it; the tests become a test bench outside the engine; proving each change before it reaches a show stays a quality every part must meet. Together they replace the earlier candidate's part \"Joins and proofs\"."
+      "line": "One published, versioned protocol defines everything that crosses the engine's edge, and every program is generated from it or checked against it; the tests become a test bench outside the engine; proving each change before it reaches a show stays a quality every part must meet. Together they replace the earlier candidate's part “Joins and proofs”."
     },
     {
       "slug": "independent-architects-propose-the-top-level-design",
@@ -455,7 +455,7 @@
     },
     {
       "term": "Not installed tonight",
-      "def": "Grey, absent on purpose, never a fault: tonight's profile leaves the service out. The code calls this state dormant. A service the GM takes out of service during the show is dormant too, for its own reason, and reads \"Out of service\", also grey.",
+      "def": "Grey, absent on purpose, never a fault: tonight's profile leaves the service out. The code calls this state dormant. A service the GM takes out of service during the show is dormant too, for its own reason, and reads “Out of service”, also grey.",
       "group": "page"
     },
     {
@@ -465,12 +465,12 @@
     },
     {
       "term": "Label",
-      "def": "What every fact and every reply carries to a screen: how old it is and how sure the engine is of it, so a screen can show \"old\" or \"unknown\" instead of a calm normal value.",
+      "def": "What every fact and every reply carries to a screen: how old it is and how sure the engine is of it, so a screen can show “old” or “unknown” instead of a calm normal value.",
       "group": "page"
     },
     {
       "term": "Blue, green",
-      "def": "Blue is the show machine in use now, left untouched by this work; the game runs on it until the new engine is ready. Green is the new machine this work builds. Swapping in green is done by replugging, and replugging swaps back. A \"green\" test run, as in the flaw “[[flaw:C16]]”, is a passing one, unrelated.",
+      "def": "Blue is the show machine in use now, left untouched by this work; the game runs on it until the new engine is ready. Green is the new machine this work builds. Swapping in green is done by replugging, and replugging swaps back. A “green” test run, as in the flaw “[[flaw:C16]]”, is a passing one, unrelated.",
       "group": "page"
     },
     {
@@ -595,7 +595,7 @@
     },
     {
       "term": "Adapter",
-      "def": "The real thing plugged in at a seam, like VLC behind \"play a video\".",
+      "def": "The real thing plugged in at a seam, like VLC behind “play a video”.",
       "group": "design"
     }
   ],
