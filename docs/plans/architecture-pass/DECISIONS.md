@@ -843,6 +843,9 @@ History:
   for the next version of the site.
 - 2026-11-02. Version 9 shipped both, with Requirements, Design and
   Today's engine in place of Promises, Parts and Design flaws.
+- 2026-11-02. Version 10 went live the same day: the Decisions page
+  reworked under "The Decisions page holds only your decisions", and
+  the day's other five decisions folded into every page.
 
 **The Decisions page holds only your decisions**
 
@@ -865,6 +868,10 @@ History:
   plus part of a fifth, and most came from the bottom-up period. The
   owner said to rework the page, after commenting on the seven open
   questions the agent proposed instead.
+- 2026-11-02. Version 10 of the site applied it: ten questions in four
+  groups, three readings of the owner's words to confirm, fourteen calls
+  of the agent's with their reasons, and the requirements offered for
+  review.
 
 ---
 
