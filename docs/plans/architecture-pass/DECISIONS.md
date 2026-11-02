@@ -260,18 +260,29 @@ History:
 
 **Standalone games: declared, never mixed**
 
-A whole game can run with no engine, the GM scanner and the player
-scanners each working alone, as a choice a game declares. No game mixes
-networked and standalone devices. Standalone games join the list every
-rule must serve, beside hot-apply, the preview engine, capture and
-players' phones. The ESP32's missing standalone mode is recorded as a
-parity gap, on the owner's rule that the two player scanners keep
-feature parity wherever possible; the owner's explicit word on it is
-still asked for (see "Still open"). Where the fact "this game is
-standalone" is held (the venue profile, the pack, the game's record or
-each device) is a question for the design rounds.
+Standalone games are a capability of the engine: a game can be designed
+and set up to run with no engine, where a network connection is not
+feasible, or where other logistics make it better to use only GM
+scanners, player scanners (phone or hardware), or both. In the owner's
+words (2026-11-02): "Standalone games are a capability of the "engine"
+to enable design and set-up of games that can run in environments where
+a network connection is simply not feasible, or other logistics making
+it more preferable to use only gm and/or player scanners (phone or
+hardware) for a game."
 
-Made 2026-10-31.
+A game declares that it is standalone, and no game mixes networked and
+standalone devices. Standalone games join the list every design choice
+must serve, beside applying a change while the engine runs, the trial
+copy of the engine, capture and players' phones. The hardware scanner
+plays standalone games as the phone's scanner does: the owner's words
+name "player scanners (phone or hardware)", which answers "The hardware
+scanner's standalone mode". Where the fact "this game is standalone" is
+held (the venue profile, the pack, the game's record or each device) is
+a question for the design rounds. Read from the owner's "gm and/or
+player scanners", to be confirmed: a standalone game may have no GM
+tablet at all.
+
+Made 2026-10-31; its purpose stated 2026-11-02.
 
 History:
 - 2026-10-31, the question round of 2026-10-30 to 2026-11-01. Made: yes
@@ -283,6 +294,13 @@ History:
   Decisions page.
 - 2026-11-01. The venue promise on the owner site carries these words
   as a clause ("The venue promise names declared standalone").
+- 2026-11-02. In the chat after version 9 of the site, the owner said
+  what standalone games are for (quoted above). The agent had asked
+  whether they are an occasional fallback or a line of shows; the owner
+  saw no distinction between the two, and the purpose replaces that
+  framing. The statement answers "The hardware scanner's standalone
+  mode", which had waited for the owner's explicit word since
+  2026-10-31.
 
 **The night's record and the after-game article**
 
@@ -337,6 +355,126 @@ History:
   asked first for a careful explanation of the published protocol and
   where it fits in the big picture.
 - 2026-11-01. Made after the explanation. The pending note was removed.
+
+**No technical failure stops a game**
+
+A lost connection or a device that goes down mid-game must not stop
+the game. At that moment the GMs must know the fallbacks that keep it
+running, with as little effect on the players as possible. In the
+owner's words: "For more or less all use cases, having to pause a game
+because a connection was lost or a device goes down mid-game is the
+worst possible scenario. During a game situation, the GMs need to know
+their available fallbacks to keep a game running with as minimal impact
+on the player experience as possible if at all possible if ever there's
+a technical failure mid-game."
+
+Two readings follow, to be confirmed with the owner. First, a GM tablet
+that loses the engine keeps taking scans and the game carries on,
+rather than refusing scans until the connection returns; the quality
+target "A tablet reconnects to the same facts" had left that choice
+open. Second, the design must say how a networked game carries on if
+the show machine itself fails. That meets "Standalone games: declared,
+never mixed": whether a game may carry on with its devices alone, and
+how the results come back together, is a question for the owner.
+
+Made 2026-11-02.
+
+History:
+- 2026-11-02. The owner's comment, in the chat after version 9 of the
+  site, on the agent's question of what a GM tablet does when it loses
+  the show machine mid-show.
+
+**The engine is hardware-flexible; the roadmap sets the bounds**
+
+The hardware is fixed only in that ALN runs on the kit the owner has
+bought. The mature engine is meant to be flexible about hardware, so
+the fundamental architecture must allow that flexibility later. The
+current roadmap sets realistic bounds: which flexibility it builds now,
+and where it names specific hardware requirements. In the owner's
+words: "The hardware is fixed only insofar as I have the hardware I
+have on which I am running ALN, but the point of the engine in its
+mature form is that it is flexible meaning that we should build the
+fundamental architecture to allow flexibility with the hardware down
+the line. Meanwhile, we need to set realistic boundaries about what our
+current roadmap should incorporate in terms of that flexibility vs.
+where it should establish specific hardware requirements." Where the
+current roadmap draws that line is open, for the design rounds and the
+build plan.
+
+Made 2026-11-02.
+
+History:
+- 2026-11-02. The owner's comment, in the chat after version 9 of the
+  site, on the agent's question "Which hardware is fixed?".
+
+**Two kinds of game extension**
+
+A game can be extended in two ways, and the design keeps them apart.
+
+- A new game mechanic built from what the engine can already do: a new
+  action for the players, or a new way for the game to respond to
+  triggers the engine already has. The game's own maker builds it,
+  inside the game; in the long term it may be shared with other game
+  makers for their games. The owner's example: players change the
+  room's lighting by scanning different tokens on a player scanner.
+- A response the engine cannot give yet. A developer extends the engine
+  so that any game can use it. The owner's example: adding a service
+  such as Snapcast for audio in several rooms, so that different areas
+  get different soundtracks and the GMs can play a sound cue on every
+  speaker or on chosen speakers (areas or rooms of the game space).
+
+Two questions stay open, as the owner named them: how an extension made
+for all games relates to the engine's main release, and which piece
+each kind of extension changes (packs, the engine's code, added outside
+services). The owner's wording is tentative ("should probably",
+"probably"), and this record keeps it so. In the owner's words: "Game
+mechanics could be different ways to combine existing in-engine
+capabilities to create different gameplay verbs for the players to
+engage with or different ways the game might actually respond to
+existing game triggers within the engine. This should probably be able
+to be done by the game's own maker inside that game. (though possibly,
+in the long term, with a way to share with other game makers for their
+games too) Game mechanics could also be for an existing gameplay action
+triggering a response that the game engine is not currently capable of.
+This probably requires a developer to extend the code of the engine in
+a way that any game can use."
+
+Made 2026-11-02.
+
+History:
+- 2026-11-02. The owner's comment, in the chat after version 9 of the
+  site, on the agent's question "When a future game needs a new kind of
+  mechanic, who adds it?". The owner found that the question mixed two
+  framings: what is being extended, and which piece the extension
+  changes.
+
+**The engine says what is fixed and what each production sets**
+
+The engine is meant to serve many games in many production settings,
+so it stays agnostic about any one production's numbers: the devices
+and phones in a kit, the time from power-on to a running show, set-up
+time, how long records are kept, and the like. Someone adopting the
+engine needs to know which requirements are fixed and which affordances
+the engine allows, so they can fit it to their needs and their venue.
+ALN is one production: one game, one venue, the hardware the owner
+bought. The owner's next game may share them; the next person to use
+the engine may not. In the owner's words: "many are stuff that the
+engine itself should be relatively agnostic about if it's going to be
+open sourced to support many different games in many different
+production scenarios. [...] what they need to know is what is a fixes
+requirement vs what affordances the engine allows in order for them to
+fit its use into their needs and venue realities."
+
+Read from this, to be confirmed: the quality targets' numbers split
+into the engine's fixed requirements and stated limits on one side, and
+each production's own settings on the other, with ALN's as the first
+set.
+
+Made 2026-11-02.
+
+History:
+- 2026-11-02. The owner's comment, in the chat after version 9 of the
+  site, on the show-size and timing numbers the agent proposed to ask.
 
 ---
 
@@ -625,9 +763,9 @@ The history of earlier wordings and changes lives in a change log. The
 owner relied on nothing in the single page it replaced, so nothing from
 it had to stay. The site is to be reframed to the long-term frame, and
 its decisions, questions and design flaws are to go by title in place
-of numbers. Neither is done yet: the live site still asks the owner to
-answer by a question's letter or number, and still names a round and a
-step by number.
+of numbers. Version 9, published 2026-11-02, did both: six linked pages
+(the engine, decisions, requirements, design, today's engine and the
+change log), titles in place of numbers, and the sequencing names.
 
 Made 2026-11-01.
 
@@ -643,6 +781,30 @@ History:
   for the site to be reframed to the long-term frame; "Titles, not
   numbers, and a topic record" asks for titles on its pages. Both wait
   for the next version of the site.
+- 2026-11-02. Version 9 shipped both, with Requirements, Design and
+  Today's engine in place of Promises, Parts and Design flaws.
+
+**The Decisions page holds only your decisions**
+
+The Decisions page asks the owner only what the owner alone can decide,
+each question explained by what it means in practice. Choices that are
+the agent's to make are listed as the agent's calls, each with its
+reason, so the owner can overrule any: how the requirements are worded
+and grouped, how the panel runs, technical defaults, and readings that
+follow from the owner's earlier decisions. The requirements are offered
+for review, not as decisions. The questions come from the top-down
+frame: the product facts and priorities that the hardest-to-reverse
+choices depend on.
+
+Made 2026-11-02.
+
+History:
+- 2026-11-02. The owner asked whether all eighteen questions on version
+  9's Decisions page were really theirs to make, and whether they were
+  the questions the top-down frame needs. The agent's answer: four were,
+  plus part of a fifth, and most came from the bottom-up period. The
+  owner said to rework the page, after commenting on the seven open
+  questions the agent proposed instead.
 
 ---
 
@@ -837,8 +999,6 @@ About the promises:
 - Which promise carries equipment state on screens?
 
 About standalone games:
-- The ESP32's standalone mode (the parity reading of "Standalone games:
-  declared, never mixed"; the owner's explicit word asked).
 - One GM tablet per standalone game?
 - Exposed evidence and video with no engine.
 
@@ -846,6 +1006,30 @@ About the game's record:
 - Record every refused GM scan attempt? The owner asked for the
   orchestrator's view; it is yes, record every attempt and its answer
   and show it nowhere until a feature needs it.
+
+Raised on 2026-11-02, and being written into the reworked Decisions
+page ("The Decisions page holds only your decisions"), which will also
+move several questions above into the agent's calls:
+- Where the qualities pull against each other: the owner asked to see
+  the specific conflicts and what each means in practice before
+  answering.
+- Whether everything updates together on release day: the owner leans
+  yes ("Generally speaking, yes") and asked what it means in practice,
+  now and once the new engine runs ALN.
+- How a networked game carries on if the show machine fails mid-game,
+  against "Standalone games: declared, never mixed" (from "No technical
+  failure stops a game").
+- Which shapes of standalone game the engine supports (GM scanners,
+  player scanners or both; how many GM tablets).
+- Where the current roadmap draws the line between hardware flexibility
+  built now and specific hardware requirements ("The engine is
+  hardware-flexible; the roadmap sets the bounds").
+- How an extension made for all games relates to the engine's main
+  release, and which piece each kind of extension changes ("Two kinds
+  of game extension").
+- Which numbers are the engine's fixed requirements and limits, and
+  which are ALN's own settings ("The engine says what is fixed and what
+  each production sets").
 
 Kept for the design rounds, not questions now: the Decisions page's
 list of twelve design choices, from where "this game is standalone" is
