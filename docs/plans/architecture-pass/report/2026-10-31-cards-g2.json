@@ -1,0 +1,224 @@
+{
+  "cards": [
+    {
+      "id": "C5",
+      "title": "Boot and Reset System wire the engine differently",
+      "atAShow": "The GM presses Reset System to recover mid-show. The music panel goes dead until someone restarts the engine. Later, Reset All Scores sends every tablet and the TV the old transaction list, so cleared evidence comes back on the wall. The cue engine now hears each video and clock event twice, and the Display row stays red until Check Now.",
+      "whyItHappens": "Starting the engine and rebuilding it after a reset are two separate hand-written lists. Boot wires the storage listeners first, then the broadcasts, with one set of services; the reset wires them the other way round with a shorter set, and adds some listeners a second time.",
+      "designTerms": "No module owns engine assembly. Boot and reset are two shallow implementations of one interface (wire these services in this order), kept by hand. The seam leaks: each caller knows every service and the ordering invariant. One assembly module would give locality.",
+      "modules": [
+        "backend/src/app.js",
+        "backend/src/server.js",
+        "backend/src/services/systemReset.js",
+        "backend/src/websocket/adminEvents.js",
+        "backend/src/websocket/broadcasts.js",
+        "backend/src/websocket/listenerRegistry.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart TD\n  boot[\"Engine start<br/>one service list\"]\n  reset[\"Reset System<br/>shorter list, no music\"]\n  persist[\"Storage listeners<br/>clear transactions\"]\n  bcast[\"Broadcasts<br/>build snapshot\"]\n  cues[\"Cue forwarding\"]\n  music[\"Music panel push\"]\n  boot -->|\"1st\"| persist\n  boot -->|\"2nd\"| bcast\n  boot -->|\"once\"| cues\n  boot --> music\n  reset -->|\"1st\"| bcast\n  reset -->|\"2nd\"| persist\n  reset -->|\"again\"| cues\n  reset -.->|\"never\"| music\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class reset,bcast,cues fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart TD\n  boot[\"Engine start\"]\n  reset[\"Reset System<br/>teardown first\"]\n  asm[\"Engine assembly<br/>one list, one order\"]\n  persist[\"Storage listeners<br/>clear transactions\"]\n  bcast[\"Broadcasts<br/>build snapshot\"]\n  cues[\"Cue forwarding\"]\n  music[\"Music panel push\"]\n  boot --> asm\n  reset --> asm\n  asm -->|\"1st\"| persist\n  asm -->|\"2nd\"| bcast\n  asm -->|\"once\"| cues\n  asm --> music\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class asm owner;",
+        "note": "Candidate (a): one engine-assembly routine shared by boot and reset. Competing: (b) a registry that knows each service's start, stop and listeners; (c) components register start, end and reset handlers in a declared order."
+      },
+      "examples": [
+        {
+          "ids": "B-01",
+          "text": "After Reset System the music panel stops updating until the engine restarts; the reset is called without the music service."
+        },
+        {
+          "ids": "A-53 / B-02 / C-37 / D-30",
+          "text": "After a reset, Reset All Scores sends every tablet and the TV the old transaction list; cleared evidence comes back."
+        },
+        {
+          "ids": "B-03",
+          "text": "After one reset the cue engine hears video, clock, sound and cue-completion events twice; a cue could fire twice."
+        },
+        {
+          "ids": "B-53",
+          "text": "After a reset the Display row stays red though the kiosk is alive; Show Scoreboard is refused until Check Now."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [
+        6
+      ],
+      "findings": 7,
+      "seenLive": "The red Display row after a reset was reproduced in-process by the review."
+    },
+    {
+      "id": "C9",
+      "title": "Tablets and phones decide facts the engine owns",
+      "atAShow": "A GM scans a token; the result screen says Transaction Complete with points the tablet worked out itself, before the engine has answered. The engine may refuse, and the correction arrives as a small toast. In standalone mode the tablet is the only judge, and its rules have gaps: a scan into a paused game shows complete and records nothing. A phone says revisited for last week's token.",
+      "whyItHappens": "The engine is the authority for scoring, claims and the scan gate, but the tablet carries its own copy of those rules, kept in step by hand and by comment, and the player devices pick their own team and their own new-or-seen. Each device shows its own verdict first.",
+      "designTerms": "The game-rules module in the engine should own scoring, completion and the gate. The tablet holds a second implementation of the same interface, so the seam leaks: a rule change must land in two places with no shared adapter. No leverage, no locality.",
+      "modules": [
+        "backend/src/gameRules/scoring.js",
+        "backend/src/gameRules/duplicatePolicy.js",
+        "backend/src/websocket/adminEvents.js",
+        "ALNScanner/src/app/domains/gameOps.js",
+        "ALNScanner/src/core/storage/LocalStorage.js",
+        "aln-memory-scanner/js/app.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  gm[\"GM scans token\"]\n  tab[\"Tablet<br/>own copy of rules\"]\n  screen[\"Result screen<br/>Transaction Complete\"]\n  eng[\"Engine<br/>game rules, the authority\"]\n  toast[\"Toast<br/>corrects later\"]\n  local[\"Standalone store<br/>paused checked, ended not\"]\n  phone[\"Player phone<br/>own team, own seen list\"]\n  gm --> tab\n  tab -->|\"points, gate, match\"| screen\n  tab -->|\"submit, networked\"| eng\n  eng -.->|\"refused\"| toast\n  tab -->|\"standalone\"| local\n  phone -->|\"team engine discards\"| eng\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class tab,screen,local,phone fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  gm[\"GM scans token\"]\n  tab[\"Tablet<br/>shows verdict only\"]\n  screen[\"Result screen<br/>pending, then verdict\"]\n  eng[\"Engine<br/>game rules, the authority\"]\n  rules[\"Shared rules module<br/>loaded by both\"]\n  local[\"Standalone store<br/>uses shared rules\"]\n  phone[\"Player phone<br/>displays, never decides\"]\n  gm --> tab\n  tab -->|\"submit, networked\"| eng\n  eng -->|\"verdict with points\"| screen\n  rules --> eng\n  rules --> local\n  tab -->|\"standalone\"| local\n  phone -->|\"scan, no team\"| eng\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eng owner;",
+        "note": "Candidate (a): networked mode shows only the engine's verdict, pending until it arrives; standalone decides from a rules module the engine also loads. Competing (c): the engine answers every scan, devices only display."
+      },
+      "examples": [
+        {
+          "ids": "C-07",
+          "text": "Result screen says Transaction Complete with tablet-computed points before the engine answers; the engine may refuse."
+        },
+        {
+          "ids": "A-02 / C-09",
+          "text": "Standalone: a scan into a paused game shows complete, records nothing and uses up the token; an ended game still accepts."
+        },
+        {
+          "ids": "A-34",
+          "text": "A duplicate scan on the same tablet never names the team that claimed it; the local guard fires first."
+        },
+        {
+          "ids": "D-09 / B-62",
+          "text": "Every player scan carries a team no game declared; the engine discards it and only logs it."
+        },
+        {
+          "ids": "D-10",
+          "text": "A phone that played last week still says revisited for a token in tonight's game."
+        },
+        {
+          "ids": "C-58",
+          "text": "The tablet matches token ids loosely, the engine exactly; the tablet shows success and the engine refuses."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [
+        1,
+        5
+      ],
+      "findings": 18,
+      "seenLive": ""
+    },
+    {
+      "id": "C10",
+      "title": "Screens show a normal value when nothing is known",
+      "atAShow": "The venue profile fails to load; six services turn not installed, no video plays, no light cue fires, and the panel reads a calm green 3 of 9. The GM presses Check Now on a down service and nothing visibly happens. The engine dies; the TV keeps counting down. The music card goes grey with no offline line, and nobody at the venue notices.",
+      "whyItHappens": "No fact on the wire says whether it is known, unknown, stale or partial. Snapshot builders catch errors and send plausible defaults, a missing profile reads as no equipment, healthy means a program answered, and the check times that exist are never shown. The screen draws a normal value.",
+      "designTerms": "Every pushed fact's interface omits confidence and age, so each renderer module is shallow: it draws whatever arrives. The health registry and snapshot builders should own known, unknown and stale per fact. Error handling leaks across the seam as defaults indistinguishable from truth.",
+      "modules": [
+        "backend/src/services/serviceHealthRegistry.js",
+        "backend/src/websocket/syncHelpers.js",
+        "backend/src/websocket/environmentHelpers.js",
+        "backend/src/services/dormancyService.js",
+        "ALNScanner/src/ui/renderers/HealthRenderer.js",
+        "backend/public/scoreboard.html"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  prof[\"Venue profile<br/>fails to load\"]\n  dorm[\"Dormancy service<br/>reads no equipment\"]\n  reg[\"Health registry<br/>emits on change only\"]\n  snap[\"Snapshot builders<br/>catch error, send default\"]\n  push[\"Push to tablets<br/>no age, no unknown\"]\n  panel[\"Health panel<br/>calm green 3 of 9\"]\n  tv[\"TV clock<br/>keeps counting\"]\n  prof --> dorm\n  dorm -->|\"six not installed\"| reg\n  reg -->|\"check time never shown\"| push\n  snap -->|\"clock stopped, route hdmi\"| push\n  push --> panel\n  push -.->|\"engine gone, no signal\"| tv\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class dorm,snap,push,panel,tv fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  prof[\"Venue profile<br/>fails to load\"]\n  dorm[\"Dormancy service<br/>reports profile failed\"]\n  reg[\"Health registry<br/>known, unknown, stale\"]\n  snap[\"Snapshot builders<br/>send unknown, not default\"]\n  push[\"Push to tablets<br/>time observed, status\"]\n  panel[\"Health panel<br/>red profile row\"]\n  tv[\"TV clock<br/>drawn unconfirmed\"]\n  prof --> dorm\n  dorm -->|\"profile failed\"| reg\n  reg -->|\"usable or not, time\"| push\n  snap -->|\"unknown, not default\"| push\n  push --> panel\n  push -->|\"stale past limit\"| tv\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class reg owner;",
+        "note": "Candidate (a): every pushed fact carries when it was observed and known, unknown or stale; screens draw unknown differently. Competing: (b) a heartbeat as the only staleness signal; (c) one record per service."
+      },
+      "examples": [
+        {
+          "ids": "B-72 / C-48",
+          "text": "A missing or wrong venue profile makes six services read not installed; the panel shows calm green with no sign."
+        },
+        {
+          "ids": "A-16 / C-03",
+          "text": "Check Now on a down service gives no sign anything happened; no check time is ever shown."
+        },
+        {
+          "ids": "D-22",
+          "text": "If the TV loses the engine while the clock runs, it keeps counting down with no mark."
+        },
+        {
+          "ids": "B-76 / C-47",
+          "text": "A cue with commands on a dormant service skips them quietly and reports a clean finish."
+        },
+        {
+          "ids": "A-74",
+          "text": "The music panel gives no clear sign MPD is down; a greyed card went unnoticed at the venue."
+        },
+        {
+          "ids": "D-11",
+          "text": "Offline, the 101st queued scan silently pushes the oldest out on both player devices."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [
+        8,
+        2
+      ],
+      "findings": 20,
+      "seenLive": "A greyed music card with no offline line went unnoticed at the venue."
+    },
+    {
+      "id": "C12",
+      "title": "Pack edits reach each part of the kit differently",
+      "atAShow": "A designer publishes a pack change and does not restart. The TV shows evidence by the new rules while the engine scores by the old. The file the engine serves no longer matches the hash in its own manifest, so a scanner that checks rejects it. A tablet running a different pack is only written to the log; nothing tells the GM. The publish tells the running engine nothing.",
+      "whyItHappens": "The engine adopts one pack at start and freezes its rules, yet its file endpoints serve whatever is on disk and the token endpoint re-reads every call. The TV, tablet, phone and hardware scanner each load the pack at their own moment and keep it. No message says it changed.",
+      "designTerms": "The pack service should own one versioned pack view. Its interface is shallow: callers reach the pack three ways (frozen snapshot, live disk, a re-read file), and each client is its own adapter loading at its own moment. The seam leaks disk state; no locality.",
+      "modules": [
+        "backend/src/services/packService.js",
+        "backend/src/routes/packRoutes.js",
+        "backend/src/routes/resourceRoutes.js",
+        "backend/src/websocket/socketServer.js",
+        "ALNScanner/src/core/packLoader.js",
+        "config-tool/lib/publish.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  tool[\"Config tool<br/>publishes pack\"]\n  disk[\"Pack on disk<br/>new bytes\"]\n  frozen[\"Engine rules<br/>frozen at start\"]\n  files[\"File endpoint<br/>serves disk bytes\"]\n  tokens[\"Token endpoint<br/>re-reads every call\"]\n  tv[\"TV<br/>loads at page open\"]\n  tab[\"Tablet<br/>loads at app start\"]\n  tool -->|\"writes\"| disk\n  tool -.->|\"no message\"| frozen\n  disk -->|\"read once at start\"| frozen\n  disk --> files\n  disk --> tokens\n  files -->|\"new rules\"| tv\n  files -->|\"manifest old, bytes new\"| tab\n  tab -.->|\"pack mismatch, log only\"| frozen\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class frozen,files,tokens,tv,tab fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  tool[\"Config tool<br/>publishes pack\"]\n  disk[\"Pack on disk<br/>new bytes\"]\n  view[\"Pack view<br/>one version, frozen copy\"]\n  files[\"File endpoint<br/>serves the frozen copy\"]\n  tokens[\"Token endpoint<br/>reads the view\"]\n  tv[\"TV<br/>told pack changed\"]\n  tab[\"Tablet<br/>compares hash, shows behind\"]\n  tool -->|\"writes\"| disk\n  disk -->|\"swap makes new view\"| view\n  view --> files\n  view --> tokens\n  view -->|\"pack changed event\"| tv\n  view -->|\"pack in every snapshot\"| tab\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class view owner;",
+        "note": "Candidate (a): one versioned pack view for every consumer; a swap is a new view plus one pack-changed event, served from a frozen copy. Competing: (b) restart-only packs; (c) clients hold no pack files."
+      },
+      "examples": [
+        {
+          "ids": "B-07 / D-04",
+          "text": "After a pack edit with no restart, endpoints serve new bytes while the engine scores from the old pack; hash mismatches."
+        },
+        {
+          "ids": "B-28 / D-38",
+          "text": "Publishing a pack from the config tool tells the running engine nothing; the edit shows only after a restart."
+        },
+        {
+          "ids": "B-20 / C-08 / D-18",
+          "text": "A tablet or scanner on a different pack than the engine is only logged; nothing tells the device or GM."
+        },
+        {
+          "ids": "D-03",
+          "text": "Before a restart the TV shows evidence by the new rules while the engine scores by the old."
+        },
+        {
+          "ids": "D-08",
+          "text": "A new pack reaches a hardware scanner only after a reboot; tokens cannot be re-synced by command."
+        },
+        {
+          "ids": "D-41",
+          "text": "A password changed in the tool's env editor works at once on the tool, only after restart on the engine."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [
+        6,
+        5,
+        8
+      ],
+      "findings": 20,
+      "seenLive": "A skipped submodule fast-forward once made a new token show UNKNOWN on the GM scanner."
+    }
+  ]
+}

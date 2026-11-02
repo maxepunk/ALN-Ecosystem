@@ -1,0 +1,290 @@
+{
+  "jobs": [
+    {
+      "id": "J1",
+      "parts": [
+        "P1",
+        "P2"
+      ],
+      "functional": {
+        "people": "The designer who publishes a game; the GM at doors-open; a second designer later",
+        "moment": "Between games when the designer publishes, and at doors-open when agreement must be visible",
+        "need": "The whole kit plays that game, that version, with no code change: the engine scores by it, the TV shows its words, every tablet and scanner holds the same copy, and the GM can see at a glance that they match or is refused. A second designer's game runs on the same engine.",
+        "proposedTitle": "The designer's game is the game the whole kit plays"
+      },
+      "needAdditions": [
+        {
+          "words": "A second designer's game runs on the same engine.",
+          "from": "meaning: 'nothing in the engine assumes ALN' and 'The toy pack proves the engine is generic'; the rule itself is now the Generic quality, but the person it serves, the second designer, is named in people and was missing from need"
+        }
+      ],
+      "goal": "A designer builds a whole game as a pack and never touches code or configuration; whatever a designer changes is pack data, and the hardware scanner gets its rules as generated tables, never new firmware. One list names every holder; each copy shows its version, the game record carries it, and a mismatch shows at connect. The pack names media by fingerprint, checked against the bundle.",
+      "standalone": "Each device loads whatever pack copy its source holds; a tablet reloading online mid-game adopts the newest pack under the game in progress; no game record carries a pack stamp and no player device shows one. In the candidate the tablet runs the same Game rules and a Pack channel client: one pack per game, stamped on its record.",
+      "conflicts": [
+        {
+          "field": "needs",
+          "line": "The pack (capability 1) and the activation gate (capability 2): every part of the engine takes the game's tokens, rules, modes and cues from the pack, never from code; the engine refuses to start on a pack that fails the check and keeps the pack it adopted for as long as it runs.",
+          "fix": "End with: and keeps the pack it adopted for the whole of a game; a new pack is adopted only at a boundary the Lifecycle allows, between games, never under one in progress."
+        }
+      ],
+      "shapeChange": "The job is now said for the designer and for the GM at doors-open, and 'nothing assumes ALN' becomes a quality every part carries. The goal gains the Pack channel: one list of every holder, a version stamp on every copy and in the game record, compared when a device connects. The toy pack's proof moves to J10, and one needs line now takes a new pack only between games.",
+      "notes": "Parts: engine-shape.md:213 ('Every job lands: J1 (P1, P2)'); P1 names J1 owner at :177, P2 at :179. Functional: engine-shape.json functional[0]; people and moment unchanged. Addition: engine-shape.md:18 and job-relationships.md:36 both keep 'A second designer's game runs on the same engine', which functional[0].need dropped while people names the second designer; old words from engine-jobs.json jobs[0].meaning. Not added: 'nothing in the engine assumes ALN' is the Generic quality (engine-shape.md:106, :358 item A); 'can say which' is served by the GM seeing agreement or refusal (engine-shape.md:18, :179 'stamp compared at connect'). Goal: P2's interface and stamp (:179), P1's generated tables for the hardware scanner (:177, :323), media by fingerprint against the bundle (:179, :331); 'The engine holds no opinion' moved to the Generic quality (:106); 'every change passes the two-pack run' moved to P16 under J10 (:207) and edge J1 to J10 'the toy pack' (:55). Standalone: facts from engine-jobs.json jobs[0].standalone; design from engine-shape.md:302 (GS carries P1 and a P2 client), :313 (PK to GS 'the same pack, stamped'), :321. Conflict needs[0]: 'for as long as it runs' is today's activation rule (CONTEXT.md section 2, 'Activation'); the shape adopts once per boundary (engine-shape.md:179) with the apply window a row of the Lifecycle table (:197 cap 16; :372 choice 11). Tests[0] still holds: after adopt, the token list, the served pack file and the points all come from one adopted pack (:179). Check: goal restores 'or configuration' from engine-jobs.json jobs[0].goal (MD:53 'never touching code or configuration files'); the media sentence made active. Standalone: 'no record or device shows a pack stamp' was false for the tablet, which shows its pack line (root CLAUDE.md, pack channel paragraph); restored 'online' and 'no player device' from engine-jobs.json jobs[0].standalone and standalone-pass.md:119; 'one pack per game' from engine-shape.md:179 (adopt once per boundary) and :313. P2's owner mark for J1 is engine-shape.md:94 (M-I, J1 owner), not :179. shapeChange names the needs[0] conflict."
+    },
+    {
+      "id": "J2",
+      "parts": [
+        "P3",
+        "P6",
+        "P14"
+      ],
+      "functional": {
+        "people": "The GM on any tablet; the audience reading the TV; in future games, a player with a hidden fact",
+        "moment": "Mid-show, at once, and after a tablet comes back",
+        "need": "Whatever the GM did on any tablet is what every tablet, the TV and the audience see: a delete frees the token everywhere, a reset empties every screen, and nobody has to ask which screen is right. In future games a player's hidden fact reaches only its owner.",
+        "proposedTitle": "One game, the same on every screen"
+      },
+      "needAdditions": [
+        {
+          "words": "In future games a player's hidden fact reaches only its owner.",
+          "from": "roles: 'players, in future games with hidden facts' and 'the designer, whose hidden facts must have one home'; goal: 'Games with hidden facts need the engine to filter what each screen receives'"
+        }
+      ],
+      "goal": "The engine's Game record decides teams, claims, scores, evidence and phase in a networked game, and the tablet decides them in a standalone one, under the same rules. Each fact reaches the screens that may see it by one route, the same live and after a reconnect, and no screen keeps a copy it judges by. The engine filters hidden facts before they leave it.",
+      "standalone": "Today one GM tablet holds the only copy, so tablets cannot drift, but it refreshes screens only on wired events; two standalone tablets are two separate games, and one tablet per game is undecided. In the candidate the tablet hosts the same Game record and a local Delivery; the other way is its own engine, kept equal by tests.",
+      "conflicts": [],
+      "shapeChange": "The need is now agreement between screens, said for the GM and the audience. 'Decided in one place' becomes the Game record part, and who decides with no engine becomes a quality every part carries. The goal adds Delivery, one route per fact for the live change and the catch-up, and says no screen keeps a copy it judges by. The hidden-fact clause returns to the need.",
+      "notes": "Parts: engine-shape.md:213 ('J2 (P3, P6, P14)'); P3 is J2's authority (:181), P6 the route (:187), P14 the screens (:203). Functional: engine-shape.json functional[1]. Addition: job-relationships.md:42 ends 'In future games a player's hidden fact reaches only its owner', dropped by functional[1].need though people names that player; old words from engine-jobs.json jobs[1].roles[2], roles[3] and goal; the shape places it on P3 (cap 38, :181) and P6's role filter (:187). Not added: 'decided in one place' is the design answer (job-relationships.md:44; engine-shape.md:19); 'the engine in a networked game, the GM tablet in a standalone one' is the quality 'Authority named with the engine absent' (:107); 'J9 makes it say so' is the Honesty quality (:104). Goal: old 'engine's pure rule functions as the surface both must match' names alternative B of row 2 (:338); the rewrite stays neutral ('under the same rules', candidates A and B at :338, :340); 'how copies are kept correct is step 3's work' is now answered by P6 (:187) and P14 keeping no claim list (:203, :319); filtering by the engine from P3 cap 38 (:181). Standalone: facts from engine-jobs.json jobs[1].standalone; design from engine-shape.md:302, :321 (P3, P6 local) and :340 (row 4, both candidates); one tablet per game is owner choice 2 (:363). Conflicts: none; needs[3] matches P6 and P8 (:187, :191), needs[5] matches P2 onChanged (:179), tests[3] matches P14 (:203). Check: goal said 'One Game record ... hosted by the tablet in a standalone one', which is candidate A of engine-shape.md:340 and owner choice 7 (:368); now neutral (the tablet decides, under the same rules). 'Every fact reaches every screen' contradicted the hidden-fact filter; now 'the screens that may see it' (engine-shape.md:187, P6 'every screen that may see it'). shapeChange: 'decided in one place' is the design answer, the Game record (job-relationships.md:44; engine-shape.md:181), not a quality; only the standalone authority is a quality (engine-shape.md:107)."
+    },
+    {
+      "id": "J3",
+      "parts": [
+        "P4",
+        "P5"
+      ],
+      "functional": {
+        "people": "The GM at a token or a button and the player at a token; the owner and the designer after the show",
+        "moment": "During play at every tap, and at the Review stage after the end",
+        "need": "At a tap on a token or a button they learn at once whether it counted, why not if it did not, or that it is held or must be tried again; nothing is silently lost or doubled. Afterwards the night's story is read from what was captured during play, not reconstructed.",
+        "proposedTitle": "Every tap gets its answer, and the night can be told afterwards"
+      },
+      "needAdditions": [
+        {
+          "words": "or that it is held or must be tried again",
+          "from": "meaning: 'done, refused and why, or try again'; needs: 'a held cue counts as an answer the GM can see'"
+        }
+      ],
+      "goal": "Every request, from a tap or a button, gets one reply in one shape: which request it answers, the outcome, whether it is final and whether anything was stored. When a game ends, one record of the night is written from the facts decided during play, with roster, notes, accusation and photos captured as they happen; the report builds itself from it. Whether refused scans are recorded stays open.",
+      "standalone": "Each device's store answers and the caller ignores it: a refused scan shows Transaction Complete, the hardware scanner shows a queued scan as recorded, nothing records what players found, and starting over deletes the finished game. In the candidate the tablet hosts the same Answering, so a refusal shows, and a night's record with player scans only if delivered.",
+      "conflicts": [
+        {
+          "field": "needs",
+          "line": "No planned capability concerns the answer to a scan or a GM command; that half of J3 is the engine's existing core, which the capability list does not grade.",
+          "fix": "Replace with: Two planned capabilities touch the answer: held items (capability 14), below, and the interaction primitives (capability 36), whose multi-tap actions are requests with the same reply shape."
+        }
+      ],
+      "shapeChange": "The job now rests on two parts, Answering at the tap and The night's record after the end, matching its two people and two moments; whether that makes two jobs stays question D. The goal, which spoke only of the report, now also asks for one reply shape. 'Held' and 'try again' return as outcome words, and one needs line now names the two capabilities that touch the answer.",
+      "notes": "Parts: engine-shape.md:213 ('J3 (P4, P5)'); P4 owner J3 (:183), P5 J3's afterwards half (:185); row 5 of 4.4 (:341) and section 5 D (:350). Functional: engine-shape.json functional[2] (as corrected, engine-shape.md:395, :440). Addition: P4's outcome words are 'accepted, refused and why, held, try again' (:183); the restatement kept only counted or not; old words from engine-jobs.json jobs[2].meaning and needs[3]. Not added: 'by GMs and by players' is covered by 'what was captured during play' and P5 capture (:185). Goal: P4 interface (:183) added before the old report-only goal; P5 interface (:185); refused scans recorded or not is owner choice 10 (:371). Standalone: facts from engine-jobs.json jobs[2].standalone ('the only way to start over deletes the finished game's record' cut for length, it is a J5 fact); design from engine-shape.md:302 and :321 (P4 local answering so a refused scan is refused on screen; a local P5 with no player scans unless standalone devices deliver them, owner choice 2 at :363). Conflict tests[2]: 'Download Report' is the tablet's own markdown from its copies (engine-shape.md:185 Today; :140); in the shape P5 writes the record and the tablet reads it (:185, :321). Needs[0] ('No planned capability concerns the answer') is about the capability list, not the shape, so not a conflict; needs[3] matches P4 cap 14 and P9's one held store (:183, :193). Check: goal restores 'the report builds itself' from engine-jobs.json jobs[2].goal (MD:55, 'the post-game report builds itself'); P5 makes room for cap 33 (engine-shape.md:185). Standalone restores 'starting over deletes the finished game's record' from engine-jobs.json jobs[2].standalone: losing the night's record is J3's second half, and J5's line does not carry it. Conflicts: tests[2] removed; the test asks that Download Report stays available after a reconnect and does not say the tablet builds the report, so it contradicts nothing in engine-shape.md:185 or :321. needs[0] added: P4 'Makes room for: caps 14 ... 36' (engine-shape.md:183) contradicts 'No planned capability concerns the answer'; the line also clashes with this entry's own needs[3]."
+    },
+    {
+      "id": "J4",
+      "parts": [
+        "P8",
+        "P9"
+      ],
+      "functional": {
+        "people": "The audience who see and hear the show; the GM at the Environment and Show Control sections",
+        "moment": "When the game says so, and whenever the GM presses a control",
+        "need": "The room does what the designer cued and what the GM asked; the GM sees it happen, or sees at once that it did not and what to press; a dead program comes back by itself before anyone notices.",
+        "proposedTitle": "The room does what the designer cued and the GM asked"
+      },
+      "needAdditions": [],
+      "goal": "The engine reaches each outside program through one interface. The program decides what it does, and the engine dates its picture of it and checks that picture against it. One supervisor restarts a crashed program a few times, then shows a red row with a Restart button; the venue profile says whether the engine starts or adopts it. The Show runner holds what cannot run yet in one place.",
+      "standalone": "Today no venue service runs and no outside program is driven: the service panels are hidden on the tablet and each player device plays its own audio, so these flaws produce no fault with no engine. In the candidate the tablet carries Equipment and Show runner stand-ins that report every engine duty dormant, grey and never red.",
+      "conflicts": [
+        {
+          "field": "needs",
+          "line": "The host-config file (capability 10): a plain setting for whether the engine starts a program itself or adopts a running one.",
+          "fix": "Say: a plain setting in the installer's profile, read by Venue fit once at start, for whether the engine starts a program itself or adopts a running one; not a file of its own."
+        }
+      ],
+      "shapeChange": "The need is said for the audience and the GM; 'know its true state' moves to J9, whose label every fact carries and whose goal now holds the three health words. The goal now names two parts: Equipment, which reaches each program through one interface and keeps a dated picture, and the Show runner with one held store. The host setting moves into the venue profile.",
+      "notes": "Parts: engine-shape.md:213 ('J4 (P8, P9)'); P8 owner J4 (:191), P9 J4's conductor (:193). Functional: engine-shape.json functional[3], unchanged. Not added: 'knows whether each is working, down, or not installed tonight' is J9's quality applied to equipment (engine-shape.md:21; question G at :356) carried by P10's three words and P6's label (:104); 'The outside programs decide what they are doing; the engine reads them' is P8's design (:191) and the authority word (CONTEXT.md section 4b 'Authority': VLC decides what is playing); 'by hand or by cue' and the player's video token are covered by 'cued' and 'when the game says so' (:21). Goal: P8 interface, dated picture, supervise(program, host mode) (:191); host mode read from P12 (:199 'whether the engine starts or adopts each program'), which replaces the old 'A host file'; P9 one held store (:193); the three health words moved to J9's goal (:195). Alternative B (per program) at :339 is still open (owner choice 6, :367), so the goal says 'one interface' per thing the room can do without ruling on it. Standalone: facts from engine-jobs.json jobs[3].standalone; design from engine-shape.md:321 ('equipment and show runner that report every engine duty dormant') and :427. Conflict needs[1]: a separate host-config file against P12 hostMode(program) in the profile (:199) and P8 supervise(program, host mode) (:191). Needs[5] (remote displays, media) is served by P7 and P2 (:189, :179) and is a need, not a contradiction. Check: 'Each thing the room can do sits behind one interface' was candidate A of engine-shape.md:339 (per capability), owner choice 6 (:367), while the notes said the goal did not rule on it; now 'each outside program through one interface', true of both candidates. 'a button' restored to 'a Restart button' (engine-jobs.json jobs[3].goal). The three health words and dormant's two doors left this goal for J9 (engine-shape.md:195, P10 'the three health words'), but J9's goal did not carry them; J9's goal now does."
+    },
+    {
+      "id": "J5",
+      "parts": [
+        "P11"
+      ],
+      "functional": {
+        "people": "The GM who starts, pauses, ends and resets games; the designer whose edit lands between games",
+        "moment": "At each lifecycle button, at an engine restart, and when a pack changes",
+        "need": "Each act does exactly what its name says: an ended game stays ended and no scan lands in it, the next game starts clean, a restart during a show loses nothing, a pause blocks scans, and a between-games edit never reaches the game in progress.",
+        "proposedTitle": "Each lifecycle button does exactly what its name says"
+      },
+      "needAdditions": [
+        {
+          "words": "and no scan lands in it",
+          "from": "roles: 'players, whose scans must not land in an ended game'"
+        }
+      ],
+      "goal": "One Lifecycle moves a game between its moments and alone resets anything; engine start, Reset System and tests share one path. Its table says what each fact keeps, clears or carries, and it tells every screen the boundary. The engine refuses a pack change mid-game, replaces a scanner's old pack at a boundary and updates only between events. Open: the table's rows, and standing cues in setup.",
+      "standalone": "The tablet decides every boundary; start, pause, end, reload, a day change and a pack change each run their own code; it opens an unnamed Active game it cannot pause or replace; the phone's seen list and the hardware scanner's queue outlive every game. In the candidate it hosts the engine's Lifecycle, or its own kept equal by tests.",
+      "conflicts": [],
+      "shapeChange": "The need is the GM's trust in each verb rather than the developer's table; the table stays as the Lifecycle part, now the only mover and the only caller of every reset, with boot and Reset System on one path and every screen told the boundary. The goal says so; its open rows stay open.",
+      "notes": "Parts: engine-shape.md:213 ('J5 (P11)'); P11 owner J5 (:197). Functional: engine-shape.json functional[4]. Addition from engine-jobs.json jobs[4].roles[2]; the shape gives P11 the phase gate to J3 (:69 'phase gate') and P3 'which phases allow a scan' through P1 (:177), so the requirement is J5's to state. Not added: 'every copy of it has a defined fate ... by one code path' is P11's mechanism (:197; job-relationships.md:60). Goal: P11 interface and 'boot and Reset System are the same path' (:197), 'every screen is told the boundary rather than guessing it' (:197), apply window refused while active or paused (:372 choice 11); old open items kept (engine-jobs.json jobs[4].goal, goalOpen true). Alternative B, a table each part reads, at :342 (owner choice is implied by row 6); the goal names the module candidate as the shape's favoured one. Standalone: facts from engine-jobs.json jobs[4].standalone (the hardware queue's lines reaching a later networked game cut for length); design from engine-shape.md:302, :321 (P11 on the tablet, 'the same table') and :340 row 4. Conflicts: none; needs[2] matches P2 adopt at a boundary (:179), needs[7] matches P11 and P13 (:197, :201). Check: goal restores three items of engine-jobs.json jobs[4].goal the shape keeps: 'the engine updates only between events' (P11 cap 44, engine-shape.md:197), 'a scanner's stale pack copy is replaced at a game boundary' (P2 adopt once per boundary, :179; P11 C1's reset half, :197), and reset as one path in tests too (P11 cap 46, :197; M-D, :89). 'Mid-game' stands for active or paused (choice 11, :372). Standalone restores 'a day change' and 'the phone's seen list' (the phone keeps a seen list, not a queue) from engine-jobs.json jobs[4].standalone and standalone-pass.md:55."
+    },
+    {
+      "id": "J6",
+      "parts": [
+        "P15"
+      ],
+      "functional": {
+        "people": "The game designer; the owner designing the second game; a new designer learning from the toy game",
+        "moment": "In the days before a show, on a laptop or on the show machine between games",
+        "need": "Build a game or change one value in it, publish and apply it, and play a round within minutes; the engine's own check refuses a bad pack at the desk; nothing they do can reach the live show or its records.",
+        "proposedTitle": "The designer changes a value and plays it within minutes, and the live show never notices"
+      },
+      "needAdditions": [
+        {
+          "words": "the engine's own check refuses a bad pack at the desk",
+          "from": "meaning: 'publishes it through the engine's own check'"
+        }
+      ],
+      "goal": "Edit, apply, play, repeat; the mechanics editor and hot-apply are one deliverable. The Design studio talks to the engine by message: the engine applies a change at a window the Lifecycle allows, never mid-game, or refuses and says why. A preview engine is a second Engine instance under a preview profile, so it touches nothing live and a laptop reads hardware as not installed. Where it runs is open.",
+      "standalone": "Today a standalone tablet runs no engine to rehearse against, so J6 has no shortfall of its own; a mid-game reload adopting a newer pack is filed under J1. In the candidate a published pack reaches a standalone tablet through the same Pack channel, stamped, so what the designer publishes is what that tablet plays.",
+      "conflicts": [
+        {
+          "field": "tests",
+          "line": "Publish a changed rating through the tool with the engine running: within a bounded time scoring, the token lists, the scoreboard and every tablet use it, or the tool says a restart is needed.",
+          "fix": "End with: or the engine answers that it will apply at the next window, or refuses and says why. In the shape no publish needs a restart; apply is a request answered at a window the Lifecycle allows."
+        }
+      ],
+      "shapeChange": "The need stays the designer's and gets back the engine's own check at the desk. The goal now says the Design studio talks to the engine only by message, and the engine applies a change at a window the Lifecycle allows; the preview engine is a second Engine instance with its own names. The restart fallback in one test goes.",
+      "notes": "Parts: engine-shape.md:213 ('J6 (P15)'); P15 owner J6 (:205). Functional: engine-shape.json functional[5] (as corrected, :396, :441). Addition: the gate is P15's 'published through the engine's own gate' (:205) and 'the designer's loop' in CONTEXT.md section 2 ('mistakes die at the desk'); J6's own part, not another job's, so it belongs in need; old words from engine-jobs.json jobs[5].meaning. Not added: 'rehearses on a second engine' is the mechanism (job-relationships.md:68); 'the venue installer, who receives the handoff' is the Deploy chain on P17 or P12 (:209, :344). Goal: P15 interface and 'by message (P4's door), never by file or import' (:205, :327); apply at a P11 window (:179 cap 16, :372); badges from P10 (:205); preview engine as a second P13 instance under a preview profile (:205, :201); 'four named steps' dropped as mechanism; 'where a preview engine runs is decided nowhere' kept (engine-jobs.json jobs[5].goal). Standalone: facts from engine-jobs.json jobs[5].standalone; design from engine-shape.md:313 (PK to GS 'the same pack, stamped') and :302. Conflict tests[0]: 'or the tool says a restart is needed' against :205 and :327 ('a publish can carry apply at the next window and the engine can refuse'). Tests[2] keeps its restart caveat as a statement about today, so no conflict. Check: need addition made active. Goal restores 'the mechanics editor and hot-apply are one deliverable' (engine-jobs.json jobs[5].goal; MD:61) and 'hardware-shaped needs read as not installed on a laptop' (same goal; preview profile at engine-shape.md:205, :199); 'publish and apply ... at a window' was wrong for publish, which has no window (engine-shape.md:327: 'a publish can carry apply at the next window'); 'The studio' named by its part name. shapeChange: the old goal never named files or imports; today's practice does (engine-shape.md:205 Today, T10)."
+    },
+    {
+      "id": "J7",
+      "parts": [
+        "P7"
+      ],
+      "functional": {
+        "people": "The GM; the audience; a player with no account; designers and installers at their tools; a stranger on the venue wifi",
+        "moment": "At every connection and every command",
+        "need": "The GM alone can start, pause, end and change scores, and the engine knows which tablet did it; the audience sees scores and exposed evidence and nothing else; a player sees the memory they scanned; designers and installers reach their tools and only those; a stranger sees nothing.",
+        "proposedTitle": "Each person sees their part and can do only their part"
+      },
+      "needAdditions": [],
+      "goal": "Players never get accounts: the engine knows them by device or session id, and game data stays on the kit. Every connection shows a verified pass; the engine knows its class, name, role and whether it is there. Each screen gets what its role may see. The door checks every action once; only the GM moves the game, runs the show or changes scores. Secrets rotate before outsiders arrive.",
+      "standalone": "Today no engine, pass or connection exists, so this flaw produces no fault; a tablet never set up for a networked game keeps device id 001 and is known to nobody. In the candidate the tablet carries a Connections and roles stand-in with one connection, itself, so the same door and grants run with no pass to check.",
+      "conflicts": [
+        {
+          "field": "needs",
+          "line": "Remote displays (capability 39): a read-only pass minted per page and capped in number.",
+          "fix": "Say: a read-only display pass that Connections and roles issues to each display connection, never written into the page's text, capped in number and counted against the profile's remote-display number."
+        }
+      ],
+      "shapeChange": "The people now include designers, installers and the stranger, and 'the engine knows who is connected' becomes the Connections and roles part with one liveness rule. The goal adds that the one door checks every action once. One needs line now issues the display pass to a connection, never into the page.",
+      "notes": "Parts: engine-shape.md:213 ('J7 (P7)'); P7 owner J7 (:189); the floor checked once in P4 (:183, :108). Functional: engine-shape.json functional[6] (as corrected, :397, :442); people gains 'designers and installers at their tools' because the corrected need names them (:442) and people did not (19 words). Addition: secrets rotation is in engine-jobs.json jobs[6].roles[4], goal and needs[5] and nowhere in the shape, which did not move it, so it stays J7's need. Not added: 'the engine knows who is connected' is M-C, P7 (:88, :189); 'keeps private what should be private' is covered by 'nothing else' and 'sees nothing' and, for hidden facts, by J2's need and P6's role filter (:187). Goal: P7 interface admit, alive, list, grants (:189), 'a client's word decides nothing' (:189), role filter in P6 (:187), floor checked once at P4 (:183), standing rule MD:67 via :108; 'the engine's only identity is the device or session id' folded into 'no accounts' for length (pass tiers at :189). Standalone: facts from engine-jobs.json jobs[6].standalone; design from engine-shape.md:321 ('one connection (the tablet itself)') and :96 (M-K: no connection and no pass in a standalone game). Conflict needs[3]: 'minted per page' against :317 ('the minting of a pass into page text' leaves the backend; 'P7 issues passes to connections'), :325 ('under a display pass from P7') and the display.remote count read by the preflight (:189 cap 39; CONTEXT.md section 5 'Remote display'). Check: need addition removed: secrets rotation is the owner's act before open-sourcing, not a person's need at a connection or command (moment 'At every connection and every command'); job-relationships.md:152 files it as J10's quality over J7 (pair J7-J10, MD:70); it keeps its home in this goal and needs[5]. The people field's 'designers and installers' follows engine-shape.md:397 (correction 1.9), not an addition. Goal restores two items of engine-jobs.json jobs[6].goal the shape keeps: 'the engine's only identity is the device or session id' and 'each screen receives only what its role needs, filtered by the engine' (P6 role filter, engine-shape.md:187); 'the GM alone moves the game' widened back to lifecycle, show control and scores (Operator floor, engine-shape.md:108). Conflict fix keeps 'capped in number' (MD:237, observe tokens 'into a capped store')."
+    },
+    {
+      "id": "J8",
+      "parts": [
+        "P12",
+        "P17"
+      ],
+      "functional": {
+        "people": "The venue installer; a GM running a game with no engine; a future operator with a second kit",
+        "moment": "In the days before an event, and on the night when the engine is absent by choice",
+        "need": "The installer states what the kit brings tonight, binds the pack's names to real instruments and gets one go or no-go. A game declared standalone knows it is standalone instead of mourning a lost connection. A second kit or a new machine needs no change to engine code.",
+        "proposedTitle": "Fit the game to the venue it is in tonight"
+      },
+      "needAdditions": [
+        {
+          "words": "declared",
+          "from": "meaning: 'with or without an engine, as a choice the game declares and never mixed'"
+        },
+        {
+          "words": "or a new machine",
+          "from": "meaning: 'another kit, another pack or another operating system later'"
+        }
+      ],
+      "goal": "The installer picks pack and profile by path or id, fills the profile, binds each pack name to an instrument and runs one preflight. Kit names live only in the profile and the Engine instance, so new kits and machines need no code. Release checks what each machine carries at start. Phones and hardware scanners stay equal. Standalone is declared, never mixed; where, and how many tablets, stays open.",
+      "standalone": "The tablet's mode is its own tap, the phone's is its URL path, and the hardware scanner has none: it reads a missing engine as an endless outage and trails the phone in seven of 24 parity rows. In the candidate the declaration, wherever the owner puts it, reaches every device with its pack, and the tablet says standalone.",
+      "conflicts": [
+        {
+          "field": "needs",
+          "line": "The host-config file (capability 10), the seams for more kits (capability 42) and the kit network (capability 43): no kit-unique names in engine code, per-engine names for process files, and a name server the engine reads but does not drive.",
+          "fix": "Replace 'The host-config file (capability 10)' with 'The start-or-adopt setting in the profile (capability 10)'; in the shape Venue fit holds it, and per-engine names belong to the Engine instance."
+        }
+      ],
+      "shapeChange": "The title names the installer's moment; 'other kits' becomes a quality of every part, and declaring a standalone game stays here as the act J8 makes. The goal adds Release: what each machine carries is checked at start. One needs line moves the start-or-adopt setting into the profile. Question E stays open.",
+      "notes": "Parts: engine-shape.md:213 ('J8 (P12, P17)'); P12 owner J8 (:199); P17 serves J8 as its Deploy chain (:209, row 8 at :344). Functional: engine-shape.json functional[7]. Additions: 'declared ... never mixed' from engine-jobs.json jobs[7].meaning; the rule is the quality at :107, but section 5 C (:358) says J8 is where the declaration is made, so the act stays in J8's need; 'or a new machine' from the same meaning ('another operating system later'), carried by P12's host half of C15 (:199 'program names and install commands per machine'). Not added: 'Nothing in the engine assumes one kit, one pack or one production' is the Generic quality (:106; job-relationships.md:26). Goal: P12 interface profile(), binding(role), hostMode(program), counts (:199); kit names only from the profile and the instance (:106, :201); P17 describe and check at start (:209); the declaration's home is owner choice 1 (:362) and one tablet or several is choice 2 (:363); old 'seams for more kits are built now' is now P13 under J10 shared with J8 (:74, :75, :201). Standalone: facts from engine-jobs.json jobs[7].standalone (the seven parity rows cut for length); design from engine-shape.md:199, :302 ('P12 the standalone declaration'), :303 ('the standalone declaration read'), :321 ('shows standalone, never disconnected'), :358 ('P2 carries the declaration to every device'). Conflict needs[1]: as J4's, a separate host-config file against P12 hostMode (:199); per-engine names are P13 (:201). Tests[3] (build from the deployment guide) is a statement about today's method, not a contradiction; P17 would add a start check (:209). Check: need: 'declared before the night' went beyond the old words ('a choice the game declares') and fixes the declaration's time, which owner choice 1 leaves open (a game record or each device could declare it on the night, engine-shape.md:362); 'never mixed' is the quality at :107; only the act stays (section 5 C, :358). Goal restores 'chosen by path or id' (cap 42, MD:120) and 'phones and hardware scanners stay equal' (MD:62; engine-shape.md:323) from engine-jobs.json jobs[7].goal. Standalone: 'the declaration lives in Venue fit' asserted owner choice 1 (:362; :358 'wherever the owner places it'); restored the seven parity rows (engine-jobs.json jobs[7].standalone; standalone-pass.md section 4)."
+    },
+    {
+      "id": "J9",
+      "parts": [
+        "P10",
+        "P4",
+        "P6",
+        "P14"
+      ],
+      "functional": {
+        "people": "The GM mid-show with seconds to decide; the installer reading the preflight; the designer reading a badge; the audience watching the clock",
+        "moment": "At a glance, whenever a screen is read",
+        "need": "Anyone can tell without asking whether what they see is current and whether they must act: red means act now, grey means absent on purpose, old looks old, the installer's go is a go and a go at the desk never passes for one in the room, the TV's clock never counts on its own, and the editor and the show use the same words.",
+        "proposedTitle": "Anyone reading a screen can act on it without a second question"
+      },
+      "needAdditions": [
+        {
+          "words": "and a go at the desk never passes for one in the room",
+          "from": "meaning: 'says what it cannot check, and labels each line paper or live'"
+        },
+        {
+          "words": "and the editor and the show use the same words",
+          "from": "roles: 'the designer, whose editor badges use the same words as the show'"
+        }
+      ],
+      "goal": "Every fact and reply on a screen carries a label: how old, how sure, paper or live. Red means act now; grey means not installed or switched off; an unreadable list shows unknown. One pure Verdict, speaking healthy, down or dormant, answers the editor, the preflight and the start gate, and reaches the screen. The preflight says what it cannot check; a missing or broken profile refuses the start.",
+      "standalone": "Every device draws the missing engine as an outage: the phone says Offline all night, the hardware scanner shows a red Disconnected and a rising queue, a video token says Rescan later though that never works. No verdict says a standalone tablet is ready. In the candidate the tablet's Verdict reads every engine duty dormant, grey.",
+      "conflicts": [],
+      "shapeChange": "J9 is now a quality with one part of its own, the Verdict. Delivery and Answering carry its label on every fact and reply, and every screen draws it. The need is the reader's glance. The goal now asks for that label, keeps the three health words that left J4, and asks the verdict to reach a screen, which today it does not.",
+      "notes": "Parts: engine-shape.md:213 ('J9 (P10 and the label carried by P4, P6, P14)'); P10 owner J9 (:195); the label on P6 (:187) and P4 (:183), drawn by P14 (:203); J9 as a quality at :27 and :104. Functional: engine-shape.json functional[8]; people gains 'the designer reading a badge' (22 words) because the restatement's own mechanism, one Verdict quoted by the editor and the show (:195), serves the designer named in engine-jobs.json jobs[8].roles[2]. Additions: paper or live is the Verdict's label on every line (:195; CONTEXT.md section 5 'Paper vs live checks': 'a green at home is never mistaken for venue readiness'), said from the installer's side; the shared words from roles[2] and P10 'the editor, the preflight, the start gate and a cue-time refusal all quote it' (:195). Not added: the four states of a fact are the mechanism, a label (job-relationships.md:30; engine-shape.md:17). Goal: the label (status, age, paper or live) on every delivered fact and reply (:104, :187, :183); P10 pure and quoted everywhere (:195); 'its result reaches no screen except a session stamp and ack text' today (:195 Today) so the goal asks that it reach the screen through Delivery; failed profile from P10's removes (:195); 'red means act now, grey absent' kept in need, dropped from goal for length. Standalone: facts from engine-jobs.json jobs[8].standalone ('a rising queue count' and 'though rescanning can never work' cut for length); design from engine-shape.md:321 ('a verdict over a profile with no engine equipment' so every engine duty reads dormant) and :358 C. Conflicts: none; needs[4] (a reset must not leave the display row red) matches P11 recomputing verdicts (:197); tests[2] matches the age label (:187). Check: parts reordered to engine-shape.md:213's order after the main part (P10, then P4, P6, P14). Goal restores from engine-jobs.json jobs[8].goal what the shape keeps: 'the preflight states its own limits' (MD standing rules, engine-jobs.md section 1), red and grey, 'unknown, never broken' and 'a start refusal' (CONTEXT.md section 5 Preflight); adds the three health words and the GM's out-of-service door from J4's old goal (P10, engine-shape.md:195). Standalone restores 'all night', 'a rising queue' and 'though rescanning can never work' (engine-jobs.json jobs[8].standalone; standalone-pass.md:103). shapeChange: 'a quality, not a part: one Verdict of its own' contradicted itself; the Verdict is a part (engine-shape.md:195, :213)."
+    },
+    {
+      "id": "J10",
+      "parts": [
+        "P16",
+        "P13",
+        "P17"
+      ],
+      "functional": {
+        "people": "The developer who changes the engine; the owner who sends a version to the venue; the GM whose live show no test may touch",
+        "moment": "Before every change reaches anyone, and on release day",
+        "need": "A green run means the show path still works for ALN and for the toy game; the owner decides when a new version goes to the venue, what the machine carries is one matching set, and the owner can swap back by replugging a machine; no test or rehearsal ever reaches a live show.",
+        "proposedTitle": "A change is proven before it reaches anyone, and the owner alone sends it to the show"
+      },
+      "needAdditions": [
+        {
+          "words": "what the machine carries is one matching set",
+          "from": "meaning: 'the installed pieces match'"
+        }
+      ],
+      "goal": "A ladder of test rungs, the first running the real software with stand-in equipment. Each test run, preview and second kit has its own engine names, so no test reaches a live show. Shared shapes are written once; tests check every fake against the real thing; skips are loud. Every change runs on two packs. The owner alone sends a checked machine; rollback is a replug.",
+      "standalone": "No run covers either player device's standalone path; the phone's pack test passes on a file the deployed folder lacks; the hardware scanner's boot has no test; one cross-mode proof compares scores only and skips its group case on the real pack. In the candidate the same proofs cover the tablet; its own engine would need a cross-check.",
+      "conflicts": [
+        {
+          "field": "needs",
+          "line": "The test environment (capability 46): tests cannot touch the live machine's tracking files, the TV or its players; they skip loudly with a reason; a switch that stops test copies of the engine from starting the sound system is not built.",
+          "fix": "Replace the last clause with: a test engine runs under its own engine instance and a rung profile, with a stand-in for sound, so it never starts the sound system; no switch is needed."
+        },
+        {
+          "field": "needs",
+          "line": "The seams for more kits (capability 42) and the preview engine (capability 20): the same per-engine naming layer as test runs, built once. Eight fixed temporary paths and two machine-wide kills exist today.",
+          "fix": "Say: Sixteen fixed temporary paths in eight files and two machine-wide kills exist today."
+        }
+      ],
+      "shapeChange": "J10 is now a quality over every part with three parts of its own, Joins and proofs, Engine instance and Release, which split it by moment: the developer's green run and the owner's release day; question F stays open. The goal closes its open item as a candidate: one naming layer for tests, previews and a second kit. Two needs lines are corrected.",
+      "notes": "Parts: engine-shape.md:213 ('J10 (P13, P16, P17)'); P16 first because it carries the Proof quality (:105, :207) and two of J10's four primary flaws, C14 and C16 (:211); P13 owner J10 (:201) carries C8; P17 carries C15 (:209; row 8 at :344, section 5 F at :354). Functional: engine-shape.json functional[9]. Additions: joins are M-J on P16 (:95, :207), J10's own part, so the requirement stays in need in the owner's words; the installed set is P17 (:209); old words from engine-jobs.json jobs[9].meaning. Not added: 'tests prove the path the show really runs' and 'testing never touches a live show' are already in need. Goal: P13 (:201) and the shared naming layer for J6 and J8 (:37, :74, :75, :93), which answers the old goal's open item ('whether tests and previews share one naming layer', engine-jobs.json jobs[9].goal) as a candidate; P16 contracts generated, conformance test per adapter, two-pack matrix, rung profiles (:207); P17 and blue/green (:209; CONTEXT.md section 5 'Blue/green'); the ladder's first rung with fake physics is P8's stand-ins (:191, :329), cut from the goal for length. Standalone: facts from engine-jobs.json jobs[9].standalone (the phone's pack-identity test cut for length); design from engine-shape.md:321 (the same modules with five stand-ins), :306 and :329 (P16 on P13 instances, two packs). Conflict needs[0]: a 'switch' against P13 plus P8 stand-ins under a rung profile (:201, :191, :207, :329). Conflict needs[1]: 'Eight fixed temporary paths' against 'sixteen fixed /tmp literals in eight files' (:93, :162, :201). Tests[3] matches P17 ('a rollback moves everything or says what it did not', :209). Check: need addition 'nothing two parts share drifts unseen' removed: the restatement's green run already carries it, since job-relationships.md:80 grounds that need in C16, C14 and C8 (joins are C14). Goal restores 'a ladder of test environments, with a first rung that runs the real software stack with fake physics' (engine-jobs.json jobs[9].goal; P16 rung profiles and P8 stand-ins, engine-shape.md:207, :191; CONTEXT.md section 5 rung 1) and makes the fake check active. Standalone restores the phone's pack test fact (engine-jobs.json jobs[9].standalone; standalone-pass.md:151) and names candidate B, a cross-implementation test (engine-shape.md:340; standalone-pass.md section 5, test rule)."
+    }
+  ]
+}

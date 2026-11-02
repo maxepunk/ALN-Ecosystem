@@ -78,6 +78,13 @@ you intend.
      (one-auth doc).
   The fourth use, the long-running agent/container session, belongs to
   `docs/agents/process.md`, not to game vocabulary.
+- **"readiness"** has two meanings (split 2026-10-30, architecture
+  pass's definition session):
+  1. *Readiness states.* The roadmap's five named points, from
+     coherent on main to adoptable (§7).
+  2. *What one truth checks* (§2): whether the kit meets the show's
+     needs. Say **verdicts** for this meaning, the word §2 already
+     uses for resolve()'s output.
 - **"mode"** has four meanings:
   1. *Pack mode.* One entry in the pack's `modes[]` list, for example
      ALN's `blackmarket` and `detective`. Each entry declares flags:
@@ -86,7 +93,11 @@ you intend.
      (`gameRules/modeSemantics.js`).
   2. *Deployment mode.* Networked means an orchestrator is present.
      Standalone means the device works alone. This is an
-     infrastructure choice, not a gameplay choice.
+     infrastructure choice, not a gameplay choice. A whole game can
+     be run standalone: the GM scanner and the player scanners each
+     work alone, and no game mixes the two modes (owner, 2026-10-31;
+     the architecture pass's decision "Standalone games: declared,
+     never mixed", `docs/plans/architecture-pass/DECISIONS.md`).
   3. *Display mode.* Which picture the venue display shows: the idle
      loop, the scoreboard, or a video. The orchestrator owns this
      state machine (`displayControlService`) and announces changes
@@ -324,10 +335,13 @@ you intend.
 - **Held item.** A cue or video that could not run because a needed
   service was down or a video was already playing. The engine parks it
   and tells the GM, who can release or discard it. Nothing is silently
-  dropped. Expiry differs by kind today: a held cue auto-discards
-  after 10 seconds (`heldItemsStore`), while a held video has no
-  expiry and waits for the GM. `videoQueueService` keeps its own
-  separate hold list; unifying the two is backlog.
+  dropped. Expiry differs by kind today: a cue held because a video
+  was already playing auto-discards after 10 seconds; a cue held
+  because a service was down, and every held video, has no expiry and
+  waits for the GM (`cueEngineService.js:751`, `:861`; corrected
+  2026-10-30 from "a held cue auto-discards after 10 seconds").
+  `videoQueueService` keeps its own separate hold list; unifying the
+  two is backlog.
 - **Dormant vs fault.** The health distinction from the kit model.
   *Dormant* means a service has no equipment configured tonight, on
   purpose. That is normal and must never show as an error, because
@@ -367,18 +381,58 @@ you intend.
   means reloading a pack without restarting the orchestrator; it is
   what makes this loop fast, and it is scheduled with the B pages.
 
+## 4b. Runtime state
+
+Settled 2026-10-30 at the architecture pass's definition session
+(the decision "Four words for the game's live facts",
+`docs/plans/architecture-pass/DECISIONS.md`; the session's record word
+for word: `docs/plans/2026-10-30-architecture-pass.md`, Appendix A).
+These words name
+the facts a running game changes and where those facts live. They
+decide nothing about how the engine should hold them; that is the
+architecture pass's question.
+
+- **Runtime state.** Every fact about a running game that can change
+  during it: the game session and its phase, teams, transactions and
+  scores, claimed tokens, the video queue, the music, held items, the
+  game clock, running cues, and each service's health. Contrast the
+  verdicts of one truth (§2), which compare what the show needs with
+  what the kit has. Avoid "live state": "live" names a check depth
+  (§5).
+- **Authority.** The place that decides a runtime fact. It is an
+  engine module, or an outside program the engine drives: VLC decides
+  what is playing. Avoid "owner", which names the project owner and,
+  on a token, a character. Avoid "source of truth".
+- **Copy.** A runtime fact held anywhere except its authority: a GM
+  scanner's list of claimed tokens, the scoreboard's table, the
+  engine's cached picture of what VLC is doing. Avoid "mirror".
+- **Delivery path.** The route a runtime fact takes from its authority
+  to a screen.
+
 ## 5. Venue, kit, and installation
 
+- **Venue technician.** The person who fits a kit to a venue: they
+  satisfy the pack's tech rider, bind the installation profile and run
+  the preflight (§5b, Deploy). Use this name, not "installer" or
+  "venue installer" (owner, 2026-11-01, "Promises, qualities, moments,
+  venue technician", `docs/plans/architecture-pass/DECISIONS.md`).
 - **Install tier.** How much of the kit is deployed for one event,
   from the minimum (player scanners and tokens only) to the full rig.
   Every tier must run a legitimate game. Tiers are normal
   configurations, not special cases.
 - **Endpoints vs stack.** The two-layer capability model. The *stack*
   is the orchestrator's service software. If the orchestrator is
-  present, every stack service is expected to run. *Endpoints* are the
-  physical devices (speakers, lights, displays), configured per event.
-  A missing stack service is a *fault*; an absent endpoint makes its
-  features *dormant* (definitions in §4).
+  present, every stack service is expected to run, with one exception:
+  a stack service that exists only to drive endpoints the profile says
+  are absent tonight is *dormant*, and its process is not started. The
+  pack decides whether that absence is allowed: a need the pack marks
+  `degrade` resolves dormant; a need the pack marks `require` resolves
+  no-go, and the preflight refuses the start, because the profile then
+  fails the pack's minimum. (Edit noted 2026-09-12, owner-ruled for the
+  hardening block's supervisor.) *Endpoints* are the physical devices
+  (speakers, lights, displays), configured per event. A missing stack
+  service that the show needs is a *fault*; an absent endpoint makes
+  its features *dormant* (definitions in §4).
 - **Preflight.** The pre-show check: one button produces a go/no-go
   list, and every line traces to a field in the profile or the pack
   manifest. Ratified direction C1 (2026-08-22), design ratified
@@ -388,12 +442,15 @@ you intend.
   ports); the hand-run checklist shrinks to the physical room
   (speakers placed, TV on the right input, tokens on set). Every row
   is labeled *paper* or *live* (see below) and names the profile it
-  verified against. A required ("block the show") need left unmet
-  refuses `session:start`, with a typed, logged "start anyway"
-  override for genuine emergencies.
-- **Paper vs live checks.** The two verification depths. *Paper* =
-  pack needs vs the profile FILE (the declared inventory) — pure data,
-  runs anywhere. *Live* = the profile vs reality (the sink exists in
+  verified against. A required ("block the show") need left unmet, or an installation
+  profile file that fails its own schema check (Block 2 ruling R12),
+  refuses `session:start`, with a typed, logged "start anyway" override
+  for genuine emergencies.
+- **Paper vs live checks.** The two verification depths. *Paper* = pure
+  data, checkable anywhere: pack needs against the profile FILE (the
+  declared inventory), and the profile file against its own schema.
+  (Edit noted 2026-09-12: widened for Block 2's profile check, plan
+  P19.) *Live* = the profile vs reality (the sink exists in
   pactl right now, HA actually has that scene) — runs only where the
   hardware is. Every verdict says which depth it reached and against
   which profile, so a green at home is never mistaken for venue
@@ -420,6 +477,12 @@ you intend.
   features does that unlock?" for a hypothetical profile, before
   equipment is packed for an event. The UI for it is scheduled after
   Phase 3 (ROADMAP §8.4).
+- **Remote display.** A display on another device that shows only the
+  scoreboard page over the kit network (today a Pi 4 with a browser in
+  fullscreen at the scoreboard link). In the profile it is the family
+  `display.remote`, a count, modeled like `stations`; the preflight
+  counts connected display-class connections against it. It is not a
+  fallback for the TV (`display.main`). (Added 2026-09-12, owner-ruled.)
 - **Kit network.** The kit carries its own router and WiFi. The
   orchestrator has one reserved IP address and one public DNS name.
   The **orchestrator Pi** answers that name on the LAN: it runs
@@ -429,7 +492,7 @@ you intend.
   a DHCP option handing out the Pi as the DNS server. Swapping routers
   therefore costs three settings. The kit works with no internet
   connection.
-- **Blue/green.** The ratified cutover method (ROADMAP §3b). *Green*
+- **Blue/green.** The ratified cutover method (ROADMAP §6, formerly §3b). *Green*
   is a second Pi, prepared and tested as a complete production
   machine. *Blue* is the current production Pi, left untouched. The
   cutover is: unplug blue, plug in green; green takes the reserved IP.
@@ -479,7 +542,14 @@ the GM scanner, and a game's own post-show tooling)
   crafting each session's bespoke in-fiction article for its players.
   The platform's built-in story-of-the-night reading must stand
   alone; a per-game console is an advanced instance, never the
-  baseline.
+  baseline. The record carries the game it ran and the texts the
+  players saw, so a telling quotes what they held. ALN's console
+  stays a separate program that reads the record; the record is
+  shaped so a game's telling can later run inside Review. What
+  reaches the players after the show, and their contact details,
+  stay the game's business, outside the engine ("The night's record
+  and the after-game article", 2026-11-01,
+  `docs/plans/architecture-pass/DECISIONS.md`).
 - **Director.** The Review-stage hat (usually the same human as GM
   or designer): the person who crafts the night's telling and
   harvests design learning back into Author.
@@ -620,6 +690,49 @@ the GM scanner, and a game's own post-show tooling)
   toy pack. **Adoptable** — a stranger can stand the platform up and
   learn it. The gates live in the roadmap; deployment and sharing
   decisions are made AT states, not at phase boundaries.
+- **Architecture pass.** The whole-engine program that turns the
+  lessons of blue's run and the needs of the planned capabilities into
+  the engine's architecture and interfaces. Phase 1 decides the shared
+  rules and revises the roadmap. Phase 2 changes the engine to follow
+  them, each rule proven by a test. Its aim is the best architecture
+  for the engine's long-term use as it grows beyond ALN; blue's fixes
+  and findings are clues to where today's design is off, never the
+  driver (owner, 2026-10-31, "Design for the long term, beyond ALN").
+  (Owner-ratified wording, 2026-10-30; the decisions by title:
+  `docs/plans/architecture-pass/DECISIONS.md`; the session's record
+  word for word: `docs/plans/2026-10-30-architecture-pass.md`,
+  Appendix A.)
+- **Promise.** What a person can count on at a given moment, for
+  example "One game, the same on every screen". The architecture pass
+  states the engine's requirements as ten promises, each named by its
+  title alone, with no number. Parts keep promises; design flaws break
+  them. It replaces "job", the pass's word for the same list from
+  2026-10-31 (owner, 2026-11-01, "Promises, qualities, moments, venue
+  technician").
+- **Moment.** When a promise matters: a production stage (§5b:
+  Author, Rehearse, Run, Review), a point inside a show (doors open,
+  mid-show, the end of a game, a restart), or release day.
+- **Part.** One piece of the engine's candidate design in the
+  architecture pass (17 in the shape of 2026-11-01). A part keeps
+  promises and runs on the engine or on a device. A part is not a
+  device: a device is hardware (§6).
+- **Quality.** Something every part must have so that a promise holds
+  everywhere, not in one place; for example, every fact on a screen
+  says how old and how sure it is. A quality keeps promises. It is
+  never a promise or a part.
+- **Design flaw.** Something in today's design that breaks a promise
+  (C1 to C16 in the architecture pass; N1 is proposed).
+- **Truth sweep.** The roadmap's Block 3 as chartered on 2026-09-05:
+  audit the routes by which service status reaches the GM's admin
+  panel, and fix each false display with a rig test per fix. The
+  scoring, transaction and session screens were left out to keep the
+  unit bounded. The owner retired this charter on 2026-10-30. Its
+  purpose, proving with rig tests and screen captures that every
+  screen tells the truth, moves into the build work the architecture
+  pass plans, and it covers every screen ("The truth sweep's charter
+  is retired", `docs/plans/architecture-pass/DECISIONS.md`; the
+  session's record word for word:
+  `docs/plans/2026-10-30-architecture-pass.md`, Appendix A).
 - **Retired code names.** Track letters (Track A–E), stage codes
   (BS/CS/PS numbers, B0–B12, C1–C4, E-numbers, O-numbers), and slice
   numbers are historical (owner-ruled 2026-09-04). Forward-looking

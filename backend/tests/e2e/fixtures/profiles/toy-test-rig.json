@@ -6,6 +6,13 @@
   "version": 1,
   "forPack": "midnight-heist",
   "orchestrator": true,
+  "endpoints": {
+    "lighting.instruments": { "installed": true, "provider": "home-assistant" },
+    "audio.sinks": [
+      { "id": "rung1_hdmi", "installed": true },
+      { "id": "rung1_bt", "installed": true }
+    ]
+  },
   "bindings": {
     "lighting": {
       "vault-alarm": {

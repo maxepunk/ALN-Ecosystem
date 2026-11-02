@@ -551,6 +551,74 @@ describe('VideoQueueService - Queue Management', () => {
       expect(result.reason).toBe('video_busy');
       expect(result.waitTime).toBe(25);
     });
+
+    // Block 2 T1a D9: a venue with no TV is not a venue with a broken TV.
+    // The distinction reaches the player scanner as a different reason
+    // code — the wire shape is untouched (S7), so no scanner needs a
+    // rebuild to keep working.
+    it('a DORMANT vlc gives reason vlc_dormant with the door wording', () => {
+      registry.markDormant('vlc', 'profile', 'vlc is not installed tonight');
+      try {
+        const result = videoQueueService.canAcceptVideo();
+        expect(result).toEqual({
+          available: false,
+          reason: 'vlc_dormant',
+          message: 'Video is not installed tonight',
+        });
+      } finally {
+        registry.clearDormant('vlc');
+      }
+    });
+
+    it('the operator door gives the operator wording', () => {
+      registry.markDormant('vlc', 'operator', 'vlc is out of service');
+      try {
+        expect(videoQueueService.canAcceptVideo().message).toBe('Video is out of service');
+      } finally {
+        registry.clearDormant('vlc');
+      }
+    });
+
+    it('the dormant branch is checked BEFORE the down branch', () => {
+      // A dormant service is also not healthy; without the ordering the
+      // player would be told "VLC is offline" for a TV nobody brought.
+      registry.markDormant('vlc', 'profile', 'vlc is not installed tonight');
+      try {
+        expect(videoQueueService.canAcceptVideo().reason).toBe('vlc_dormant');
+      } finally {
+        registry.clearDormant('vlc');
+      }
+    });
+  });
+
+  describe('processQueue() under a dormant vlc (T1a D9)', () => {
+    const registry = require('../../../src/services/serviceHealthRegistry');
+
+    afterEach(() => {
+      registry.clearDormant('vlc');
+      registry.reset();
+    });
+
+    it('FAILS an already-queued item instead of holding it', async () => {
+      // A hold is a promise to play it when the service comes back. Nothing
+      // is coming back: the venue has no TV tonight. Holding would grow a
+      // queue of items that can never be released.
+      registry.report('vlc', 'healthy', 'test');
+      const item = videoQueueService.addToQueue(testToken, 'PLAYER_1');
+      videoQueueService._heldVideos.length = 0;
+      videoQueueService.currentItem = null;
+      item.status = 'pending';
+
+      registry.markDormant('vlc', 'profile', 'vlc is not installed tonight');
+      const failed = jest.fn();
+      videoQueueService.on('video:failed', failed);
+
+      await videoQueueService.processQueue();
+
+      expect(videoQueueService.getHeldVideos()).toHaveLength(0);
+      expect(failed).toHaveBeenCalled();
+      videoQueueService.removeListener('video:failed', failed);
+    });
   });
 
   describe('videoFileExists()', () => {

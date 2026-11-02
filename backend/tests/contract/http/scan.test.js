@@ -188,6 +188,36 @@ describe('POST /api/scan', () => {
       registry.report = origReport;
     }
   });
+
+  // Block 2 T1a D9 (S7): a DORMANT vlc — no TV in the room tonight — takes
+  // the SAME 409 {status:'rejected'} wire as a down one, with the same
+  // message. The distinction is real inside the engine (grey, not red; no
+  // held item) and deliberately invisible to the player scanner, which
+  // needs no rebuild and would have nothing to do with the difference.
+  it('should return the same 409 rejection when VLC is DORMANT', async () => {
+    const registry = require('../../../src/services/serviceHealthRegistry');
+    await new Promise(r => setImmediate(r));
+    registry.markDormant('vlc', 'profile', 'vlc is not installed tonight');
+
+    try {
+      const response = await request(app.app)
+        .post('/api/scan')
+        .send({
+          tokenId: 'rem001',
+          deviceId: 'PLAYER_SCANNER_01',
+          deviceType: 'player',
+          timestamp: new Date().toISOString()
+        })
+        .expect(409);
+
+      expect(response.body.status).toBe('rejected');
+      expect(response.body.message).toBe('Video playback unavailable');
+      expect(response.body.videoQueued).toBe(false);
+      expect(response.body).not.toHaveProperty('waitTime');
+    } finally {
+      registry.clearDormant('vlc');
+    }
+  });
 });
 
 describe('POST /api/scan/batch', () => {

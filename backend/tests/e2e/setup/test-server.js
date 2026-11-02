@@ -65,6 +65,28 @@ async function findAvailablePort(preferredPort) {
   });
 }
 
+/**
+ * This worker's PRIVATE data and log directories (P21).
+ *
+ * Three Playwright workers used to share backend/data/, so one worker's clean
+ * start deleted another worker's live session file (the red leg on CI run
+ * 299). The slot is TEST_PARALLEL_INDEX — the same key the worker's private
+ * session bus is named for (session-env.js) — so a restart inside one worker
+ * always comes back to the same two directories. Read from the environment on
+ * every call, never cached: the slot is fixed for a worker process, and the
+ * unit test is the only caller that ever changes it.
+ *
+ * @returns {{dataDir: string, logsDir: string}} absolute paths
+ */
+function workerEnvDirs() {
+  const slot = process.env.TEST_PARALLEL_INDEX || '0';
+  const root = path.join('/tmp/aln-e2e-env', `w${slot}`);
+  return {
+    dataDir: path.join(root, 'data'),
+    logsDir: path.join(root, 'logs'),
+  };
+}
+
 // Server process reference
 let orchestratorProcess = null;
 let serverPort = null;
@@ -208,10 +230,21 @@ async function startOrchestrator(options = {}) {
   const prov = await provisionForRun({ packPath, profilePath });
   const ha = prov.ha;
 
+  // This worker's private directories, created before the child needs them.
+  const { dataDir, logsDir } = workerEnvDirs();
+  await fs.mkdir(dataDir, { recursive: true });
+  await fs.mkdir(logsDir, { recursive: true });
+
   // Update test environment
   const env = {
     ...process.env,
     ...TEST_ENV,
+    // One data/logs directory per worker (P21) — parallel workers must never
+    // share backend/data/, where one worker's clearSessionData() deleted
+    // another's live session file. The child's cwd stays backend/; only these
+    // two seams (config/index.js) move.
+    DATA_DIR: dataDir,
+    LOGS_DIR: logsDir,
     PORT: String(port),
     ENABLE_HTTPS: String(enableHttps),
     STORAGE_TYPE: storageType,  // Use parameter instead of TEST_ENV default
@@ -443,10 +476,17 @@ function getOrchestratorUrl() {
 }
 
 /**
- * Clear session data between tests
+ * Clear this worker's session data between tests
  *
- * Removes persisted session files to ensure clean test state
- * Uses node-persist API to properly clear storage (handles MD5 hashing)
+ * Removes the persisted session files in THIS worker's data directory
+ * (P21). No other worker's directory is reachable from here, so a clean start
+ * can no longer delete a session another worker is still using.
+ *
+ * In-process state needs no clearing: every startOrchestrator SPAWNS a fresh
+ * orchestrator, and the respawn is the isolation. (The former `memory` branch
+ * reset a persistenceService singleton inside the HARNESS process — a
+ * different process from every orchestrator, which therefore read nothing it
+ * cleared.)
  *
  * @returns {Promise<void>}
  *
@@ -456,52 +496,35 @@ function getOrchestratorUrl() {
  * });
  */
 async function clearSessionData() {
-  // CRITICAL: Handle both file storage AND memory storage
-  // Tests use STORAGE_TYPE=memory, but this function only clears files
-  // Result: In-memory state (current session, scores, etc) persists across tests
+  const { dataDir } = workerEnvDirs();
 
-  if (process.env.STORAGE_TYPE === 'memory') {
-    // Clear in-memory storage via persistenceService
-    try {
-      const persistenceService = require('../../../src/services/persistenceService');
-      await persistenceService.resetMemoryStorage();
-      logger.debug('Memory storage cleared for testing');
-    } catch (error) {
-      logger.warn('Failed to clear memory storage', { error: error.message });
+  try {
+    await fs.access(dataDir);
+
+    // Direct file deletion, not node-persist's async API, which could race a
+    // still-completing write from the orchestrator we just stopped.
+    // Only files are cleared (entry.isFile()) — a live session record is
+    // exactly that, a flat file node-persist writes directly under this
+    // directory. MPD's own working files live under its runtime dir (/tmp by
+    // default, see musicService._mpdRuntimeDir), never under DATA_DIR, so
+    // nothing here is ever a subdirectory in practice; the filter is a
+    // defensive backstop, not a real case.
+    const entries = await fs.readdir(dataDir, { withFileTypes: true });
+    await Promise.all(
+      entries
+        .filter(entry => entry.isFile())
+        .map(entry => fs.unlink(path.join(dataDir, entry.name)).catch(err => {
+          // Ignore file not found (a concurrent stop may have removed it)
+          if (err.code !== 'ENOENT') throw err;
+        }))
+    );
+
+    logger.debug('Session data cleared', { dataDir });
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      logger.warn('Failed to clear session data', { dataDir, error: error.message });
     }
-  } else {
-    // Clear file storage (original logic)
-    const dataDir = path.join(__dirname, '../../../data');
-
-    try {
-      await fs.access(dataDir);
-
-      // Direct file deletion to avoid race conditions with parallel workers
-      // When workers run in parallel, node-persist's async API can conflict:
-      // - Worker 1 stops orchestrator → writes session asynchronously
-      // - Worker 2 clears data → may run before Worker 1's write completes
-      // - Result: Worker 2 restores stale session from Worker 1
-      //
-      // Direct file deletion eliminates the async timing dependency.
-      // Subdirectories (e.g., aln-mpd-playlists/ owned by MPD) are left
-      // alone — only files in the data dir are clearable session state.
-      const entries = await fs.readdir(dataDir, { withFileTypes: true });
-      await Promise.all(
-        entries
-          .filter(entry => entry.isFile())
-          .map(entry => fs.unlink(path.join(dataDir, entry.name)).catch(err => {
-            // Ignore file not found (may have been deleted by another worker)
-            if (err.code !== 'ENOENT') throw err;
-          }))
-      );
-
-      logger.debug('Session data cleared via direct file deletion');
-    } catch (error) {
-      if (error.code !== 'ENOENT') {
-        logger.warn('Failed to clear session data', { error: error.message });
-      }
-      // Directory doesn't exist - nothing to clear
-    }
+    // Directory doesn't exist yet - nothing to clear
   }
 }
 
@@ -610,6 +633,12 @@ function getServerStatus() {
 }
 
 module.exports = {
+  // Read-only: the closed-output-pipe reproduction
+  // (tests/integration/logger-epipe-guard.test.js) boots its orchestrator with
+  // the SAME environment the harness uses, so the storm it reproduces is the
+  // harness's storm and not a lookalike.
+  TEST_ENV,
+  workerEnvDirs,
   startOrchestrator,
   stopOrchestrator,
   restartOrchestrator,

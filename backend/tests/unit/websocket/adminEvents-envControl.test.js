@@ -35,8 +35,12 @@ jest.mock('../../../src/services/lightingService', () => ({
 // Mock health registry — all services healthy by default
 jest.mock('../../../src/services/serviceHealthRegistry', () => ({
   isHealthy: jest.fn().mockReturnValue(true),
+  // T1a D6: the executor's health gate now asks about dormancy first
+  isDormant: jest.fn().mockReturnValue(false),
   getStatus: jest.fn().mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() }),
   report: jest.fn(),
+  markDormant: jest.fn(),
+  clearDormant: jest.fn(),
   on: jest.fn(),
   removeAllListeners: jest.fn(),
 }));
@@ -161,6 +165,7 @@ describe('adminEvents.js - Environment Control gm:command Actions', () => {
     // restore registry healthy state so env commands pass health gate
     const registry = require('../../../src/services/serviceHealthRegistry');
     registry.isHealthy.mockReturnValue(true);
+    registry.isDormant.mockReturnValue(false);
     registry.getStatus.mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() });
   });
 

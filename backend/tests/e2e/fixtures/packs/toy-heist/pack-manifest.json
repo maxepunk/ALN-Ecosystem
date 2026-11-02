@@ -3,7 +3,7 @@
   "schemaVersion": 2,
   "packId": "midnight-heist",
   "version": "0.1.0",
-  "contentHash": "sha256:c10b665d5dd744df43f9ddca9ea03581b64b467e400a1b709a11e0d41dc2f830",
+  "contentHash": "sha256:966e775ab354a04105bfc27329f0eee0692431846e9b8bb77dcd832c3e782bd1",
   "engine": {
     "minVersion": "3.0.0"
   },
@@ -11,14 +11,14 @@
     {
       "path": "cues.json",
       "role": "cues",
-      "sha1": "3d8200aa231b0cca9a35e5d1b91764d9624575aa",
-      "size": 616
+      "sha1": "bc0eea7db2d27e926ee7a785131371b31521c420",
+      "size": 1503
     },
     {
       "path": "game.json",
       "role": "game",
-      "sha1": "843d6fac7a0454b36a8305ccf4a04473cea2eb58",
-      "size": 3809
+      "sha1": "fac217cb307caa0cb7f4b8eac958f8502f9a65e0",
+      "size": 3830
     },
     {
       "path": "strings.json",
@@ -61,6 +61,15 @@
         "onAbsent": "degrade"
       }
     },
-    "endpoints": {}
+    "endpoints": {
+      "lighting.instruments": {
+        "usedBy": "lighting cues (role-addressed)",
+        "onAbsent": "degrade"
+      },
+      "audio.sinks": {
+        "usedBy": "cue sound effects",
+        "onAbsent": "degrade"
+      }
+    }
   }
 }

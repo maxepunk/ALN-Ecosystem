@@ -97,7 +97,8 @@ async function buildSyncFullPayload({
     }));
   }
 
-  // Registry snapshot: all 8 services with status, message, lastChecked
+  // Registry snapshot: all 9 services with status, message, lastChecked
+  // (T1a: `display` is the ninth; a dormant entry also carries `door`)
   const serviceHealth = serviceHealthRegistry.getSnapshot();
 
   const environment = await buildEnvironmentState({
@@ -148,6 +149,12 @@ async function buildSyncFullPayload({
     // every sync:full emit path carries it (see the completeness contract
     // test). Singleton import, same pattern as displayControlService above.
     pack: require('../services/packService').getActivePackInfo(),
+    // Block 2 T1a D10: which venue this orchestrator believes it is standing
+    // in. Pack identity answers "what rules"; profile identity answers "what
+    // equipment" — and a GM reading a dormant dashboard row has no way to
+    // check the claim without knowing which profile made it. Same central
+    // placement as `pack`, for the same reason.
+    profile: require('../services/profileService').getProfileInfo(),
   };
 }
 

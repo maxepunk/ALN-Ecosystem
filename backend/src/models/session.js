@@ -65,6 +65,12 @@ class Session {
         uniqueTokensScanned: [],
         scannedTokensByDevice: {},  // Per-device duplicate detection tracking
         pack: null,  // A2: stamped by sessionService.createSession
+        // T1a D8: the preflight stamp every session carries, and the typed
+        // "start anyway" record when a GM started over a NO-GO. Both
+        // stamped by sessionService; null means "not evaluated", never
+        // "evaluated clean".
+        preflight: null,
+        preflightOverride: null,
       };
     }
 
@@ -77,6 +83,15 @@ class Session {
     // (unknown provenance), distinguished from a genuine pack identity.
     if (data.metadata.pack === undefined) {
       data.metadata.pack = null;
+    }
+
+    // T1a D8, same precedent: a session file written before the preflight
+    // stamp existed restores with explicit nulls, not undefined.
+    if (data.metadata.preflight === undefined) {
+      data.metadata.preflight = null;
+    }
+    if (data.metadata.preflightOverride === undefined) {
+      data.metadata.preflightOverride = null;
     }
 
     this.validate({

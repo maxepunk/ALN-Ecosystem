@@ -76,6 +76,12 @@ const FLOOR_ACTION_PREFIXES = Object.freeze([
   // close review: this was the ONE gm:command family outside the map,
   // reachable by an observe socket).
   ['service:', 'show-control'],
+  // Block 2 T1a D6: the preflight family joins its neighbour for the same
+  // reason. `preflight:run` reads the venue and drives the pre-show
+  // certificate the operator acts on; a display-drivable observe socket has
+  // no business running it, and (T3/T4) `service:out-of-service` /
+  // `service:restart` are outright equipment control.
+  ['preflight:', 'show-control'],
   ['score:', 'score-intervention'],
   ['transaction:create', 'score-intervention'],
   ['transaction:delete', 'score-intervention'],

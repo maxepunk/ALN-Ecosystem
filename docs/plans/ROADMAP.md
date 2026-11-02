@@ -52,7 +52,7 @@ What the finished platform looks like, for each person:
   it, play, observe, repeat. Tuning ALN's economy and tuning a
   contagion game's spread rate are the same action, because both are
   just pack values.
-- **A venue installer** receives a kit (production-owned hardware plus
+- **A venue technician** receives a kit (production-owned hardware plus
   the pack). They fill in an *installation profile*: which speakers,
   which lights, which network. On one page they connect the pack's
   abstract names to the real instruments in the room. Then they run a
@@ -171,12 +171,14 @@ ratification: PR #32 is the final recorded vehicle), **reviewed as
 one whole** (ratified, Q1r: a dedicated review of the full train's
 combined diff, run by a separate session with fresh context, before
 any vehicle merges), and walked in order; `main` green on the full
-suites; the dual-pack end-to-end run green on `main`. Today `main`
-is still identical to the July production release; everything this
-program built lives on chained branches. One honesty note stands:
+suites; the dual-pack end-to-end run green on `main`. At ratification on 2026-09-05, `main`
+was still identical to the July production release, and everything
+this program built lived on chained branches. One honesty note stands:
 one older vehicle's CI has never been observed (the train table
 flags it — "watch it"). Timing is the owner's call (supersession 9);
 the walk is owner-paced.
+**Reached 2026-09-12** (record `a2fdc764`): the train was walked and
+`main` passed its full suites.
 
 **Hardware-proven.** A second machine ("green") built from the
 deployment docs and passing the home hardware pass (§6, Stage B):
@@ -189,11 +191,17 @@ and upgrades the show-ready gate, not this one. The docs are the
 proven blocker (dependency audit, claim 5: only 2 of the 7 required
 machine-state areas are fully documented; Home Assistant is entirely
 absent); the repair is bounded (Appendix C) and is the first unit
-(Q9). The certificate spike (S2) runs during this same setup.
+(Q9). (The certificate spike moved to deferral row 8.19 on 2026-09-12.)
 
 **Show-ready.** The state in which deploying for ALN is a live
 choice. Gate (ratified, Q5): (1) hardware-proven; (2) the hardening
-block and the truth sweep landed; (3) one full venue rehearsal done
+block and the truth sweep landed *(superseded 2026-10-30, owner: the
+sweep's charter is retired, the hardening pieces are rebuilt inside
+the architecture pass, and the pass's phase 2 takes this slot; the
+pass's roadmap revision restates the condition; the decisions "One
+program: design half, then build half" and "The truth sweep's charter
+is retired" in `architecture-pass/DECISIONS.md`; the session's record
+word for word: `2026-10-30-architecture-pass.md`, Appendix A)*; (3) one full venue rehearsal done
 (§6, Stage C — an off-day machine swap, already defined as a full
 cutover rehearsal including the swap back); (4) the owner has
 reviewed the visible-change list (Appendix B) as the GM. On the
@@ -258,7 +266,7 @@ used below:
   scanner. The owner's ask: make the next iteration "a bit more
   plug and play."
 
-**The clock:** the run opens 2026-09-18 and closes 10-18;
+**The clock** *(superseded 2026-10-30 by the owner; see §10.2)*: the run opens 2026-09-18 and closes 10-18;
 Mondays–Thursdays are the only swap windows.
 
 **Estimating rule** for every figure below: a unit shows its cost
@@ -284,7 +292,7 @@ claims 1–2), not taken from documents.
   plus the guide writing it down — inside the docs repair, not new
   engine code.
 - The home hardware pass itself (owner hardware time,
-  agent-supported), including the certificate spike.
+  agent-supported). (The certificate spike moved to 8.19, 2026-09-12.)
 - Screen baselines (Q8): capture baseline screen images from the
   pinned production release before further change.
 
@@ -324,6 +332,14 @@ pack-reload integration the old order gave this block moves to the
 preview block. Verified: nothing here touches the authoring tool.
 
 **Block 3 — the truth sweep.** → the panel-drift pain directly.
+*(Charter retired 2026-10-30 by the owner. Its purpose, proving with
+rig tests and screen captures that every screen tells the truth,
+moves into the build work the architecture pass plans, and it covers
+every screen, the scoring, transaction and session screens included;
+"The truth sweep's charter is retired" in `architecture-pass/DECISIONS.md`;
+the session's record word for word: `2026-10-30-architecture-pass.md`,
+Appendix A. The
+text below is the 2026-09-05 charter, kept as history.)*
 (New unit: the scanner state-truth sweep.) Audit every path from
 engine event to what the admin panel shows, and fix every place the
 panel shows something false; each fix gets a test on the rig. Scope
@@ -359,6 +375,10 @@ not one (dependency audit, claim 1):
 2. **The session-bundle emitter**: the structured bundle contract
    exists and is tested, but nothing in the engine writes bundles —
    the emitter was owned by no document anywhere. It is owned here.
+   It stamps each bundle with the pack the game ran and the texts
+   the players saw, so the night's telling quotes what they held
+   ("The night's record and the after-game article", 2026-11-01,
+   `architecture-pass/DECISIONS.md`).
    (Its landing starts the clock on the report pipeline's migration,
    still owner-paced — §8.10.)
 3. **A photo store**: the engine has no binary upload path at all;
@@ -444,7 +464,7 @@ baselines exist to guard and the venue rehearsal exists to absorb.
 production machine and tested while the current production Pi
 ("blue") keeps running shows, untouched. At the cutover: unplug
 blue, plug in green. Green takes the kit router's reserved
-orchestrator IP and DNS name, so scanners, tablets, and hardware
+orchestrator IP (and, once row 8.19 lands, the DNS name), so scanners, tablets, and hardware
 scanners never notice the machine changed. Rollback is physical and
 immediate: swap back to blue, which still holds the entire
 pre-cutover system.
@@ -466,8 +486,9 @@ done." The testing ladder maps to the readiness ladder:
   Pi and run a partial-kit test. The setup follows the deployment
   docs exactly; every gap found in the docs is treated as a doc
   defect. (This doubles as a rehearsal of the release block's "can a
-  stranger stand this up" requirement.) Spike S2 — the Cloudflare
-  DNS-01 certificate — runs during this setup. Stage B validates
+  stranger stand this up" requirement.) (Spike S2, the DNS-01
+  certificate, moved to deferral row 8.19 on 2026-09-12: Friday runs on
+  the fixed address with the warning accepted once.) Stage B validates
   what CI cannot: HEVC hardware decoding and video output (VLC can
   report "playing" over a black screen), real audio routing and
   ducking on a real Bluetooth speaker, Home Assistant scenes on a
@@ -596,7 +617,7 @@ record §6 lists them).
 | 8.7 | The 2026-06-18 documentation audit (81 findings) | **Block 6**, as a bounded triage: classify still-open vs superseded, record the remainder. |
 | 8.8 | Pack-defined NEW display surfaces + the constellation renderer | The second game's modules (§7.2) own the renderer; making the surface *set* extensible stays headroom beyond it. |
 | 8.9 | The source-adapter interface (Notion as the first adapter) | Content-tooling entry (§7.3; it is that block's named foundation). |
-| 8.10 | The report pipeline's migration to the structured bundle | Owner-paced; **the clock starts at the capture block's bundle emitter** (Block 4). Until then, ALN's report markdown stays byte-pinned by the golden master (including its ★ characters, which the pipeline parses). |
+| 8.10 | The report pipeline's migration to the structured bundle | Owner-paced; **the clock starts at the capture block's bundle emitter** (Block 4). Until then, ALN's report markdown stays byte-pinned by the golden master (including its ★ characters, which the pipeline parses). The plan ("The night's record and the after-game article", 2026-11-01, `architecture-pass/DECISIONS.md`): the Director Console stays a separate program and reads the bundle; the bundle is shaped so the console can later run as ALN's part of the Review stage. Players' emails stay outside the engine; the game's own tools may later collect them from the ticketing service. |
 | 8.11 | Invisible device-tier tokens: yes or no | An owner decision at the players'-phones entry grill (§7.1), bounded by §2.1. |
 | 8.12 | The tier-ladder roster and scripted capability profiles | The players'-phones entry grill (§7.1; they are the acceptance instrument). |
 | 8.13 | The team/player-management questions; the player-interaction brainstorm | The later blocks' entry grills (§7.1–7.2 absorbed part already). |
@@ -605,6 +626,7 @@ record §6 lists them).
 | 8.16 | GM-scan video cueing (ratified 2026-09-03): the scan→video trigger is engine-keyed to player scanners — a baked ALN opinion; a GM-scanner-only game cannot declare scan→video directly | **The interaction primitives** (§7.1), where scan→consequence mappings become pack-composable. Interim: standing cues (one per token→video pairing) work today as pure pack content — program §14.5. |
 | 8.17 | **The GM-scanner redesign** (new row, 2026-09-05) — the scanner-UX pain; also carries the GM-experience obligations that are not capture: the manual phase-advance control and phase-relative cue timing (the slice-5 Q-5-1 rulings, "required by full-project completion") | Design opens in **Block 5** under the UX foundation's method and vocabulary (wireframes against the owner's real show flows); build is priced and slotted by its own grill. |
 | 8.18 | **Preset-load differential gate** (new row, owner-ratified 2026-09-06; from the fix vehicle's adversarial review, `2026-09-05-train-fix-vehicle.md` §7 item 5) — the config-tool preset load/import gate refuses the WHOLE load when the live pack is gate-invalid for reasons the preset neither causes nor can fix, blocking the env/routing restore the preset does own (and a temp-dir name leaks into the refusal for manifest-less packs). Fix shape: compare the staged verdict against a pre-write verdict of the untouched pack and refuse only NEWLY-introduced problems; seed the staged manifest to preserve packId. | **Block 5** (the config-tool re-cut), beside the fix vehicle's §2.3 deferral group — the block's entry grill prices it with the rest. |
+| 8.19 | **Kit DNS and the certificate** (new row, owner-ruled 2026-09-12; Block 2 grill): DNS on the Pi (dnsmasq plus one router setting) → a public DNS name → the DNS-01 certificate → tablets without the warning → player phones by tap-to-web. Removed from the hardware-proven state, Block 1, Stage B and Appendix C; Friday runs on the fixed address with the self-signed certificate accepted once per device. | **The player-phones block (§7.1)**, the first work that needs a real domain and certificate; §7.1 already names S2 as its gate. |
 
 ## 9. The documentation system (per block, binding forward)
 
@@ -633,6 +655,10 @@ retirement note so the archive stays readable.
 ## 10. Sequencing, calendar, method
 
 ### 10.1 The committed order
+*Under revision 2026-10-30 (owner): the architecture pass is the
+current unit. Its phase 2 rebuilds the paused Block 2 pieces and Block
+3's purpose, and its phase 1 ends with revision r5 of this order
+(`2026-10-30-architecture-pass.md` §7). The order below is r4's.*
 Block 1 (unlock: train review + walk, docs repair, home hardware
 pass) → Block 2 (hardening) → Block 3 (truth sweep) → Blocks 4/5
 ordered once the capture block is priced (Q3) → Block 6
@@ -641,6 +667,8 @@ grill. The second game's design track runs owner-paced alongside
 everything, starting now (§7.2).
 
 ### 10.2 The calendar anchor
+**Superseded 2026-10-30 (owner):** the run ended on 2026-10-18, on blue. No date governs the work now: "We're going to be continuing to run the game off of blue until the new engine is ready to be swapped in on green." The text below is the September anchor, kept as history.
+
 2026-09-18 through 2026-10-18: weekly ALN shows on
 `production-2026-07`. Engineering never touches the running
 production. Any swap meets the show-ready gate and happens only in a
@@ -690,7 +718,7 @@ place.
 | CS.1–CS.5 | the resolution-and-hardening stages (rig + core; dormancy; supervisor; preflight; close) |
 | PS.1–PS.6 | the authoring-pages stages (pack manager; mechanics + hot-apply; strings/theme; show designer; content view; close) |
 | BS.1–BS.4 | the tooling-foundation stages |
-| S1 / S2 | the NFC spike (passed); the certificate spike (open) |
+| S1 / S2 | the NFC spike (passed); the certificate spike (deferred to row 8.19, 2026-09-12) |
 | Stage A / B / C | the testing ladder: CI + containers / the home hardware pass / the venue rehearsal |
 | BILL | the owner's second game (design track open now, owner-paced) |
 | Phase 4 / Phase 5 | the players'-phones + GM-experience era / content tooling — dissolved into the blocks and §7 charters |
@@ -768,6 +796,10 @@ scoreboard-password sections in the deployment guide, plus one wrong
 required-service check in the preflight checklist (a music daemon
 the system does not use). Remove: the disable-Bluetooth instruction
 that contradicts the system's own speaker support. Add: the
-certificate spike's procedure home (the spike itself runs during the
-home hardware pass). Full list with citations: the dependency audit,
+current connection posture (fixed address, blue's self-signed
+certificate copied to green, the warning accepted once per tablet and
+on the Pi 4 remote display; the certificate spike itself is deferred
+to row 8.19, 2026-09-12). Full list with citations: the dependency audit,
 claim 5.
+
+**Closed by R24 (2026-09-13).** The guide repair landed every item above (`docs/plans/briefs/2026-09-13-guide-repair.md`; `DEPLOYMENT_GUIDE.md` and `docs/preflight-checklist.md` at 7fab0b4; task review and re-review in the hardening block's scratch record). Four items were already true before the task: the Bluetooth removal, two of the three password sections, the installation-profile section, the Pi 5 video settings (moved from the agent document into the guide). The only open reference is the certificate spike, row 8.19, which the guide carries as an explicit deferral. Three code-side facts the guide cannot fix follow as a small task (the boot check accepting the WirePlumber `.conf` path; the two bus variables in the environment template; the requirements file's install line).

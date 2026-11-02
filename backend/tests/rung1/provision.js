@@ -65,22 +65,34 @@ function sleepSync(seconds) {
  * The provisioning gate — the ratified definition applied literally
  * (CONTEXT.md §5b: a simulation IS an ordinary profile whose bindings
  * point at software stand-ins): does this profile realize anything
- * through the harness? True when an endpoint names the harness as
- * provider, OR a lighting role binds to a witness scene, OR a surface
- * channel binds to a `-sim.` placeholder file. (The endpoint check
- * alone was too narrow — a pack with no endpoint needs, like the toy
- * pack, generates a simulation profile with an empty endpoints block.)
- * Safe default is NO — a missing, broken, or real venue profile
- * provisions nothing.
+ * through the harness? True when the pinned C1 §1 endpoints interior
+ * (D1) carries a harness marker VALUE — `display.main.output`
+ * beginning `rung1-`, or any `audio.sinks[].id` beginning `rung1_`
+ * (Block 2 T1b, plan §9 ruling 2: the interior has no `provider`
+ * field, so `provider: 'rung1-harness'` is schema-illegal and no
+ * longer the signal) — OR a lighting role binds to a witness scene,
+ * OR a surface channel binds to a `-sim.` placeholder file. (The
+ * endpoint check alone was too narrow — a pack with no endpoint
+ * needs, like the toy pack, generates a simulation profile with an
+ * empty endpoints block.) Safe default is NO — a missing, broken, or
+ * real venue profile provisions nothing.
  * @param {object} profile - parsed installation profile
  * @returns {boolean}
  */
 function harnessProvides(profile) {
   if (!profile || typeof profile !== 'object') return false;
   const { endpoints } = profile;
-  if (endpoints && typeof endpoints === 'object'
-      && Object.values(endpoints).some(e => e && e.provider === 'rung1-harness')) {
-    return true;
+  if (endpoints && typeof endpoints === 'object') {
+    const display = endpoints['display.main'];
+    if (display && typeof display === 'object'
+        && typeof display.output === 'string' && display.output.startsWith('rung1-')) {
+      return true;
+    }
+    const sinks = endpoints['audio.sinks'];
+    if (Array.isArray(sinks)
+        && sinks.some(s => s && typeof s.id === 'string' && s.id.startsWith('rung1_'))) {
+      return true;
+    }
   }
   const { bindings } = profile;
   if (!bindings || typeof bindings !== 'object') return false;

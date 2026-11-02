@@ -304,6 +304,18 @@ cd backend
 openssl req -x509 -newkey rsa:2048 -keyout ssl/key.pem -out ssl/cert.pem -days 365 -nodes
 ```
 
+> **Never run that on a production machine.** It overwrites
+> `backend/ssl/` in place, and on a venue Pi that pair is the
+> certificate every GM tablet and the remote display already trust —
+> replacing it makes each of them warn again, by hand, per device.
+> The certificate emitted above also carries no SAN, so browsers
+> reject it outright. For a real machine use
+> `../../../../DEPLOYMENT_GUIDE.md` → "SSL Certificate Setup" (which has the
+> IP-SAN recipe) and "3. Certificate — check, then copy". This
+> snippet is for a throwaway test checkout, where
+> `ignoreHTTPSErrors: true` makes the certificate's contents
+> irrelevant.
+
 ### Playwright Still Shows SSL Error
 
 Check `playwright.config.js` has `ignoreHTTPSErrors: true`:

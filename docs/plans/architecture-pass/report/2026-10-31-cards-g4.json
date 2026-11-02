@@ -1,0 +1,224 @@
+{
+  "cards": [
+    {
+      "id": "C13",
+      "title": "The engine does not know who is connected",
+      "atAShow": "A tablet loses Wi-Fi and reloads; the engine still holds its old socket under the same station name and refuses the new one for up to about 85 seconds. Two tablets started together pick the same station name from an open list. The TV joins the GM room, receives every transaction and all ten service domains, and filters on its own side.",
+      "whyItHappens": "Whether a credential is asked for, and what a station is called, comes from a word the device sends or a route's default. Every socket event and route checks separately; none says who its audience is, so every socket gets everything and reads need no login.",
+      "designTerms": "The engine's connection module should own identity and audience as one fact. Today that module is shallow: its interface is a self-declared word, and each route and socket event re-checks separately, so the seam between handshake and delivery leaks and locality is lost.",
+      "modules": [
+        "backend/src/websocket/socketServer.js",
+        "backend/src/websocket/gmAuth.js",
+        "backend/src/websocket/syncHelpers.js",
+        "backend/src/routes/healthRoutes.js",
+        "backend/public/scoreboard.html",
+        "ALNScanner/src/ui/connectionWizard.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  tab[\"GM tablet<br/>types its name\"]\n  tv[\"TV page<br/>claims to be a GM\"]\n  any[\"Any device<br/>claims not a GM\"]\n  hs[\"Handshake<br/>trusts the word\"]\n  http[\"State route<br/>no login asked\"]\n  room[\"GM room<br/>one audience for all\"]\n  all[\"Every transaction<br/>all ten domains\"]\n  tab -->|\"name from open list\"| http\n  tab -->|\"name plus token\"| hs\n  tv -->|\"token minted per serve\"| hs\n  any -->|\"no token asked\"| hs\n  hs -->|\"all sockets join\"| room\n  room -->|\"same snapshot, same pushes\"| all\n  http -->|\"answers anyone\"| any\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class hs,http,room fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  tab[\"GM tablet<br/>presents credential\"]\n  tv[\"TV page<br/>presents credential\"]\n  any[\"Any device<br/>no credential\"]\n  hs[\"Handshake<br/>verified tier every socket\"]\n  roles[\"Role table<br/>events and keys per role\"]\n  http[\"State route<br/>checks a function\"]\n  gmroom[\"GM audience<br/>transactions, domains\"]\n  tvroom[\"Display audience<br/>scores, evidence, clock\"]\n  tab -->|\"tier gm\"| hs\n  tv -->|\"tier display\"| hs\n  any -->|\"refused\"| hs\n  hs -->|\"role\"| roles\n  roles -->|\"emitTo audience\"| gmroom\n  roles -->|\"emitTo audience\"| tvroom\n  roles -->|\"function per route\"| http\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class roles owner;",
+        "note": "Candidate (a): an audience table per event and route, every emit through emitTo, a verified tier at every handshake. Competing: (b) a split public and operator surface; (c) the engine issues identities."
+      },
+      "examples": [
+        {
+          "ids": "B-04 / B-27 / D-27 / C-20",
+          "text": "Anyone on the kit network fetches the whole game state; a socket claiming not to be a GM gets it too."
+        },
+        {
+          "ids": "B-89 / D-25 / D-26",
+          "text": "The TV sits in the GM room, receives every transaction and all ten service domains, and filters on its own side."
+        },
+        {
+          "ids": "B-70 / C-19",
+          "text": "Two tablets reading the open name list before connecting pick the same station name; the second is refused."
+        },
+        {
+          "ids": "B-24 / C-59",
+          "text": "A tablet that reloads after losing Wi-Fi cannot replace its own stale socket for up to about 85 seconds."
+        },
+        {
+          "ids": "B-71 / D-32",
+          "text": "An ESP32 is listed as a web player scanner because its health poll sends no type."
+        },
+        {
+          "ids": "B-90 / D-29",
+          "text": "Displays get no device record and share one id, so the engine cannot count connected TVs."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [
+        7,
+        1
+      ],
+      "findings": 24,
+      "seenLive": ""
+    },
+    {
+      "id": "C14",
+      "title": "Names joining two places are kept by hand",
+      "atAShow": "A GM opens Team Details: the score box is wrong, GM adjustments never appear, completed groups read In Progress with a $0 bonus, while the scoreboard screen on the same tablet shows the real total. Game Activity shows Unknown, no stars, $0 for a token no player scanned first. The video Playing badge never appears, because its element was never in the page.",
+      "whyItHappens": "A screen reads a property the object lacks; a renderer looks up an element the page never had; a module listens for an event nothing sends; the contract lists events nobody emits. Each name is written on both sides, and a wrong side yields nothing instead of an error.",
+      "designTerms": "The facade should own the team-score fact behind one declared interface. Today the seam between facade and strategy leaks: a renderer reaches past the interface to a field on the implementation, and optional chaining turns the miss into silence. Each hand-kept name is shallow.",
+      "modules": [
+        "ALNScanner/src/ui/renderers/GameOpsRenderer.js",
+        "ALNScanner/src/core/unifiedDataManager.js",
+        "ALNScanner/src/core/storage/NetworkedStorage.js",
+        "ALNScanner/src/core/gameActivityBuilder.js",
+        "ALNScanner/src/network/orchestratorClient.js",
+        "backend/contracts/asyncapi.yaml"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  td[\"Team Details screen<br/>wrong score\"]\n  sb[\"Scoreboard screen<br/>real total\"]\n  fac[\"Data facade<br/>no backendScores field\"]\n  strat[\"Networked storage<br/>holds backendScores\"]\n  ga[\"Game Activity builder<br/>Unknown, no stars\"]\n  look[\"Token lookup<br/>returns a wrapper\"]\n  td -->|\"reads field, gets undefined\"| fac\n  td -->|\"completed groups, always empty\"| fac\n  sb -->|\"calls getter\"| fac\n  fac -->|\"delegates getter\"| strat\n  fac -.->|\"field never delegated\"| strat\n  ga -->|\"reads token fields off wrapper\"| look\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class td,ga fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  check[\"Join check<br/>one definition each side\"]\n  td[\"Team Details screen\"]\n  fac[\"Data facade<br/>declared fields\"]\n  ga[\"Game Activity builder\"]\n  look[\"Token lookup<br/>declared shape\"]\n  page[\"Page<br/>element ids\"]\n  events[\"Events<br/>sent and heard\"]\n  td -->|\"field name read\"| check\n  ga -->|\"shape read\"| check\n  check -->|\"must exist\"| fac\n  check -->|\"must match\"| look\n  check -->|\"every id looked up\"| page\n  check -->|\"every event has sender\"| events\n  check -.->|\"throws on a miss\"| td\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class check owner;",
+        "note": "Candidate (a): a start-up and test-time check that every looked-up id, listened event and read field has one definition, and a miss throws. Competing: (b) typed facade-strategy interfaces; (c) contract-checked message shapes."
+      },
+      "examples": [
+        {
+          "ids": "A-03 / A-04 / C-06",
+          "text": "Team Details reads a field the facade lacks and a method no strategy defines; wrong score, groups always In Progress."
+        },
+        {
+          "ids": "A-07 / C-15",
+          "text": "Game Activity reads token fields off the lookup's wrapper, so a GM-claimed token shows Unknown, no stars, $0."
+        },
+        {
+          "ids": "A-28",
+          "text": "The video Playing, Paused, Idle badge never renders: its element was never in the page."
+        },
+        {
+          "ids": "A-62 / A-66",
+          "text": "The cue timeline waits for a skipped field nothing sends and correlates videos by a field the pack lacks."
+        },
+        {
+          "ids": "B-06 / B-50 / B-67",
+          "text": "The contract lists events nobody sends, misses ones the engine emits, and disagrees with itself on the music push."
+        }
+      ],
+      "blueFixes": [
+        "W2",
+        "W5"
+      ],
+      "questions": [
+        5
+      ],
+      "findings": 41,
+      "seenLive": ""
+    },
+    {
+      "id": "C15",
+      "title": "The deployed game is many parts nothing compares",
+      "atAShow": "Between shows, a rollback moves the parent checkout but no submodule backwards, and pm2 restart keeps serving the pre-rollback scanner build, so the next show runs code nobody chose. A machine built from the tree's own documents pairs a speaker that connects with no audio profile, because the documents carry the wrong Bluetooth role.",
+      "whyItHappens": "The show machine is a parent checkout, four submodules on main, a scanner build folder, hand-copied media, host rules, hooks and program names fixed to one OS release. Each part moves by its own hand-run step and nothing compares them afterwards, so a half-applied change goes unnoticed.",
+      "designTerms": "A deploy module should own the fact of what is installed: pack hash, scanner build id, submodule pins. Today there is no such module; each part is a separate shallow interface, and the seam between source and running machine leaks with no check.",
+      "modules": [
+        ".gitmodules",
+        "backend/package.json",
+        "backend/scripts/build-scanner.sh",
+        "DEPLOYMENT_GUIDE.md",
+        "backend/src/services/packService.js",
+        "arduino-cyd-player-scanner/ALNScanner_v5/services/OrchestratorService.h"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart TD\n  roll[\"Rollback<br/>check out older commit\"]\n  parent[\"Parent checkout<br/>moves back\"]\n  subs[\"Four submodules<br/>merge setting, stay forward\"]\n  pm2[\"pm2 restart<br/>no build step\"]\n  dist[\"Scanner build folder<br/>pre-rollback code\"]\n  serve[\"Engine serves<br/>scanner symlink\"]\n  media[\"Media on disk<br/>copied by hand\"]\n  roll -->|\"moves\"| parent\n  roll -.->|\"does not move\"| subs\n  roll -->|\"then\"| pm2\n  pm2 -.->|\"skips build\"| dist\n  dist -->|\"served as is\"| serve\n  media -.->|\"tokens may point at nothing\"| serve\n  parent -.->|\"nothing compares the parts\"| subs\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class subs,dist fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart TD\n  deploy[\"One deploy command<br/>performs every step\"]\n  parent[\"Parent checkout\"]\n  subs[\"Four submodules<br/>pinned\"]\n  dist[\"Scanner build folder<br/>rebuilt\"]\n  media[\"Media on disk\"]\n  boot[\"Boot check<br/>compares pack, build, pins\"]\n  report[\"Disagreement reported<br/>before the show\"]\n  deploy -->|\"moves\"| parent\n  deploy -->|\"moves\"| subs\n  deploy -->|\"builds\"| dist\n  deploy -->|\"copies\"| media\n  parent -->|\"pins\"| boot\n  subs -->|\"pins\"| boot\n  dist -->|\"build id\"| boot\n  boot -->|\"any mismatch\"| report\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class boot owner;",
+        "note": "Candidate (a): one deploy command performs every step, and a boot check compares pack hash, scanner build id and submodule pins. No competing candidate; the check adds host program names and the kit certificate."
+      },
+      "examples": [
+        {
+          "ids": "A-91",
+          "text": "Rolling back with git submodule update --force moves no submodule backwards under the merge setting."
+        },
+        {
+          "ids": "A-92",
+          "text": "pm2 restart skips the build, so the GM scanner keeps serving the pre-rollback code."
+        },
+        {
+          "ids": "A-88 / X-03",
+          "text": "The tree's own documents give the Bluetooth role blue found wrong, so a new machine pairs a silent speaker."
+        },
+        {
+          "ids": "A-95",
+          "text": "The token sync cannot carry media; copied by hand first, or tokens point at nothing."
+        },
+        {
+          "ids": "B-98 / B-100",
+          "text": "Program names and install commands are fixed to one OS release; a new machine logs warnings or refuses pip."
+        },
+        {
+          "ids": "D-34",
+          "text": "The ESP32 checks no certificate at all, because the kit's self-signed certificate is pinned and distributed nowhere."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [],
+      "findings": 12,
+      "seenLive": "Blue hit a half-applied rollback, a pre-rollback scanner build after pm2 restart, and a speaker with no audio profile."
+    },
+    {
+      "id": "C16",
+      "title": "A green test run proves nothing about the show",
+      "atAShow": "Nothing shows at the show; this is why the other fifteen reached one. Unit tests stayed green while Team Details showed the wrong score, because their fake facade had the field the real one lacks. A delete step in an end-to-end flow had been silently skipping on a selector that never matched. Blue's last full run skipped 62 tests and told nobody.",
+      "whyItHappens": "Fakes are written by hand with nothing comparing them to the real classes. Steps that find no element, or check only that no error appeared, pass. Every test engine runs under a flag that changes what Reset System does, so no layer runs the reset the show runs.",
+      "designTerms": "A test's fake is an adapter, so the real class should own its shape and the fake must satisfy that interface. Today each fake is hand-written and checked against nothing; the seam leaks, and no test crosses one path from authority to screen.",
+      "modules": [
+        "ALNScanner/tests/unit/ui/uiManager.test.js",
+        "ALNScanner/tests/unit/core/gameActivityBuilder.test.js",
+        "backend/tests/e2e/helpers/page-objects/GMScannerPage.js",
+        "backend/src/websocket/listenerRegistry.js",
+        "backend/jest.config.base.js",
+        ".github/workflows/test.yml"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  real[\"Real facade<br/>no backendScores field\"]\n  fake[\"Hand-written fake<br/>has backendScores\"]\n  unit[\"Unit test<br/>green\"]\n  screen[\"Team Details screen<br/>wrong score\"]\n  sel[\"Page object selector<br/>never matches\"]\n  e2e[\"End-to-end flow<br/>delete step skips, green\"]\n  flag[\"Test flag on every engine<br/>reset removes listeners\"]\n  prod[\"Show machine<br/>reset removes nothing\"]\n  fake -->|\"stands in for\"| real\n  unit -->|\"tests against\"| fake\n  unit -.->|\"nothing compares\"| real\n  real -->|\"renders\"| screen\n  sel -->|\"finds no card, no failure\"| e2e\n  flag -.->|\"never tested as run\"| prod\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class fake,sel,flag fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  real[\"Real facade<br/>declared surface\"]\n  fake[\"Fake built from surface<br/>same fields and methods\"]\n  cmp[\"Shape check<br/>fails on a missing member\"]\n  unit[\"Unit test<br/>green only if shapes agree\"]\n  screen[\"Team Details screen<br/>right score\"]\n  sel[\"Page object selector<br/>must find a card\"]\n  e2e[\"End-to-end flow<br/>fails if a step skips\"]\n  skips[\"Skip list<br/>printed every run\"]\n  real -->|\"surface\"| cmp\n  fake -->|\"surface\"| cmp\n  cmp -->|\"agree\"| unit\n  real -->|\"renders\"| screen\n  sel -->|\"no card, fails\"| e2e\n  e2e -->|\"skipped tests\"| skips\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class real owner;",
+        "note": "Candidate (a): every fake built from the real class surface with a check that fails on a missing member, skips printed as a list. Competing: (b) one proof test per delivery path on the rig."
+      },
+      "examples": [
+        {
+          "ids": "A-51",
+          "text": "Unit-test fakes drifted from the real classes, so tests stayed green while Team Details and Game Activity were wrong."
+        },
+        {
+          "ids": "A-83",
+          "text": "A page-object selector never matched the Team Details cards, so a delete step had been silently skipping."
+        },
+        {
+          "ids": "A-82",
+          "text": "Blue's last full run skipped 62 tests; group completion has no end-to-end test on real content."
+        },
+        {
+          "ids": "X-04",
+          "text": "The listener registry removes listeners only under the test flag, so no layer runs the Reset System the show runs."
+        },
+        {
+          "ids": "D-87",
+          "text": "Not one screen image is checked in either end-to-end suite; no baseline exists to compare against."
+        },
+        {
+          "ids": "D-47",
+          "text": "Parent CI never runs several suites; the config tool's own workflow never runs from this repository."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [],
+      "findings": 23,
+      "seenLive": "Blue's last full run skipped 62 tests; a delete step had been skipping silently in blue's end-to-end runs."
+    }
+  ]
+}

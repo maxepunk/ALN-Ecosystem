@@ -2,9 +2,14 @@
 
 **Purpose:** Step-by-step environment and system state verification for the ALN backend orchestrator. Designed to be followed by a Claude Code instance before starting the server.
 
-**Working Directory:** `/home/maxepunk/projects/AboutLastNight/ALN-Ecosystem`
+**Working Directory:** this machine's own `ALN-Ecosystem` checkout
+(on a Pi built from `DEPLOYMENT_GUIDE.md`, `~/ALN-Ecosystem`). Every
+relative path below is from there. Do not run this against another
+machine's checkout path.
 **Server Directory:** `backend/` (relative to above)
-**Platform:** Raspberry Pi 5, Linux ARM64
+**Platform:** Raspberry Pi 5, Linux ARM64, Raspberry Pi OS 64-bit
+Desktop with the session switched to **X11** (`DEPLOYMENT_GUIDE.md`
+→ "0. Image the machine", step 4)
 
 > **⚠ REFRESH OWED (2026-07-18; narrowed 2026-09-05 — see PHASE3-STATUS
 > "Doc-refresh obligations").** This hand-run checklist is the
@@ -41,22 +46,35 @@
 
 ### 1.1 Node.js Version [BOTH] — CRITICAL
 
-Node.js must be installed and at a version compatible with the backend dependencies (ES2020+, v18+).
+Node.js must be installed and at a version the backend's own manifest
+accepts. `backend/package.json:127-129` declares
+`engines.node >= 22.0.0`; Node 20 reached end of life on 2026-04-30.
 
 **Check:**
 ```bash
 node --version
 ```
 
-**Expected:** `v18.x.x` or higher (v20+ preferred)
+**Expected:** `v22.x.x` or higher.
 
-**If fails:**
+**If fails** — on a Raspberry Pi, install from NodeSource the way
+`DEPLOYMENT_GUIDE.md` → "1. Prepare Raspberry Pi" does:
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+On a development machine with nvm:
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 source ~/.bashrc
-nvm install 20
-nvm use 20
+nvm install 22
+nvm use 22
 ```
+
+> **Changed 2026-09-13.** This section used to expect `v18.x.x` or
+> higher and remedy with Node 20 — a version the backend's manifest
+> does not accept and that no longer receives security fixes.
 
 ### 1.2 npm Packages Installed [BOTH] — CRITICAL
 
@@ -209,7 +227,7 @@ rm -f /tmp/aln-pm-vlc.pid
 
 ### 2.3 Stale D-Bus Monitor Processes [WARM] — REQUIRED
 
-Three D-Bus monitors run as ProcessMonitor children. They can survive parent crashes.
+Two D-Bus monitors run as ProcessMonitor children. They can survive parent crashes.
 
 **Check:**
 ```bash
@@ -218,14 +236,13 @@ ls /tmp/aln-pm-*-dbus-monitor.pid 2>/dev/null || echo "No D-Bus monitor PID file
 ```
 
 **Expected PID files (if present from previous run):**
-- `/tmp/aln-pm-vlc-dbus-monitor.pid` — VLC MPRIS monitor (session bus)
-- `/tmp/aln-pm-spotify-dbus-monitor.pid` — Spotify MPRIS monitor (session bus)
-- `/tmp/aln-pm-bluez-dbus-monitor.pid` — BlueZ device monitor (system bus)
+- `/tmp/aln-pm-vlc-dbus-monitor.pid` — VLC MPRIS monitor (session bus; `backend/src/services/mprisPlayerBase.js:209`)
+- `/tmp/aln-pm-bluez-dbus-monitor.pid` — BlueZ device monitor (system bus; `backend/src/services/bluetoothService.js:501`)
 
 **If found:**
 ```bash
 pkill -f "dbus-monitor.*monitor"
-rm -f /tmp/aln-pm-vlc-dbus-monitor.pid /tmp/aln-pm-spotify-dbus-monitor.pid /tmp/aln-pm-bluez-dbus-monitor.pid
+rm -f /tmp/aln-pm-vlc-dbus-monitor.pid /tmp/aln-pm-bluez-dbus-monitor.pid
 ```
 
 ### 2.4 Stale pactl Subscribe Process [WARM] — REQUIRED
@@ -457,14 +474,36 @@ test -f backend/ssl/cert.pem && test -f backend/ssl/key.pem && echo "OK: Both SS
 
 **Expected:** `OK: Both SSL files exist`
 
-**If missing:**
-```bash
-mkdir -p backend/ssl
-openssl req -x509 -newkey rsa:2048 -keyout backend/ssl/key.pem -out backend/ssl/cert.pem \
-  -days 365 -nodes -subj "/CN=aln-orchestrator"
-```
+**If missing — do NOT generate one here.**
 
-**Note:** After generating new certs, every device (GM Scanner tablets, player phones) will need to re-trust the certificate by navigating to `https://<PI_IP>:3000/gm-scanner/` and accepting the browser warning.
+> **Changed 2026-09-13.** This section used to hand the operator
+> `openssl req -x509 … -subj "/CN=aln-orchestrator"` with no
+> `-addext`. Two things are wrong with that on a venue machine. It
+> emits **no SAN**, and a certificate with no SAN is rejected by every
+> current browser reaching the machine by IP. And run in
+> `backend/ssl/` it **overwrites the pair copied from blue** — the one
+> both GM tablets and the Pi 4 remote display already trust — so every
+> device warns again, by hand, per device, on show week.
+
+Go to `DEPLOYMENT_GUIDE.md` → "SSL Certificate Setup". It gives two
+routes, in this order of preference:
+
+1. **Copy the pair the production machine serves** — the normal case,
+   and the only one that preserves the trust the devices already
+   granted. Procedure: `DEPLOYMENT_GUIDE.md` → "3. Certificate —
+   check, then copy" (fingerprint the served certificate first, then
+   copy, then `chmod 600` the key).
+2. **Regenerate, WITH an IP SAN** — only when no trusted pair exists,
+   or the trusted one has expired or does not name this machine's
+   address. The guide's recipe carries
+   `-addext "subjectAltName=IP:<address>,DNS:localhost"`; a recipe
+   without it produces a certificate no browser will accept.
+
+**Note:** route 2 means every device (GM Scanner tablets, the remote
+display) must re-trust the certificate — navigate to
+`https://<PI_IP>:3000/gm-scanner/` and accept the browser warning,
+once per device. That is the cost this section exists to avoid paying
+by accident.
 
 ### 5.2 Certificate Not Expired [BOTH] — REQUIRED
 
@@ -481,7 +520,15 @@ notBefore=Mar  1 00:00:00 2026 GMT
 notAfter=Mar  1 00:00:00 2027 GMT
 ```
 
-**If expired:** Regenerate using the command in 5.1.
+**If expired:** do not regenerate blindly — see §5.1. First check
+whether the production machine serves a newer, still-valid pair to
+copy (`DEPLOYMENT_GUIDE.md` → "3. Certificate — check, then copy").
+Only if there is no valid trusted pair anywhere, regenerate with the
+IP-SAN recipe in `DEPLOYMENT_GUIDE.md` → "SSL Certificate Setup",
+route 2, and re-trust on every device.
+
+The certificate a fresh clone carries expires **2026-10-24**, inside
+the season — so this check will fire on a machine nobody has touched.
 
 ### 5.3 ENABLE_HTTPS Set in Environment [BOTH] — CRITICAL
 
@@ -497,7 +544,15 @@ grep -E '^ENABLE_HTTPS=' backend/.env 2>/dev/null || echo "NOT SET in .env"
 **If not set or false:**
 - If `backend/.env` exists, add or update the line: `ENABLE_HTTPS=true`
 - If `backend/.env` doesn't exist, it will be created in Section 6
-- The PM2 production config (`ecosystem.config.js`) sets `ENABLE_HTTPS: 'true'` in `env_production`, but only applies when started with `pm2 start ecosystem.config.js --env production`
+- `ecosystem.config.js`'s **default `env` block** (`:17-24`) also sets
+  `ENABLE_HTTPS: 'true'`, and `npm start` — a bare
+  `pm2 start ecosystem.config.js` with no `--env` — applies it. But
+  `backend/.env` is the file to fix: it is the one a copied
+  configuration travels in, and the one §6 checks.
+
+> **Changed 2026-09-13.** This line used to name an `env_production`
+> block. There is no such block — `ecosystem.config.js` has `env`,
+> `env_development` and `env_staging` only. See §8.4.
 
 ---
 
@@ -583,7 +638,7 @@ echo "DISPLAY=${DISPLAY:-not set (will default to :0)}"
 
 **If running headless (no monitor attached):**
 - VLC will fail to open a video window — this is expected if no display is connected
-- Set `FEATURE_VIDEO_PLAYBACK=false` in `backend/.env` to disable VLC entirely
+- Set `ENABLE_VIDEO_PLAYBACK=false` in `backend/.env` to disable VLC entirely (there is no `FEATURE_VIDEO_PLAYBACK` key — nothing reads that name)
 
 ### 6.6 Full .env Sanity Check [BOTH] — REQUIRED
 
@@ -607,7 +662,12 @@ cd backend && node -e "
 
 ## 7. System Binaries
 
-The backend spawns 9 external executables at runtime. Missing binaries cause the dependent service to report `down` in the health registry. This section checks each binary exists and is executable.
+The backend spawns 12 external executables at runtime. Missing binaries cause the dependent service to report `down` in the health registry. This section checks each binary exists and is executable.
+
+The three the display driver spawns — the browser, `xdotool` and
+`wmctrl` — are §7.10 to §7.12, and `mpd` is §7.13. They were added
+2026-09-13: without them a machine with no `chromium` binary, on
+which the scoreboard can never reach the TV, passed this gate.
 
 ### 7.1 cvlc (VLC Headless) [BOTH] — REQUIRED
 
@@ -627,7 +687,7 @@ sudo apt-get update && sudo apt-get install -y vlc
 
 ### 7.2 dbus-send [BOTH] — REQUIRED
 
-Used for D-Bus method calls to VLC and Spotify MPRIS interfaces, and for Spotify's TransferPlayback activation.
+Used for D-Bus method calls to VLC's MPRIS interface (`backend/src/services/mprisPlayerBase.js:86`, `:326`) — every transport command goes through it.
 
 **Check:**
 ```bash
@@ -643,7 +703,7 @@ sudo apt-get install -y dbus
 
 ### 7.3 dbus-monitor [BOTH] — REQUIRED
 
-Three ProcessMonitor instances run `dbus-monitor` for real-time state tracking: VLC MPRIS (session bus), Spotify MPRIS (session bus), BlueZ device changes (system bus).
+Two ProcessMonitor instances run `dbus-monitor` for real-time state tracking: VLC MPRIS (session bus, `backend/src/services/mprisPlayerBase.js:206`) and BlueZ device changes (system bus, `backend/src/services/bluetoothService.js:498`).
 
 **Check:**
 ```bash
@@ -843,28 +903,108 @@ which pgrep || echo "MISSING: pgrep not found"
 sudo apt-get install -y procps
 ```
 
-### 7.10 All Binaries Summary [BOTH] — REQUIRED
+### 7.10 Scoreboard kiosk browser [BOTH] — REQUIRED
 
-Quick one-shot verification of all 8 binaries.
+`displayDriver` spawns the browser for the scoreboard kiosk
+(`backend/src/utils/displayDriver.js:165`). Without it the spawn
+errors, `display` reports down, and the scoreboard never reaches the
+TV.
+
+**Resolve the binary from `backend/.env`, never from the shell.**
+`CHROMIUM_BIN` is read by `dotenv.config()` inside the orchestrator
+(`backend/src/config/index.js:10`); nothing exports it to an
+operator's shell, so `command -v "$CHROMIUM_BIN"` in a terminal
+expands to `command -v ""` and fails a correctly built machine.
 
 **Check:**
 ```bash
-for bin in cvlc dbus-send dbus-monitor pactl pw-play bluetoothctl docker pgrep; do
-  printf "%-15s %s\n" "$bin" "$(which $bin 2>/dev/null || echo 'MISSING')"
+CHROMIUM_BIN=$(grep -E '^CHROMIUM_BIN=' backend/.env 2>/dev/null | cut -d= -f2-)
+command -v "${CHROMIUM_BIN:-chromium-browser}" || echo "MISSING: scoreboard kiosk browser not found"
+```
+
+**Expected:** `/usr/bin/chromium` on a machine built from the current
+guide.
+
+**If missing:** the package on Debian 13 / Raspberry Pi OS Trixie is
+`chromium`, not `chromium-browser`.
+```bash
+sudo apt install -y chromium
+# then set CHROMIUM_BIN=/usr/bin/chromium in backend/.env and restart
+```
+
+The same rule applies to any other env-driven binary added to this
+section later: resolve it from `backend/.env`, never from the shell.
+
+### 7.11 xdotool [BOTH] — REQUIRED
+
+The display driver finds the kiosk window with
+`xdotool search --name` (`backend/src/utils/displayDriver.js:104`),
+brings it forward with `windowactivate` (`:289`) and hides it with
+`windowminimize` (`:319`).
+
+**Check:**
+```bash
+command -v xdotool || echo "MISSING: xdotool not found"
+```
+
+**If missing:** `sudo apt install -y xdotool`
+
+`xdotool` is X11-only. It has no effect under a Wayland/labwc
+session — see §8.3.
+
+### 7.12 wmctrl [BOTH] — REQUIRED
+
+The display driver fullscreens the kiosk window with `wmctrl -b
+add,fullscreen` (`backend/src/utils/displayDriver.js:290`).
+
+**Check:**
+```bash
+command -v wmctrl || echo "MISSING: wmctrl not found"
+```
+
+**If missing:** `sudo apt install -y wmctrl`
+
+`wmctrl` needs an EWMH window manager. Openbox — what the X11 session
+installs — is one. Under labwc there is nothing for it to drive.
+
+### 7.13 mpd [BOTH] — REQUIRED
+
+The orchestrator spawns and supervises its own MPD
+(`backend/src/services/musicService.js:604`). The binary must exist
+for it to spawn; the SYSTEM unit must be disabled so it cannot fight
+that instance. The posture check is §12.3; this is the binary check.
+
+**Check:**
+```bash
+command -v mpd || echo "MISSING: mpd not found"
+```
+
+**If missing:** `sudo apt install -y mpd`, then disable the system
+unit per §12.3.
+
+### 7.14 All Binaries Summary [BOTH] — REQUIRED
+
+Quick one-shot verification of all 12 binaries.
+
+**Check:**
+```bash
+CHROMIUM_BIN=$(grep -E '^CHROMIUM_BIN=' backend/.env 2>/dev/null | cut -d= -f2-)
+for bin in cvlc dbus-send dbus-monitor pactl pw-play bluetoothctl docker pgrep mpd xdotool wmctrl "${CHROMIUM_BIN:-chromium-browser}"; do
+  printf "%-20s %s\n" "$bin" "$(command -v "$bin" 2>/dev/null || echo 'MISSING')"
 done
 ```
 
-**Expected:** All 8 show paths, no `MISSING`.
+**Expected:** All 12 show paths, no `MISSING`.
 
 ---
 
 ## 8. D-Bus & X11 Display
 
-Three services use the D-Bus session bus (VLC MPRIS, Spotify MPRIS) and one uses the system bus (BlueZ). VLC and the Chromium scoreboard driver require an X11 display.
+One service uses the D-Bus session bus (VLC MPRIS) and one uses the system bus (BlueZ). VLC and the Chromium scoreboard driver require an X11 session. Music is NOT on D-Bus: the engine speaks the MPD protocol over the Unix socket `/tmp/aln-mpd.sock` (`backend/src/services/musicService.js:47-48`).
 
 ### 8.1 Session Bus Available [BOTH] — REQUIRED
 
-The D-Bus session bus must be running for VLC and Spotify MPRIS communication.
+The D-Bus session bus must be running for VLC MPRIS communication.
 
 **Check:**
 ```bash
@@ -877,7 +1017,7 @@ dbus-send --session --dest=org.freedesktop.DBus --type=method_call --print-reply
 - The `DBUS_SESSION_BUS_ADDRESS` env var may not be set
 - Check: `echo $DBUS_SESSION_BUS_ADDRESS`
 - On a Pi with desktop session, this is normally set automatically
-- If running via SSH without a desktop session, D-Bus session bus may not exist — VLC and Spotify MPRIS will not function
+- If running via SSH without a desktop session, the D-Bus session bus may not exist — VLC MPRIS will not function
 
 ### 8.2 System Bus Available [BOTH] — REQUIRED
 
@@ -894,49 +1034,148 @@ dbus-send --system --dest=org.freedesktop.DBus --type=method_call --print-reply 
 - System bus is managed by systemd: `sudo systemctl status dbus`
 - Restart: `sudo systemctl restart dbus`
 
-### 8.3 X11 Display Accessible [BOTH] — REQUIRED
+### 8.3 X11 Session and Window Control [BOTH] — REQUIRED
 
-VLC opens a fullscreen video window and the display driver launches Chromium in kiosk mode. Both require a working X11 display.
+VLC opens a fullscreen video window and the display driver launches
+the browser in kiosk mode, then drives that window with `xdotool` and
+`wmctrl`. All of that needs a real X11 session with a window manager
+— not merely an X server that answers.
 
-**Check:**
+> **Changed 2026-09-13.** This section used to prove the display with
+> `DISPLAY=:0 xset q`. Any X server answers that, and under a
+> Wayland/labwc session XWayland is one — so the old check passed a
+> machine on which the scoreboard can never appear. Raspberry Pi OS
+> has defaulted to Wayland since October 2024.
+
+**Check (part 1 — the session is X11, and a window manager is
+running):**
 ```bash
-DISPLAY=${DISPLAY:-:0} xset q > /dev/null 2>&1 && echo "OK: Display ${DISPLAY:-:0} accessible" || echo "FAIL: Cannot connect to display ${DISPLAY:-:0}"
+[ "$XDG_SESSION_TYPE" = x11 ] && echo "OK: X11 session" || echo "FAIL: session is $XDG_SESSION_TYPE, not x11"
+DISPLAY=:0 wmctrl -m || echo "FAIL: no EWMH window manager on :0"
 ```
 
-**Expected:** `OK: Display :0 accessible`
+**Expected:** `OK: X11 session`, and `wmctrl -m` naming **Openbox**.
 
-**If fails:**
+**Check (part 2 — the driver's own window lookup finds the kiosk).**
+
+*Precondition, or this check is meaningless:* the orchestrator must be
+RUNNING and the scoreboard must have been shown at least once from the
+GM panel. The kiosk browser is spawned on first show, not at boot, so
+with no orchestrator or no show there is simply no window to find.
+
+```bash
+DISPLAY=:0 xdotool search --name ALN-SCOREBOARD
+```
+
+**Expected:** one or more window ids. This is the driver's own lookup
+(`backend/src/utils/displayDriver.js:104`); the marker defaults to
+`ALN-SCOREBOARD` (`backend/src/config/index.js:114`).
+
+**If part 1 fails with `session is wayland`:** switch the session.
+`sudo raspi-config` → Advanced Options → Wayland → **W1 X11**, then
+reboot. Full procedure and the fallbacks:
+`DEPLOYMENT_GUIDE.md` → "0. Image the machine", step 4.
+
+**If part 2 finds nothing while the scoreboard is visible on the TV:**
+the marker and the injected page title have drifted apart. Check
+`SCOREBOARD_WINDOW_MARKER` in `backend/.env`.
+
+**Other failures:**
 - If running via SSH: `export DISPLAY=:0` (uses the Pi's local display)
 - Verify a desktop session is running: `loginctl list-sessions` — look for a session with `Type=x11`
 - Check X11 socket exists: `ls /tmp/.X11-unix/`
-- If headless (no monitor): Set `FEATURE_VIDEO_PLAYBACK=false` in `backend/.env` and skip video-related checks
+- If headless (no monitor): Set `ENABLE_VIDEO_PLAYBACK=false` in `backend/.env` and skip video-related checks
 
-### 8.4 DBUS_SESSION_BUS_ADDRESS Exported [BOTH] — REQUIRED
+**The panel's `display` light is not a substitute for this section.**
+`probe()` reports `display` healthy both when the kiosk process is
+alive AND when there is no process and the kiosk is hidden
+(`backend/src/utils/displayDriver.js:340-378`, ruling R13 — hidden is
+the idle posture). The only real proof is the kiosk on the TV:
+scoreboard shown from the panel, visible on the venue TV, hidden
+again, and one video playing on top of it.
 
-When starting the server via SSH or PM2, the `DBUS_SESSION_BUS_ADDRESS` env var may not be inherited. Without it, all D-Bus session bus calls fail silently.
+### 8.4 Session bus and runtime dir in the ORCHESTRATOR's environment [BOTH] — REQUIRED
 
-**Check:**
+PM2 freezes the environment of the shell that ran the first
+`npm start` and replays it on every boot. The orchestrator sets
+neither `DBUS_SESSION_BUS_ADDRESS` nor `XDG_RUNTIME_DIR` of its own
+(a grep of `backend/src` finds neither), so every `pactl`,
+`dbus-send` and `dbus-monitor` call inherits whatever that shell had.
+Get it wrong and the machine boots and serves while `audio` reports
+down, every VLC D-Bus call throws, the idle loop never starts, and
+nothing in the log names the cause.
+
+**Check (part 1 — this shell):**
 ```bash
 echo "DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-NOT SET}"
+echo "XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-NOT SET}"
 ```
 
-**Expected:** Something like `unix:path=/run/user/1000/bus` or `unix:abstract=/tmp/dbus-XXXXX`
+**Expected:** `unix:path=/run/user/<uid>/bus` and `/run/user/<uid>`.
 
-**If not set:**
+**Only the `unix:path=` form is acceptable.** An
+`unix:abstract=/tmp/dbus-XXXXX` address is minted per session and is
+dead the moment the machine is power-cycled. PM2 freezes it just as
+faithfully, so it passes on the bench and fails the first cold boot at
+the venue.
+
+**Check (part 2 — the RUNNING orchestrator's own environment).** This
+is the one that matters; part 1 only describes the shell you happen to
+be in.
 ```bash
-# Find the session bus address from a running desktop session:
-export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus"
-# Verify it works:
-dbus-send --session --dest=org.freedesktop.DBus --type=method_call --print-reply /org/freedesktop/DBus org.freedesktop.DBus.ListNames > /dev/null 2>&1 && echo "OK" || echo "STILL FAILING"
+PID=$(pgrep -f 'node .*src/server.js' | head -1)
+tr '\0' '\n' < /proc/$PID/environ | grep -E '^(DBUS_SESSION_BUS_ADDRESS|XDG_RUNTIME_DIR|DISPLAY)='
 ```
 
-**If starting via PM2:** Add `DBUS_SESSION_BUS_ADDRESS` to the `env_production` block in `backend/ecosystem.config.js`, or set it in `backend/.env`.
+**Expected:** all three lines, with the `unix:path=` form.
+
+**Remedy — `backend/.env`, and the shell you start from:**
+```env
+DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+XDG_RUNTIME_DIR=/run/user/1000
+```
+Use the login user's real uid (`id -u`). Then:
+```bash
+pm2 restart aln-orchestrator --update-env && pm2 save
+```
+
+**Run that restart from SSH, not from the desktop terminal.**
+`dotenv.config()` (`backend/src/config/index.js:10`) passes no
+`override`, so dotenv leaves alone any variable already in
+`process.env`. The two `.env` lines therefore take effect only in a
+shell that has NOT already exported them. Green's desktop terminal
+always exports `DBUS_SESSION_BUS_ADDRESS`, and `--update-env`
+re-injects the invoking shell's environment — so run from the desktop
+terminal it re-freezes the same bad address.
+
+> **Changed 2026-09-13.** This section used to say "Add
+> `DBUS_SESSION_BUS_ADDRESS` to the `env_production` block in
+> `backend/ecosystem.config.js`". **There is no `env_production`
+> block** — `ecosystem.config.js` has `env`, `env_development` and
+> `env_staging`, and `npm start` is a bare
+> `pm2 start ecosystem.config.js` with no `--env`, so PM2 applies only
+> the default `env` block. An operator who followed that instruction
+> created a block PM2 never reads, saw the variable "set" in a tracked
+> file, and still failed. Use `backend/.env`.
+
+**Read this section after the logind window, not inside it.**
+`/run/user/<uid>` is created by pam_systemd when the login session
+opens; PM2's unit starts `After=network.target`, not the graphical
+target. For the first seconds after a cold boot the orchestrator can
+be up before the directory exists, so `audio` reads down with the path
+correct. The registry re-probes every 15 s
+(`backend/src/app.js:333-340`). A light still down a minute after the
+idle loop appears is the fault; one that clears on the first re-probe
+is the window.
+
+Full procedure: `DEPLOYMENT_GUIDE.md` → "8. Boot-to-running
+(auto-start posture)".
 
 ---
 
 ## 9. PipeWire / Audio Subsystem
 
-The backend uses PipeWire (via its PulseAudio compatibility layer) for all audio routing, volume control, and sink management. Three audio streams are managed: VLC (video), spotifyd (Spotify), and pw-play (sound effects).
+The backend uses PipeWire (via its PulseAudio compatibility layer) for all audio routing, volume control, and sink management. Three audio streams are managed: VLC (video), MPD (music, output name `aln-music`), and pw-play (sound effects).
 
 ### 9.1 PipeWire Services Running [BOTH] — REQUIRED
 
@@ -1465,7 +1704,7 @@ node -e "
 
 ### 13.2 Audio Routing / Ducking Rules [BOTH] — REQUIRED
 
-Ducking rules auto-lower Spotify volume when video or sound effects play, then restore it. Defined in the routing config file.
+Ducking rules auto-lower the MUSIC volume when video or sound effects play, then restore it. Defined in the routing config file (`backend/config/environment/routing.json`: the shipped rules duck `music` under `video` and under `sound`).
 
 **Check:**
 ```bash
@@ -1490,7 +1729,7 @@ node -e "
 
 **If parse error:** Fix the JSON syntax.
 
-**If missing or no ducking array:** Non-fatal. Spotify will play at full volume even during video/sound playback. This may be intentional for simple setups.
+**If missing or no ducking array:** Non-fatal. Music will play at full volume even during video/sound playback. This may be intentional for simple setups.
 
 ### 13.3 Backend Reads the Pack's Scoring (not the shim) [BOTH] — REQUIRED
 
@@ -1654,19 +1893,22 @@ echo "  SSL certs:      $(test -f backend/ssl/cert.pem && test -f backend/ssl/ke
 echo "  .env:           $(test -f backend/.env && echo 'OK' || echo 'MISSING')"
 echo ""
 echo "Binaries:"
-for bin in cvlc dbus-send dbus-monitor pactl pw-play bluetoothctl docker pgrep; do
-  printf "  %-15s %s\n" "$bin:" "$(which $bin > /dev/null 2>&1 && echo 'OK' || echo 'MISSING')"
+CHROMIUM_BIN=$(grep -E '^CHROMIUM_BIN=' backend/.env 2>/dev/null | cut -d= -f2-)
+for bin in cvlc dbus-send dbus-monitor pactl pw-play bluetoothctl docker pgrep mpd xdotool wmctrl "${CHROMIUM_BIN:-chromium-browser}"; do
+  printf "  %-20s %s\n" "$bin:" "$(command -v "$bin" > /dev/null 2>&1 && echo 'OK' || echo 'MISSING')"
 done
 echo ""
 echo "Services:"
 echo "  PipeWire:       $(systemctl --user is-active pipewire 2>/dev/null || echo 'unknown')"
 echo "  PipeWire-Pulse: $(systemctl --user is-active pipewire-pulse 2>/dev/null || echo 'unknown')"
-echo "  spotifyd:       $(pgrep spotifyd > /dev/null 2>&1 && echo 'running' || echo 'not running')"
+echo "  MPD (system):   $(systemctl is-enabled mpd 2>/dev/null || echo 'not installed')"   # expect: disabled
 echo "  Docker:         $(sg docker -c 'docker info' > /dev/null 2>&1 && echo 'running' || echo 'not running')"
 echo "  Home Assistant:  $(HA_URL=$(grep -E '^HOME_ASSISTANT_URL=' backend/.env 2>/dev/null | cut -d= -f2-); curl -s -o /dev/null -w '%{http_code}' --max-time 3 ${HA_URL:-http://localhost:8123}/api/ 2>/dev/null || echo 'unreachable')"
 echo "  D-Bus session:  $(dbus-send --session --dest=org.freedesktop.DBus --type=method_call --print-reply /org/freedesktop/DBus org.freedesktop.DBus.ListNames > /dev/null 2>&1 && echo 'OK' || echo 'FAIL')"
 echo "  D-Bus system:   $(dbus-send --system --dest=org.freedesktop.DBus --type=method_call --print-reply /org/freedesktop/DBus org.freedesktop.DBus.ListNames > /dev/null 2>&1 && echo 'OK' || echo 'FAIL')"
 echo "  DISPLAY:        ${DISPLAY:-not set}"
+echo "  Session type:   ${XDG_SESSION_TYPE:-unknown}"   # expect: x11
+echo "  Window manager: $(DISPLAY=:0 wmctrl -m 2>/dev/null | awk -F': ' '/^Name/{print $2}' || echo 'none')"   # expect: Openbox
 echo ""
 echo "Static Serving:"
 echo "  GM Scanner:     $(test -f backend/public/gm-scanner/index.html && echo 'OK' || echo 'MISSING/NOT BUILT')"

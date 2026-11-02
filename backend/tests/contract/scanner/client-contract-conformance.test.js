@@ -101,4 +101,51 @@ describe('GM Scanner ↔ AsyncAPI conformance', () => {
       expect(enumSet.has('system:reset')).toBe(true);
     });
   });
+
+  // Block 2 T1a D11: the health vocabulary is exactly three words, and it
+  // is the SAME three words at every contract site that speaks it. The
+  // registry is the authority (HEALTH_STATUSES); the contracts quote it.
+  // `degraded` was deleted — a fourth word at any site re-opens the drift
+  // the factsheet found (sync:full said [healthy, down], DomainStateHealth
+  // said [healthy, degraded, down], the code said neither).
+  describe('the three health enum sites agree with the registry', () => {
+    const OPENAPI_PATH = path.join(__dirname, '../../../contracts/openapi.yaml');
+    const { HEALTH_STATUSES } = require('../../../src/services/serviceHealthRegistry');
+
+    function healthEnumSites() {
+      const async = loadContract();
+      const open = yaml.load(fs.readFileSync(OPENAPI_PATH, 'utf8'));
+      return {
+        'asyncapi sync:full.serviceHealth':
+          async.components.messages.SyncFull.payload.properties.data
+            .properties.serviceHealth.additionalProperties.properties.status.enum,
+        'asyncapi DomainStateHealth':
+          async.components.schemas.DomainStateHealth.additionalProperties
+            .properties.status.enum,
+        'openapi GameState.serviceHealth':
+          open.components.schemas.GameState.properties.serviceHealth
+            .additionalProperties.properties.status.enum,
+      };
+    }
+
+    it('each site enumerates exactly the registry HEALTH_STATUSES', () => {
+      expect([...HEALTH_STATUSES].sort()).toEqual(['dormant', 'down', 'healthy']);
+      for (const [site, values] of Object.entries(healthEnumSites())) {
+        expect({ site, values: [...values].sort() })
+          .toEqual({ site, values: [...HEALTH_STATUSES].sort() });
+      }
+    });
+
+    it('no site still carries the deleted word `degraded`', () => {
+      for (const [site, values] of Object.entries(healthEnumSites())) {
+        expect({ site, hasDegraded: values.includes('degraded') })
+          .toEqual({ site, hasDegraded: false });
+      }
+    });
+
+    it('DomainStateHealth requires the ninth service, display (P16)', () => {
+      const async = loadContract();
+      expect(async.components.schemas.DomainStateHealth.required).toContain('display');
+    });
+  });
 });
