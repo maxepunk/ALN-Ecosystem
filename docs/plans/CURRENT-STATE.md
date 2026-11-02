@@ -18,16 +18,26 @@ before acting.
   build plan, the hostile review, the final questions, the owner's
   sign-off; then the build half. Working log (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
-- **Now: waiting for the owner's answers** on the owner site's
-  Decisions page (version 9, published 2026-11-02): the requirements
-  (the quality targets, 42 with fourteen numbers to set, and the
-  extension cases, 24, in `docs/plans/architecture-pass/requirements/`;
-  the readings the decision record marks "to be confirmed"; the ten
-  promises and their wording questions), the standalone questions, the
-  game's record, and the panel's brief (its lenses, what the blind round
-  gets, whether the second round reads today's code; the brief:
-  `docs/plans/architecture-pass/panel/2026-11-01-panel-brief.md`). The
-  panel runs only after the owner confirms the requirements and approves
+- **Now: version 10 of the owner site is being built** (2026-11-02).
+  After version 9 went live the owner asked whether its eighteen
+  questions were all theirs to decide; most were not. The owner then
+  commented on seven open points (word for word:
+  `docs/plans/architecture-pass/rework/2026-11-02-owner-comments.md`),
+  and six decisions were recorded that day ("No technical failure stops
+  a game", the purpose of "Standalone games: declared, never mixed",
+  "The engine is hardware-flexible; the roadmap sets the bounds", "Two
+  kinds of game extension", "The engine says what is fixed and what
+  each production sets", "The Decisions page holds only your
+  decisions"). Workflow `wf_83fccea8-c94`
+  (`docs/agents/workflow-scripts/decisions-rework.js`) rewrote the
+  Decisions page's content: ten questions only the owner can answer,
+  three readings of the owner's words to confirm, fourteen calls of the
+  agent's with reasons, four requirement reviews; the requirements gained
+  QT44 and EX25 to EX28, a `numberKind` on every number and a `kind` on
+  every case (working files in `docs/plans/architecture-pass/rework/`).
+  Workflow `wf_9573779c-194` (`site-v10-build.js`) builds and checks
+  version 10. Then: publish, tell the owner, wait for the answers. The
+  panel runs only after the owner reviews the requirements and approves
   the brief. Answers go into the decision record first, then the
   requirements files and the site.
 - **Done so far.** Green's three follow-ups merged on 2026-10-30 at
@@ -42,28 +52,23 @@ before acting.
   dated history beneath, and the superseded ones in their own section.
   New decisions go there as the owner makes them, then into the pass's
   documents (`docs/agents/process.md` §5). Open for the owner, by
-  title, each with its evidence on the owner site's Decisions page
-  ("What the Engine Promises",
-  https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), lettered A to R
-  there: about the requirements, "Do the quality targets say how well
-  the engine must work?", "Do the extension cases say how the engine
-  must grow?" and "Four readings of earlier decisions, to confirm";
-  about the promises, "Are these the right ten promises?", "Two clauses added to
-  the pack promise", "The roles promise covers who may act", "The venue
-  promise names declared standalone", "Split the tap promise in two?",
-  "Keep the venue promise whole?", "Proof and release in one promise?"
-  and "Which promise carries equipment state on screens?"; about
-  standalone games, "The ESP32's standalone mode", "One GM tablet per
-  standalone game?" and "Exposed evidence and video with no engine";
-  about the game's record, "Record every refused GM scan attempt?";
-  about the panel, "The panel's three lenses", "What the panel gets in
-  its blind round" and "The second round reads today's code".
-  Kept for the design rounds, not questions now: the page's twelve
-  design choices, from where "this game is standalone" is declared to
-  whether paper documents join the pack. "How much the rig proves
-  before design" was withdrawn by "Build the test rig when building
-  starts". Old decision and question numbers map to titles in the
-  record's last table.
+  title, each explained on the owner site's Decisions page ("What the
+  Engine Promises", https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL),
+  lettered A to J there from version 10: "A GM tablet cut off from the
+  engine", "The show machine fails mid-game", "Release day: what must
+  update together, and how long older devices work", "What a game's
+  maker may build inside the pack", "How an extension for all games
+  reaches a production", "Where the trial copy runs while a show runs",
+  "Which standalone games the engine must run", "What a standalone game
+  gives up, and what it keeps", "Which hardware the first new engine
+  requires, and what it must allow replacing", "What the panel gets in
+  its blind round". Version 9's eighteen letters map to their new homes
+  in the change log's "letters" table. Kept for the design rounds, not
+  questions now: fifteen later choices, from where "this game is
+  standalone" is declared to how the two kinds of extension are built.
+  "How much the rig proves before design" was withdrawn by "Build the
+  test rig when building starts". Old decision and question numbers map
+  to titles in the record's last table.
 - **The branch.** This program's records live on the branch
   `claude/nice-curie-hescfv`, with three draft pull requests:
   ALN-Ecosystem #35, ALNScanner #17 and ALN-TokenData #8. `main` is
@@ -111,7 +116,9 @@ before acting.
   shape is silent on a short offline claim list on a disconnected
   tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
   worktrees, no test rig.
-- **In flight:** nothing; waiting for the owner's answers.
+- **In flight:** workflow `wf_9573779c-194` (`site-v10-build.js`): the
+  builder renders version 10, four page readers check it, one editor
+  applies, one reader verifies.
 - **The owner's site.** "What the Engine Promises"
   (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), version 9 live
   (version id 1793578135-ee03, 2026-11-02), in the proactive frame:
