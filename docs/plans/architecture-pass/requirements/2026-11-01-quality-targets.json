@@ -1,12 +1,13 @@
 {
-  "intro": "A quality is something every part of the engine must have so that a promise holds everywhere, not in one place. Each target below tells a situation at a show, in rehearsal, at the desk or in development, so that it can be tested: what happens, then what must be true. The targets say what is needed, never how to build it; where a number would make a target testable and no source gives one, the owner sets it.",
+  "intro": "A quality is something every part of the engine must have so that a promise holds everywhere, not in one place. Each target below tells a situation at a show, in rehearsal, at the desk or in development, so that it can be tested: what happens, then what must be true. The targets say what is needed, never how to build it. Where a target needs a number, the target says whose number it is. Some are the engine's own requirements and limits, the same for every production, which the engine states and the tests measure. Some are a production's own settings, which each production makes for itself, with ALN's as the first set. A few are technical defaults the agent running the pass proposes and a production may change. The agent sorted them; the owner reviews the sorting with the targets. No number is a decision about the engine.",
   "targets": [
     {
       "id": "QT1",
       "title": "A power cut loses nothing of the game",
       "quality": "Staying up through a live show",
-      "situation": "Mid-show, with two tablets connected and a video queued, the show machine loses power and comes back. When the engine runs again, the game is the same game: the same teams, scores, claimed tokens and exposed evidence, and the same answer to whether the game is in setup, running, paused or ended. Every tablet reconnects by itself under its own station name and shows the same facts as before. No scan made during the outage is lost or counted twice. The TV returns to the picture the game calls for, and a once-only cue that already fired does not fire again.",
-      "numberToSet": "how long the engine may take from power back to a running show",
+      "situation": "Mid-show, with two tablets connected and a video queued, the show machine loses power and comes back. When the engine runs again, the game is the same game: the same teams, scores, claimed tokens and exposed evidence, and the same answer to whether the game is in setup, running, paused or ended. Every tablet reconnects by itself under its own station name and shows the same facts as before. No scan made during the outage is lost or counted twice. During the outage every tablet says the show machine is down and what the GMs can do meanwhile (the target 'The GMs know their fallbacks at a failure'); whether the game may carry on with the tablets alone until power returns is the owner's question 'A GM tablet cut off from the engine' for the first minutes, and 'The show machine fails mid-game' if the power does not return. The TV returns to the picture the game calls for, and a once-only cue that already fired does not fire again.",
+      "numberToSet": "how long the engine may take from power back to a running show: a production's setting; the engine states how long its own restart takes on each supported machine, so a production can check its limit",
+      "numberKind": "production",
       "promises": [
         "Each lifecycle button does exactly what its name says",
         "One game, the same on every screen",
@@ -21,7 +22,8 @@
       "title": "Crashed programs restart on their own",
       "quality": "Staying up through a live show",
       "situation": "During play the music player stops dead. The engine's program watcher restarts it a bounded number of times. While it is down the GM's panel says stopped, with no track; the controls come back within ten seconds with no reload. If the restarts run out, one red row with a Restart button appears. Cues that depend on music are held and shown as held, never silently dropped. The same holds for the video player, the sound system, the lighting system and the TV's browser.",
-      "numberToSet": "how many restarts the watcher tries, and over how long, before it shows red; confirm: ten seconds for the controls to come back (from the promise's test)",
+      "numberToSet": "how many restarts the watcher tries, and over how long, before it shows red: a technical default (today's code restarts a program four times, waiting ten seconds and doubling the wait each time, and shows red at the fifth failure); ten seconds for the controls to come back (from the promise's test): an engine requirement",
+      "numberKind": "mixed",
       "promises": [
         "The room does what the designer cued and the GM asked",
         "Anyone reading a screen can act on it without a second question"
@@ -34,15 +36,16 @@
       "id": "QT3",
       "title": "A tablet reconnects to the same facts",
       "quality": "Staying up through a live show",
-      "situation": "A tablet's wifi drops for a minute mid-show and comes back without a reload. During the minute every live panel shows that its numbers are old and the header says disconnected. For a scan the GM makes during the minute, the GM can always see what became of it: refused with a reason, or kept and answered when the connection returns. Which of the two a disconnected tablet does is not decided here; it belongs to the design round on where authority lives across devices, offline included. On reconnect the tablet is back under its own station name within five seconds and shows the same facts as a tablet that never dropped: a delete made meanwhile has freed its token, a reset has emptied the screen.",
-      "numberToSet": "confirm: five seconds for a tablet to be back under its own station name (from the promise's test)",
+      "situation": "A tablet's wifi drops for a minute mid-show and comes back without a reload. During the minute every live panel shows that its numbers are old and the header says disconnected. The game carries on, because a lost connection must not stop it (the owner's decision 'No technical failure stops a game'), and the GM can always see what became of a scan made during the minute. What the tablet does with that scan while cut off, what it shows the GM, and who wins when two tablets claimed one token while apart, are the owner's question 'A GM tablet cut off from the engine'; this situation is tested against the owner's answer. On reconnect the tablet is back under its own station name within five seconds and shows the same facts as a tablet that never dropped: a delete made meanwhile has freed its token, a reset has emptied the screen.",
+      "numberToSet": "five seconds for a tablet to be back under its own station name (from the promise's test): an engine requirement, the same for every production",
+      "numberKind": "engine",
       "promises": [
         "One game, the same on every screen",
         "Every tap gets its answer, and the night can be told afterwards",
         "Anyone reading a screen can act on it without a second question"
       ],
-      "status": "proposed (the promises' tests, which you have not ruled on one by one; the pass's question on how copies update and whether a screen shows their age). Open: what a disconnected tablet does with a scan, for the design round on where authority lives across devices, offline included.",
-      "statusKind": "proposed",
+      "status": "settled by the owner that the game carries on (the owner's decision 'No technical failure stops a game'); the rest is proposed (the promises' tests, which the owner has not ruled on one by one; the pass's question on how copies update and whether a screen shows their age). Open for the owner: what a cut-off tablet does with a scan, what it shows, and who wins a conflict (the question 'A GM tablet cut off from the engine'); the design round on where authority lives builds the answer.",
+      "statusKind": "partly settled",
       "why": "Venue wifi is weak and tablets roam; a reconnect that shows different facts is the kind of silent error that costs a GM's trust for good."
     },
     {
@@ -62,8 +65,9 @@
       "id": "QT5",
       "title": "Screens say when the engine goes silent",
       "quality": "Every screen telling the truth",
-      "situation": "The engine is killed while the TV shows the game clock and three player scanners sit ready. Within one check-in period (how often a scanner checks on the engine) each player scanner shows offline, and the TV shows its clock as unconfirmed and stops counting on its own. On every tablet each live panel says its numbers are old and how old. No screen anywhere shows a calm, current-looking value for a fact it cannot confirm.",
-      "numberToSet": "how long after the engine goes silent a screen must say so (today, how often the scanners check on the engine)",
+      "situation": "The engine is killed while the TV shows the game clock and three player scanners sit ready. Within one check-in period (how often a scanner checks on the engine) each player scanner shows offline, and the TV shows its clock as unconfirmed and stops counting on its own. On every tablet each live panel says its numbers are old and how old. No screen anywhere shows a calm, current-looking value for a fact it cannot confirm. Beside 'offline', each GM tablet says what the GMs can still do while the engine is silent.",
+      "numberToSet": "how long after the engine goes silent a screen must say so: a technical default (today both player scanners check on the engine every ten seconds); the engine states the longest delay it allows",
+      "numberKind": "mixed",
       "promises": [
         "Anyone reading a screen can act on it without a second question",
         "One game, the same on every screen"
@@ -91,13 +95,13 @@
       "id": "QT7",
       "title": "A refused scan never reads as complete",
       "quality": "Every screen telling the truth",
-      "situation": "The GM scans a token the engine will refuse: it was already claimed on another tablet, or the game is paused. The result screen never says 'complete'. It shows the engine's reason. The tablet shows no verdict of its own before the engine's arrives. In a standalone game the tablet is the decider, and the same holds: a scan into a paused game shows refused and records nothing.",
+      "situation": "The GM scans a token the engine will refuse: it was already claimed on another tablet, or the game is paused. The result screen never says 'complete'. It shows the engine's reason. The tablet shows no verdict of its own before the engine's arrives. While the tablet's connection is down, a scan never reads complete; what else it reads waits on the owner's question 'A GM tablet cut off from the engine'. In a standalone game the tablet is the decider, and the same holds: a scan into a paused game shows refused and records nothing.",
       "numberToSet": "",
       "promises": [
         "Every tap gets its answer, and the night can be told afterwards",
         "One game, the same on every screen"
       ],
-      "status": "settled by the owner for the standalone case (your decision \"Standalone games: declared, never mixed\"); the rest is proposed (the promises' tests, which you have not ruled on one by one; the pass's question on who decides each fact)",
+      "status": "settled by the owner for the standalone case (the owner's decision 'Standalone games: declared, never mixed') and for the game carrying on while a tablet is cut off (the owner's decision 'No technical failure stops a game'); the rest is proposed (the promises' tests, which the owner has not ruled on one by one; the pass's question on who decides each fact); what a cut-off tablet shows beyond 'never complete' waits on the owner's question 'A GM tablet cut off from the engine'",
       "statusKind": "partly settled",
       "why": "A device that judges for itself will one day disagree with the engine, and the GM will have told a team something untrue."
     },
@@ -121,7 +125,8 @@
       "title": "A published change plays within minutes",
       "quality": "The designer's iteration speed",
       "situation": "On the show machine between games, the designer changes one token's rating in the design tool and publishes it. Within a set time, scoring, the token lists, the TV and every tablet use the new value, with no restart of the engine or any device; or the engine answers that it will apply the change at the next window between games; or it refuses and says why. The designer then plays a trial round and sees the new value awarded. A change can never reach a game that is running or paused.",
-      "numberToSet": "the minutes from publish to playing, the promise's 'within minutes'",
+      "numberToSet": "the minutes from publish to playing, the promise's 'within minutes': an engine requirement; a change moves the pack, which stays small, and its media moves separately ahead of time by fingerprint, so the time does not grow with a production's media as a scanner's first sync does",
+      "numberKind": "engine",
       "promises": [
         "The designer changes a value and plays it within minutes, and the live show never notices",
         "The designer's game is the game the whole kit plays",
@@ -163,22 +168,23 @@
       "id": "QT12",
       "title": "A designer builds a whole game without code",
       "quality": "The designer's iteration speed",
-      "situation": "A designer builds the toy game, or a new game of their own that uses only what the engine can already do, in the design tool alone: tokens and their content, modes, scoring, groups, cues, the clock, what each screen says. They open no code file and no configuration file. A mechanic they change reaches the hardware scanner as pack data; no device is re-flashed. The whole game runs on the engine with no engine change. A game that needs something the engine cannot yet do is refused at the desk with the missing ability named; that case has its own target under Easy to extend.",
+      "situation": "A designer builds the toy game, or a new game of their own that uses only what the engine can already do, in the design tool alone: tokens and their content, modes, scoring, groups, cues, the clock, what each screen says. They open no code file and no configuration file. A mechanic they change reaches the hardware scanner as pack data; no device is re-flashed. A new mechanic made from what the engine can already do, such as players changing the room's lighting by scanning different tokens on a player scanner, is built inside the game by the game's own maker, as the owner's tentative words have it ('should probably'); how far the maker may go with no developer is the owner's question 'What a game's maker may build inside the pack'. The whole game runs on the engine with no engine change. A game that needs something the engine cannot yet do is refused at the desk with the missing ability named; that case has its own target under Easy to extend.",
       "numberToSet": "",
       "promises": [
         "The designer's game is the game the whole kit plays",
         "A change is proven before it reaches anyone, and the owner alone sends it to the show"
       ],
-      "status": "settled by the owner (the roadmap's final outcome, the designer; the roadmap's platform parity rule: everything a designer iterates on is pack data, never firmware)",
-      "statusKind": "settled",
+      "status": "settled by the owner (the roadmap's final outcome, the designer; the roadmap's platform parity rule: everything a designer iterates on is pack data, never firmware; the owner's decision 'Two kinds of game extension', in its tentative words); open for the owner: how far the game's maker may go with no developer (the question 'What a game's maker may build inside the pack')",
+      "statusKind": "partly settled",
       "why": "Designers who are not technical are the platform's audience; the day a change needs a developer, the loop is closed to them."
     },
     {
       "id": "QT13",
       "title": "Set up the kit from the guide alone",
       "quality": "Operating it without technical help",
-      "situation": "A venue technician who has never seen the code receives the kit and the deployment guide. They build the show machine from the guide alone, fill in the profile for tonight's venue, bind each of the pack's names (lights, speakers, screens) to a real instrument on one page, and run the preflight. They get one go or no-go, and every line points to the setting behind it. Filling in the profile, binding the names and running the preflight happen in the tool's pages, with no terminal. Every gap they find in the guide is treated as a defect.",
-      "numberToSet": "how long the technician may need from an unpacked kit to a go",
+      "situation": "A venue technician who has never seen the code receives the kit and the deployment guide. They build the show machine from the guide alone; the guide says which hardware the engine requires and which the production may choose. They fill in the profile for tonight's venue, bind each of the pack's names (lights, speakers, screens) to a real instrument on one page, and run the preflight. They get one go or no-go, and every line points to the setting behind it. Filling in the profile, binding the names and running the preflight happen in the tool's pages, with no terminal. Every gap they find in the guide is treated as a defect.",
+      "numberToSet": "how long the technician may need from an unpacked kit to a go: a production's setting, since it depends on the kit's size and the room; what is fixed is that set-up needs the guide alone and no terminal",
+      "numberKind": "production",
       "promises": [
         "The game fits the venue it is in tonight",
         "Anyone reading a screen can act on it without a second question"
@@ -192,7 +198,8 @@
       "title": "Power on straight into a running show",
       "quality": "Operating it without technical help",
       "situation": "The GM plugs in the show machine and the TV. The machine powers on straight into a running show: the engine, the TV's resting picture, the video and music players, the kit network's name. Nobody opens a terminal or starts a program by hand. If something cannot start, the GM's tablet says what, in plain words, with the button to press.",
-      "numberToSet": "how long from power on to a running show",
+      "numberToSet": "how long from power on to a running show: a production's setting; the engine states its own start time on each supported machine; what is fixed is that the machine starts straight into a running show with no terminal",
+      "numberKind": "production",
       "promises": [
         "The room does what the designer cued and the GM asked",
         "Anyone reading a screen can act on it without a second question"
@@ -211,7 +218,7 @@
         "The room does what the designer cued and the GM asked",
         "Anyone reading a screen can act on it without a second question"
       ],
-      "status": "settled by the owner (the glossary's rule that every status row carries its actions; the glossary's entry on not installed tonight, and on the GM taking a service out of service for the night, ratified 2026-09-04)",
+      "status": "settled by the owner (the glossary's rule that every status row carries its actions; the glossary's entry on not installed tonight, and on the GM taking a service out of service for the night, ratified 2026-09-04; the owner's decision 'No technical failure stops a game', which makes the actions on a red row the GM's fallbacks)",
       "statusKind": "settled",
       "why": "Status without actions is a dashboard; the GM's tablet is a control panel, and the GM is the only technician in the room."
     },
@@ -262,7 +269,8 @@
       "title": "A newcomer proves a first change alone",
       "quality": "Easy to understand and change, for people and for AI agents",
       "situation": "A newcomer, a person or an AI agent, opens the repository cold. In one sitting they find: the glossary, the ten promises, the published protocol, and for each piece of the engine a short page that says what it decides, which promises it keeps and how it is tested. Every page matches the code; when work finds a disagreement, the same work fixes the page. The newcomer makes a small change and proves it on the test bench within a set time, without asking anyone.",
-      "numberToSet": "how long a newcomer may need to make and prove a first small change",
+      "numberToSet": "how long a newcomer may need to make and prove a first small change: an engine requirement, since it measures the engine's own code and guides",
+      "numberKind": "engine",
       "promises": [
         "A change is proven before it reaches anyone, and the owner alone sends it to the show"
       ],
@@ -287,13 +295,13 @@
       "id": "QT21",
       "title": "New abilities for a second game break nothing",
       "quality": "Easy to extend",
-      "situation": "A second designer builds a game with a scoring model, hidden per-player facts and multi-tap player actions that ALN never had. The game runs on the engine unchanged wherever the pack can declare what it needs. Where it needs an ability the engine lacks, the check refuses the pack and names the ability. Adding that ability is an additive change: ALN's pack and the toy game's pack run as before, every existing test passes, and the engine's version marks the addition.",
+      "situation": "A second designer builds a game with a scoring model, hidden per-player facts and multi-tap player actions that ALN never had. The game runs on the engine unchanged wherever the pack can declare what it needs. Where it needs an ability the engine lacks, the check refuses the pack and names the ability. Adding that ability is the second kind of extension the owner named: a developer extends the engine so that any game can use it. It is an additive change: ALN's pack and the toy game's pack run as before, every existing test passes, and the engine's version marks the addition. The same holds when the ability is a new outside service, such as audio in several rooms. How such an addition relates to the engine's main release is the owner's open question.",
       "numberToSet": "",
       "promises": [
         "The designer's game is the game the whole kit plays",
         "A change is proven before it reaches anyone, and the owner alone sends it to the show"
       ],
-      "status": "settled by the owner (the roadmap's second game's modules block, each module taking its parameters from the pack; the roadmap's players' phones block, multi-tap actions for both platforms; the glossary's entry on the abilities a pack requires: an ability is only ever added, never removed, and the pack lists what it needs)",
+      "status": "settled by the owner (the roadmap's second game's modules block, each module taking its parameters from the pack; the roadmap's players' phones block, multi-tap actions for both platforms; the glossary's entry on the abilities a pack requires: an ability is only ever added, never removed, and the pack lists what it needs; the owner's decision 'Two kinds of game extension')",
       "statusKind": "settled",
       "why": "The business is one kit and many games; a game that needs an engine fork is not a pack."
     },
@@ -308,7 +316,7 @@
         "The game fits the venue it is in tonight",
         "One game, the same on every screen"
       ],
-      "status": "settled by the owner (the roadmap's platform parity rule; the hardening block's rulings that every connection presents a password or pass and the device's own word for what kind of device it is no longer counts, 2026-09-12; the glossary's entries on remote displays and the watch-only pass, ruled 2026-09-12); a general way to add new kinds of display is room left beyond the constellation screen, with no slot yet (the roadmap's second game's modules block and the roadmap's row for deferred work on new kinds of screen defined by the pack)",
+      "status": "settled by the owner (the roadmap's platform parity rule; the hardening block's rulings that every connection presents a password or pass and the device's own word for what kind of device it is no longer counts, 2026-09-12; the glossary's entries on remote displays and the watch-only pass, ruled 2026-09-12; the owner's decision 'The engine is hardware-flexible; the roadmap sets the bounds': the architecture must allow a different hardware scanner later, and where the current roadmap draws the line is open); a general way to add new kinds of display is room left beyond the constellation screen, with no slot yet (the roadmap's second game's modules block and the roadmap's row for deferred work on new kinds of screen defined by the pack)",
       "statusKind": "partly settled",
       "why": "Devices and screens are the part of a kit that multiplies fastest, and a platform others run will meet kinds nobody planned; each new one must cost a pass and a count, never an engine change. Today a connection's own word decides what it gets."
     },
@@ -332,7 +340,7 @@
       "id": "QT24",
       "title": "Nothing assumes one kit, one pack, one production",
       "quality": "Easy to extend",
-      "situation": "A second production buys a kit. They set it up with a new profile and the same engine code; no kit-specific name lives in the code, and the pack and the profile are chosen by name or id, never assumed to be the only ones. The engine is installed on a machine whose operating-system release has renamed the speaker rule and the TV's browser: it starts, logs no warning, and the TV page opens. Nothing in the engine assumes one kit, one pack or one production.",
+      "situation": "A second production buys a kit. They set it up with a new profile and the same engine code; before they buy anything they can find, in one place, which requirements are fixed and which they may set for their venue and hardware (the extension case 'Another production adopts the engine for its venue and hardware'); no kit-specific name lives in the code, and the pack and the profile are chosen by name or id, never assumed to be the only ones. The engine is installed on a machine whose operating-system release has renamed the speaker rule and the TV's browser: it starts, logs no warning, and the TV page opens. Nothing in the engine assumes one kit, one pack or one production.",
       "numberToSet": "",
       "promises": [
         "The game fits the venue it is in tonight",
@@ -404,7 +412,8 @@
       "title": "Game data stays on the kit",
       "quality": "Privacy and access",
       "situation": "After a game the roster, the notes, the photos, the scans and the record of the night are on the kit and nowhere else. They leave the kit only when the owner moves them (publishing an article, sending emails). How long each kind is kept is the owner's setting per game, and the engine keeps nothing past it. Players' email addresses stay outside the engine. The photo store is designed under these rules before the first photo is taken.",
-      "numberToSet": "the default retention per kind of data, per game",
+      "numberToSet": "how long each kind of data is kept by default, per game: a production's setting, as the target already says; the engine ships a default and keeps nothing past the setting",
+      "numberKind": "production",
       "promises": [
         "Every tap gets its answer, and the night can be told afterwards",
         "Each person sees their part and can do only their part"
@@ -445,14 +454,15 @@
       "id": "QT33",
       "title": "Sized for a two-hour show with headroom",
       "quality": "Running well on the show machine and the venue network at the size of a show",
-      "situation": "Tonight's kit is one show machine (a Raspberry Pi), two GM tablets, three hardware scanners, two scoreboard screens, HDMI sound and one Bluetooth speaker, on the kit's own network with no internet. A full two-hour game runs at this size with headroom, and the engine is sized for one two-hour show for a few dozen devices: a GM scan is answered within a set time, a video reports started within half a second, every live message reaches every tablet within a set time, and the machine's load, memory, disk and temperature stay within set limits for the whole show. The preflight checks the machine's disk, temperature, processes and ports and shows each as go or no-go.",
-      "numberToSet": "the target kit size within a few dozen devices (tablets, scanners, screens, speakers); the scan answer time; the message delivery time; the machine's load, memory, disk and temperature limits; confirm: half a second for a video to report started (from the promise's test)",
+      "situation": "ALN's kit tonight is the first production's: one show machine (a Raspberry Pi), two GM tablets, three hardware scanners, two scoreboard screens, HDMI sound and one Bluetooth speaker, on the kit's own network with no internet. The engine states the largest kit and the machines it supports; each production sets its own kit within them. A full two-hour game runs at this size with headroom; the engine states the largest kit it is sized for, and the agent running the pass proposes a few dozen devices, from ALN's show: a GM scan is answered within a set time, a video reports started within half a second, every live message reaches every tablet within a set time, and the machine's load, memory, disk and temperature stay within set limits for the whole show. The preflight checks the machine's disk, temperature, processes and ports and shows each as go or no-go.",
+      "numberToSet": "the kit size: a production's setting, ALN's being tonight's kit, within the largest kit the engine states, measured on each supported machine (the agent proposes a few dozen devices, from ALN's show); the scan answer time, the message delivery time and half a second for a video to report started: engine requirements; the machine's load, memory, disk and temperature limits: technical defaults the agent proposes per supported machine, since the engine is meant to be flexible about hardware",
+      "numberKind": "mixed",
       "promises": [
         "Every tap gets its answer, and the night can be told afterwards",
         "The room does what the designer cued and the GM asked",
         "The game fits the venue it is in tonight"
       ],
-      "status": "settled by the owner for tonight's kit (your account of how the venue runs, 2026-09-12), for the scale of a few dozen devices (your decision \"What the architects' panel sees, and when\") and for the preflight's checks of the show machine (the glossary's entry on the preflight); the sizes and limits are proposed, and so is a preflight that refuses a start over a load limit",
+      "status": "settled by the owner for tonight's kit (the owner's account of how the venue runs, 2026-09-12) and for the preflight's checks of the show machine (the glossary's entry on the preflight); ALN's scale of a few dozen devices is the setting the panel gets (the owner's decision 'What the architects' panel sees, and when'), and the engine's largest kit is the agent's proposal; the sizes and limits are proposed, and so is a preflight that refuses a start over a load limit",
       "statusKind": "partly settled",
       "why": "The show machine is small and the show is live; the engine must be sized to it on purpose, not found out on the night."
     },
@@ -461,7 +471,8 @@
       "title": "Phone capacity is measured before the first phone",
       "quality": "Running well on the show machine and the venue network at the size of a show",
       "situation": "Before any player phone is admitted to a game, the kit's capacity for phones is measured: how many phones one show machine and the kit's wifi carry while every scan stays answered within the set time and every tablet stays current. The number is written down before the first phone is admitted. The profile declares it and the preflight counts connected phones against it, as it does for remote displays.",
-      "numberToSet": "the number of player phones one kit carries",
+      "numberToSet": "the number of player phones one kit carries: a production's setting, measured on its own machine and wifi; what is fixed is the method: measure before the first phone, declare the number in the profile, count phones in the preflight",
+      "numberKind": "production",
       "promises": [
         "Each person sees their part and can do only their part",
         "Every tap gets its answer, and the night can be told afterwards"
@@ -475,7 +486,8 @@
       "title": "A small pack with checked media files",
       "quality": "Running well on the show machine and the venue network at the size of a show",
       "situation": "A pack stays small, measured in kilobytes, and names each media file by a fingerprint of its contents. The media bundle carries the files, moves between machines and is checked against the pack's list: a missing or changed file is named before the show, not found by a black screen. A hardware scanner's first sync from a blank card finishes within a set time and shows its progress on its screen; later boots transfer only the files that changed.",
-      "numberToSet": "the longest acceptable first sync for a hardware scanner (today 5 to 15 minutes for 30 to 40 MB)",
+      "numberToSet": "the longest acceptable first sync for a hardware scanner: a production's setting, since a first sync moves the production's whole media bundle and the wait grows with it, unlike a published change, which moves only the small pack (ALN's first value is today's, 5 to 15 minutes for 30 to 40 MB); the engine states how fast each kind of scanner downloads",
+      "numberKind": "production",
       "promises": [
         "The designer's game is the game the whole kit plays",
         "The game fits the venue it is in tonight"
@@ -502,7 +514,7 @@
       "id": "QT37",
       "title": "A standalone game is normal, never a fault",
       "quality": "Standalone and offline",
-      "situation": "The game declares itself standalone. Each device, the GM tablet and every player scanner, starts with no engine and says 'standalone', not 'offline' or 'disconnected'. Nothing shows red for the missing engine; every service the engine runs (video, music, lights) reads grey, as not installed tonight. The tablet decides teams, claims, scores, evidence and whether the game is in setup, running, paused or ended under the same rules as the engine, and a test proves the two equal. The game can be named, paused and ended; a scan into a paused or ended game is refused with a reason and the token stays unused; starting the next game does not delete the finished one.",
+      "situation": "A game is declared standalone because it is designed for a room where a network connection is not feasible, or where other logistics make it better to use only GM scanners, player scanners (phone or hardware), or both. Each device the game uses starts with no engine and says 'standalone', not 'offline' or 'disconnected'. Which shapes of standalone game the engine supports (GM scanners, player scanners or both, and how many GM tablets) is the owner's open question. Nothing shows red for the missing engine; every service the engine runs (video, music, lights) reads grey, as not installed tonight. The tablet decides teams, claims, scores, evidence and whether the game is in setup, running, paused or ended under the same rules as the engine, and a test proves the two equal. The game can be named, paused and ended; a scan into a paused or ended game is refused with a reason and the token stays unused; starting the next game does not delete the finished one.",
       "numberToSet": "",
       "promises": [
         "The game fits the venue it is in tonight",
@@ -510,7 +522,7 @@
         "Each lifecycle button does exactly what its name says",
         "One game, the same on every screen"
       ],
-      "status": "settled by the owner (your decision \"Standalone games: declared, never mixed\": a whole game run with no engine, as a choice a game can declare; the promises' tests; the glossary's entry on the rules the engine and a standalone tablet share); open: how many tablets one standalone game may have, and where the standalone fact is kept",
+      "status": "settled by the owner (the owner's decision 'Standalone games: declared, never mixed', with its purpose stated 2026-11-02: a capability of the engine for rooms where a network is not feasible or where only scanners are wanted; the promises' tests; the glossary's entry on the rules the engine and a standalone tablet share); open: which shapes of standalone game the engine supports (GM scanners, player scanners or both; how many GM tablets), and where the standalone fact is kept",
       "statusKind": "partly settled",
       "why": "A game with no engine is a choice a game may declare, and a platform that will run in rooms with no network must treat that choice as normal, never as a fault. Today every device reads it as an outage all night."
     },
@@ -524,7 +536,7 @@
         "The game fits the venue it is in tonight",
         "One game, the same on every screen"
       ],
-      "status": "settled by the owner (your decision \"Standalone games: declared, never mixed\": no game mixes networked and standalone devices)",
+      "status": "settled by the owner (the owner's decision 'Standalone games: declared, never mixed': no game mixes networked and standalone devices). Open for the owner: how a networked game carries on if the show machine fails mid-game without becoming a mixed game by accident (the owner's decision 'No technical failure stops a game').",
       "statusKind": "settled",
       "why": "A mixed game has two deciders and no way to reconcile them; refusing the mix is cheaper than every later fix."
     },
@@ -532,13 +544,13 @@
       "id": "QT39",
       "title": "A standalone game leaves its own record",
       "quality": "Standalone and offline",
-      "situation": "A standalone game ends. The tablet's record of the night carries the pack and the version it ran, and the GM can download the report. The hardware scanner plays a standalone game as the phone's scanner does: it shows the token's content, plays the sound and keeps its own list, and its missing standalone mode is closed as a parity gap, not added as a new feature, if you confirm that reading (your open question [[q:L]]).",
+      "situation": "A standalone game ends. The tablet's record of the night carries the pack and the version it ran, and the GM can download the report. The hardware scanner plays a standalone game as the phone's scanner does: it shows the token's content, plays the sound and keeps its own list. The owner's words name 'player scanners (phone or hardware)', so its missing standalone mode is a parity gap to close, not a new feature.",
       "numberToSet": "",
       "promises": [
         "Every tap gets its answer, and the night can be told afterwards",
         "The designer's game is the game the whole kit plays"
       ],
-      "status": "settled by the owner in part (your decision \"Standalone games: declared, never mixed\"; the pack promise's goal: the game's record carries the pack's version); open: the hardware scanner's reading, recorded as a parity gap on your parity rule and still waiting for your explicit word (your open question \"The hardware scanner's standalone mode\"); whether a standalone game's record holds what the players found at all (your open question \"One GM tablet per standalone game?\"), and how exposure and video tokens behave with no engine",
+      "status": "settled by the owner in part (the owner's decision 'Standalone games: declared, never mixed'; the owner's words of 2026-11-02, 'player scanners (phone or hardware)', which settle the hardware scanner's reading; the pack promise's goal: the game's record carries the pack's version); open for the owner: whether a standalone game must leave a record of what the players found, and which effects (exposed evidence and video among them) a standalone game may use, both in the owner's question 'What a standalone game gives up, and what it keeps'; what a screen draws for an exposure or a video token with no engine, under that rule, is a default the agent running the pass proposes and the owner can overrule",
       "statusKind": "partly settled",
       "why": "Standalone games are on the list every design must serve; a record that exists only in networked games makes them second-class."
     },
@@ -547,12 +559,13 @@
       "title": "Offline scans are kept and sent once",
       "quality": "Standalone and offline",
       "situation": "In a networked game the network fails for a hardware scanner mid-show. It keeps each scan on its card, shows the player a result that says the scan is kept and not yet sent, and never promises a video it cannot start. When the network returns, the kept scans are sent once and appear in the game once. A live scan refused because no game exists is shown as refused and never kept for later (the standing scanner decision). Scans already kept, sent when no game exists, follow the batch rule: the device keeps them or the engine stores them, and the engine never answers 'processed' with nothing kept. The phone's scanner behaves the same way.",
-      "numberToSet": "how many scans a device must be able to keep while offline",
+      "numberToSet": "how many scans each kind of device must be able to keep while offline: an engine limit the engine states per kind of device (today both player scanners keep 100), so a production knows how long a device lasts through an outage",
+      "numberKind": "engine",
       "promises": [
         "Every tap gets its answer, and the night can be told afterwards",
         "Anyone reading a screen can act on it without a second question"
       ],
-      "status": "settled by the owner (the standing scanner decisions in the project's guides for developers: a final refusal is never queued, a replayed scan never triggers a video; the promise's test on a batch sent twice)",
+      "status": "settled by the owner (the standing scanner decisions in the project's guides for developers: a final refusal is never queued, a replayed scan never triggers a video; the promise's test on a batch sent twice; the owner's decision 'No technical failure stops a game': a scanner that loses the network keeps the game going for its players)",
       "statusKind": "settled",
       "why": "Weak wifi is the normal case at a venue; a device that lies about what it kept makes the record and the player's trust both wrong."
     },
@@ -588,7 +601,8 @@
       "title": "Running copies of the engine stay separate",
       "quality": "More than one copy, kit or pack without rework",
       "situation": "Two running copies of the engine share one machine: the show's copy and a trial or test copy. Each keeps its own files, network ports and settings; neither can stop the other's programs, read its records or accept its passes. A kit holds a library of installed packs and the operator picks one per event. A second kit on another machine needs a profile and nothing else. None of this requires a change to engine code.",
-      "numberToSet": "how many copies of the engine one machine must carry at once",
+      "numberToSet": "how many copies of the engine one machine must carry at once: an engine requirement; the situation already needs two, and beyond two the engine states its limit for each supported machine",
+      "numberKind": "engine",
       "promises": [
         "The designer changes a value and plays it within minutes, and the live show never notices",
         "A change is proven before it reaches anyone, and the owner alone sends it to the show",
@@ -597,6 +611,23 @@
       "status": "settled by the owner (the roadmap's rule on growth without corners; the roadmap's operations era and release block, multi-game kits; your decision \"Design top-down, hardest-to-reverse choices first\", whose list of design rounds names how one engine runs as many separate copies)",
       "statusKind": "settled",
       "why": "The trial copy, the test run and the second kit all need the same thing: a copy of the engine that stays separate from the others; built once, it serves all three."
+    },
+    {
+      "id": "QT44",
+      "title": "The GMs know their fallbacks at a failure",
+      "quality": "Staying up through a live show",
+      "situation": "Mid-show one thing fails: a tablet loses its connection, the show machine stops, or a program the engine drives dies. Within a set time every GM tablet says, in plain words, what failed and what the GMs can still do: which of the game's actions still work, which wait, and the button or step for each choice. The failure alone never pauses the game; the GMs pause it only if they choose to. A player's tap still gets an answer, or a plain note that the scan is kept, and nothing shows a calm current value for a fact the tablet cannot confirm. When the failure ends, every scan made meanwhile is in the game once, and the record of the night says what failed and when. The same holds for every kind of failure.",
+      "numberToSet": "how long after a failure every GM tablet must show the fallbacks: an engine requirement",
+      "numberKind": "engine",
+      "promises": [
+        "The room does what the designer cued and the GM asked",
+        "Anyone reading a screen can act on it without a second question",
+        "Every tap gets its answer, and the night can be told afterwards",
+        "One game, the same on every screen"
+      ],
+      "status": "settled by the owner on the need (the owner's decision 'No technical failure stops a game': a lost connection or a device that goes down mid-game must not stop the game, and the GMs must know their fallbacks); the test situation's wording is proposed by the agent running the pass. Open for the owner: whether a networked game carries on with its devices alone when the show machine fails, and how the results come back together.",
+      "statusKind": "partly settled",
+      "why": "The owner called pausing a game for a lost connection or a dead device 'the worst possible scenario', and said that 'the GMs need to know their available fallbacks to keep a game running with as minimal impact on the player experience as possible'. A tablet that shows the GMs their choices at that moment is what keeps the players from noticing."
     }
   ]
 }

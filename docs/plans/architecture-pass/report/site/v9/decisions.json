@@ -1,532 +1,575 @@
 {
   "intro": [
-    "Everything still open for you is on this page, each question with its evidence on the same screen. Answer in the chat, by the question's letter or by its title. Each question stands alone: answer any of them, in any order, and leave the rest for later.",
-    "Three tags say where a question stands. Open: no answer yet. Applied, please confirm: the change is already in the promise's wording, and one word from you keeps it or undoes it. Recommendation changed by the earlier candidate: working out the earlier candidate (a set of the engine's parts drawn from today's engine, now one input among the panel's) changed what we recommend, and the [[page:changes]] has the earlier recommendation.",
-    "Under each question, \"What we know\" lists the facts the answer rests on: the requirements, the decisions already made, the earlier candidate, and today's engine, which is evidence and never the reason for a design. Most facts link to the promise, quality target, extension case, decision, part or design flaw they come from, so you can read more before you answer.",
-    "The letters are new in this version. The [[page:changes]] maps the earlier letters and numbers to these titles and keeps the withdrawn question on how much the test rig proves before design. Only the list at the end, Decided, records what you have decided."
+    "This page asks you only what you alone can decide ([[dec:the-decisions-page-holds-only-your-decisions]]). Each question says what it decides, what it means in practice at a show, for the GM at a failure, for the designer and for a production that adopts the engine, and the options with what each means and what each costs. Where the agent running the pass has a sound view, it gives a recommendation. Where the answer is a values call of yours, it says in one line what we need from you. Answer in the chat by a question's letter or its title. Each question stands alone: answer any of them, in any order, and leave the rest for later.",
+    "Every question here but the last passes four tests. Only you can answer it: it is about what the product must do or allow, for whom, or which of two goods matters more, never about how to build it. The decision record does not already answer it. At least one of the six decisions ahead on [[page:design]] depends on it. And it is needed before the panel's blind round. The last question, on the panel, is yours for another reason: adding to what the blind round gets changes a decision you made, and only you can change it. On 2026-11-02 you asked whether all eighteen questions of the last version were really yours. The agent's answer that day was four, plus the business half of the quality targets' numbers. Since then your own words have answered one of the four (the hardware scanner's standalone mode), and a second (exposed evidence and video with no engine) became the agent's call once you said what standalone games are for. Two of version 9's questions are still yours, reworded below. The rest were the agent's own calls, requirements for you to review, or answered by your decisions, and they now sit below the questions under their own headings: the readings of your words you should confirm; the agent's calls, each with its reason, for you to overrule; and the requirements for review. The [[page:changes]] says where each of the eighteen went.",
+    "You also asked to see the specific conflicts between the qualities, and what each means in practice, before saying which win. The first group is those conflicts. Its introduction names the ones the requirements already settle, some by your decisions and some by targets still marked proposed, and which way. Its questions answer the ones still open.",
+    "Below the questions: what comes in the design rounds, in order; the later choices kept for those rounds; and everything decided, by topic, from the decision record."
   ],
   "groups": [
     {
-      "title": "Confirming the requirements",
+      "title": "Where the qualities pull against each other",
+      "intro": [
+        "The quality targets on [[page:requirements]] fall under twelve qualities. In the top-level design some of them pull against each other. The requirements already settle most of those conflicts, some by your decisions and some by targets still marked proposed or partly settled, which you can flag in the review below; the panel designs to them as settled:",
+        "The designer's iteration speed against each lifecycle button doing what it says. A change reaches a game only between games, or the engine refuses and says why ([[qt:QT9]], [[ex:EX2]]).",
+        "The designer's iteration speed against safe release and rollback. Packs publish at any time and the engine changes only between events ([[qt:QT42]]); a pack that needs an ability this engine lacks is refused at publish with the ability named ([[qt:QT10]]); abilities are only ever added ([[qt:QT21]]).",
+        "Standalone and offline against easy to understand and change. A standalone tablet is a second decider in the code, but there is one decider per game ([[dec:standalone-games-declared-never-mixed]]). Whether the engine and the tablet run one body of rules or two kept equal by tests is a later choice for the design rounds.",
+        "Privacy and access against staying up through a live show. Passes survive a reconnect, a restart and a machine swap, and nobody logs in again mid-show ([[qt:QT31]], [[qt:QT3]], [[qt:QT42]]).",
+        "Privacy and access against the night told afterwards. Game data stays on the kit; you move the record, and the director's console stays a separate program outside the engine ([[dec:the-night-s-record-and-the-after-game-article]], [[qt:QT30]]).",
+        "Operating without technical help against privacy and access. The kit holds its own passes, the GM logs in once a night, and staff who log in hold the game's controls ([[qt:QT14]], [[qt:QT31]]).",
+        "Running well at the size of a show against more than one copy, kit or pack. A few dozen devices is the setting the panel gets ([[dec:what-the-architects-panel-sees-and-when]]), and phones are measured before the first is admitted ([[qt:QT34]]).",
+        "Testable without the live show against easy to extend. Every added program or device kind comes with a software stand-in and its tests ([[ex:EX15]], [[qt:QT26]]).",
+        "Every screen telling the truth against standalone and offline. A standalone game says standalone, and every service the engine runs reads not installed tonight, grey ([[qt:QT37]]).",
+        "Seven conflicts stay open, and six questions below answer them: two conflicts meet in 'The show machine fails mid-game'; one, easy to extend against easy to understand and change, gives two questions, 'What a game's maker may build inside the pack' and 'How an extension for all games reaches a production'; and one, platform parity against standalone and offline, sits with the standalone games below. Each question names the qualities, says what happens at a show under each answer, and names the decision ahead that waits on it."
+      ],
       "questions": [
         {
           "letter": "A",
           "anchor": "q-a",
-          "title": "Do the quality targets say how well the engine must work?",
+          "title": "A GM tablet cut off from the engine",
           "status": "open",
-          "decides": "Whether the quality targets on [[page:requirements]], grouped under twelve qualities, are the measure the panel and the design rounds design against, and which of the numbers they leave open you set now.",
+          "decides": "Staying up through a live show against every screen telling the truth. What a GM tablet does with a scan while it cannot reach the engine for a short time, a dropped wifi or an engine restart. What the GM may tell the team at that moment. What happens when the connection returns and the engine disagrees with what the tablet showed. The same answer holds for the first minutes of a longer failure, before the GMs know whether the show machine is coming back.",
           "evidence": [
-            "A quality is something every part of the engine must have so that a promise holds everywhere, not in one place. Each target tells a situation at a show, in rehearsal, at the desk or in development, so that it can be tested: what happens, then what must be true. The targets say what is needed, never how to build it.",
-            "There are forty-two targets under twelve qualities: staying up through a live show; every screen telling the truth; the designer's iteration speed; operating it without technical help; easy to understand and change, for people and for AI agents; easy to extend; testable without the live show; privacy and access; running well on the show machine and the venue network at the size of a show; standalone and offline; safe release and rollback; and more than one copy, kit or pack without rework.",
-            "Each target names the promises it serves, and every promise is served by at least four targets.",
-            "Most targets rest on a decision you have already made or a roadmap section you ratified. Four are proposed in full, [[qt:QT3]], [[qt:QT5]], [[qt:QT17]] and [[qt:QT27]]: they rest on the pass's questions and on the promises' test situations, which you have not ruled on one by one. Six are proposed in part: [[qt:QT7]] (all but the standalone case), [[qt:QT13]] (that building the machine itself needs no terminal), [[qt:QT19]] (a page per piece of the engine, and the newcomer measure), [[qt:QT31]] (the automatic check for a committed secret), [[qt:QT33]] (the sizes and limits, and a preflight that refuses a start over a load limit) and [[qt:QT34]] (that the profile declares the number of phones and the preflight counts them).",
-            "Two targets wait on questions on this page: “[[qt:QT37]]” on [[q:M]], and “[[qt:QT39]]” on [[q:L]], [[q:M]] and [[q:N]]. The other open point of “[[qt:QT37]]”, where the standalone fact is kept, belongs to the design rounds. The quality target “[[qt:QT3]]” leaves what a disconnected tablet does with a scan to the design round on where authority lives across devices.",
-            "The panel gets the confirmed targets in its brief, beside the promises and the extension cases, and runs only after you confirm them ([[dec:what-the-architects-panel-sees-and-when]]).",
-            "Fourteen targets leave a number for you to set. They follow, one per line.",
-            "[[qt:QT1]]: how long the engine may take from power back to a running show.",
-            "[[qt:QT2]]: how many restarts the program watcher tries, and over how long, before it shows red; and to confirm ten seconds for the controls to come back, from the promise's test situation.",
-            "[[qt:QT3]]: to confirm five seconds for a tablet to be back under its own station name, from the promise's test situation.",
-            "[[qt:QT5]]: how long after the engine goes silent a screen must say so (today, how often the scanners check on the engine).",
-            "[[qt:QT9]]: the minutes from publish to playing, the promise's \"within minutes\".",
-            "[[qt:QT13]]: how long the venue technician may need from an unpacked kit to a go.",
-            "[[qt:QT14]]: how long from power on to a running show.",
-            "[[qt:QT19]]: how long a newcomer may need to make and prove a first small change.",
-            "[[qt:QT30]]: how long each kind of data is kept by default, per game.",
-            "[[qt:QT33]]: the kit size to design for, within a few dozen devices (tablets, scanners, screens, speakers); the time a scan is answered in; the time a live message takes to reach every tablet; the machine's limits for load, memory, disk and temperature; and to confirm half a second for a video to report started, from the promise's test situation.",
-            "[[qt:QT34]]: the number of player phones one kit carries.",
-            "[[qt:QT35]]: the longest acceptable first sync for a hardware scanner (today 5 to 15 minutes for 30 to 40 MB).",
-            "[[qt:QT40]]: how many scans a device must be able to keep while offline.",
-            "[[qt:QT43]]: how many copies of the engine one machine must carry at once."
+            "Your decision settles that the game goes on ([[dec:no-technical-failure-stops-a-game]]), and the quality target [[qt:QT7]] proposes that a refused scan never reads as complete; you settled that only for a standalone game, and the networked part is proposed. Open: what the tablet shows meanwhile, and who wins a conflict.",
+            "At a show. The tablet's wifi drops for a minute. A team hands the GM a token. Today the tablet shows 'Transaction Complete' with points, from its own copy of the rules, and keeps the scan to send to the engine later ([[flaw:C9]]). If another tablet sold the same token during that minute, the engine refuses the kept scan on reconnect, and the GM has already told the team it earned money. The quality target [[qt:QT3]] asks that the game carries on and that the GM can always see what became of such a scan, and leaves what the tablet does with it meanwhile, and who wins a conflict, to this question.",
+            "For the GM at the failure. With a refusal the GM says 'give me a minute, the connection is down' and the line waits. With a kept scan the GM says 'it is in, your result shows when we are back'. With a provisional verdict the GM says 'you earned fifty thousand' and may have to take it back. Your words are that pausing a game for a lost connection is the worst scenario, and that the GMs need to know their fallbacks. The question is what the fallback shows.",
+            "For the designer. Nothing changes in the pack. A designer of a game with group bonuses should know that a provisional bonus can be undone.",
+            "For a production adopting the engine. A venue with worse wifi than yours makes this the common case. A production with one GM tablet can never have a conflict, so for them a kept scan and a provisional verdict come to the same thing. A production with four tablets at four tables has conflicts every time the wifi drops.",
+            "Under the two options that keep the scan, you also set the conflict rule: when two tablets both sold one token during the gap, who wins. The earlier by the tablets' clocks (clocks differ). The first to reach the engine (luck). Or the GM decides from a red row and tells the losing team. This is a choice between fairness by time and simplicity.",
+            "Which decision ahead depends on it. 'Where authority lives across devices, offline and standalone included' names this question in what it decides. Refusal means the engine is the only decider and tablets are screens. Keep-and-label means the protocol has a provisional state and the engine orders scans by their time. Provisional verdicts mean the rules run in two places and a reconciliation exists. 'The published protocol's form' follows: what every reply carries (how sure the engine is) depends on whether provisional replies exist. 'How the engine holds the game's state' follows too, since kept scans must be ordered against the engine's record.",
+            "Sources. Your comment of 2026-11-02 on the agent's question about a GM tablet losing the show machine. [[dec:no-technical-failure-stops-a-game]], whose first reading (a tablet keeps taking scans) is listed under the readings to confirm below. [[qt:QT3]], [[qt:QT7]], [[flaw:C9]], and the finding of the two clocks under [[dec:the-night-s-record-and-the-after-game-article]]. The record holds no conflict rule."
           ],
           "options": [
             {
-              "label": "Confirm the targets as the base and set the numbers now.",
-              "cost": "Fourteen numbers to settle at once; a number set before anything is measured may need resetting once the build half's first version runs."
+              "label": "Refuse while cut off.",
+              "means": "The GM sees a plain reason and nothing is kept; teams wait. The engine is the only decider, the tablet holds no game fact of its own, and the protocol needs no 'not yet decided' state.",
+              "cost": "Every wifi drop costs show time, which is close to the pause you called the worst scenario."
             },
             {
-              "label": "Confirm the targets and leave the numbers to the design rounds.",
-              "cost": "The panel designs without them; a target without its number is harder to test, and each number comes back to you as a question in the round that uses it."
+              "label": "Keep and label.",
+              "means": "The tablet records the scan as kept and not yet decided, shows no points, and shows the GM a list of kept scans. On reconnect the engine decides each in order and the tablet shows the final answer; a kept scan refused later becomes a red row the GM must act on. GMs learn one habit: 'in, pending'.",
+              "cost": "The protocol carries a provisional state in replies and in the tablet's list, and the engine must order kept scans by when they happened, which meets the finding of the two clocks."
+            },
+            {
+              "label": "Keep and decide provisionally under the shared rules.",
+              "means": "The tablet applies the same rules the engine would, from its last known copy of the game, and shows the verdict and the points marked provisional. The engine confirms or overturns on reconnect. The richest fallback for the GM.",
+              "cost": "The game's rules must run equally on the engine and the tablet; every fact the tablet shows must carry 'provisional' in the protocol; a conflict rule and a conflict screen exist. The most to keep equal across two places, for years."
             }
           ],
-          "recommendation": "Confirm the forty-two as the base. Set now the numbers you already know from running the show (how long a boot or a restart may take, the kit size, how long records are kept); for the rest, say that the panel may propose a number and you will confirm it in the design round that uses it. A target you do not want changes the brief the panel gets, so name it now.",
+          "recommendation": "Keep and label. It keeps the game going, as you decided, and it keeps the tablet from telling a team something the engine has not decided, which [[qt:QT7]] proposes for a networked game and your words on fallbacks support. It costs a provisional state in the protocol and one habit for the GMs. What we need from you beyond that is the conflict rule: when two tablets both sold one token while apart, the earlier by the tablets' clocks, the first to reach the engine, or the GM decides from a red row. That is a choice between fairness by time and simplicity, and the design cannot make it for you.",
           "recKind": "Recommendation"
         },
         {
           "letter": "B",
           "anchor": "q-b",
-          "title": "Do the extension cases say how the engine must grow?",
+          "title": "The show machine fails mid-game",
           "status": "open",
-          "decides": "Whether the twenty-four extension cases on [[page:requirements]] are the ways the platform must grow that the panel and the design rounds design for, and whether any way of growing you plan is missing.",
+          "decides": "Staying up through a live show against standalone and offline, and against every screen telling the truth on the public screens. What a networked game does when the show machine stops and does not come back for the rest of the night. What fallbacks the GMs must have in front of them at that moment. What the players may lose, and what they must never lose. How the results come back together afterwards. Whether a game may change from networked to standalone while running, and what that does to [[dec:standalone-games-declared-never-mixed]].",
           "evidence": [
-            "Each case tells who grows the platform, what they should need to touch, what must stay untouched, and when it is due: a designer making a whole second game ([[ex:EX1]]), a designer adding a third thing a team can do with a token ([[ex:EX3]]), a venue technician fitting the kit to a new room ([[ex:EX13]]), an operator with a second kit ([[ex:EX16]]), a director telling the night from the record ([[ex:EX19]]), a developer from outside the team ([[ex:EX21]]).",
-            "The cases say what is needed, never how to build it. Every case rests on a decision you have made or a roadmap section you ratified, except [[ex:EX15]], whose need rests on the room promise and the glossary and whose how (how the engine reaches its programs, and where the start-or-use setting lives) waits for the design rounds. [[ex:EX12]] also waits on [[q:L]] and [[q:N]].",
-            "Each case names the promises it serves, and every promise is served by at least three cases.",
-            "The case “[[ex:EX10]]” needs the number of phones one kit carries at once, which the quality target “[[qt:QT34]]” asks you to set; how many GM tablets the case “[[ex:EX12]]” may run is [[q:M]].",
-            "Three cases name choices kept for the design rounds, listed under Coming in the design rounds below: where the standalone declaration lives ([[ex:EX12]]), where the designer's trial copy of the engine runs ([[ex:EX14]]) and where the start-or-use setting lives ([[ex:EX15]]).",
-            "The panel gets the confirmed cases in its brief, beside the promises and the quality targets ([[dec:what-the-architects-panel-sees-and-when]])."
+            "Settled: no game mixes networked and standalone devices, and the game must go on ([[dec:standalone-games-declared-never-mixed]], [[dec:no-technical-failure-stops-a-game]]). Settled for the players' own devices: a scanner shows the player that a scan is kept and not yet sent, and never promises a video it cannot start ([[qt:QT40]]). Open: how the game goes on, and what the audience's screens do.",
+            "At a show. Fifty minutes in, the show machine's power supply dies. The TV freezes on the scoreboard. The music stops. The players' phones and the hardware scanners stop sending; the hardware scanner keeps each scan on its card and tells the player it is kept and not yet sent; a video token cannot play. The GM tablets lose the engine. Today each tablet has its own copy of the game as of the last message and keeps scanning with its own verdict. Nothing merges two tablets' records afterwards, and no spare takes over.",
+            "For the GM at the failure. Your words: the GMs need to know their available fallbacks. The tablet should show them as a red row with actions, the pattern [[qt:QT15]] settles. Which actions exist is this question. 'Carry on from this tablet.' 'Switch to the spare.' 'End the game from here.' Each is a different engine.",
+            "For the designer. Cues stop with the machine. The designer must know which effects die with it: video, music, lights, the TV, the game clock. That is the same list a standalone game gives up (the question 'What a standalone game gives up, and what it keeps').",
+            "For a production adopting the engine. A production with no spare machine. A production whose show is mostly the TV, for whom carrying on means little. A production that runs two games a night and cannot afford a lost one. Each would choose differently; the engine must say which fallbacks it offers.",
+            "For the players. You asked for as little effect on the player experience as possible. The design cannot promise the TV and the videos without a second machine. You must say what the players may lose for the rest of a night (video, music, the public evidence screen) and what they must never lose (their scans counted exactly once, no team paid twice for one token). On the public screens there is a second choice: when the engine goes silent, [[qt:QT5]] asks the TV to stop its clock and show it as unconfirmed, which is honest and visible; the alternative is a TV that keeps counting by itself, which is smooth and may be wrong.",
+            "Which decision ahead depends on it. 'How the engine holds the game's state', the first and hardest to reverse. A spare that takes over live needs a record that can be copied as it changes; carrying on from tablets needs tablets that hold enough of the record to finish a game; a single store on one machine serves neither. 'Where authority lives across devices' follows: whether a tablet or a spare may become the decider, and when. 'How one engine runs as many separate copies' follows: a standby is a copy of the engine with the show's identity. 'The published protocol's form' follows: how a device finds the engine again under a new machine, and whether a pass issued by one machine holds on another.",
+            "Sources. Your comment of 2026-11-02 on the agent's question about a GM tablet losing the show machine. [[dec:no-technical-failure-stops-a-game]], whose second reading says the design must say how a networked game carries on if the show machine itself fails, and names its meeting with [[dec:standalone-games-declared-never-mixed]] as a question for you. [[qt:QT1]] (the machine comes back: settled; this question is when it does not), [[qt:QT5]], [[qt:QT15]], [[qt:QT38]], [[qt:QT40]], [[qt:QT42]], [[flaw:N1]]."
           ],
           "options": [
             {
-              "label": "Confirm the twenty-four as the base.",
-              "cost": "The panel designs for these ways of growing."
+              "label": "Carry on from the tablets and reconcile afterwards.",
+              "means": "Each GM tablet keeps taking scans, as kept or as provisional under the question above. The GMs end the game from the tablets; the night's record is assembled from their records with the conflict rule. The player devices keep their scans and reach the record only when a machine comes back, or through a collection step after the show. The players lose video, music and the TV for the rest of the night.",
+              "cost": "Every tablet must hold enough of the game to finish it (the teams, the claims, the scores, the pack it ran), and a merge exists for several tablets. The cheapest kit, and a recovery the GMs must rehearse."
             },
             {
-              "label": "Add or change cases now.",
-              "cost": "The brief waits for them; a case added after the panel's first proposals reaches the design rounds but not the panel."
+              "label": "A spare machine takes over at once.",
+              "means": "A second show machine, or a tablet running an engine of its own, holds a live copy of the game's record, takes the engine's name on the kit's own network when the first falls silent, and every device finds it again, the way [[qt:QT42]] already asks devices to carry on when the old machine is replugged. The players lose a minute.",
+              "cost": "The engine's record must be copied live as it changes (a numbered log of facts), the kit's name must move between machines, and passes must hold on both. The most to build and to own (a second machine in every kit), and the strongest promise."
+            },
+            {
+              "label": "A cold spare from the last saved record.",
+              "means": "A second machine or a tablet starts the engine from the latest saved copy of the game, kept every few seconds on the tablets or on a stick. The GM starts it by hand; the tablets re-send what they kept since the copy.",
+              "cost": "Between the two above in cost and in the players' loss."
+            },
+            {
+              "label": "Declare the game standalone once, for the rest of the night.",
+              "means": "One GM tablet becomes the decider from its last copy of the game; the other devices join it (which needs a channel between devices, in effect a small engine on the tablet) or stop. This would amend [[dec:standalone-games-declared-never-mixed]]: a game's declaration could change once, one way, for the whole game, with every device told. It keeps 'never mixed', since after the change no device is on an engine.",
+              "cost": "An amendment to your decision, which only you can make; a small engine on the tablet."
+            },
+            {
+              "label": "Pause until the machine returns.",
+              "means": "Listed only to say it is out. Your words call it the worst possible scenario.",
+              "cost": "The show stops."
             }
           ],
-          "recommendation": "Confirm the twenty-four as the base. If a way of growing you plan is missing, name it now, before the panel's brief is written: the panel designs against the cases it is given, and a case added later reaches the design rounds but not the panel's first proposals.",
-          "recKind": "Recommendation"
-        }
-      ]
-    },
-    {
-      "title": "Confirming earlier decisions",
-      "questions": [
+          "recommendation": "Which of these fallbacks the engine must offer, and so how much a kit may cost; what the players may lose for the rest of a bad night and what they must never lose; whether the audience's screens may keep counting while the engine is silent; and whether a game may be re-declared standalone once, which amends your decision on standalone games only if you say so.",
+          "recKind": "What we need from you"
+        },
         {
           "letter": "C",
           "anchor": "q-c",
-          "title": "Four readings of earlier decisions, to confirm",
+          "title": "Release day: what must update together, and how long older devices work",
           "status": "open",
-          "decides": "Whether four earlier decisions are read as overtaken by later ones, as the decision record reads them. The record keeps each earlier decision as made and flags the reading; nothing inferred is written as if you had said it.",
+          "decides": "Safe release and rollback against easy to extend and operating without technical help. Whether a new version of the engine requires every device and pack to be at the matching version (everything updates together), or the engine must keep working with older GM tablets, phones, hardware scanners and packs for a stated time. How long that time is. Whether a mismatch refuses the device or warns the GM. Whom the promise is for: your kit, or every adopter's.",
           "evidence": [
-            "Your decision “[[dec:one-program-design-half-then-build-half]]” had each build area start with its proof test failing on today's engine. Read as overtaken by your decision “[[dec:build-the-test-rig-when-building-starts]]”, which builds the rig as part of the new test bench where a thin first version of the new design runs end to end; the failing-test start returns only if the move from today's engine chooses to change it in place.",
-            "Your decisions “[[dec:the-nine-questions-the-pass-answers]]”, “[[dec:five-documents-the-design-half-hands-over]]” and “[[dec:when-the-design-half-is-finished]]” had one design choice per question, with the four questions on the game's live facts designed together. Read as overtaken by your decision “[[dec:design-top-down-hardest-to-reverse-choices-first]]”, which orders the design rounds by the hardest decisions to reverse, not by question. The record's reading is that the nine questions become checks on every design.",
-            "Your decision “[[dec:five-documents-the-design-half-hands-over]]” had proposals for the written lists of messages between the engine and the devices, drafted before code, as the third document the design half hands over. Read as overtaken by your decision “[[dec:one-published-protocol-and-an-outside-test-bench]]”: one published, versioned protocol in place of today's scattered message lists and file formats.",
-            "Your decision “[[dec:when-the-design-half-is-finished]]” had the rig reproduce each finding marked for live proof before the design half ends. Read as overtaken by your decision “[[dec:build-the-test-rig-when-building-starts]]”, which moves the rig after design.",
-            "Each reading is flagged in its decision's entry under Decided, by topic, below."
+            "You said yes, generally, to everything updating together, and asked what the question means in practice and how it affects the design and the build, especially in the long term once the new engine runs ALN. The explanation follows. Settled already: the show machine keeps one written list of what it should carry and names any piece that differs ([[qt:QT41]]); replugging the old machine undoes a release ([[qt:QT42]]). Open: what happens to the piece that differs, and for how long an older piece works.",
+            "What the two phrases mean. 'Everything updates together' means one release moves the engine, the GM tablet's app, the phones' page, the hardware scanners' firmware and the protocol between them, and the engine refuses anything at another version. 'Older versions keep working with a newer engine' means the engine accepts a device or a pack from an earlier release for a stated time, and the protocol is built so that it can.",
+            "Today, the GM tablet's app. The engine serves it, so a tablet that reloads after the engine is updated gets the new app. But a tablet that was open before the update, or one holding the app in its browser's cache, keeps running the old app against the new engine until it reloads. At connection the tablet sends its app version and the fingerprint of the pack it loaded; the engine records the version and does nothing with it, and writes a pack mismatch to its log only ([[flaw:C12]]). The list of messages the tablet listens for is kept by hand in the tablet's code; a message the engine adds and the tablet does not know never arrives, with no error ([[flaw:C14]]).",
+            "Today, the phones' page and the hardware scanners. In a networked game the engine serves the phones' page too, from a copy placed in its public folder; the page caches itself under a name that must be changed by hand to make phones refresh. The hardware scanners' firmware changes only by cable; the board leaves no room for an update over the air. Their token list, pictures and sounds sync at boot from the engine. So a hardware scanner is the device most likely to be older than the engine, and a change to the token file it reads breaks every scanner that was not flashed.",
+            "Today, packs and the protocol. Packs are published separately, at any time. The engine refuses a pack whose format version does not match exactly, a pack that requires an ability the engine lacks, and a pack that names a minimum engine version the engine does not meet; the GM tablet applies only the exact format check. The protocol is two written lists (web requests and live messages), the pack's formats and the venue profile's format, checked by a few tests, and every program copies the names by hand. So today nothing enforces 'together' and nothing promises 'older works'. Mixtures happen silently: a rollback can leave the machine running pieces from two releases ([[flaw:C15]]), and a tablet at the wrong version is a log line.",
+            "In the long term, for your kit. Once the new engine runs ALN, your kit updates between events ([[qt:QT42]]): build the new machine, check it against one written list of what it should carry ([[qt:QT41]]), rehearse, swap by replugging ([[ex:EX17]]). The pieces that can still lag behind the engine on a show night are the hardware scanners (cable), tablets that did not reload, pinned standalone copies, and packs published later than the engine. The published protocol is what makes each of these either refused or tolerated.",
+            "In the long term, for adopters. Other productions have their own release pace, their own fleets of cable-updated devices, and perhaps add-ons or their own builds (the question 'How an extension for all games reaches a production'). They build against the protocol and the pack format ([[dec:one-published-protocol-and-an-outside-test-bench]]). For them, a protocol that may change shape at every release with no window is a reason not to adopt, or to copy and freeze. A protocol with a window is a promise you must keep for years.",
+            "At a show, under each answer. A hardware scanner missed its cable update and connects to the new engine. Under everything-together the engine refuses it, the GM's tablet names it, and the scanner is useless tonight unless someone has a cable and a laptop. Under a window it works tonight and the GM's tablet shows 'older firmware, update before the next show'. Packs already have their rule and it does not change here: a pack that needs an ability this engine lacks is refused at publish with the ability named ([[qt:QT10]]), and abilities are only ever added ([[qt:QT21]]), so an old pack runs on a new engine.",
+            "How the answer changes the protocol and the build. Under everything-together the protocol has one version number for the whole release; messages may change shape freely between releases, since no two versions ever meet; code on every side is generated from one definition per release; the test bench tests one combination; and the hardware scanners must be at the release before the show, which means either a cable step on the pre-show checklist at every release or a firmware update over the kit's network at boot, which the design rounds would have to add and which has its own cost (room on the scanner for two copies of its program, a fallback that cannot leave the board unable to start). Under a window every message carries its version; inside the window changes are additive (fields are added, never removed or renamed, and a device ignores what it does not know); the engine accepts the current version and a stated number of earlier ones and tells the GM which devices are behind; the test bench runs the engine against each supported device version, a set of combinations that grows with the window; and a written rule says when a version is dropped.",
+            "Which decision ahead depends on it. 'The published protocol's form' says in what it decides that it settles the version rules. A protocol where everything updates together can change shape between releases, and the engine and a device never need to agree on a version; a protocol with a window needs a version on every message, changes that only add inside the window, and tests of the engine against each supported version on the test bench. 'How today's engine moves to the new design' follows in part: the swap from blue to green is itself a release, and whether old devices may meet the new engine during the move depends on this.",
+            "Sources. Your comment of 2026-11-02 on release day. [[qt:QT41]], [[qt:QT42]], [[ex:EX17]], [[qt:QT10]], [[qt:QT21]]. Today's code: when a tablet connects, the engine records its version and only logs a pack mismatch; the GM tablet's list of messages is kept by hand; the hardware scanner's firmware updates only by cable."
           ],
           "options": [
             {
-              "label": "Confirm all four readings.",
-              "cost": "Four entries in the decision record are amended, and the design half's hand-over and end conditions are restated to match the top-down order."
+              "label": "Everything updates together.",
+              "means": "One version for the release; the engine refuses any device at another version; the tablet and phone apps come from the engine, so they move with it; hardware scanners must be flashed before the show; packs are checked at publish as now.",
+              "cost": "The simplest protocol and one combination to test, and show-night work at every release for every cable-updated device, for you and for every adopter."
             },
             {
-              "label": "Keep one or more of the earlier decisions as made.",
-              "cost": "The design rounds then also write one design choice per question; each build area starts with its proof test failing on today's engine; proposals for the written lists of messages between the engine and the devices are drafted beside the protocol; and the rig reproduces each finding marked for live proof before the design half ends."
+              "label": "Together for what the engine serves, a window for the rest.",
+              "means": "The engine forces a stale tablet or phone app to reload, so nothing it serves is ever at another version. Cable-updated devices and packs work for a stated window (one or two engine versions back), and the GM's tablet shows which devices are behind.",
+              "cost": "The hardware scanner's part of the protocol is kept small and changed rarely, with additive changes only inside the window; tests of the engine against each supported scanner version; a rule for when a version is dropped. Cable visits when you choose, not every release."
+            },
+            {
+              "label": "A window for everything.",
+              "means": "Every message carries its version; the engine speaks to older tablets, phones, scanners and packs within the window.",
+              "cost": "A version on every message, the engine and each device agreeing on a version when they connect, more combinations to test and a written rule for when an old version stops working, kept forever. The most freedom for adopters."
             }
           ],
-          "recommendation": "Confirm all four. The later decisions set the order the design half now follows; the earlier wordings stay in the record's history, and the nine questions keep their work as checks on every design.",
+          "recommendation": "Together for what the engine serves, a window for the rest. Your lean is everything together ('Generally speaking, yes'). The agent recommends one exception, for cable-updated devices, as its own view: anyone with a fleet of hardware scanners needs it, and the scanner asks for little (a token list, one scan, a batch of scans, the engine's health, its assets), so keeping its part of the protocol small and stable is cheap. From you: how long the window is (one or two engine versions back), and whether a device outside it is refused or only warned about.",
           "recKind": "Recommendation"
-        }
-      ]
-    },
-    {
-      "title": "Confirming the promises",
-      "questions": [
+        },
         {
           "letter": "D",
           "anchor": "q-d",
-          "title": "Are these the right ten promises?",
+          "title": "What a game's maker may build inside the pack",
           "status": "open",
-          "decides": "Whether the ten promises on [[page:requirements]] are the base the pass designs for, with these titles, or something is missing, doubled or wrongly put; and whether each reads from the side of the people who count on it. This holds the earlier question \"Is the list of design flaws right?\".",
+          "decides": "Easy to extend against easy to understand and change, and platform parity against standalone and offline. How far a game's own maker may go inside the pack, with no developer. Values in tables, as today: modes by their flags, scoring tables, groups, cues on a clock. Rules the designer writes as 'when this happens, do that', wiring triggers the engine knows to responses the engine knows; your example is players changing the room's lighting by scanning tokens on a player scanner. Or scripts, code the designer writes into the pack. And whether such rules must also run where there is no engine, on a standalone tablet or on a hardware scanner alone, since phones and hardware scanners stay equal in ability and designers change pack data, never device code.",
           "evidence": [
-            "Each promise says who counts on it, when, and what must happen for them. Every title is new; the earlier wording of each is in the [[page:changes]].",
-            "Every quality target and every extension case names the promises it serves; every promise is served by at least four targets and three cases.",
-            "The panel designs against the promises with your answers, so it runs only after you confirm them ([[dec:what-the-architects-panel-sees-and-when]]).",
-            "Whether running in any setup needs an eleventh promise is [[q:I]].",
-            "The earlier candidate on [[page:design]] names, for each promise, the parts that would keep it; every promise is kept by parts of its own.",
-            "On [[page:today]], each design flaw mainly breaks exactly one promise. Today no flaw mainly breaks the promise [[promise:J6]]. Two flaws break it beside others: [[flaw:C8]], and [[flaw:C12]]."
+            "Settled: no word of ALN's inside the engine ([[qt:QT20]]); designers change pack data, never device code; a whole game is built without code ([[qt:QT12]]); parity is in ability, not in screens; hardware scanner work waits on no game. Your decision keeps the two kinds of extension apart and leans, in tentative words, to the game's own maker building the first kind inside the game ([[dec:two-kinds-of-game-extension]]). Open: how far the pack goes, and whether pack rules must run on a scanner alone.",
+            "For the designer. Tables already cover your lighting example: the settled case [[ex:EX22]] lets the pack say what a scan causes, and [[ex:EX25]] has the designer write 'this token's scan triggers that look' there, with no developer. What tables cannot do is a combination no declaration yet names, such as a scan of a token in this group lighting this role only while the clock is in this phase; each such combination waits for a developer to add a declaration for it. Today a game played only on GM tablets reaches video through one standing cue per token, which is the tables-only workaround until that declaration exists ([[ex:EX22]]). With when-then rules the designer writes any such combination in the design tool and plays it within minutes, which is the loop the standing rules make the point of the engine work. With scripts the designer can do anything, and the check at the desk can promise little.",
+            "At a show. A rule the designer wrote misfires: every scan flips the lights. The GM must be able to switch that rule off from the tablet, as a standing cue is switched off today, and the check at publish must have refused rules that cannot run (a lighting role the venue profile never bound). A rule that runs on the engine is one more thing the GM's Show Control section lists.",
+            "For the people maintaining the engine. Tables keep the engine small and readable. A rule format is a second language to version, check, test on two games and document for adopters, and it grows unless someone says no. Scripts need a fenced-off place to run, with limits, and a security story.",
+            "For a production adopting the engine. A theatre company with no developer wants to combine abilities themselves. A company with a developer may prefer code and find a rule format limiting. The hardware scanner matters here: a rule 'when scanned, play this sound' must run on the device alone in a standalone game, so the scanner's firmware must carry a runner for whatever rules the pack may hold, or the scanner asks the engine and a standalone scanner runs only what a device alone can.",
+            "Your words add one more thing for later: rules a game's maker builds might be shared with other game makers. That is a build consequence (the format must be exportable), not a question now.",
+            "Which decision ahead depends on it. 'How games and venues extend the engine': what a pack may declare is in what it decides, and the difference between tables and rules is the difference between a configured engine and an interpreting one. 'The published protocol's form': the pack is one of the protocol's files, and a rule format is the largest thing it could carry. 'Where authority lives across devices, offline and standalone included': a rule runner on the tablet and on a hardware scanner alone is a second place rules are decided.",
+            "Sources. Your comment of 2026-11-02 on extensions, which the record keeps in your tentative wording. [[dec:two-kinds-of-game-extension]], which leaves open which piece each kind of extension changes. The standing rules 'Designers change pack data, never device code', 'Phones and hardware scanners stay equal in ability' and 'Games are playtested without code or settings files'. [[qt:QT12]], [[qt:QT21]], [[ex:EX3]], [[ex:EX10]], [[ex:EX22]], [[ex:EX25]]."
           ],
-          "options": [],
-          "recommendation": "Keep these ten as the base, with these titles, and settle the four wording questions below, H to K. In the earlier candidate every promise is kept by parts of its own, and the one candidate for an eleventh, \"run in any setup\", owns no part ([[q:I]]).",
+          "options": [
+            {
+              "label": "Tables of values only.",
+              "means": "Every new combination is an ability a developer adds, named in the pack's list of required abilities. The engine stays as today in kind; the hardware scanner's firmware stays simple.",
+              "cost": "The designer's loop closes at every combination no declaration yet names, and a developer's additions carry all growth beyond the declared ones."
+            },
+            {
+              "label": "Declared when-then rules over the engine's abilities.",
+              "means": "The pack names triggers the engine knows (a scan of this kind, a clock mark, a phase change, a cue finishing) and responses the engine knows (play, light, score, show, hold), and the designer wires them. Most new mechanics need no developer; the rule format is what adopters learn.",
+              "cost": "A rule format inside the pack and so inside the published protocol; a check at publish that refuses rules the engine or the venue cannot run; a runner in the engine and, for standalone games, on the tablet; a listing on the GM's tablet; the hardware scanner either asks the engine (networked) or runs the subset a device alone can (standalone). It must be kept small or it becomes a programming language by accident."
+            },
+            {
+              "label": "Scripts in the pack.",
+              "means": "The designer writes code into the pack and can do anything.",
+              "cost": "A fenced-off place to run with limits, a versioned scripting language; the hardware scanner cannot run it; hard to check at the desk; the standing rule that games are built without code is gone."
+            }
+          ],
+          "recommendation": "Declared when-then rules over the engine's abilities, kept small. Your lighting example already fits in tables through the declaration of what a scan causes, so this question is about the combinations after it. Rules are the only option that keeps the designer's loop open for those (built by the game's maker, played within minutes, with no developer), which your tentative words lean to, without giving up the check at the desk or the standing rule that games are built without code. In a networked game the hardware scanner asks the engine; in a standalone game it runs only the subset a device alone can, and the pack says which rules those are. From you: whether that standalone subset is enough, or whether a rule that cannot run on a scanner alone should keep a game from being declared standalone.",
           "recKind": "Recommendation"
         },
         {
           "letter": "E",
           "anchor": "q-e",
-          "title": "Two clauses added to the pack promise",
-          "status": "applied",
-          "decides": "Whether both clauses added to \"[[promise:J1]]\" stay: that a second designer's game runs on the same engine, and that every device plays the same version of the pack and shows which.",
+          "title": "How an extension for all games reaches a production",
+          "status": "open",
+          "decides": "Easy to extend against easy to understand and change, and against safe release and rollback. When a developer gives the engine a response it could not give before, your example being audio in several rooms through a program such as Snapcast, how that reaches a production. Only through the engine's main release. Also as an add-on a production installs beside its engine, at places the engine leaves for additions. Or as a production's own changed build of the engine, with no promise from the engine. And what the engine promises about add-ons it did not ship: whether it lists them in its version, tests against them, or refuses ones it does not know.",
           "evidence": [
-            "The requirements ask for both. A designer who did not build ALN makes a whole second game, and that night the whole kit plays it, every tablet and scanner holding the same copy and the GM able to see that they match ([[ex:EX1]]); the engine holds none of ALN's words ([[qt:QT20]]); a pack change reaches every device with no restart, and the GM sees which version each device runs ([[qt:QT9]], [[ex:EX2]]).",
-            "In the earlier candidate, \"Nothing in the engine assumes ALN\" is a quality every part must have, named Generic on [[page:design]]. It is carried by [[part:P1]], which takes rules only from the pack, and by [[part:P12]] and [[part:P13]], which take the names of the kit's equipment only from the venue profile and from each running copy of the engine's own settings.",
-            "The version every device shows is the version mark [[part:P2]] puts on every copy and every game record, compared whenever a device connects.",
-            "A second designer's game on the same engine rests on the same part, [[part:P1]], which only calculates and changes nothing.",
-            "Today a tablet running a different pack than the engine is only written to a log, and nothing tells the GM ([[flaw:C12]])."
+            "Settled: an ability the engine lacks is added once for every game, and the games already running do not change ([[qt:QT21]]); the pack lists the abilities it requires, and the check at publish refuses a pack that needs one this engine lacks ([[qt:QT10]]). Your decision names this question as open, in your words 'how those extensions then interact with the main release of the engine' ([[dec:two-kinds-of-game-extension]]).",
+            "At a show. A production runs the main release and an add-on for multi-room audio. The add-on's program crashes. The GM's health rows must name it as any other service, and the night's record must say the game ran this engine version with this add-on, or the night cannot be told truly afterwards.",
+            "For the designer. The pack already lists the abilities it requires. An add-on provides an ability. With add-ons, 'this engine' means the release plus what is installed beside it.",
+            "For you. For ALN the difference is small, because you make the releases: an extension you want goes into the next release. The difference matters for everyone else.",
+            "For a production adopting the engine. A university with a developer writes support for its own lighting system. Under main-release-only they send it back and wait for a release, the path [[ex:EX21]] describes. Under add-ons they install it tonight and keep it across releases as long as the place it plugs into holds. Under their own build they run their own engine, and the community splits.",
+            "For the people maintaining the engine. Add-ons mean a second set of fixed places in the engine's code, facing inward, where outside code plugs in; they must stay stable across versions and be tested against code you did not write. Main-release-only means one body of code and one test run on two games. A production's own build costs you nothing and the platform's users everything.",
+            "Which decision ahead depends on it. 'How games and venues extend the engine' asks where the engine leaves room for a developer to add a scoring model, a kind of screen, a device kind, a program it drives or a content source without touching the rest; whether those rooms are fixed places in the engine's code that outsiders install into, with their own versions, or places inside one body of code, is this question. 'The published protocol's form': whether a version names add-ons and whether add-on messages are allowed. 'How one engine runs as many separate copies': add-ons installed per copy.",
+            "Sources. Your comment of 2026-11-02 on extensions. [[dec:two-kinds-of-game-extension]]. [[qt:QT21]], [[qt:QT22]], [[qt:QT23]], [[ex:EX4]], [[ex:EX9]], [[ex:EX15]], [[ex:EX18]], [[ex:EX21]], [[ex:EX26]]. The roadmap's release block."
           ],
-          "options": [],
-          "recommendation": "Keep both. The first is what lets other games run; the second is what the design flaw [[flaw:C12]] breaks.",
+          "options": [
+            {
+              "label": "Main release only.",
+              "means": "Every extension for all games comes back to the main line, through review and the developer's tests on two games, and reaches a production in a release. The version is one number, and your review decides what goes in.",
+              "cost": "The simplest to keep and the slowest for adopters."
+            },
+            {
+              "label": "Add-ons installed beside the release, at named places.",
+              "means": "A device kind, a program the engine drives, a scoring model, a kind of screen, a content source: the places the extension cases already name. Add-ons are loaded from the venue profile or a file of their own; the version mark and the night's record name them; the GM's health rows name them. Adopters move at their own pace.",
+              "cost": "A fixed place in the engine's code for each kind of add-on, with its own version; a stand-in and tests per add-on; you keep those places stable and test releases against add-ons you did not write."
+            },
+            {
+              "label": "A production's own build, with no promise.",
+              "means": "Nothing to build. This happens in any open-source project whatever you decide.",
+              "cost": "The choice is only whether the engine helps (add-ons) or does not."
+            }
+          ],
+          "recommendation": "Ship the first release as main-release-only, and build the places where an add-on would plug in as fixed places in the engine's code with their own versions, so that add-ons can be allowed later at no extra cost; the version mark, the health rows and the night's record are designed to name an add-on from the start. What is promised to adopters about add-ons can wait for the release block, with the first adopters in view. From you now, because the panel's growth lens designs those places in the blind round: whether a production may ever run an extension the engine did not ship beside its engine, with the engine's help. A yes makes the places part of the published protocol's design; a no makes them one body of code, and the only path for an extension is the main release.",
           "recKind": "Recommendation"
         },
         {
           "letter": "F",
           "anchor": "q-f",
-          "title": "The roles promise covers who may act",
-          "status": "applied",
-          "decides": "Whether \"[[promise:J7]]\" keeps its second half: starting, pausing and ending the game, show control and score changes stay with staff who log in, such as the GM, and the stored passwords and keys change before outsiders touch the system.",
-          "evidence": [
-            "The requirements say the same. A connection with no password or pass gets nothing, a read-only display pass cannot pause the game, only staff who log in can start, pause, end or reset a game, run show control or change a score, and the committed secrets rotate before the first outside designer sits down with the tool ([[qt:QT31]]). A designer may give a device class rights per game, but never past that limit ([[ex:EX11]]).",
-            "In the earlier candidate, one part, [[part:P7]], holds both each device's pass and what it allows, and [[part:P4]] checks the rule once, at the one place every request passes through.",
-            "The same rule is a quality every part must have, named \"Only the GM moves the game\" on [[page:design]].",
-            "Today a connection's own word decides what it gets: anyone on the kit network can fetch the whole game state, and the TV connects as if it were a GM tablet ([[flaw:C13]])."
-          ],
-          "options": [],
-          "recommendation": "Agree.",
-          "recKind": "Recommendation"
-        },
-        {
-          "letter": "G",
-          "anchor": "q-g",
-          "title": "The venue promise names declared standalone",
-          "status": "applied",
-          "decides": "Whether the clause in \"[[promise:J8]]\" stays, that a standalone game is a choice the game declares and never mixed; and whether \"[[flaw:N1]]\" is a design flaw of its own, with its own design choice.",
-          "evidence": [
-            "These are the words of your decision [[dec:standalone-games-declared-never-mixed]] (2026-10-31): a whole game can run with no engine, as a choice a game declares, and no game mixes networked and standalone devices.",
-            "The requirements carry it: a declared standalone game in which every device says standalone and nothing shows red for the missing engine ([[qt:QT37]]); a mix refused with a reason ([[qt:QT38]]); a small game in a room with no show machine ([[ex:EX12]]).",
-            "The earlier candidate supports the clause: whether a game is standalone is something every design choice must take into account (the quality \"Who decides when there is no engine\"), and it is declared where the game is fitted to tonight's setup, under [[promise:J8]].",
-            "Where the declaration is kept is a choice for the design rounds: the venue profile, the pack, the game's record or each device. The earlier candidate favours the profile, because a profile that lists no engine equipment already makes every service the engine runs (video, music, lights) read \"not installed tonight\". Whichever is chosen, [[part:P2]] carries the declaration to every device.",
-            "Today the declaration is each tablet's own tap, the phone's web address and nothing on the hardware scanner; the pack has no field for it ([[flaw:N1]]).",
-            "The proposed flaw \"[[flaw:N1]]\" holds eight findings from the review of standalone games. If it is not a flaw of its own, they join three flaws ([[flaw:C9]]; [[flaw:C11]]; [[flaw:C14]]) and the table comparing the hardware scanner with the phone's scanner. In the earlier candidate it is fixed in [[part:P2]] and [[part:P12]], or in [[part:P3]] if the declaration is kept there; your answer on the second point does not move it."
-          ],
-          "options": [],
-          "recommendation": "Agree. On the second point, yes: three other design choices (what each fact does between games, one answer per question, how old a copy is) need the declared fact as an input, and would otherwise each invent their own answer.",
-          "recKind": "Recommendation"
-        },
-        {
-          "letter": "H",
-          "anchor": "q-h",
-          "title": "Split the tap promise in two?",
+          "title": "Where the trial copy runs while a show runs",
           "status": "open",
-          "decides": "Whether the tap's answer and the night's record, the two halves of \"[[promise:J3]]\", are one promise or two. The parts are the same either way.",
+          "decides": "The designer's iteration speed against running well at the size of a show and testable without the live show. Whether a designer must be able to rehearse on a separate trial copy of the engine on the show machine while a show runs, or only between games on the show machine, or only on a laptop or the test bench. In other words, whether the show machine must carry two running copies of the engine during a show.",
           "evidence": [
-            "The night's record half names the director who tells the night's story and the players it is told to, beside you and the designer ([[dec:the-night-s-record-and-the-after-game-article]], 2026-11-01).",
-            "The requirements already test the two halves at two moments: the tap's answer at the tap ([[qt:QT4]], [[qt:QT7]]); the night's record when the game ends ([[qt:QT16]]) and when the director reads it afterwards ([[ex:EX19]]).",
-            "Answering happens at the tap, for the GM or the player. The night's record is for after the show: what is captured during play, the record written when the game ends, the review. The earlier candidate confirms the two share no part: [[part:P4]] sits in the middle of the engine, and five promises depend on it; [[part:P5]] is written once, at the end of a game, and read afterwards.",
-            "[[part:P5]] carries the game the night ran and the texts the players saw (the same decision). The designer's Review reads it inside the engine; the game's own telling, for ALN the Director Console, reads it from outside, with room to run inside the Review stage later.",
-            "The tap's answer is mainly broken by the flaw [[flaw:C7]]: the tablet cannot tell whether an answer is final or the scan was only saved to send later. No design flaw mainly breaks the night's record half yet.",
-            "The alternatives table on [[page:design#alt-answer-and-record]] has this row: the tap's answer and the night's record, one part or two."
+            "Settled by the requirements: no trial copy or test run ever touches the live show ([[qt:QT11]], settled by you; [[qt:QT27]], proposed). Open: whether a trial copy runs on the show machine during a show at all. The record disagrees with itself here. [[qt:QT11]] says you settled a trial copy on the same machine while a show runs, through the preview block and your ratification of the design tool's pages; [[ex:EX14]] and the agenda entry on copies say where it runs is open; your ratification said the trial copy ships with its own profile, not where it runs; and the preview block names rehearsing on a running trial copy without saying where it runs.",
+            "At a show. The GM runs the show on the show machine. The designer at the desk starts a trial copy on the same machine to try tomorrow's pack. The trial's video player must not take the TV, its music must not come out of the room's speakers, and the machine's processor and heat budget are shared with the live show. [[qt:QT11]] promises that the show never notices.",
+            "For the GM at a failure. A trial copy that misbehaves during a show is a risk the GM did not take. The strongest isolation the design can build is still weaker than a trial copy that is not there.",
+            "For the designer. On a laptop the designer rehearses on the test bench with stand-ins and never on the real room. Between games the designer rehearses on the real room and its equipment, but only before doors or after the last game. During a show the designer rehearses whenever they like.",
+            "For a production adopting the engine. A one-machine kit versus a kit with a laptop. A production with a small show machine and a long show.",
+            "For the people maintaining the engine. Two copies at once need separate files, ports, settings, programs and passes, and a share of the machine reserved for the show. One copy at a time needs separate files and records only.",
+            "Which decision ahead depends on it. 'How one engine runs as many separate copies' says in what it decides that where the designer's trial copy runs is open. The answer decides how strong the isolation between copies must be and whether headroom is reserved on the show machine; it also feeds the limits under [[qt:QT33]] and the number of copies one machine must carry under [[qt:QT43]].",
+            "Sources. [[qt:QT11]], [[ex:EX14]], [[qt:QT27]], [[qt:QT43]], the agenda entry on copies, and the roadmap's preview block."
           ],
           "options": [
             {
-              "label": "Keep one promise.",
-              "cost": "The GM at the tap and the people after the show (the director, the players, you and the designer) look for what they count on in one sentence."
+              "label": "During the show, on the same machine.",
+              "means": "The designer rehearses whenever they like, on the real room's engine. The most convenient for the designer.",
+              "cost": "The copies round must isolate at the level of the operating system and reserve headroom for the show; the most careful engineering to keep, for years."
             },
             {
-              "label": "Split into two promises.",
-              "cost": "Makes a promise that no design flaw mainly breaks yet, because the night's record is mostly planned work."
+              "label": "Only between games, on the show machine.",
+              "means": "Rehearsals on the real room happen before doors or after the last game.",
+              "cost": "Separate files and records; no two copies scheduled together during a show."
+            },
+            {
+              "label": "Only on a laptop or the test bench.",
+              "means": "The show machine runs one engine, ever. The real room is rehearsed only by running a game on it.",
+              "cost": "The least to build; the designer never rehearses on the real equipment except by playing."
             }
           ],
-          "recommendation": "Split, into \"Every tap gets its answer\" and \"The night can be told afterwards\". The two halves serve different people at two moments and share no part, so two sentences let each find theirs.",
-          "recKind": "Recommendation"
-        },
-        {
-          "letter": "I",
-          "anchor": "q-i",
-          "title": "Keep the venue promise whole?",
-          "status": "changed",
-          "decides": "Whether running in any setup (no engine, another kit) gets a promise of its own, and which title the one promise carries if \"[[promise:J8]]\" stays one.",
-          "evidence": [
-            "The requirements put all of it under the venue: a second production sets up a kit with a new profile and the same engine code ([[qt:QT24]], [[ex:EX16]]); a declared standalone game ([[qt:QT37]], [[ex:EX12]]); the venue technician's one preflight ([[qt:QT13]], [[ex:EX13]]).",
-            "Fitting the game to tonight's venue is one part with an output of its own: [[part:P12]] holds the venue technician's profile, which says what the kit brings, binds each of the pack's names to a real instrument and says whether the engine starts each program; [[part:P10]] turns it into one go or no-go.",
-            "Mapping how the promises fit together found that \"run in any setup\" has no part of its own. Running with no engine is a switch every design choice takes, declared as part of fitting the game. Running on another kit is each running copy of the engine keeping its own files, network ports and settings, [[part:P13]], the same part that keeps a test from touching the live show. A separate promise for it would own nothing.",
-            "The promise already names the venue technician, a GM running a game with no engine and a future operator with a second kit.",
-            "This promise is mainly broken by \"[[flaw:N1]]\". [[flaw:C15]] also breaks it: program names and install commands are fixed to one operating-system release, so a new machine logs warnings or refuses its install.",
-            "The earlier recommendation, to split, is in the [[page:changes#rec-e]]."
-          ],
-          "options": [
-            {
-              "label": "Split: a promise of its own for running in any setup.",
-              "cost": "It would own no part."
-            },
-            {
-              "label": "One promise, titled \"The game fits the venue, whatever the setup\".",
-              "cost": "Keeps standalone games and other kits in the title; the venue technician's moment moves to the sentences."
-            },
-            {
-              "label": "One promise, titled \"The game fits the venue it is in tonight\".",
-              "cost": "Names the venue technician's moment; the GM running a standalone game and a future operator with another kit are named in a sentence, not in a title."
-            }
-          ],
-          "recommendation": "One promise, titled \"The game fits the venue it is in tonight\", with standalone games kept in its first sentences.",
-          "recKind": "Recommendation"
-        },
-        {
-          "letter": "J",
-          "anchor": "q-j",
-          "title": "Proof and release in one promise?",
-          "status": "changed",
-          "decides": "Whether the developer's tests, which show a change to the engine works before it reaches a show, and your release day stay in one promise, \"[[promise:J10]]\", split, move release day under the venue technician, or go back to a sentence about tests alone. This holds the earlier question \"Flaws none of the pass's questions covers\".",
-          "evidence": [
-            "The requirements test the two moments apart. Every change runs the full set of tests twice, once with ALN's pack and once with the toy game's, and a skipped test never counts as a pass ([[qt:QT26]]). On release day the show machine keeps one written list of what it should carry, and rolling back moves every piece ([[qt:QT41]], [[ex:EX17]]).",
-            "You have since decided that the tests become a test bench outside the engine, with proving each change before it reaches a show kept as a quality every part must meet ([[dec:one-published-protocol-and-an-outside-test-bench]]).",
-            "The earlier candidate separates this promise's two moments. Before every change, the developer's tests pass and show the show still works for ALN and for the toy game, the small second game kept for tests; that is a quality every part must have (Proof, on [[page:design]]), and checking that parts which pass things to each other agree is part of it. In the earlier candidate, [[part:P16]] (since replaced by the published protocol and the outside test bench) and [[part:P13]] carried it.",
-            "On release day, you decide when a new version goes to the venue and can swap back by replugging a machine. That is one small part, [[part:P17]]: what is installed is one written list of what the machine should carry, which the engine compares at start, so a rollback moves everything or says what it did not.",
-            "Four flaws mainly break this promise. The pass's question \"Only the live engine touches the show\" covers keeping tests away from it ([[flaw:C8]]). For the other three none of the nine questions fits: \"One question gets one answer\" is only the nearest for the names two parts share ([[flaw:C14]]), and the installed pieces ([[flaw:C15]]) and tests that prove the real path ([[flaw:C16]]) have none ([[dec:the-nine-questions-the-pass-answers]]).",
-            "Every option below gives the flaw “[[flaw:C15]]” a part to be fixed in; the flaw “[[flaw:C16]]” falls to the outside test bench whichever you choose.",
-            "The alternatives table on [[page:design#alt-release]] has this row: release day as its own part beside the developer's tests, or in [[part:P12]]'s hand-off from designer to venue technician to GM. The earlier recommendation is in the [[page:changes#rec-f]]."
-          ],
-          "options": [
-            {
-              "label": "Keep one promise covering both moments, as the title does.",
-              "cost": "One title covers two people at two moments, the developer's tests and your release day; the recommendation gives each a question of its own among the pass's questions."
-            },
-            {
-              "label": "Split release day into a promise of its own.",
-              "cost": "It gives your release day its own sentence, kept by one small part."
-            },
-            {
-              "label": "File release day with the venue technician's set-up work, under \"[[promise:J8]]\".",
-              "cost": "The check of what is installed sits where the venue technician works, but your decision to send a version moves away from the developer's tests."
-            },
-            {
-              "label": "Go back to the earlier wording, about tests alone.",
-              "cost": "The parts fit that too; the cost is that your release day stays unnamed."
-            }
-          ],
-          "recommendation": "One promise, as the title has it, and give the developer's tests and your release day a question each among the pass's questions, which would serve as checks on every design if you confirm [[q:C]]. Both moments exist so that nothing reaches the live show unproven, or before you say so.",
-          "recKind": "Recommendation"
-        },
-        {
-          "letter": "K",
-          "anchor": "q-k",
-          "title": "Which promise carries equipment state on screens?",
-          "status": "changed",
-          "decides": "Whether the route that carries the equipment's state to the screens is named in \"[[promise:J4]]\", in \"[[promise:J2]]\", or in neither.",
-          "evidence": [
-            "The requirements name the need without naming a promise: when the engine is killed, no screen anywhere shows a calm, current-looking value for a fact it cannot confirm ([[qt:QT5]]); for any fact a screen shows, one place decides it and every screen traces to it ([[qt:QT17]]). The pass's question \"Service state travels with its health\" asks the same ([[dec:the-nine-questions-the-pass-answers]]).",
-            "If the design rounds keep one delivery part, neither promise needs to name the route: in the earlier candidate [[part:P6]] carries every fact to every screen, game facts and equipment alike, each with its label (how sure, how old); six promises use it.",
-            "[[part:P8]] decides each program's state and health as one dated fact; [[part:P6]] carries it; [[part:P14]] draw it.",
-            "The two promises already cover their halves. Under the promise “[[promise:J4]]”, the GM makes the room do a thing and sees it happen, or sees at once that it did not. Under “[[promise:J2]]”, every screen agrees, also after a tablet comes back. The game's running state there already includes the video queue, music, held items, the clock and each service's health.",
-            "Your answer also decides which promise the flaw [[flaw:C2]] sits under: today the music card keeps its playing look while the health row turns red.",
-            "The design rounds choose between one delivery part and the parts behind each promise delivering their own facts; the alternatives table on [[page:design#alt-delivery]] has that row. The earlier answer is in the [[page:changes#rec-g]]."
-          ],
-          "options": [
-            {
-              "label": "Name the route in neither promise.",
-              "cost": "Holds only as long as the design rounds keep one delivery part."
-            },
-            {
-              "label": "Name it under \"[[promise:J4]]\".",
-              "cost": "The words sit with the equipment whose state it is, but that promise then names a route the other also needs."
-            },
-            {
-              "label": "Name it under \"[[promise:J2]]\".",
-              "cost": "The words match how the game's running state is already defined, but that promise then carries the equipment beside the game's record."
-            }
-          ],
-          "recommendation": "Add the route to neither promise, as long as the design rounds keep one delivery part; both then hold through it, and the card for [[flaw:C2]] stays under \"[[promise:J4]]\", where its moment at a show is felt. If the design rounds choose the other way, with the parts behind each promise delivering their own facts, the route belongs with the room promise, beside that card.",
-          "recKind": "Recommendation"
+          "recommendation": "Whether the designer's convenience during a show is worth the risk to the show and the engineering to keep two copies apart on one small machine, or whether rehearsing between games and on a laptop is enough. Your sources say different things, so the record cannot settle it for you.",
+          "recKind": "What we need from you"
         }
       ]
     },
     {
       "title": "Standalone games",
+      "intro": [
+        "Standalone games are a capability of the engine. From your words of 2026-11-02: games designed and set up to run where a network connection is not feasible, or where other logistics make it better to use only GM scanners, player scanners (phone or hardware), or both. A game declares it, and no game mixes networked and standalone devices ([[dec:standalone-games-declared-never-mixed]]). Your words also answer the hardware scanner's standalone mode: it plays standalone games as the phone's scanner does. Where the declaration is held is for the design rounds. One reading of your words, that a standalone game may have no GM tablet at all, is listed under the readings to confirm below; the first question here asks the fuller version of it.",
+        "Two conflicts between the qualities meet here. Every screen telling the truth against standalone and offline is settled: a standalone game says standalone, and every service the engine runs reads not installed tonight, grey. Platform parity against standalone and offline is open in one part: whether a mechanic declared in the pack must run on a hardware scanner alone; that part belongs to the second question here and to 'What a game's maker may build inside the pack' above."
+      ],
       "questions": [
         {
-          "letter": "L",
-          "anchor": "q-l",
-          "title": "The hardware scanner's standalone mode",
+          "letter": "G",
+          "anchor": "q-g",
+          "title": "Which standalone games the engine must run",
           "status": "open",
-          "decides": "Whether the hardware scanner gets a standalone mode to match the phone's scanner, as parity work the pass must serve. Your explicit word is asked for.",
+          "decides": "Which shapes of game with no show machine the engine must support, now and later. One GM tablet alone. Several GM tablets. Player scanners alone (phones, hardware scanners or both). GM and player scanners together. With no network at all between the devices, or with a small network (a phone's hotspot, the kit's router with no show machine). Whether one standalone game means one GM tablet. Whether 'standalone' means no show machine, or means no network.",
           "evidence": [
-            "[[dec:standalone-games-declared-never-mixed]] (2026-10-31) recorded the hardware scanner's missing standalone mode as a parity gap, not a new feature, because the two player scanners keep feature parity wherever possible.",
-            "The requirements already read it that way: the hardware scanner plays a standalone game as the phone's scanner does, and its missing standalone mode is closed as a parity gap ([[qt:QT39]]); the phone's scanner and the hardware scanner drive the same pack-declared actions ([[qt:QT22]], [[ex:EX10]]).",
-            "The table comparing the hardware scanner with the phone's scanner, on [[page:today#standalone]], compares 24 abilities; with no engine the hardware scanner trails the phone in seven of them.",
-            "Today the hardware scanner treats a missing engine as an outage that never ends: a red Disconnected, a growing queue, and \"Rescan later\" for a video that can never play ([[flaw:C10]], [[flaw:N1]]).",
-            "In the earlier candidate [[part:P2]] carries the declaration to every device with its pack."
+            "The record holds one reading to confirm (a standalone game may have no GM tablet at all) and one open question (one GM tablet per standalone game?), and nothing on networks between devices or on player scanners alone ([[dec:standalone-games-declared-never-mixed]]). The quality target [[qt:QT37]] and the extension case [[ex:EX12]] both name the shapes as your open question; [[qt:QT39]] asks whether a standalone game's record holds what the players found, which depends on the answer.",
+            "At a show. A game in a tent with battery power: one GM with a tablet, twenty players with phones. With the tablet alone, the GM sells and exposes tokens and the phones show memories, but nothing a player found reaches the GM's record; today's standalone game is this shape, and nothing records what players found. With two GM tablets and no network, today there are two games: a token can be sold at both tables, and the scores must be added by hand at the end ([[flaw:C1]]). With a hotspot and no show machine, the tablet could act as the engine for the phones; then the game is in truth a networked game with the tablet as the machine, and the question is whether you call that standalone.",
+            "For the GM at a failure. With one tablet, the tablet is the only copy of the game. A broken tablet ends the record unless the game is copied somewhere as it runs.",
+            "For the designer. A pack for a standalone game must know what the devices can do alone. Two-tap actions between players' objects need one decider that both devices reach, so they need a network and a decider. A group bonus needs one claims list, so it needs one tablet or a merge rule. A designer who does not know the shapes designs mechanics that cannot run.",
+            "For a production adopting the engine. A school running a game on phones only, no GM. A museum running hardware scanners only, with a record collected at closing. A company with wifi but no spare computer, wanting the GM's tablet to be the machine. Each is a different product.",
+            "The cost grows down the list of shapes below. The first three need nothing shared between devices. The fourth is a second place the engine runs. The fifth is a merge of records. A link the agent notes, which you have not stated: if a networked game may carry on with its devices alone when the show machine fails (the question 'The show machine fails mid-game'), several tablets with no engine is the same problem.",
+            "Which decision ahead depends on it. 'Where authority lives across devices, offline and standalone included' names the tablet in a standalone game as a decider; with several tablets or a tablet-as-engine the placement differs. 'How the engine holds the game's state': whether the record must live on a tablet, be copied between tablets, or be merged. 'The published protocol's form': whether devices ever speak to a tablet instead of the engine. 'How one engine runs as many separate copies': an engine on a tablet or a small computer is a copy on another kind of machine.",
+            "Sources. Your comment of 2026-11-02 on standalone games. [[dec:standalone-games-declared-never-mixed]]. [[qt:QT37]], [[qt:QT39]], [[ex:EX12]]. The review of standalone games on [[page:today#standalone]]: two standalone tablets are two separate games; no channel joins the player devices to the tablet; nothing records what players found."
           ],
           "options": [
             {
-              "label": "Yes.",
-              "cost": "The standalone declaration must reach a device that has no idea of it today."
+              "label": "One GM tablet alone.",
+              "means": "Today's shape. The tablet runs the game's rules; no channel between devices.",
+              "cost": "The cheapest. Nothing a player found reaches the record."
             },
             {
-              "label": "No.",
-              "cost": "Leaves the hardware scanner behind the phone with no engine, in seven of the 24 abilities the table compares, and showing a missing engine as a red outage all night."
+              "label": "Player scanners alone, content only.",
+              "means": "Nothing shared. A record of what players found needs a collection step afterwards (each device exports; the design tool or a tablet merges), or there is no record.",
+              "cost": "A collection step, or no record."
+            },
+            {
+              "label": "One GM tablet and player scanners, no network.",
+              "means": "The two halves never meet; as the first two together. The GM's record holds no player finds.",
+              "cost": "As the first two together."
+            },
+            {
+              "label": "One GM tablet as the engine for other devices over a small network.",
+              "means": "An engine that runs where a tablet runs, or a small computer in the GM's bag. 'Standalone' then means no show machine rather than no network. The later choice on the standalone tablet (the same parts the engine runs, or an engine of its own) becomes this shape's design.",
+              "cost": "A second platform the engine must run on."
+            },
+            {
+              "label": "Several GM tablets with no network.",
+              "means": "Either refused (one tablet per standalone game) or accepted as separate games merged afterwards under the conflict rule from 'A GM tablet cut off from the engine'.",
+              "cost": "A merge of records, or a refusal."
             }
           ],
-          "recommendation": "Yes, as your parity rule asks.",
-          "recKind": "Recommendation"
+          "recommendation": "For each shape, whether it is required now, allowed later, or never; and whether 'standalone' means no show machine or no network. Which productions and rooms the engine must serve is what the product is for, and the record cannot settle it.",
+          "recKind": "What we need from you"
         },
         {
-          "letter": "M",
-          "anchor": "q-m",
-          "title": "One GM tablet per standalone game?",
+          "letter": "H",
+          "anchor": "q-h",
+          "title": "What a standalone game gives up, and what it keeps",
           "status": "open",
-          "decides": "Whether one tablet decides everything in a standalone game, and whether a standalone tablet's record of the night can hold player scans.",
+          "decides": "Which of a pack's effects a game declared standalone may use, and what happens to the rest: evidence exposed in public (the scoreboard screen), video, the game clock with its phases, cues, music and lights, and the record of what players found. Whether the check at publish refuses a standalone game whose pack declares an effect no device can carry alone, or the game runs and shows each such effect as not installed tonight, or the designer marks each effect as skip-it or block-the-show. Whether a standalone game must leave a record of what players found.",
           "evidence": [
-            "The requirements leave the count to you, as this open question: the extension case \"[[ex:EX12]]\" and the quality target \"[[qt:QT37]]\" both name it open. The quality target \"[[qt:QT39]]\" names the second point open: whether a standalone game's record holds what the players found.",
-            "Today two standalone tablets are two separate games: each holds its own claim list, so one token can be sold on both, and each holds its own score table ([[flaw:C1]]).",
-            "A standalone tablet's record of the night ([[part:P5]]) can hold player scans only if the standalone player scanners hand their scans to that tablet.",
-            "Player devices need to learn each new game: a game id from the tablet that they check, if they are joined to it, or a reset of their own ([[flaw:C4]]).",
-            "In the earlier candidate the tablet runs the engine's [[part:P3]] and [[part:P11]], or an engine of its own kept equal by tests; the alternatives table on [[page:design#alt-standalone-tablet]] has that row."
+            "The record lists 'Exposed evidence and video with no engine' as open, and [[qt:QT39]] marks open whether a standalone game's record holds what the players found at all. What the screens draw for an exposed token or a video token with no engine is a technical default the agent proposes, listed under the agent's calls below; this question is the rule above that default.",
+            "At a show. In ALN a detective transaction exposes a token, which means its summary appears on the TV for everyone. With no TV the GM sees the summary once on the result screen and the public never does; 'exposed means public' has no standalone effect today. A video token on the phone's scanner shows a black screen; on the hardware scanner it shows the picture and 'video unavailable, rescan later', which can never work ([[flaw:N1]]). The pack's game clock has no reader on a standalone tablet; the panel shows wall-clock time.",
+            "For the GM at a failure. Nothing fails; the point is that the GM should see at the start, grey and not red, 'this game is standalone: video and public evidence are not available tonight', the way [[qt:QT37]] asks.",
+            "For the designer. Under a strict rule the design tool refuses to publish a standalone game whose pack uses video or public evidence until the designer removes them or marks them skippable, the way [[ex:EX6]] lets a designer mark lights as skip-it or block-the-show. Under a lenient rule the pack publishes and the effects vanish quietly. The second game's pack already says the opposite thing, that the game needs an engine by nature ([[ex:EX20]]); a standalone declaration is the opposite of that statement.",
+            "For a production adopting the engine. A production built for phones only must know, before they design, which mechanics work with no machine. A rule that is written down is what they can design to.",
+            "And for the record of what players found: no record in a standalone game; a record from the GM tablet only (what teams turned in); or a record collected from every device afterwards. The last is the only one that makes a standalone night tellable the way a networked night is ([[promise:J3]]).",
+            "Which decision ahead depends on it. 'How games and venues extend the engine': what a pack may declare and how the check at publish refuses a pack that asks for something this engine lacks are in what it decides; a standalone declaration and the per-effect marks are pack format. 'Where authority lives across devices, offline and standalone included': what reads the declaration and on which device. 'The published protocol's form': the pack is one of its files, and the night's record (with or without player finds) is another.",
+            "Sources. Your comment of 2026-11-02 on standalone games. [[dec:standalone-games-declared-never-mixed]]. [[qt:QT6]], [[qt:QT37]], [[qt:QT39]], [[ex:EX6]], [[ex:EX12]], [[ex:EX20]], [[flaw:N1]]. The review of standalone games on [[page:today#standalone]]."
           ],
           "options": [
             {
-              "label": "One tablet.",
-              "cost": "Standalone games with two GMs are ruled out."
+              "label": "Strict: the check at publish refuses a standalone game whose pack needs an engine-only effect, and names the effect.",
+              "means": "The designer removes the effect or changes the declaration. No surprises at a show; some games cannot be standalone at all.",
+              "cost": "The pack lists which effects need an engine (video, public screens, the clock, cues on equipment, hidden facts) and the check compares."
             },
             {
-              "label": "Several tablets sharing one game.",
-              "cost": "They would need to talk to each other directly, a large new piece."
+              "label": "Grey and go: the game runs and every engine-only effect reads as not installed tonight.",
+              "means": "Every standalone game is possible, by the same words the venue profile already uses for lights left at home. A designer learns what vanished only by playing.",
+              "cost": "Each device must know the list and show it; nothing is refused."
+            },
+            {
+              "label": "Per-effect marks by the designer: skip-it or block-the-show, as lights carry today.",
+              "means": "Block-the-show makes the game refuse to be standalone; skip-it lets it run grey. The most control.",
+              "cost": "The most to write in the tool."
             }
           ],
-          "recommendation": "One tablet, unless you plan standalone games with two GMs.",
+          "recommendation": "Per-effect marks by the designer, skip-it or block-the-show, with block-the-show refusing at publish and naming the effect. It is the pattern the pack already has for lights ([[ex:EX6]]), so adopters learn one rule, and it gives the designer the decision instead of the engine. For the record of what players found: a record from the GM tablet is the first step, and a record collected from every device afterwards is the goal, if you want standalone nights told the way networked nights are. From you: whether you do.",
           "recKind": "Recommendation"
-        },
-        {
-          "letter": "N",
-          "anchor": "q-n",
-          "title": "Exposed evidence and video with no engine",
-          "status": "open",
-          "decides": "What the screens draw in two cases in a game with no engine and no TV: a token exposed as evidence, and a video token.",
-          "evidence": [
-            "The requirements name both open: how exposure and video tokens behave with no engine ([[qt:QT39]], [[ex:EX12]]).",
-            "In detective-style modes the pack says an exposure shows on the scoreboard. On a tablet alone the scoreboard screen shows only modes that rank teams (like Black Market) and the list that picks which evidence to show is hidden, so the GM sees the summary once, on the result screen, and \"exposed means public\" has no standalone effect ([[flaw:N1]]).",
-            "A video token on the phone shows a black screen with the token's id; on the hardware scanner, its picture and \"Rescan later\", which never works ([[flaw:N1]], [[flaw:C10]]).",
-            "The screens that would draw either answer are [[part:P14]]; in the earlier candidate a small [[part:P10]] stand-in on the tablet marks every service the engine runs \"not installed tonight\": grey, never red.",
-            "The review of standalone games left both answers to you: what a video token shows with no engine is a declared answer standalone needs, not a fault to fix."
-          ],
-          "options": [
-            {
-              "label": "Exposed evidence on the tablet's own scoreboard screen; a video token shows its picture with a plain note.",
-              "cost": "Needs the tablet's own scoreboard screen to show exposed evidence."
-            },
-            {
-              "label": "Show nothing for exposure and hide video tokens.",
-              "cost": "Smaller, but drops a mode's effect from a standalone game."
-            }
-          ],
-          "recommendation": "Exposed evidence shows on the GM tablet's own scoreboard screen, which standalone already has. A video token shows its picture with a plain note instead of an error.",
-          "recKind": "Suggestion"
         }
       ]
     },
     {
-      "title": "The game's record",
+      "title": "Hardware",
+      "intro": [
+        "Your decision: the hardware is fixed only in that ALN runs on the kit you bought; the mature engine is flexible about hardware, so the architecture must allow that flexibility later; and the current roadmap sets realistic bounds on how much is built now and where it names specific requirements ([[dec:the-engine-is-hardware-flexible-the-roadmap-sets-the-bounds]]). Where the line falls is open, for the design rounds and the build plan; the question here asks the part of it you must say now, and the rounds propose the rest for you to decide. The numbers that go with it (devices and phones per kit, set-up time, retention, a scanner's first sync) are not questions for you: the agent has sorted them into the engine's requirements, each production's settings and a few technical defaults, for you to review below ([[dec:the-engine-says-what-is-fixed-and-what-each-production-sets]])."
+      ],
       "questions": [
         {
-          "letter": "O",
-          "anchor": "q-o",
-          "title": "Record every refused GM scan attempt?",
+          "letter": "I",
+          "anchor": "q-i",
+          "title": "Which hardware the first new engine requires, and what it must allow replacing",
           "status": "open",
-          "decides": "Whether the game's record keeps refused attempts (a token already used, or no game running), or only the answer goes back to the tablet.",
+          "decides": "For each class of device in ALN's kit, whether it is a fixed requirement of the first release of the new engine (an adopter must bring the same) or a thing the engine's design must allow replacing later (a seam built now, no work beyond ALN's kit). The classes: the show machine (a Raspberry Pi 5 running Linux); the GM's station (an Android tablet running Chrome, reading NFC tokens itself); the players' devices (phones with a web page; one specific hardware scanner board); the public screens (a TV over HDMI; the small computer that shows the scoreboard on a second screen); the room's programs (the video player, the music player, the sound system, Bluetooth speakers, the lighting system); and the kit's own network.",
           "evidence": [
-            "The requirements say the result screen never says complete for a refused scan and shows the engine's reason ([[qt:QT7]]), and that the night's record carries what was sold and exposed, by whom and when ([[qt:QT16]]); neither says whether a refused attempt is kept.",
-            "Today a refused GM scan is told to the tablet that scanned and recorded nowhere else. The review that named the design flaws set this aside as a product choice no design flaw decides.",
-            "In the earlier candidate [[part:P3]] is where the game's facts are decided and the answer goes back through [[part:P4]].",
-            "The promise “[[promise:J3]]” lists the flaw “[[flaw:C9]]” among its flaws, but leaves this to you: whether refused scans belong in the night's record is your open question, not that flaw's.",
-            "A standalone tablet records refused duplicates and unknown tokens nowhere either; a yes needs the same on a standalone tablet, carried by the design choice that removes the flaw [[flaw:C7]]."
+            "Much of this the requirements already settle. The engine must run a whole game on a laptop or a cloud machine with stand-ins ([[qt:QT25]]), so 'a Linux computer' is already wider than 'a Pi'. A different hardware scanner joins by its pass ([[qt:QT22]]). A different lighting system or video player changes only the code that talks to it ([[qt:QT23]], [[ex:EX15]]). The new extension case [[ex:EX28]] carries other hardware. What the requirements do not settle is the GM's station, and the readiness list for adopters.",
+            "For a production adopting the engine. A company whose GMs have iPads cannot run GM stations today: an iPad's browser cannot read NFC tokens, so the GM scanner cannot read them. A company with no hardware scanners, phones only, is fine. A company that wants the GM at a laptop with a separate token reader is not served. Adopters need to know what is a fixed requirement and what the engine allows ([[dec:the-engine-says-what-is-fixed-and-what-each-production-sets]]); the GM's station is the largest item on that list that nothing yet says.",
+            "At a show. If a GM station may be a laptop with a separate reader, then the device that reads a token and the device that decides may be two devices, which today they never are. And a laptop GM station could run the engine itself with a venue profile that names no equipment, which would make a standalone game 'the engine on the GM's laptop' rather than 'a tablet that copies the engine's rules'. That is a large simplification of the standalone questions, if you want it.",
+            "For the designer. The pack declares which kinds of device its players use and what part each plays (the standing rule 'Equal in ability, not in screens'), so the list of device classes is part of the pack format and of the published protocol.",
+            "For the people maintaining the engine. Every class the engine must allow replacing needs a seam, a stand-in and a test. Every class fixed needs none of that now and all of it later, if ever.",
+            "What you must say now, and what the design rounds should propose. Now: whether the first release's fixed list is ALN's kit as it stands (the panel's setting states it as the first production's hardware, not as the engine's requirement); whether the GM's station must be allowed, in the architecture now, to be something other than an Android tablet reading NFC itself; and whether a tablet-class device or a GM's laptop must be able to run the engine itself, which joins the question 'Which standalone games the engine must run'. The design rounds then propose the seams for the device kinds and the programs, which classes get stand-ins first, and the roadmap's named requirements at each readiness state, for you to decide.",
+            "Which decision ahead depends on it. 'The published protocol's form': the device kinds and passes it defines. 'Where authority lives across devices, offline and standalone included': whether a GM's device may run the engine itself changes what the standalone decider is. 'How one engine runs as many separate copies': an engine on a GM's laptop is a copy on another machine. The panel's setting, which lists ALN's devices as facts, changes if the GM station may be other devices, so this is needed before the blind round's folder is built.",
+            "Sources. Your comments of 2026-11-02 on hardware and on the numbers. [[dec:the-engine-is-hardware-flexible-the-roadmap-sets-the-bounds]] ('Where the current roadmap draws that line is open'). [[dec:the-engine-says-what-is-fixed-and-what-each-production-sets]]. [[qt:QT22]], [[qt:QT23]], [[qt:QT25]], [[ex:EX27]], [[ex:EX28]], the standing rules on platform parity, [[dec:what-the-architects-panel-sees-and-when]]."
           ],
           "options": [
             {
-              "label": "Yes.",
-              "cost": "The record gains a kind of fact that no screen shows yet."
+              "label": "The GM's station: an Android tablet with built-in NFC, fixed.",
+              "means": "Adopters buy the same tablets. The build is as today.",
+              "cost": "The smallest set of GM devices to test, and a hard requirement in the adoption guide."
             },
             {
-              "label": "No.",
-              "cost": "Nothing is recorded, as today, and the night's record cannot tell a refused attempt."
+              "label": "The GM's station: any browser, with the token reader as its own kind of device feeding it.",
+              "means": "A GM at a laptop with a separate reader, or at an iPad with a camera reading printed codes. The GM's station is wherever the browser is, including a laptop that runs the engine.",
+              "cost": "A reader device kind in the protocol; the GM app works with no NFC of its own; a station and a reader are paired."
+            },
+            {
+              "label": "The GM's station: any browser, with printed codes and typed codes when there is no NFC.",
+              "means": "Slower GMs at venues without NFC devices, and no new device kind.",
+              "cost": "Little, since the GM app already has manual entry."
             }
           ],
-          "recommendation": "Yes. Record every attempt and its answer, and show it nowhere until a feature needs it.",
-          "recKind": "Recommendation"
+          "recommendation": "Whether the first release's fixed list is ALN's kit as it stands; whether the GM's station must be allowed, now, to be something other than an Android tablet reading NFC itself, and if so which of the three shapes above; and whether a GM's device must be able to run the engine. What the first release requires an adopter to buy, and whether your GMs' way of working is the engine's requirement or ALN's habit, is your business call.",
+          "recKind": "What we need from you"
         }
       ]
     },
     {
       "title": "The panel",
+      "intro": [
+        "You decided what the panel sees and when ([[dec:what-the-architects-panel-sees-and-when]]) and said the context it gets is critical ([[dec:independent-architects-propose-the-top-level-design]]). Adding to what the blind round gets changes your decision, so that is your question. How the panel runs (its three lenses, and whether the second round reads today's code) is the agent's call, listed below with its reasons. Its brief is on [[page:design#panel]], revised on 2026-11-02 for your decisions of that day."
+      ],
       "questions": [
         {
-          "letter": "P",
-          "anchor": "q-p",
-          "title": "The panel's three lenses",
+          "letter": "J",
+          "anchor": "q-j",
+          "title": "What the panel gets in its blind round",
           "status": "open",
-          "decides": "Which lens each of the three independent architects takes, so that their proposals differ where it matters for your goal.",
+          "decides": "Whether the panel's blind round also gets the decisions you have made that bind any design, and the six decisions ahead as its agenda, or only the goal, the requirements and the setting; and whether the agent's readings of your words that the record marks to be confirmed are kept from it, as the agent proposes. This question is yours because your decision on what the panel sees lists only the goal, the requirements and the setting, and adding to it changes that decision.",
           "evidence": [
-            "Your decision “[[dec:what-the-architects-panel-sees-and-when]]” sets three architects with different lenses who propose blind, then critique each other and the earlier candidate. It does not name the lenses.",
-            "The draft lenses, on [[page:design#panel|the panel's brief]]: state and authority; growth and extension; living with it. A lens says where an architect looks hardest; every architect still answers to every requirement.",
-            "Your goal names three things the design must make easy: maintaining the engine, continuing its development, and extending it. The quality targets add staying up through a live show and standalone and offline play."
-          ],
-          "options": [
-            {
-              "label": "The three draft lenses: state and authority; growth and extension; living with it.",
-              "cost": "Live-show reliability has no architect of its own; it sits inside the state lens."
-            },
-            {
-              "label": "Add a fourth architect, on live-show reliability.",
-              "cost": "One more proposal in each round, so ten agents in place of eight, and a longer synthesis."
-            },
-            {
-              "label": "Replace \"living with it\" with a lens on the smallest possible engine.",
-              "cost": "Keeping the engine easy to maintain and change, which your goal names first, loses its own architect."
-            }
-          ],
-          "recommendation": "The three draft lenses. Between them they cover what your goal names, and each quality target still binds all three. A fourth architect adds cost and a longer synthesis for a quality the state lens already weighs.",
-          "recKind": "Recommendation"
-        },
-        {
-          "letter": "Q",
-          "anchor": "q-q",
-          "title": "What the panel gets in the blind round",
-          "status": "open",
-          "decides": "Whether the panel's blind round also gets the decisions you have made that bind any design, and the six decisions ahead as its agenda, or only the goal, the requirements and the setting.",
-          "evidence": [
-            "Your decision “[[dec:what-the-architects-panel-sees-and-when]]” lists the goal, the requirements and the setting for the blind round, and names nothing else.",
-            "The decisions that bind any design: [[dec:one-published-protocol-and-an-outside-test-bench]], [[dec:standalone-games-declared-never-mixed]], [[dec:four-words-for-the-game-s-live-facts]], [[dec:the-night-s-record-and-the-after-game-article]] and [[dec:the-role-question-starts-from-settled-roles]]. They are your decisions, not the reasoning of the agent running the pass.",
-            "The six decisions ahead are your list, from [[dec:design-top-down-hardest-to-reverse-choices-first]].",
-            "The last decision ahead, how today's engine moves to the new design, waits for the second round, where today's engine is known.",
-            "The panel runs only after you approve its brief and confirm the requirements.",
-            "If anything else should be added to what the panel sees, or kept from it, say so with this question."
+            "Your decision [[dec:what-the-architects-panel-sees-and-when]] lists the goal, the requirements and the setting for the blind round, and names nothing else.",
+            "The decisions that bind any design: [[dec:one-published-protocol-and-an-outside-test-bench]]; [[dec:standalone-games-declared-never-mixed]], with its purpose in your words; [[dec:four-words-for-the-game-s-live-facts]]; [[dec:the-night-s-record-and-the-after-game-article]]; [[dec:the-role-question-starts-from-settled-roles]]; and your four decisions of 2026-11-02: [[dec:no-technical-failure-stops-a-game]], [[dec:the-engine-is-hardware-flexible-the-roadmap-sets-the-bounds]], [[dec:two-kinds-of-game-extension]] and [[dec:the-engine-says-what-is-fixed-and-what-each-production-sets]]. They are your decisions, not the reasoning of the agent running the pass. Each goes to the panel in your own words from the decision record.",
+            "The agent proposes to withhold, either way, its readings of your words that the record marks to be confirmed (that a tablet keeps taking scans while cut off; that a standalone game may have no GM tablet), and to give the panel the open questions instead, so it designs for both answers. The sorting of the quality targets' numbers reaches the panel through the requirements, marked there as the agent's call. Say so if you want the readings given.",
+            "The six decisions ahead are your list, from [[dec:design-top-down-hardest-to-reverse-choices-first]]. The last, how today's engine moves to the new design, waits for the second round, where today's engine is known.",
+            "The setting the blind round gets now presents ALN's kit as the first production's hardware, given as facts and not as the engine's requirements. If the GM's station may be other devices (the question 'Which hardware the first new engine requires, and what it must allow replacing'), that sentence changes before the folder is built.",
+            "The panel runs only after you approve its brief and have reviewed the requirements. If anything else should be added to what the panel sees, or kept from it, say so with this question."
           ],
           "options": [
             {
               "label": "Also give the blind round your binding decisions and the six decisions ahead, with leave to add, split or merge decisions.",
-              "cost": "The agenda frames the architects' thinking; they are told they may change it."
+              "means": "The architects design inside what you have already ruled, and spend their proposals on what is open.",
+              "cost": "The agenda frames the architects' thinking; they are told they may change it if they say why."
             },
             {
               "label": "Give the blind round only the goal, the requirements and the setting.",
-              "cost": "Proposals may break decisions you have already made, and the synthesis must sort them out."
+              "means": "The architects start from nothing but the requirements.",
+              "cost": "Proposals may break decisions you have already made, among them a game that pauses at a lost connection, and the synthesis must sort them out."
             }
           ],
           "recommendation": "Also give the blind round your binding decisions and the six decisions ahead. A panel without them would spend its proposals on designs you have already ruled out, and it may still change the agenda if it says why.",
-          "recKind": "Recommendation"
-        },
-        {
-          "letter": "R",
-          "anchor": "q-r",
-          "title": "The second round reads today's code",
-          "status": "open",
-          "decides": "Whether, in the second round, the architects may read today's code and its component guides, or only a fact sheet about today's engine.",
-          "evidence": [
-            "Your decision “[[dec:what-the-architects-panel-sees-and-when]]” gives the second round today's engine as facts and the sixteen design flaws as test situations. It does not say in what form.",
-            "The code is the most exact fact about today's engine. It is also large, and reading it can pull a design toward small changes to today's engine."
-          ],
-          "options": [
-            {
-              "label": "A fact sheet first, then the code and its component guides, to read but not change.",
-              "cost": "The code can pull designs toward today's engine; the architects revise their own blind proposals rather than start again from the code."
-            },
-            {
-              "label": "A fact sheet only.",
-              "cost": "The fact sheet is a summary someone wrote; what it leaves out, the architects cannot check."
-            }
-          ],
-          "recommendation": "A fact sheet first, then the code, to read only. The architects test their proposals against the real engine, and starting from their own blind proposals keeps the code from setting the design.",
           "recKind": "Recommendation"
         }
       ]
     }
   ],
+  "readings": [
+    {
+      "text": "A standalone game may have no GM tablet at all: your words 'gm and/or player scanners' read that way, so player scanners alone would be a shape the engine allows; the fuller question is 'Which standalone games the engine must run' above.",
+      "source": "[[dec:standalone-games-declared-never-mixed]]"
+    },
+    {
+      "text": "A GM tablet that loses the engine keeps taking scans, and the game carries on, rather than refusing scans until the connection returns; your words point this way but did not name the choice, and it brings a cost: two tablets may sell the same token while apart, which must be sorted out afterwards (the question 'A GM tablet cut off from the engine' above).",
+      "source": "[[dec:no-technical-failure-stops-a-game]]"
+    },
+    {
+      "text": "The design must say how a networked game carries on if the show machine itself fails; that meets your decision that no game mixes networked and standalone devices, and how the results come back together is the question 'The show machine fails mid-game' above.",
+      "source": "[[dec:no-technical-failure-stops-a-game]]"
+    }
+  ],
+  "calls": [
+    {
+      "title": "Four readings of earlier decisions are confirmed",
+      "call": "Four earlier decisions are read as overtaken by later ones, as the decision record reads them: each build area no longer starts with its proof test failing on today's engine, unless the move from today's engine changes it in place ([[dec:one-program-design-half-then-build-half]], [[dec:build-the-test-rig-when-building-starts]]); the design rounds go by decision, not one design choice per question, the four questions on the game's live facts are no longer designed together as one rule, and the nine questions serve as checks on each design ([[dec:the-nine-questions-the-pass-answers]], [[dec:five-documents-the-design-half-hands-over]], [[dec:when-the-design-half-is-finished]], [[dec:design-top-down-hardest-to-reverse-choices-first]]); the published protocol takes the place of the drafted message lists among the handover documents ([[dec:one-published-protocol-and-an-outside-test-bench]]); and the rig reproducing each finding marked for live proof is no longer a condition for ending the design half.",
+      "why": "Each reading follows from a later decision of yours that set the order of the work. Nothing a player, GM or designer meets changes; only how the pass runs. The earlier wordings stay in the record's history."
+    },
+    {
+      "title": "The quality targets' numbers are sorted, not asked",
+      "call": "Each number a quality target needs is sorted as one of three kinds. An engine requirement or limit, which the engine states the same for every production and the tests measure (a tablet back under its name within five seconds; the minutes from publish to playing; how fast a scan is answered; how many scans each kind of device keeps while offline; how many copies one machine carries). A production's setting, which each production makes for itself with ALN's as the first set (power-on to a running show; set-up time; how long records are kept; the kit's devices and phones; a scanner's first sync). A technical default the agent proposes and a production may change (how the program watcher retries; how long before a screen says the engine is silent; the machine's load, memory, disk and temperature limits). The sorting is on each target on [[page:requirements]] and in the review below.",
+      "why": "You said many of these numbers are 'stuff that the engine itself should be relatively agnostic about' ([[dec:the-engine-says-what-is-fixed-and-what-each-production-sets]]). A limit the engine is sized for is measured, not decided, and a production's numbers are that production's. The record marks the split itself as a reading of your words to be confirmed; the agent makes it as its call, which stands unless you overrule it. How the requirements are grouped is the agent's to propose and yours to overrule."
+    },
+    {
+      "title": "The program watcher's retries",
+      "call": "Today's code restarts a program four times, waiting ten seconds and doubling the wait each time (20, 40, then 80 seconds), and shows red at the fifth failure; the agent starts from that. The controls come back within ten seconds ([[qt:QT2]]).",
+      "why": "A technical default that serves every production the same way; it starts from today's code. Ten seconds is the engine's own behaviour, from the promise's test."
+    },
+    {
+      "title": "How long before a screen says the engine is silent",
+      "call": "Ten seconds, which is how often both player scanners check on the engine today; the engine states the longest delay it allows ([[qt:QT5]]).",
+      "why": "The value trades network traffic against how fast a screen admits its numbers are old. That is a technical trade-off, and a production may change it."
+    },
+    {
+      "title": "The show machine's limits",
+      "call": "The machine's load, memory, disk and temperature limits are proposed per supported machine, with ALN's Raspberry Pi 5 as the first ([[qt:QT33]]).",
+      "why": "The engine is meant to be flexible about hardware ([[dec:the-engine-is-hardware-flexible-the-roadmap-sets-the-bounds]]), so no one machine's limits are the engine's."
+    },
+    {
+      "title": "The missing standalone declaration is a design flaw of its own",
+      "call": "[[flaw:N1]] stays a design flaw of its own, holding the eight findings from the review of standalone games, rather than joining [[flaw:C9]], [[flaw:C11]] and [[flaw:C14]].",
+      "why": "Three other design choices (what each fact does between games, one answer per question, how old a copy is) need the declared fact as an input and would otherwise each invent their own answer. How findings are grouped is the agent's analysis."
+    },
+    {
+      "title": "The tap promise is split in two",
+      "call": "[[promise:J3]] is split into 'Every tap gets its answer' and 'The night can be told afterwards'.",
+      "why": "The two halves serve different people at two moments, the GM or player at the tap and the director after the show, and share no part. How the requirements are worded and grouped is the agent's call ([[dec:the-decisions-page-holds-only-your-decisions]])."
+    },
+    {
+      "title": "The venue promise stays one",
+      "call": "One promise, titled 'The game fits the venue it is in tonight' ([[promise:J8]]), with standalone games in its first sentences, and another production fitting the engine to its own venue and hardware named in its sentences.",
+      "why": "A separate promise for running in any setup would own no part. Your decision on what each production sets adds a person to its sentences, not a second promise."
+    },
+    {
+      "title": "Proof and release stay one promise",
+      "call": "One promise, as the title of [[promise:J10]] has it. What release day means in practice moved to your question 'Release day: what must update together, and how long older devices work'.",
+      "why": "Whether two moments sit in one promise or two is wording; every option gives the flaws the same parts to be fixed in. The product question inside release day is yours, and it is on this page."
+    },
+    {
+      "title": "The route for equipment state is named in neither promise",
+      "call": "Neither [[promise:J4]] nor [[promise:J2]] names the route that carries the equipment's state to the screens, as long as the design rounds keep one delivery part; the card for [[flaw:C2]] stays under [[promise:J4]].",
+      "why": "This is where a sentence goes, so it is wording. The real choice behind it, one delivery part or several, belongs to the design rounds."
+    },
+    {
+      "title": "Exposed evidence and video with no engine",
+      "call": "In a standalone game, the GM tablet gets a public evidence view of its own for exposed evidence, which it lacks today: its scoreboard screen is limited to ranking modes and the GM sees the summary once. A video token shows its picture with a plain note, never an error.",
+      "why": "A default for what a screen draws. Your words put standalone games in rooms where a network connection is not feasible, or where other logistics make it better to use only scanners, so the designer of such a game may have no TV; the engine's part is a default that works and never shows red. The rule above the default, which effects a standalone game may use, is your question 'What a standalone game gives up, and what it keeps'."
+    },
+    {
+      "title": "Every refused GM scan attempt is recorded",
+      "call": "The engine records every attempt and its answer, kept under the production's retention setting ([[qt:QT30]]), and shows it nowhere until a feature needs it.",
+      "why": "It changes nothing anyone sees. A fact not kept is lost for good, the after-game tools can read it later, and it helps sort out a game afterwards when a device failed mid-game ([[dec:no-technical-failure-stops-a-game]]). You asked for the agent's view on this, and the view is the call."
+    },
+    {
+      "title": "The panel's three lenses",
+      "call": "Three architects. The state lens becomes 'state, authority and keeping the game going through a failure', with [[dec:no-technical-failure-stops-a-game]] as its first test. The growth lens names hardware flexibility and both kinds of extension. 'Living with it' stays. No fourth architect.",
+      "why": "How the panel runs is the agent's call ([[dec:the-decisions-page-holds-only-your-decisions]]). You called a paused game 'the worst possible scenario', so the state lens now names keeping the game going. Naming it in a lens costs nothing; a fourth architect costs two more agents and a longer synthesis."
+    },
+    {
+      "title": "The second round reads today's code",
+      "call": "A fact sheet first, then the code and its component guides, to read only.",
+      "why": "Your decision gives the second round today's engine as facts and does not say in what form; the form is method. The code is the most exact fact about today's engine. It can pull a design toward small changes to today's engine, so the architects revise their own blind proposals rather than start again from the code."
+    }
+  ],
+  "review": [
+    {
+      "title": "The ten promises",
+      "what": "What each person can count on at a given moment. Flag any that is missing, doubled or wrongly put; their wording is the agent's call, listed above.",
+      "link": "[[page:requirements#promises]]"
+    },
+    {
+      "title": "The quality targets",
+      "what": "Forty-three targets under twelve qualities, each a situation that can be tested. Flag what is wrong or missing. Each number a target needs is sorted below as an engine requirement or limit, a production's setting (ALN's first) or a technical default; none waits on you as a decision.",
+      "link": "[[page:requirements#qualities]]",
+      "numbers": [
+        "[[qt:QT1]]: how long the engine may take from power back to a running show. A production's setting; the engine states its own restart time on each supported machine.",
+        "[[qt:QT2]]: how many restarts the program watcher tries, and over how long. A technical default (today's code restarts a program four times, waiting ten seconds and doubling the wait, and shows red at the fifth failure). Ten seconds for the controls to come back: an engine requirement.",
+        "[[qt:QT3]]: five seconds for a tablet to be back under its own station name. An engine requirement.",
+        "[[qt:QT5]]: how long after the engine goes silent a screen must say so. A technical default (today ten seconds); the engine states the longest delay it allows.",
+        "[[qt:QT9]]: the minutes from publish to playing. An engine requirement, stated for a given pack size.",
+        "[[qt:QT13]]: how long the venue technician may need from an unpacked kit to a go. A production's setting.",
+        "[[qt:QT14]]: how long from power on to a running show. A production's setting; the engine states its own start time on each supported machine.",
+        "[[qt:QT19]]: how long a newcomer may need to make and prove a first small change. An engine requirement.",
+        "[[qt:QT30]]: how long each kind of data is kept by default, per game. A production's setting; the engine ships a default.",
+        "[[qt:QT33]]: the kit size. A production's setting, ALN's being tonight's kit; the engine states the largest kit it supports, measured on each supported machine, and the agent proposes a few dozen devices, from ALN's show. The scan answer time, the message delivery time and half a second for a video to report started: engine requirements. The machine's load, memory, disk and temperature limits: technical defaults per supported machine.",
+        "[[qt:QT34]]: the number of player phones one kit carries. A production's setting, measured on its own machine and wifi.",
+        "[[qt:QT35]]: the longest acceptable first sync for a hardware scanner. A production's setting (ALN's first value is today's, 5 to 15 minutes for 30 to 40 MB); the engine states how fast each kind of scanner downloads.",
+        "[[qt:QT40]]: how many scans each kind of device must keep while offline. An engine limit stated per kind of device (today both player scanners keep 100).",
+        "[[qt:QT43]]: how many copies of the engine one machine must carry at once. An engine requirement; the situation already needs two.",
+        "[[qt:QT44]]: how long after a failure every GM tablet must show the fallbacks. An engine requirement."
+      ]
+    },
+    {
+      "title": "The extension cases",
+      "what": "Twenty-eight ways the platform must grow, each marked as one of your two kinds of extension or neither; your two examples are among them ([[ex:EX25]], [[ex:EX26]]), with another production adopting the engine ([[ex:EX27]]) and other hardware ([[ex:EX28]]). Flag any way of growing you plan that is missing, before the panel's brief is built.",
+      "link": "[[page:requirements#growth]]"
+    },
+    {
+      "title": "The standing rules",
+      "what": "The roadmap's standing constraints, one plain line each. They did not change on 2026-11-02, because the roadmap did not; flag any you no longer hold.",
+      "link": "[[page:requirements#rules]]"
+    }
+  ],
   "designRounds": [
     {
-      "text": "How the engine holds the game's state: the facts of a running game that can change during it, where each is kept, and how every screen's copy of them stays true.",
+      "text": "How the engine holds the game's state: the facts of a running game that can change during it, where each is kept, how every screen's copy of them stays true, and how the game's state carries on through a failure and comes back together afterwards.",
       "link": "design.html#d-how-the-engine-holds-the-game-s-state"
     },
     {
-      "text": "The published protocol's form: the protocol itself is decided; this round settles how each message and each file that crosses the engine's edge (what a device may ask, what the engine answers, what it tells screens, and the files that carry a game or a night) is defined and versioned.",
+      "text": "The published protocol's form: the protocol itself is decided; this round settles how each message and each file that crosses the engine's edge (what a device may ask, what the engine answers, what it tells screens, and the files that carry a game or a night) is defined and versioned, and the version rules your release-day answer sets.",
       "link": "design.html#d-the-published-protocol-s-form"
     },
     {
-      "text": "Where authority lives across devices, offline and standalone included: which place decides each fact when a tablet is disconnected, and when a game runs with no engine at all.",
+      "text": "Where authority lives across devices, offline and standalone included: which place decides each fact when a tablet is cut off, when the show machine fails, and when a game runs with no engine at all; and how what you choose under 'A GM tablet cut off from the engine' is built.",
       "link": "design.html#d-where-authority-lives-across-devices-offline-and-standalone-included"
     },
     {
-      "text": "How games and venues extend the engine: what a pack and a venue profile can declare, and where a developer adds support for a device, a program, a scoring model or a content source.",
+      "text": "How games and venues extend the engine: what a pack and a venue profile can declare, which of your two kinds of extension each change is, where a developer adds support for a device, a program, a scoring model or a content source, and where a production's own settings live.",
       "link": "design.html#d-how-games-and-venues-extend-the-engine"
     },
     {
-      "text": "How one engine runs as many separate copies: the show's copy, a trial copy and a test run on one machine, each keeping its own files, network ports and settings, and a second kit on another machine. Where the designer's trial copy runs, a laptop or the show machine between games, is open.",
+      "text": "How one engine runs as many separate copies: the show's copy, a trial copy and a test run on one machine, each keeping its own files, network ports and settings, a second kit on another machine, and a copy on different hardware. Where the designer's trial copy runs is your question 'Where the trial copy runs while a show runs' above.",
       "link": "design.html#d-how-one-engine-runs-as-many-separate-copies"
     },
     {
@@ -554,6 +597,9 @@
       "text": "The standalone tablet: the same record and lifecycle parts the engine runs, or an engine of its own."
     },
     {
+      "text": "How the fallback you choose under 'The show machine fails mid-game' is built: how a networked game's state carries on without the show machine and comes back together afterwards, inside the rounds on how the engine holds the game's state and where authority lives; whatever is built must not make a mixed game by accident ([[dec:standalone-games-declared-never-mixed]])."
+    },
+    {
       "text": "The scoreboard: one page in two places, or a view inside the GM app."
     },
     {
@@ -566,10 +612,16 @@
       "text": "Where the setting lives that says whether the engine starts each outside program or uses one already running: in the venue technician's profile, as the earlier candidate has it, or in a file of its own, as the list of planned capabilities drawn from the roadmap has it."
     },
     {
+      "text": "Where a production's own settings live (its kit's devices and phones, how long it keeps records): in the venue profile, in per-kit settings, or in both; and where the build plan places your answer to 'Which hardware the first new engine requires, and what it must allow replacing' in the roadmap, as the hardware it names as a requirement and the hardware it leaves flexible. The first is decided in the round on how games and venues extend the engine; the second by the build plan ([[dec:the-engine-is-hardware-flexible-the-roadmap-sets-the-bounds]], [[dec:the-engine-says-what-is-fixed-and-what-each-production-sets]])."
+    },
+    {
       "text": "The order of the build half's work, for the build plan: by part, with [[part:P13]] (each running copy of the engine keeping its own files, network ports and settings) and [[part:P6]] first since most flaws fall to them, or block by block, in the roadmap's order."
     },
     {
       "text": "Whether paper documents join the pack, with \"unlocked\" recorded during play, so the night's record can say which documents the players opened. [[dec:the-night-s-record-and-the-after-game-article]] left this to the design rounds; today the director marks them by hand after the show."
+    },
+    {
+      "text": "How your answers to 'How an extension for all games reaches a production' and 'What a game's maker may build inside the pack' are built: the pack's format for what a maker declares, the places an add-on plugs into, and which piece each kind of extension changes in the design (the pack, the engine's code, an added outside service) ([[dec:two-kinds-of-game-extension]]), in the round on how games and venues extend the engine, with the protocol's form."
     }
   ],
   "decided": [
@@ -629,7 +681,7 @@
           "slug": "the-nine-questions-the-pass-answers",
           "title": "The nine questions the pass answers",
           "date": "2026-10-30",
-          "line": "The pass answers nine questions for the whole engine, from who decides each fact to whether a reconnecting screen's catch-up is built like its live update; the nine stand, and since the design went top-down the record reads them as checks on each design, which [[q:C]] asks you to confirm."
+          "line": "The pass answers nine questions for the whole engine, from who decides each fact to whether a reconnecting screen's catch-up is built like its live update; the nine stand, and since the design went top-down they serve as checks on each design, a reading the agent confirms as its call, listed above."
         },
         {
           "slug": "the-role-question-starts-from-settled-roles",
@@ -640,8 +692,8 @@
         {
           "slug": "standalone-games-declared-never-mixed",
           "title": "Standalone games: declared, never mixed",
-          "date": "2026-10-31",
-          "line": "A whole game can run with no engine, as a choice a game declares; no game mixes networked and standalone devices; standalone games join the list every design choice must serve. The hardware scanner's missing standalone mode is a parity gap, pending your word ([[q:L]])."
+          "date": "2026-10-31, purpose 2026-11-02",
+          "line": "A game can be designed and set up to run with no engine, for a room where a network connection is not feasible or where other logistics make it better to use only GM scanners, player scanners (phone or hardware) or both; a game declares it, and no game mixes networked and standalone devices; standalone games join the list every design choice must serve. Your words of 2026-11-02 answer the hardware scanner's standalone mode: it plays standalone games as the phone's scanner does. Where the declaration is held is for the design rounds; which shapes the engine supports is your question above."
         },
         {
           "slug": "the-night-s-record-and-the-after-game-article",
@@ -654,6 +706,30 @@
           "title": "One published protocol and an outside test bench",
           "date": "2026-11-01",
           "line": "One published, versioned protocol defines everything that crosses the engine's edge, the files that carry a game or a night included, and is designed in an early design round; the tests become a test bench outside the engine; proving each change before it reaches a show stays a quality every part must meet. Together they replace the earlier candidate's part \"Joins and proofs\"."
+        },
+        {
+          "slug": "no-technical-failure-stops-a-game",
+          "title": "No technical failure stops a game",
+          "date": "2026-11-02",
+          "line": "A lost connection or a device that goes down mid-game must not stop the game; at that moment the GMs must know the fallbacks that keep it running, with as little effect on the players as possible. Two readings follow, listed above for you to confirm: a cut-off tablet keeps taking scans and the game carries on; the design says how a networked game carries on if the show machine itself fails. The new quality target “[[qt:QT44]]” is the test."
+        },
+        {
+          "slug": "the-engine-is-hardware-flexible-the-roadmap-sets-the-bounds",
+          "title": "The engine is hardware-flexible; the roadmap sets the bounds",
+          "date": "2026-11-02",
+          "line": "The hardware is fixed only in that ALN runs on the kit you bought; the mature engine is flexible about hardware, so the fundamental architecture must allow that flexibility later; the current roadmap sets realistic bounds on how much of it is built now and where it names specific hardware requirements. Where the line falls is open, for the design rounds and the build plan; the part you must say now is your question above."
+        },
+        {
+          "slug": "two-kinds-of-game-extension",
+          "title": "Two kinds of game extension",
+          "date": "2026-11-02",
+          "line": "A mechanic built from what the engine can already do (a new action for the players, or a new way the game responds to a trigger the engine already has) is the game's own maker's work, inside the game, perhaps shared with other makers later; your example is players changing the room's lighting by scanning tokens. A response the engine cannot give yet is a developer's addition for every game; your example is a service for audio in several rooms. Your wording is tentative and the record keeps it so. What a maker may build inside the pack, and how an extension for all games reaches a production, are your questions above."
+        },
+        {
+          "slug": "the-engine-says-what-is-fixed-and-what-each-production-sets",
+          "title": "The engine says what is fixed and what each production sets",
+          "date": "2026-11-02",
+          "line": "The engine stays agnostic about any one production's numbers (the devices and phones in a kit, power-on to a running show, set-up time, how long records are kept) and says which requirements are fixed and what each production sets for itself, so an adopter can fit it to their venue; ALN is the first production: one game, one venue, the hardware you bought. The sorting of the quality targets' numbers that follows is the agent's call, listed above."
         }
       ]
     },
@@ -665,7 +741,7 @@
           "slug": "one-program-design-half-then-build-half",
           "title": "One program: design half, then build half",
           "date": "2026-10-30",
-          "line": "The design half decides the shared design choices with you, one question round at a time, and ends with the new roadmap; the build half changes the engine one area at a time, starting with a thin first version on a new test bench. Whether each area starts with its test failing on today's engine is [[q:C]]."
+          "line": "The design half decides the shared design choices with you, one question round at a time, and ends with the new roadmap; the build half changes the engine one area at a time, starting with a thin first version on a new test bench. That an area no longer starts with its test failing on today's engine is a reading the agent confirms as its call, listed above."
         },
         {
           "slug": "run-the-pass-like-the-re-charter",
@@ -683,7 +759,7 @@
           "slug": "five-documents-the-design-half-hands-over",
           "title": "Five documents the design half hands over",
           "date": "2026-10-30",
-          "line": "The design half hands over the design choices, one per question, with proof tests in plain words, the review that named the design flaws with every fix and finding assigned or set aside, proposals for the written lists of messages between the engine and the devices, one decision note per hard-to-reverse choice, and the new roadmap; two parts may be overtaken, which [[q:C]] asks you to confirm."
+          "line": "The design half hands over the design choices with proof tests in plain words, the review that named the design flaws with every fix and finding assigned or set aside, the published protocol in place of separate proposals for the message lists, one decision note per hard-to-reverse choice, and the new roadmap; the two parts read as overtaken are confirmed as the agent's call, listed above."
         },
         {
           "slug": "the-design-half-s-method-and-tools",
@@ -695,7 +771,7 @@
           "slug": "when-the-design-half-is-finished",
           "title": "When the design half is finished",
           "date": "2026-10-30",
-          "line": "The design half ends at your sign-off once every finding and blue fix is assigned or set aside with a reason, every design choice says how it serves the planned capabilities and standalone games, the hostile review's blocking findings are resolved, every question has its design choice and proof test, and the rig reproduces each finding marked for live proof; the last two conditions may be overtaken, which [[q:C]] asks you to confirm."
+          "line": "The design half ends at your sign-off once every finding and blue fix is assigned or set aside with a reason, every design choice says how it serves the planned capabilities and standalone games, and the hostile review's blocking findings are resolved; the two earlier conditions (one design choice per question, and the rig reproducing each finding marked for live proof) are read as overtaken, which the agent confirms as its call, listed above."
         },
         {
           "slug": "corrections-to-the-readers-and-the-hardening-pieces",
@@ -725,7 +801,7 @@
           "slug": "what-the-architects-panel-sees-and-when",
           "title": "What the architects' panel sees, and when",
           "date": "2026-11-01",
-          "line": "In the blind round the panel gets the goal, the requirements and the setting; only after its first proposals does it get today's engine as facts and the sixteen design flaws as test situations; withheld are the recommendations of the agent running the pass, the earlier candidate (it enters the second round as one more proposal) and the earlier lists of design choices. It runs after you confirm the requirements."
+          "line": "In the blind round the panel gets the goal, the requirements and the setting; only after its first proposals does it get today's engine as facts and the sixteen design flaws as test situations; withheld are the recommendations of the agent running the pass, the earlier candidate (it enters the second round as one more proposal) and the earlier lists of design choices. It runs after you review the requirements. Whether it also gets your binding decisions and the decisions ahead is your question above."
         }
       ]
     },
@@ -737,7 +813,13 @@
           "slug": "the-owner-s-site-five-linked-pages",
           "title": "The owner's site: five linked pages",
           "date": "2026-11-01",
-          "line": "Your site was five linked pages built from one set of data (the engine, decisions, promises, parts and design flaws), with earlier wordings and changes kept in a change log; nothing in the single page it replaced had to stay. The same decision asks for the site to take the long-term frame and to use titles in place of numbers."
+          "line": "Your site was five linked pages built from one set of data (the engine, decisions, promises, parts and design flaws), with earlier wordings and changes kept in a change log; nothing in the single page it replaced had to stay. The same decision asked for the long-term frame and titles in place of numbers, and version 9, published 2026-11-02, did both with six pages."
+        },
+        {
+          "slug": "the-decisions-page-holds-only-your-decisions",
+          "title": "The Decisions page holds only your decisions",
+          "date": "2026-11-02",
+          "line": "This page asks you only what you alone can decide, each question explained by what it means in practice; choices that are the agent's to make (how the requirements are worded and grouped, how the panel runs, technical defaults, and readings that follow from your earlier decisions) are listed as the agent's calls with their reasons, for you to overrule; the requirements are offered for review, not as decisions."
         }
       ]
     },
