@@ -5,8 +5,9 @@ says what stands now, by topic. Each entry is the decision as it holds
 today, with every later change already merged in, and a dated history
 beneath it that says what changed, when and why. Decisions that no
 longer hold are in "Superseded and withdrawn". The questions the owner
-has not yet answered live on the owner site's Decisions page; the
-"Still open" section only points there.
+has not yet answered, the readings of the owner's words to confirm and
+the agent's calls live on the owner site's Decisions page; the "Still
+open" section lists them by title and points there.
 
 The owner's frame for all of it, in their words (2026-11-01): "design a
 long-term optimal architecture for our engine that makes it intuitive
@@ -16,18 +17,19 @@ Decisions, questions and design flaws go by title here and everywhere
 the owner reads. Older dated records still use numbers; the last section
 maps every old number to its title.
 
-Sources: the program document (`docs/plans/2026-10-30-architecture-pass.md`,
-whose Appendix A holds the definition session's decisions word for
-word), the state page (`docs/plans/CURRENT-STATE.md`) and its git
-history, the cause analysis, the engine-jobs document, the standalone
-pass, the after-game survey, the owner site's Decisions page data, and
-the inventory beside this file (`decision-record/inventory.md`).
+Sources: the program document
+(`docs/plans/2026-10-30-architecture-pass.md`, whose Appendix A holds
+the definition session's decisions word for word), the state page
+(`docs/plans/CURRENT-STATE.md`) and its git history, the cause analysis,
+the engine-jobs document, the standalone pass, the after-game survey,
+the owner site's Decisions page data, and the inventory beside this file
+(`decision-record/inventory.md`).
 
-Where a later decision contradicts part of an earlier one without
-naming it, this record keeps the earlier decision as made and says, in
-the entry and in "Read as overtaken, confirmed as the agent's call",
-what the later decision implies. Nothing inferred is written as if the owner had said
-it.
+Where a later decision contradicts part of an earlier one without naming
+it, this record keeps the earlier decision as made and says, in the
+entry and in "Read as overtaken, confirmed as the agent's call", what
+the later decision implies. Nothing inferred is written as if the owner
+had said it.
 
 ---
 
@@ -36,15 +38,16 @@ it.
 **Design for the long term, beyond ALN**
 
 The pass designs the best architecture for the next iteration of the
-engine, for long-term use and future development as its use grows
-beyond ALN. The fixes and findings from the show machine in use now
-are clues to where today's design is off, never the driver: the pass is not a triage of ALN's issues
-renamed as architecture fixes. The owner expects this frame to change
-the approach, and how the design and the roadmap are discussed, more
-than the fixes themselves. The owner's words for the goal: "design a
-long-term optimal architecture for our engine that makes it intuitive
-and easy to maintain, continue development on, and extend (proactive)",
-in place of "fixing issues seen / fixed on blue to run ALN (reactive)".
+engine, for long-term use and future development as its use grows beyond
+ALN. The fixes and findings from the show machine in use now are clues
+to where today's design is off, never the driver: the pass is not a
+triage of ALN's issues renamed as architecture fixes. The owner expects
+this frame to change the approach, and how the design and the roadmap
+are discussed, more than the fixes themselves. The owner's words for the
+goal: "design a long-term optimal architecture for our engine that makes
+it intuitive and easy to maintain, continue development on, and extend
+(proactive)", in place of "fixing issues seen / fixed on blue to run ALN
+(reactive)".
 
 Made 2026-10-31.
 
@@ -88,18 +91,20 @@ History:
 **Fixes to today's engine are evidence of design causes**
 
 The fixes made on the show machine in use now, and the findings left
-unfixed there, are evidence of where today's design is weak. They are never the driver of the pass. For each
-one the cause analysis records the problem area, the design cause, every
-other place with that cause, the design choice that removes it, and the
-proving test. Fixes that share a cause become one design decision. The
-sixteen design flaws the cause analysis found are now test cases: every
-design in the design rounds is checked against them.
+unfixed there, are evidence of where today's design is weak. They are
+never the driver of the pass. For each one the cause analysis records
+the problem area, the design cause, every other place with that cause,
+the design choice that removes it, and the proving test. Fixes that
+share a cause become one design decision. The sixteen design flaws the
+cause analysis found are now test cases: every design in the design
+rounds is checked against them.
 
 Made 2026-10-30.
 
 History:
 - 2026-10-30, the definition session. Made. The owner's meaning of the
-  kickoff brief's question on blue's fixes was an evidence method, not
+  kickoff brief's question on the fixes made on the show machine in use
+  now was an evidence method, not
   a process for future fixes. Two worked examples: the claimed-token
   list (three more places that update it) and the frozen music and
   lighting panels (a hand-written table that re-sends state).
@@ -136,8 +141,8 @@ History:
 
 A promise is what a person can count on at a given moment. The owner's
 page is organized around the promises, and "job" is retired. The draft
-has ten promises; whether they are the right ten is still open (see
-"Still open"). Parts keep promises; design flaws break them. A quality
+has ten promises; they are offered to the owner for review (see "Still
+open"). Parts keep promises; design flaws break them. A quality
 is something every part must have so a promise holds everywhere; it is
 never a promise itself. A moment is when a promise matters: a
 production stage, a point in a show, release day. The person who fits a
@@ -208,12 +213,12 @@ The pass answers these nine questions for the whole engine:
 - Reconnect snapshot built like live update: is each fact's reconnect
   snapshot built the same way as its live update?
 
-The nine stand. Since the design half was reordered top-down, the
-design rounds go by the hardest decisions to reverse, not one rule per
-question. The record does not yet say in so many words how the nine
-fit that order; the reading here, that they serve as checks on each
-design, is the agent's call "Four readings of earlier decisions are confirmed" (2026-11-02), which
-the owner can overrule.
+The nine stand. Since the design half was reordered top-down, the design
+rounds go by the hardest decisions to reverse, not one rule per
+question. The record does not yet say in so many words how the nine fit
+that order; the reading here, that they serve as checks on each design,
+is the agent's call "Four readings of earlier decisions are confirmed"
+(2026-11-02), which the owner can overrule.
 
 Made 2026-10-30.
 
@@ -224,31 +229,31 @@ History:
   read "who re-checks after a reset?".
 - 2026-10-30, the definition session, the round after. "Only the live
   engine touches the show" became "can anything other than the live
-  engine touch the live show?" and "Each fact at a game boundary"
-  became "what does each fact and each copy do at a boundary?". "Each
-  component gets what its role needs" was added, on what each component
-  receives; the owner ruled it must start from the settled roles.
+  engine touch the live show?" and "Each fact at a game boundary" became
+  "what does each fact and each copy do at a boundary?". "Each component
+  gets what its role needs" was added, on what each component receives;
+  the owner ruled it must start from the settled roles.
 - 2026-10-30, the definition session, the round after that. "Each
-  component gets what its role needs" was worded (see "The role
-  question starts from settled roles").
-- 2026-10-30, the definition session, the round that settled the
-  method. "How copies update and show their age" and "Reconnect
-  snapshot built like live update" were added from the code map. Each
-  question was to get its own rule and test, and "Who decides each
-  fact", "Each fact at a game boundary", "How copies update and show
-  their age" and "Reconnect snapshot built like live update" were to be
-  designed together as one rule for live state.
+  component gets what its role needs" was worded (see "The role question
+  starts from settled roles").
+- 2026-10-30, the definition session, the round that settled the method.
+  "How copies update and show their age" and "Reconnect snapshot built
+  like live update" were added from the code map. Each question was to
+  get its own rule and test, and "Who decides each fact", "Each fact at
+  a game boundary", "How copies update and show their age" and
+  "Reconnect snapshot built like live update" were to be designed
+  together as one rule for live state.
 - 2026-11-01. "Design top-down, hardest-to-reverse choices first"
   ordered the design rounds by decision, not by question. Whether
   "designed together" and "one rule per question" still hold is to be
   confirmed.
-- 2026-11-02. The agent's call "Four readings of earlier decisions are confirmed",
-  on version 10 of the Decisions page, reads both as overtaken: the
-  design rounds go by decision, the four questions on the game's live
-  facts are no longer designed together as one rule, and the nine serve
-  as checks on each design. Readings that follow from the owner's
-  earlier decisions are the agent's calls ("The Decisions page holds
-  only your decisions"); the owner can overrule this one.
+- 2026-11-02. The agent's call "Four readings of earlier decisions are
+  confirmed", on version 10 of the Decisions page, reads both as
+  overtaken: the design rounds go by decision, the four questions on the
+  game's live facts are no longer designed together as one rule, and the
+  nine serve as checks on each design. Readings that follow from the
+  owner's earlier decisions are the agent's calls ("The Decisions page
+  holds only your decisions"); the owner can overrule this one.
 
 **The role question starts from settled roles**
 
@@ -443,24 +448,27 @@ A game can be extended in two ways, and the design keeps them apart.
   speaker or on chosen speakers (areas or rooms of the game space).
 
 Two questions stay open, as the owner named them: how an extension made
-for all games relates to the engine's main release, and which piece
-each kind of extension changes (packs, the engine's code, added outside
+for all games relates to the engine's main release, and which piece each
+kind of extension changes (packs, the engine's code, added outside
 services). The first is the owner's question "How an extension for all
-games reaches a production". The second is decided in the design round
-"How games and venues extend the engine", since where an extension
-plugs in is how to build it, not what the product must allow. The
-owner's wording is tentative ("should probably",
-"probably"), and this record keeps it so. In the owner's words: "Game
-mechanics could be different ways to combine existing in-engine
-capabilities to create different gameplay verbs for the players to
-engage with or different ways the game might actually respond to
-existing game triggers within the engine. This should probably be able
-to be done by the game's own maker inside that game. (though possibly,
-in the long term, with a way to share with other game makers for their
-games too) Game mechanics could also be for an existing gameplay action
-triggering a response that the game engine is not currently capable of.
-This probably requires a developer to extend the code of the engine in
-a way that any game can use."
+games reaches a production". The second is kept for the design round
+"How games and venues extend the engine": where an extension plugs in is
+how to build it, not what the product must allow. That placement is the
+agent's, under "The Decisions page holds only your decisions", and the
+owner can move it back to the Decisions page. How far the first kind may
+go with no developer is the owner's question "What a game's maker may
+build inside the pack". The owner's wording is tentative ("should
+probably", "probably"), and this record keeps it so. In the owner's
+words: "Game mechanics could be different ways to combine existing
+in-engine capabilities to create different gameplay verbs for the
+players to engage with or different ways the game might actually respond
+to existing game triggers within the engine. This should probably be
+able to be done by the game's own maker inside that game. (though
+possibly, in the long term, with a way to share with other game makers
+for their games too) Game mechanics could also be for an existing
+gameplay action triggering a response that the game engine is not
+currently capable of. This probably requires a developer to extend the
+code of the engine in a way that any game can use."
 
 Made 2026-11-02.
 
@@ -532,17 +540,18 @@ History:
   option the owner was shown. The owner had asked why the pass changes
   no code and when the engine code changes. Each area was to start with
   its proof test failing on today's engine.
-- 2026-11-01. The halves were renamed design half and build half
-  ("Name each step by what it does").
+- 2026-11-01. The halves were renamed design half and build half ("Name
+  each step by what it does").
 - 2026-11-01. "Build the test rig when building starts" and "Design
   top-down, hardest-to-reverse choices first" made the build plan start
-  with a thin first version on a new test bench. Starting each area
-  with its proof test failing on today's engine returns only if the
-  move from today's engine chooses to change it in place. The record
-  does not name this as a change to the two-halves decision; the
-  reading is to be confirmed.
-- 2026-11-02. Confirmed as the agent's call "Four readings of earlier decisions are confirmed"
-  (version 10 of the Decisions page), which the owner can overrule.
+  with a thin first version on a new test bench. Starting each area with
+  its proof test failing on today's engine returns only if the move from
+  today's engine chooses to change it in place. The record does not name
+  this as a change to the two-halves decision; the reading is to be
+  confirmed.
+- 2026-11-02. Confirmed as the agent's call "Four readings of earlier
+  decisions are confirmed" (version 10 of the Decisions page), which the
+  owner can overrule.
 
 **Run the pass like the re-charter**
 
@@ -596,24 +605,25 @@ hard-to-reverse choice, in a new `docs/adr/` folder; and the new
 roadmap, with the build half's areas in order, the remaining hardening
 pieces and the sweep's purpose placed inside them, the show-ready gate
 restated and the later blocks after the build half. Two parts of this
-are read as overtaken, by the agent's call "Four readings of earlier decisions are confirmed"
-(2026-11-02), which the owner can overrule: "one per question", by the
-design rounds going by hard-to-reverse decision; and the contract
-proposals, by the one published protocol.
+are read as overtaken (the agent's call "Four readings of earlier
+decisions are confirmed", 2026-11-02, which the owner can overrule):
+"one per question", by the design rounds going by hard-to-reverse
+decision; and the contract proposals, by the one published protocol.
 
 Made 2026-10-30.
 
 History:
-- 2026-10-30, the definition session, the round that settled the
-  method. Made.
-- 2026-11-01. "Design top-down, hardest-to-reverse choices first"
-  orders the design by decision, not by question, so "one rule per
-  question" may change; "One published protocol and an outside test
-  bench" would turn the contract proposals into one protocol. The
-  record does not name either as a change to this decision; both
-  readings are to be confirmed.
-- 2026-11-02. Both confirmed as the agent's call "Four readings of earlier decisions are confirmed"
-  (version 10 of the Decisions page), which the owner can overrule.
+- 2026-10-30, the definition session, the round that settled the method.
+  Made.
+- 2026-11-01. "Design top-down, hardest-to-reverse choices first" orders
+  the design by decision, not by question, so "one rule per question"
+  may change; "One published protocol and an outside test bench" would
+  turn the contract proposals into one protocol. The record does not
+  name either as a change to this decision; both readings are to be
+  confirmed.
+- 2026-11-02. Both confirmed as the agent's call "Four readings of
+  earlier decisions are confirmed" (version 10 of the Decisions page),
+  which the owner can overrule.
 
 **The design half's method and tools**
 
@@ -665,16 +675,17 @@ set aside with a reason; every rule says how it serves the planned
 capabilities and standalone games; the review's blocking findings are
 resolved; every question has a rule and a proof test; and the rig
 reproduces each finding marked for live proof. Two of these are read as
-overtaken, by the agent's call "Four readings of earlier decisions are confirmed" (2026-11-02),
-which the owner can overrule: "every question has a rule", by the
-top-down order of the design rounds; and the rig condition, by "Build the test rig when building starts", which builds
-the rig when building starts.
+overtaken (the agent's call "Four readings of earlier decisions are
+confirmed", 2026-11-02, which the owner can overrule): "every question
+has a rule", by the top-down order of the design rounds; and the rig
+condition, by "Build the test rig when building starts", which builds
+the rig at the start of building, after design.
 
 Made 2026-10-30.
 
 History:
-- 2026-10-30, the definition session, the round that settled the
-  method. Made with five conditions.
+- 2026-10-30, the definition session, the round that settled the method.
+  Made with five conditions.
 - 2026-10-31. "Standalone games: declared, never mixed" put standalone
   games on the list every rule must serve.
 - 2026-11-01. "Build the test rig when building starts" moves the rig
@@ -682,20 +693,21 @@ History:
   conditions; the reading is to be confirmed.
 - 2026-11-01. "Design top-down, hardest-to-reverse choices first" may
   change "every question has a rule"; to be confirmed.
-- 2026-11-02. Both readings confirmed as the agent's call
-  "Four readings of earlier decisions are confirmed" (version 10 of the Decisions page),
-  which the owner can overrule.
+- 2026-11-02. Both readings confirmed as the agent's call "Four readings
+  of earlier decisions are confirmed" (version 10 of the Decisions
+  page), which the owner can overrule.
 
 **Corrections to the readers and the hardening pieces**
 
 The merged hardening pieces (the kinds of equipment a pack can ask for
 and a venue profile can name, the code that marks equipment not
-installed tonight, and the smallest test set-up) stay in the engine. The build half changes them
-only where a rule requires, and their standing review findings fed the
-cause analysis like every other finding. The cause analysis's readers
-were split by source (the records of the show machine in use now, the
-backend, the GM scanner, the other clients and tests), then a merge grouped every finding by cause,
-then a skeptical check ran. That work is done.
+installed tonight, and the smallest test set-up) stay in the engine. The
+build half changes them only where a rule requires, and their standing
+review findings fed the cause analysis like every other finding. The
+cause analysis's readers were split by source (the records of the show
+machine in use now, the backend, the GM scanner, the other clients and
+tests), then a merge grouped every finding by cause, then a skeptical
+check ran. That work is done.
 
 Made 2026-10-30.
 
@@ -775,26 +787,28 @@ History:
 
 The panel first gets the goal, the requirements (the promises with the
 owner's answers, the quality targets and extension cases as the owner
-reviewed them, the standing constraints) and the setting (one owner and AI agents
-developing it; the hardware and a local network that can drop; one
-two-hour show for a few dozen devices). Only after its first proposals
-does it get today's engine as facts and the sixteen design flaws as test
-situations. Withheld: the recommendations of the agent running the
-pass, the candidate
-shape of the engine's parts (it enters in a second round as one more
-proposal) and the earlier lists of design choices. Three architects
-with different lenses propose blind, then critique each other and the
-candidate shape. A synthesis lists the decisions, options, costs, trial
-runs and the owner's questions. The panel runs after the owner reviews
-the requirements, and its brief goes to the owner first.
+reviewed them, the standing constraints) and the setting (one owner and
+AI agents developing it; the hardware and a local network that can drop;
+one two-hour show for a few dozen devices). Only after its first
+proposals does it get today's engine as facts and the sixteen design
+flaws as test situations. Withheld: the recommendations of the agent
+running the pass, the candidate shape of the engine's parts (it enters
+in a second round as one more proposal) and the earlier lists of design
+choices. Three architects with different lenses propose blind, then
+critique each other and the candidate shape. A synthesis lists the
+decisions, options, costs, trial runs and the owner's questions. The
+panel runs after the owner reviews the requirements, and its brief goes
+to the owner first.
 
 Made 2026-11-01.
 
 History:
 - 2026-11-01. Made, owner OK.
-- 2026-11-02. "The Decisions page holds only your decisions" offers the
-  requirements for review, not for confirmation; the panel runs after
-  the owner reviews them.
+- 2026-11-02. Read from "The Decisions page holds only your decisions",
+  which offers the requirements for review, not for confirmation: the
+  panel runs after the owner reviews them, where the owner's OK of
+  2026-11-01 was to "after the owner confirms the requirements". The
+  reading is the agent's, which the owner can overrule.
 
 ---
 
@@ -875,7 +889,7 @@ History:
 - 2026-10-30. Merged.
 - 2026-11-02. Retitled from "Green's follow-ups ship when the definition
   session ends": the owner's pages name the two show machines in plain
-  words, with no code names.
+  words, with no code names. The meaning is unchanged.
 
 **Decide in question rounds, never at sign-off**
 
@@ -1004,11 +1018,11 @@ said, when it was made, and what replaced it.
 Read as overtaken, confirmed as the agent's call. The record does not
 say these in so many words; a later decision contradicts part of an
 earlier one without naming it. Each is flagged in its entry. On
-2026-11-02 the agent confirmed all four as its call
-"Four readings of earlier decisions are confirmed" (version 10 of the Decisions page), because
-readings that follow from the owner's earlier decisions are the agent's
-calls ("The Decisions page holds only your decisions"); the owner can
-overrule it:
+2026-11-02 the agent confirmed all four as its call "Four readings of
+earlier decisions are confirmed" (version 10 of the Decisions page),
+because readings that follow from the owner's earlier decisions are the
+agent's calls ("The Decisions page holds only your decisions"); the
+owner can overrule it:
 
 - Each build area starting with its proof test failing on today's
   engine ("One program: design half, then build half"), overtaken by
@@ -1146,15 +1160,15 @@ questions; "AG" numbers are the after-game survey's six questions.
 | 14 | Decide in question rounds, never at sign-off | How the work runs |
 | 15 | Corrections to the readers and the hardening pieces | How the design is made, and in what order (its correction to the order: Superseded and withdrawn) |
 | 16 | The owner ratified the program document | How the work runs |
-| 17 | Is the list of design flaws right? | Folded into "Are these the right ten promises?", now the promise review (Still open) |
-| 18 | Flaws none of the pass's questions covers | Folded into "Proof and release in one promise?", now the agent's call "Proof and release stay one promise" (Still open) |
-| 19 | Record every refused GM scan attempt? | The agent's call "Every refused GM scan attempt is recorded" (Still open) |
+| 17 | Is the list of design flaws right? | Folded into "Are these the right ten promises?", now the promise review (in "Still open") |
+| 18 | Flaws none of the pass's questions covers | Folded into "Proof and release in one promise?", now the agent's call "Proof and release stay one promise" (in "Still open") |
+| 19 | Record every refused GM scan attempt? | The agent's call "Every refused GM scan attempt is recorded" (in "Still open") |
 | 20 | No rule for documents: fix as we go | How the work runs |
 | 21 | How much the rig proves before design | Superseded and withdrawn (withdrawn) |
 | 22 | Standalone games: declared, never mixed | What the engine must do (its ESP32 reading answered 2026-11-02) |
-| 23 | Is the missing standalone declaration a flaw? | The agent's call "The missing standalone declaration is a design flaw of its own" (Still open) |
-| 24 | One GM tablet per standalone game? | The owner's question "Which standalone games the engine must run" (Still open) |
-| 25 | Exposed evidence and video with no engine | The agent's call of the same title; the rule above it, the owner's question "What a standalone game gives up, and what it keeps" (Still open) |
+| 23 | Is the missing standalone declaration a flaw? | The agent's call "The missing standalone declaration is a design flaw of its own" (in "Still open") |
+| 24 | One GM tablet per standalone game? | The owner's question "Which standalone games the engine must run" (in "Still open") |
+| 25 | Exposed evidence and video with no engine | The agent's call of the same title; the rule above it, the owner's question "What a standalone game gives up, and what it keeps" (in "Still open") |
 | 26 | Design for the long term, beyond ALN | The goal and the frame |
 | 27 | Promises, qualities, moments, venue technician | The words |
 | 28 | The night's record and the after-game article | What the engine must do |
@@ -1185,14 +1199,14 @@ questions; "AG" numbers are the after-game survey's six questions.
 
 | Old key | Title | Where in this record |
 |---|---|---|
-| Promises | Are these the right ten promises? | The promise review (Still open) |
-| A | Two clauses added to the pack promise | The promise review (Still open) |
-| B | The roles promise covers who may act | The promise review (Still open) |
+| Promises | Are these the right ten promises? | The promise review (in "Still open") |
+| A | Two clauses added to the pack promise | The promise review (in "Still open") |
+| B | The roles promise covers who may act | The promise review (in "Still open") |
 | C | The venue promise names declared standalone | Answered by "Standalone games: declared, never mixed"; its second point, the agent's call "The missing standalone declaration is a design flaw of its own" |
-| D | Split the tap promise in two? | The agent's call "The tap promise is to be split in two" (Still open) |
-| E | Keep the venue promise whole? | The agent's call "The venue promise stays one" (Still open) |
-| F | Proof and release in one promise? | The agent's call "Proof and release stay one promise" (Still open) |
-| G | Which promise carries equipment state on screens? | The agent's call "The route for equipment state is named in neither promise" (Still open) |
+| D | Split the tap promise in two? | The agent's call "The tap promise is to be split in two" (in "Still open") |
+| E | Keep the venue promise whole? | The agent's call "The venue promise stays one" (in "Still open") |
+| F | Proof and release in one promise? | The agent's call "Proof and release stay one promise" (in "Still open") |
+| G | Which promise carries equipment state on screens? | The agent's call "The route for equipment state is named in neither promise" (in "Still open") |
 
 Version 9 of the site lettered its eighteen questions A to R; the site
 change log's table "Where version 9's eighteen questions went" maps

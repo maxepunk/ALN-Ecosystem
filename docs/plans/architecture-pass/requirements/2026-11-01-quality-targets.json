@@ -22,7 +22,7 @@
       "title": "Crashed programs restart on their own",
       "quality": "Staying up through a live show",
       "situation": "During play the music player stops dead. The engine's program watcher restarts it a bounded number of times. While it is down the GM's panel says stopped, with no track; the controls come back within ten seconds with no reload. If the restarts run out, one red row with a Restart button appears. Cues that depend on music are held and shown as held, never silently dropped. The same holds for the video player, the sound system, the lighting system and the TV's browser.",
-      "numberToSet": "how many restarts the watcher tries, and over how long, before it shows red: a technical default (today the shared program watcher, which the music player uses, restarts a program four times, waiting ten seconds and doubling the wait each time, and shows red at the fifth failure; the video player's waits a fixed three seconds, and the TV's browser has no watcher); ten seconds for the controls to come back (from the promise's test): an engine requirement",
+      "numberToSet": "how many restarts the watcher tries, and over how long, before it shows red: a technical default (today the shared program watcher, which the music player uses, restarts a program that died without printing anything four times, waiting ten seconds and doubling the wait each time, and shows red at the fifth failure, while a program that printed anything before it died is restarted every five seconds without limit; the video player's waits a fixed three seconds, and the TV's browser has no watcher); ten seconds for the controls to come back (from the promise's test): an engine requirement",
       "numberKind": "mixed",
       "promises": [
         "The room does what the designer cued and the GM asked",
@@ -522,7 +522,7 @@
         "Each lifecycle button does exactly what its name says",
         "One game, the same on every screen"
       ],
-      "status": "settled by the owner (your decision “Standalone games: declared, never mixed”, with its purpose stated 2026-11-02: a capability of the engine for rooms where a network is not feasible or where only scanners are wanted; the promises' tests; the glossary's entry on the rules the engine and a standalone tablet share); open: which shapes of standalone game the engine supports (GM scanners, player scanners or both; how many GM tablets), and where the standalone fact is kept",
+      "status": "settled by the owner (your decision “Standalone games: declared, never mixed”, with its purpose stated 2026-11-02: a capability of the engine for rooms where a network is not feasible or where other logistics favour scanners alone; the promises' tests; the glossary's entry on the rules the engine and a standalone tablet share); open: which shapes of standalone game the engine supports (GM scanners, player scanners or both; how many GM tablets), and where the standalone fact is kept",
       "statusKind": "partly settled",
       "why": "A game with no engine is a choice a game may declare, and a platform that will run in rooms with no network must treat that choice as normal, never as a fault. Today every device reads it as an outage all night."
     },

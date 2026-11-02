@@ -82,7 +82,7 @@
     },
     {
       "name": "During play",
-      "when": "Mid-show, at every tap on a token or a button, every command and every glance at a screen; also when the game runs with no engine, as the game declares, in a room where no network is feasible or where only scanners are wanted.",
+      "when": "Mid-show, at every tap on a token or a button, every command and every glance at a screen; also when the game runs with no engine, as the game declares, in a room where no network is feasible or where other logistics favour scanners alone.",
       "people": [
         "The GM running the live show: at a token, a button, the start and pause buttons, or the Environment and Show Control sections",
         "The players, each at a token, with no account",
