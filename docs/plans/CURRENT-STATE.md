@@ -18,8 +18,25 @@ before acting.
   build plan, the hostile review, the final questions, the owner's
   sign-off; then the build half. Working log (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
-- **Now: waiting for the owner's answers on version 10 of the owner
-  site** (live 2026-11-02). After version 9 went live the owner asked
+- **Now: version 11 of the owner site is being built** (2026-11-10).
+  Before answering version 10, the owner asked (2026-11-09) for an
+  independent review "to make sure the design is optimal and what you
+  need input from me about is clearly defined before I give my input".
+  Workflow `wf_7341feb0-0de` (`site-v10-review.js`): four reviewers,
+  a refute-by-default check of each and a merge, in
+  `docs/plans/architecture-pass/report/site/checks/v10-review*.md`. Its
+  verdict: the approach is right; version 10 asked the owner to choose
+  ways to build, the requirements carried some of the agent's design
+  choices, four subjects had no decision ahead, and three questions
+  rested on a wrong fact. Workflow `wf_971c4c5d-f74`
+  (`site-v11-apply-review.js`) applies it, with ten rulings of the
+  lead's in its brief: nine questions (A to F, a new G "A player who
+  sends a scan without the token", H standalone games, I the panel,
+  which also asks about a seventh decision "How the engine drives the
+  room"), five readings, thirteen calls, four new proposed targets
+  (QT45 to QT48), a "What the panel waits for" block and an answer
+  sheet. Then: fix slips, publish version 11, tell the owner. The
+  history of version 10: after version 9 went live the owner asked
   whether its eighteen
   questions were all theirs to decide; most were not. The owner then
   commented on seven open points (word for word:
@@ -122,7 +139,10 @@ before acting.
   shape is silent on a short offline claim list on a disconnected
   tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
   worktrees, no test rig.
-- **In flight:** nothing. Waiting for the owner's answers on version 10.
+- **In flight:** workflow `wf_971c4c5d-f74` (`site-v11-apply-review.js`):
+  five writers, an integration build, four checks, an editor, a
+  verifier. Its logs land in `report/site/v9/apply-log-v11-*.md`,
+  `build-log-v11.md` and `report/site/checks/v11-*.md`.
 - **The owner's site.** "What the Engine Promises"
   (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), version 10 live
   (version id 1793594179-a88d, 2026-11-02), in the proactive frame:
