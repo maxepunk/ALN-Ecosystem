@@ -34,12 +34,27 @@ before acting.
   `improve-codebase-architecture` "to make sure that the rest of our
   engine rebuild is done on a solid architectural foundation", with the
   page as "the document aimed to help me understand a proposed plan for
-  improvements". The agent put a corrected understanding to the owner as
-  three checks (the subject is improving the engine being rebuilt; one
-  short proposal replaces the site; what the panel is for) and waits for
-  the reply. Do not run the panel. What follows describes version 11 as
-  it stands. Version 11 of the owner site (published 2026-11-10, version
-  id 1794281701-ac4d). Before answering version 10, the owner asked
+  improvements". The owner then confirmed three things: the subject is
+  improving the architecture of the engine being rebuilt, and "you need
+  to make sure you FULLY understand WHAT the engine we're rebuilding is
+  SUPPOSED TO BE"; one short proposal replaces the site; independent
+  architects may challenge the draft, but "we don't need to
+  OVERCOMPLICATE it". The agent read the roadmap, the glossary, the
+  engine design notes, the kit decision and the second game's scoping in
+  full and sent the owner a one-screen statement of what the engine is
+  supposed to be
+  (`docs/plans/architecture-pass/rework/2026-11-10-what-the-engine-is.md`,
+  with the sources to read first). Next, once the owner confirms or
+  corrects it: the lead reads the code against that picture, writes the
+  one short proposal in the form of the skill
+  `improve-codebase-architecture` (how the engine fits together and
+  where its structure is weak, the shape proposed, a short list of
+  improvements with before and after pictures and how strongly each is
+  recommended), has a few independent readers challenge it, and
+  publishes it in place of the site. Do not run the panel, and do not
+  rebuild the old site. What follows describes version 11 as it stands.
+  Version 11 of the owner site (published 2026-11-10, version id
+  1794281701-ac4d). Before answering version 10, the owner asked
   (2026-11-09) for an independent review "to make sure the design is
   optimal and what you need input from me about is clearly defined
   before I give my input". Workflow `wf_7341feb0-0de`
@@ -145,8 +160,8 @@ before acting.
   shape is silent on a short offline claim list on a disconnected
   tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
   worktrees, no test rig.
-- **In flight:** nothing. Waiting for the owner's reply on the direction
-  (see "Now").
+- **In flight:** nothing. Waiting for the owner to confirm or correct
+  the statement of what the engine is supposed to be (see "Now").
 - **The owner's site.** "What the Engine Promises"
   (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), version 11 live
   (version id 1794281701-ac4d, 2026-11-10), in the proactive frame: six
