@@ -1,5 +1,5 @@
 export const meta = {
-  name: 'site-v10-review-review',
+  name: 'site-v10-review',
   description: 'At the owner\'s request, independent agents on the model the owner named review version 10 of the owner site: is the design approach optimal, and is what the owner is asked clearly defined? Four reviewers, a refute-by-default check of each, one merged report',
   phases: [
     { title: 'Probe', detail: 'confirm the requested model answers' },
