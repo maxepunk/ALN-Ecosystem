@@ -22,7 +22,8 @@ before acting.
   (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
 - **Now: the architecture proposal is with the owner** (published
-  2026-11-10 at the owner's address, version id 1794293132-2669; source
+  2026-11-10 at the owner's address, version 13, version id
+  1794295582-1d3a; source
   `docs/plans/architecture-pass/proposal/index.html`, with
   `proposal/README.md` on how it was made). It replaces the old six-page
   site, which is retired. How we got here: on 2026-11-10 the owner said
@@ -38,23 +39,41 @@ before acting.
   overcomplicated
   (`docs/plans/architecture-pass/rework/2026-11-10-owner-step-back.md`
   and `2026-11-10-what-the-engine-is.md`: read both before talking to
-  the owner). The proposal has seven improvements: one way in, one
-  record, one way out; the same core wherever a game is decided; one
-  published protocol; one interface for the room's gear and the kit's
-  devices; a stated life for every fact (a session, an install, a
-  production); marked places where new rules, gear and screens plug in;
-  each copy of the engine built in one place and kept to itself. Three
-  independent readers challenged the first draft
-  (`proposal/challenge/`). **Waiting for the owner on two things:**
-  which improvement to look at closely (the agent recommends the core,
-  improvements 1 and 2, starting with the record as an ordered list),
-  and whether work may start on the room's side (improvements 4 and 7).
-  The next step is the skill's third: work through the picked
-  improvement in conversation, keeping the glossary and short decision
-  notes current. Do not rebuild the old site, run the panel, or ask for
+  the owner). The proposal has seven changes: (1) the backend keeps one
+  complete record of each session and updates every screen from it the
+  same way; (2) a standalone game runs the same game code as a networked
+  one; (3) the messages between the backend and the devices are defined
+  in one place and checked automatically; (4) video, music, sound and
+  lights are controlled through one pattern, and their programs restart
+  when they crash; (5) the engine keeps separate what belongs to one
+  session, one installation and the whole production; (6) the code has
+  a known place for adding a new kind of rule, equipment or screen;
+  (7) a test or a rehearsal can run on the backend's computer without
+  disturbing a live session. Three independent readers challenged the
+  first draft (`proposal/challenge/`). **Waiting for the owner on three
+  things:** whether the plain wording is now clear (see the next
+  bullet), which change to go through in detail (the agent recommends
+  changes 1 and 2 together, starting with the choice inside change 1: a
+  record that only grows), and whether work may start on changes 4 and
+  7. The next step is the skill's third: go through the picked change
+  in conversation, keeping the glossary and short decision notes
+  current. Do not rebuild the old site, run the panel, or ask for
   answers to the old site's questions. The old process's words (the six
   decisions ahead, readings, calls, the blind round) are retired with
   it.
+- **Words for anything the owner reads.** After version 12 the owner
+  said the descriptions had drifted into jargon and were ambiguous
+  ("what does 'the same core runs wherever a game is decided' even
+  mean?"). The cause: the agent had replaced the project's own names
+  with made-up ones. Use the owner's and the glossary's names: backend,
+  GM scanner, player scanner (the hardware one, or the web page on a
+  phone), scoreboard, config tool, pack, kit, installation, production,
+  session, standalone, networked. Never "show machine", "GM tablet",
+  "design tool", "venue setup", "core", "door", or any other made-up
+  label. A title is a plain sentence. A "today" line says what happens
+  to a scan, a GM or a restart. The table of replacements is the last
+  section of `rework/2026-11-10-owner-step-back.md`. `DECISIONS.md`
+  still uses the made-up names; replace them when it is cut down.
 - **Done so far.** Green's three follow-ups merged on 2026-10-30 at
   `089dd527` (full backend suite, coverage check and lint passed). The
   review of today's engine
@@ -71,10 +90,11 @@ before acting.
   stand. Its entries on how the design half runs (the panel, the design
   rounds, the site's pages) describe the process retired on 2026-11-10
   and are history until the record is cut down. Open for the owner now:
-  the two things under "Now". The proposal does not decide three product
-  questions that come up inside the core: what a GM may tell a team
-  while a tablet is cut off, what a device that missed an update may do,
-  and where a rehearsal copy may run while a session is live. Old
+  the three things under "Now". The proposal does not decide three
+  product questions that come up inside changes 1 and 2: what a GM may
+  tell a team while their GM scanner has no connection, what a device
+  that missed a software update may do, and where a rehearsal may run
+  while a session is live. Old
   decision and question numbers map to titles in the record's last
   table.
 - **The branch.** This program's records live on the branch

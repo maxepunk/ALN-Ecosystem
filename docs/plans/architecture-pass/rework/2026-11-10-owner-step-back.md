@@ -93,3 +93,39 @@ For the next agent: wait for the owner's reply. Do not run the panel,
 rebuild the site, or reuse the words of the process built since
 2026-11-01 (the six decisions ahead, readings, calls, the blind round)
 when talking to the owner.
+
+## The owner's note on jargon (2026-11-10, after version 12)
+
+Word for word:
+
+> Your descriptions are starting to veer towards jargon instead of
+> clear, simple english to describe what you're talking about. for
+> example, what does 'the same core runs wherever a game is decided'
+> even mean? there are a lot of ambiguities here.
+
+What the agent found when it looked for the cause. It had been
+replacing the project's own names with names it made up, first for the
+earlier site and then for the proposal's titles. The owner's own
+messages say "backend", "gm scanner", "player scanner (web or esp32)",
+"standalone" and "networked", and never "show machine" or "GM tablet".
+`CONTEXT.md` says to use its terms and no synonyms.
+
+The rule from here on, for anything the owner reads:
+
+| Do not write | Write |
+|---|---|
+| show machine | the backend (the program); the backend's computer (the machine) |
+| main program | the backend |
+| GM tablet | GM scanner (it runs on a phone or tablet) |
+| hardware scanner, phone | player scanner: the hardware one, or the web page on a phone |
+| design tool | config tool |
+| venue setup | installation; its file is the installation profile |
+| a kit with no show machine | a standalone game |
+| the night's record, tonight | the session's record; this session, this installation |
+| core, door, pass, interface, stated life, plug in, the room's side | say what the code does, in a sentence |
+
+A title is a plain sentence that says what would be true afterwards.
+A "today" line says what happens to a scan, a GM or a restart. Version
+13 of the page (commit `ae6209f5`, version id 1794295582-1d3a) follows
+this. `DECISIONS.md` still uses the made-up names; replace them when
+that record is cut down to the owner's decisions.
