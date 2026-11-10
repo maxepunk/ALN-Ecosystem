@@ -1020,13 +1020,16 @@ History:
   promise (where today's engine falls short, the line "In a standalone
   game", what the planned capabilities need from it, the test situations
   from the shows) carries facts about today's engine and waits for the
-  second round. Each promise also names which of the nine questions the
-  pass answers it bears on. That line waits with the test situations.
-  Where a target's status or number names a promise's test, the test
-  itself waits for the second round. What the folder holds of a promise
-  is a choice the agent made within the brief after the check of
-  version 11. It is not one of the thirteen calls on the Decisions page.
-  The owner approves or changes it with the brief.
+  second round. Each promise also names the questions it bears on, among
+  the nine the pass answers. That line waits with the test situations.
+  Each of the first five decisions ahead goes to the blind round with
+  what it decides, as Design gives it, and the last by its title until
+  the second round. Where a target's status or number names a promise's
+  test, the test itself waits for the second round. What the folder
+  holds of a promise and of each decision is a choice the agent made
+  within the brief after the check of version 11. It is not one of the
+  thirteen calls on the Decisions page. The owner approves or changes it
+  with the brief.
 
 ---
 

@@ -86,8 +86,8 @@ Each architect gets one prepared folder and nothing else:
   falls short, the line “In a standalone game”, what the planned
   capabilities need from it, the test situations from the shows) carries
   facts about today's engine and waits for the second round. Each
-  promise also names which of the nine questions the pass answers it
-  bears on. That line waits with the test situations.
+  promise also names the questions it bears on, among the nine the pass
+  answers. That line waits with the test situations.
 - **The setting**, as facts. ALN's kit is the first production's
   hardware, given as facts and not as the engine's requirements (the
   decision “The engine is hardware-flexible; the roadmap sets the
@@ -176,10 +176,11 @@ Each architect gets one prepared folder and nothing else:
   standalone included; how games and venues extend the engine; how one
   engine runs as many separate copies; how today's engine moves to the
   new design.
-  - Each of the six goes to the panel with what it decides, as Design
-    gives it. The first includes the state of the room: what the outside
-    programs are doing, how the engine learns it and how old that
-    knowledge is.
+  - Each of the first five goes to the panel with what it decides, as
+    the page Design of the owner's site gives it. The last goes by its
+    title until the second round. The first includes the state of the
+    room: what the outside programs are doing, how the engine learns it
+    and how old that knowledge is.
   - Each architect first writes their own list of the hardest decisions
     to reverse, from the goal, the requirements, the setting and the
     owner's decisions. Only then do they open the six, say where their
