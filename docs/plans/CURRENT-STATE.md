@@ -7,117 +7,76 @@ before acting.
 
 ## 0. Resume here (2026-11-10)
 
-- **The current unit** is the architecture pass, in its design half,
-  under the owner's proactive goal: "design a long-term optimal
-  architecture for our engine that makes it intuitive and easy to
-  maintain, continue development on, and extend". The ratified program
-  document is `docs/plans/2026-10-30-architecture-pass.md`; its order
-  is replaced by the decision "Design top-down, hardest-to-reverse
-  choices first" (`docs/plans/architecture-pass/DECISIONS.md`). The design
-  half runs: the requirements (now), the panel, the design rounds, the
-  build plan, the hostile review, the final questions, the owner's
-  sign-off; then the build half. Working log (git-ignored):
+- **The current unit** is the architecture pass: improving the
+  architecture of the engine being rebuilt, so the rest of the rebuild
+  stands on a sound structure. The owner's goal: "design a long-term
+  optimal architecture for our engine that makes it intuitive and easy
+  to maintain, continue development on, and extend". The method, since
+  2026-11-10, is the three steps of the skill
+  `improve-codebase-architecture`: explore the code, propose
+  improvements in one visual report, work through what the owner picks.
+  The earlier order (requirements for review, an architects' panel,
+  design rounds) is retired. The ratified program document is
+  `docs/plans/2026-10-30-architecture-pass.md`, and the decisions are in
+  `docs/plans/architecture-pass/DECISIONS.md`. Working log
+  (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
-- **Now: the owner asked the agent to step back** (2026-11-10, after
-  version 11 went live): "you've kind of lost the thread and are
-  building out this page to build out this page instead of focusing on
-  the big picture of what we're trying to do with it, same with 'the
-  panel'". Word for word, with the agent's answer and proposal:
-  `docs/plans/architecture-pass/rework/2026-11-10-owner-step-back.md`.
-  The agent agreed: since 2026-11-01 the work went into the site and the
-  panel's rules, and none of the six decisions ahead has started. Until
-  the owner replies, do not ask for answers to version 11's questions,
-  do not rebuild the site and do not add to the panel's brief. The owner
-  then rejected the agent's first proposal (keep version 11 as reference
-  and run the architects): the page is "massive and bloated and
-  unhelpful", and the work began as an attempt to run the skill
-  `improve-codebase-architecture` "to make sure that the rest of our
-  engine rebuild is done on a solid architectural foundation", with the
-  page as "the document aimed to help me understand a proposed plan for
-  improvements". The owner then confirmed three things: the subject is
-  improving the architecture of the engine being rebuilt, and "you need
-  to make sure you FULLY understand WHAT the engine we're rebuilding is
-  SUPPOSED TO BE"; one short proposal replaces the site; independent
-  architects may challenge the draft, but "we don't need to
-  OVERCOMPLICATE it". The agent read the roadmap, the glossary, the
-  engine design notes, the kit decision and the second game's scoping in
-  full and sent the owner a one-screen statement of what the engine is
-  supposed to be
-  (`docs/plans/architecture-pass/rework/2026-11-10-what-the-engine-is.md`,
-  with the sources to read first). The owner answered that the statement
-  was technically correct but blurred what is digital with what is
-  physical (a pack holds token data, not tokens; a kit is physical gear
-  at a real venue, for one night or for months, or on tour with required
-  and optional items). The agent sent a refined statement with the room
-  first (same file, with the owner's notes word for word). Next, once
-  the owner confirms or corrects it: the lead reads the code against
-  that picture, writes the one short proposal in the form of the skill
-  `improve-codebase-architecture` (how the engine fits together and
-  where its structure is weak, the shape proposed, a short list of
-  improvements with before and after pictures and how strongly each is
-  recommended), has a few independent readers challenge it, and
-  publishes it in place of the site. Do not run the panel, and do not
-  rebuild the old site. What follows describes version 11 as it stands.
-  Version 11 of the owner site (published 2026-11-10, version id
-  1794281701-ac4d). Before answering version 10, the owner asked
-  (2026-11-09) for an independent review "to make sure the design is
-  optimal and what you need input from me about is clearly defined
-  before I give my input". Workflow `wf_7341feb0-0de`
-  (`site-v10-review.js`) ran it: four reviewers, a refute-by-default
-  check of each and a merge, in
-  `docs/plans/architecture-pass/report/site/checks/v10-review*.md`. Its
-  verdict: the approach is right; version 10 asked the owner to choose
-  ways to build, the requirements carried some of the agent's design
-  choices, four subjects had no decision ahead, and three questions
-  rested on a wrong fact. Workflow `wf_971c4c5d-f74`
-  (`site-v11-apply-review.js`) applied it with ten rulings of the
-  lead's; the lead then fixed what its checks left in three rounds by
-  hand, checked by `wf_13790099-d88` (`site-v11-hand-verify.js`) and
-  `wf_3d790c9c-fe2` (`site-v11-final-verify.js`). Version 11's Decisions
-  page holds nine questions, A to I, each marked "Best answered now",
-  "Can wait for the panel" or "Needed before the panel"; five readings
-  of the owner's words to confirm; thirteen calls of the agent's; the
-  requirements to review (47 targets with QT45 to QT48 new and proposed,
-  28 cases); a block "What the panel waits for"; and an answer sheet.
-  The panel waits for three things only: the answer to "What the panel
-  gets in its blind round", the word "reviewed" for the requirements,
-  and the owner's approval of the panel's brief. Three facts only the
-  owner has are asked on the answer sheet: whether GMs keep a token once
-  it is sold or exposed, whether the show machine ever failed for good
-  at a show, and any device expected soon. Answers go into the decision
-  record first, then the requirements files and the site. The history
-  before version 11 is in the record's entries "The Decisions page holds
-  only your decisions" and "The owner's site: five linked pages".
+- **Now: the architecture proposal is with the owner** (published
+  2026-11-10 at the owner's address, version id 1794293132-2669; source
+  `docs/plans/architecture-pass/proposal/index.html`, with
+  `proposal/README.md` on how it was made). It replaces the old six-page
+  site, which is retired. How we got here: on 2026-11-10 the owner said
+  the agent had been building the page and the panel for their own sake,
+  and named the origin: the skill `improve-codebase-architecture`, run
+  so that the rest of the engine rebuild stands on a sound architecture,
+  with the page as the document that explains the proposed plan of
+  improvements. The owner confirmed the subject (improving the engine
+  being rebuilt, not a new engine from nothing), told the agent to make
+  sure it fully understands what the engine is supposed to be, corrected
+  its picture of what is physical and what is digital, and said an
+  independent challenge of the draft is fine but must not be
+  overcomplicated
+  (`docs/plans/architecture-pass/rework/2026-11-10-owner-step-back.md`
+  and `2026-11-10-what-the-engine-is.md`: read both before talking to
+  the owner). The proposal has seven improvements: one way in, one
+  record, one way out; the same core wherever a game is decided; one
+  published protocol; one interface for the room's gear and the kit's
+  devices; a stated life for every fact (a session, an install, a
+  production); marked places where new rules, gear and screens plug in;
+  each copy of the engine built in one place and kept to itself. Three
+  independent readers challenged the first draft
+  (`proposal/challenge/`). **Waiting for the owner on two things:**
+  which improvement to look at closely (the agent recommends the core,
+  improvements 1 and 2, starting with the record as an ordered list),
+  and whether work may start on the room's side (improvements 4 and 7).
+  The next step is the skill's third: work through the picked
+  improvement in conversation, keeping the glossary and short decision
+  notes current. Do not rebuild the old site, run the panel, or ask for
+  answers to the old site's questions. The old process's words (the six
+  decisions ahead, readings, calls, the blind round) are retired with
+  it.
 - **Done so far.** Green's three follow-ups merged on 2026-10-30 at
   `089dd527` (full backend suite, coverage check and lint passed). The
   review of today's engine
   (`docs/plans/architecture-pass/2026-10-30-cause-analysis.md`: sixteen
   design flaws over 358 findings, 21 set aside) is now evidence and test
   situations, not the design's input. The decision record by topic. The
-  owner site, version 11: the independent review the owner asked for,
-  applied.
+  one-page architecture proposal, challenged by three independent
+  readers.
 - **The decisions** live in `docs/plans/architecture-pass/DECISIONS.md`,
   by topic: what stands now, each written as current truth with a dated
   history beneath, and the superseded ones in their own section. New
   decisions go there as the owner makes them, then into the pass's
-  documents (`docs/agents/process.md` §5). Open for the owner, by title,
-  each explained on the owner site's Decisions page ("What the Engine
-  Promises", https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL),
-  lettered A to I there from version 11: "A GM tablet cut off from the
-  engine", "The show machine fails mid-game", "Release day: what must
-  update together, and how long older devices work", "What a game's
-  maker may build inside the pack", "How an extension for all games
-  reaches a production", "Where the trial copy runs while a show runs",
-  "A player who sends a scan without the token", "Which standalone games
-  the engine must run", "What the panel gets in its blind round".
-  Version 10's ten letters map to their new homes in the change log's
-  table "Where version 10's ten questions went", and version 9's
-  eighteen in its "letters" table. Kept for the design rounds, not
-  questions now: fifteen later choices, from where "this game is
-  standalone" is declared to how the two kinds of extension are built.
-  "How much the rig proves before design" was withdrawn by "Build the
-  test rig when building starts". Old decision and question numbers map
-  to titles in the record's last table.
+  documents (`docs/agents/process.md` §5). The owner's decisions in it
+  stand. Its entries on how the design half runs (the panel, the design
+  rounds, the site's pages) describe the process retired on 2026-11-10
+  and are history until the record is cut down. Open for the owner now:
+  the two things under "Now". The proposal does not decide three product
+  questions that come up inside the core: what a GM may tell a team
+  while a tablet is cut off, what a device that missed an update may do,
+  and where a rehearsal copy may run while a session is live. Old
+  decision and question numbers map to titles in the record's last
+  table.
 - **The branch.** This program's records live on the branch
   `claude/nice-curie-hescfv`, with three draft pull requests:
   ALN-Ecosystem #35, ALNScanner #17 and ALN-TokenData #8. `main` is
@@ -165,59 +124,22 @@ before acting.
   shape is silent on a short offline claim list on a disconnected
   tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
   worktrees, no test rig.
-- **In flight:** nothing. Waiting for the owner to confirm or correct
-  the statement of what the engine is supposed to be (see "Now").
+- **In flight:** nothing. Waiting for the owner's reply to the proposal
+  (see "Now").
 - **The owner's site.** "What the Engine Promises"
-  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), version 11 live
-  (version id 1794281701-ac4d, 2026-11-10), in the proactive frame: six
-  linked pages in `docs/plans/architecture-pass/report/site/`:
-  `index.html` (the engine), `decisions.html` (what the panel waits for;
-  the nine questions A to I in four groups, each marked when to answer;
-  the answer sheet; the five readings to confirm; the thirteen calls;
-  the requirements to review; the design rounds and later choices; every
-  decision by topic), `requirements.html` (the promises, the quality
-  targets, the extension cases, the standing rules), `design.html` (the
-  decisions ahead, the panel's brief, the decided directions, the later
-  choices, the earlier candidate folded), `today.html` (what works, the
-  sixteen design flaws as situations, standalone today, the evidence)
-  and `changes.html`. Built by `report/build_site.py` from the four
-  page-data files in `report/`, the two requirements files, and the
-  overlays in `site/v9/` (`front.json`, `decisions.json`, `design.json`,
-  `changes.json`, `rules.json`, whose `[[markers]]` become links; each
-  has a writer's log beside it). Every diagram is drawn at build time
-  (`report/render_diagrams.js`, themed by `report/diagram_theme.py`);
-  the world picture is hand-drawn in the builder (`world_svg`, a wide
-  and a phone layout). Rebuild: `cd docs/plans/architecture-pass/report
-  && MERMAID_JS=<a local mermaid 11.4.1 mermaid.min.js, optional>
-  python3 -I build_site.py`, then `node site_smoke.js site <shots dir>`
-  (24 loads). Plan: `site/2026-11-01-site-plan-v2.md`; build logs:
-  `site/v9/build-log.md`, `site/v9/build-log-v10.md` and
-  `site/v9/build-log-v11.md` (the overlays' folder keeps the name v9);
-  checks: `site/checks/v9-*`, `site/checks/v10-*` and
-  `site/checks/v11-*`, with the independent review in
-  `site/checks/v10-review*.md`. Workflows
-  (`docs/agents/workflow-scripts/`): `site-v9-content.js`
-  (`wf_e076baba-f34`), `site-v9-build.js` (`wf_0a97fbef-eae`),
-  `site-v9-check.js` (`wf_43876844-7d9`: 141 conflicts applied),
-  `site-v9-fix.js` (`wf_efe6dc9f-89b`: 30), `site-v9-final.js`
-  (`wf_f857198c-557`: 20; two slips fixed by hand),
-  `decisions-rework.js` (`wf_83fccea8-c94`), `site-v10-build.js`
-  (`wf_9573779c-194`), `site-v10-hand-verify.js` (`wf_5cd76bb1-e45`),
-  `site-v10-review.js` (`wf_7341feb0-0de`), `site-v11-apply-review.js`
-  (`wf_971c4c5d-f74`), `site-v11-hand-verify.js` (`wf_13790099-d88`),
-  `site-v11-final-verify.js` (`wf_3d790c9c-fe2`). Version 9 (version id
-  1793578135-ee03) is in git history; its pages were last built at
-  `b1852f19`. Version 10 (version id 1793594179-a88d) was last built at
-  `0c31aac2`. Wording rules the last rounds settled: the site's own
-  prose says "you"; the shared texts the panel also reads (requirements,
-  standing rules, promise data, cards, the earlier candidate) keep "the
-  owner" as a role, except the requirements' status lines, which say
-  "you" (the panel's folder builder adapts them); "the agent running the
-  pass", never "orchestrator"; no numbered lists of decisions, steps or
-  choices; no code names (the two machines are "the show machine in use
-  now" and "the new show machine"); every reading of the owner's words
-  and every call of the agent's is marked as such, for the owner to
-  confirm or overrule.
+  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), since 2026-11-10
+  it is one page, the architecture proposal (version id
+  1794293132-2669), published from
+  `docs/plans/architecture-pass/proposal/index.html` with the Artifact
+  tool, passing the address as `url`. It is written by hand, with no
+  build step. The retired six-page site (versions 8 to 11) and its
+  machinery are still in the tree until the owner accepts the proposal:
+  `docs/plans/architecture-pass/report/` (the builder, the page data,
+  `site/`, the checks), `requirements/`, `panel/`, and the site's
+  workflow scripts under `docs/agents/workflow-scripts/`. Do not extend
+  them. Remove them, and cut the decision record down to the owner's
+  decisions, once the owner has accepted the proposal; git history keeps
+  everything.
 - **Version 8** (five linked pages, version id 1793525496-560c,
   2026-11-01) is in git history: its overlays (`site/front.json`,
   `site/decisions.json`, `site/changes.json`) and its plan
