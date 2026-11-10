@@ -68,7 +68,7 @@
       ],
       "status": "settled by the owner (the roadmap's second game's modules block; the glossary's entries on the abilities a pack requires and on the rules the engine and a standalone tablet share; your decision “Two kinds of game extension”, which places a new scoring model, an ability the engine lacks, in its second kind as the agent running the pass reads it; how it relates to the engine's main release is your open question)",
       "statusKind": "settled",
-      "why": "The rules are written once and run by the engine and by a standalone tablet alike, so a new model is one addition, not two."
+      "why": "A new scoring model must give the same scores wherever the game's rules run, on the show machine and on a standalone tablet, and a test proves it."
     },
     {
       "id": "EX5",
@@ -196,7 +196,7 @@
     {
       "id": "EX12",
       "title": "A game with no show machine",
-      "who": "whoever declares it (the owner's reading to confirm); the GMs run it, and that player scanners alone may play one is a reading for the owner to confirm too",
+      "who": "whoever declares it (a reading for the owner to confirm); the GMs run it, and that player scanners alone may play one is a reading for the owner to confirm too",
       "kind": "neither: fitting the engine to a venue or a production",
       "case": "A game runs where a network connection is not feasible, or where other logistics make it better to use only GM scanners, player scanners (phone or hardware), or both. The game is declared standalone. Each device works alone: the tablet says “standalone”, never “disconnected”, reaches the same verdicts the engine would, and its record names the pack version it played. No game mixes devices on a show machine with devices working alone. The hardware scanner plays the game as the phone's scanner does. Which effects a standalone game keeps follows the rule the owner ratified for equipment a venue leaves at home: a need the pack marks “skip it” reads grey, as not installed tonight, and a need marked “block the show” keeps the game from starting standalone unless the GM types the override. Three rows of what a standalone game keeps are the agent's proposals, listed in the target “[[qt:QT37]]”. Where the declaration is held is a question for the design rounds. Whether one such game may use more than one GM tablet, and whether its devices must play one shared game, is the owner's question “Which standalone games the engine must run”.",
       "throughWhat": "A declaration every device reads (the design rounds choose where it is held); a device that decides anything reaches the same verdicts the engine would, and a test proves it ([[qt:QT37]]).",
@@ -337,7 +337,7 @@
       "title": "The owner's second game needs new modules",
       "who": "developer builds the modules; the designer (the owner) tunes the game",
       "kind": "for all games",
-      "case": "The owner's second game needs four things the engine has never had: two-tap actions between players' objects, hidden per-player and per-token state that spreads on contact, a score read off a graph, and a constellation screen. A developer builds each as a generic module with pack-supplied parameters. The owner then finishes the game's design at his own pace with no further engineering, tuning spread rates and seeds like any other pack values and playtesting them through the edit, apply, play loop. A second toy game proves the modules the way the first toy game proves the engine. The game needs an engine by nature and its pack says so. A hidden fact reaches only its owner's screen.",
+      "case": "The owner's second game needs four things the engine has never had: two-tap actions between players' objects, hidden per-player and per-token state that spreads on contact, a score read off a graph, and a constellation screen. A developer builds each as a generic module with pack-supplied parameters. The owner then finishes the game's design at his own pace with no further engineering, tuning spread rates and seeds like any other pack values and playtesting them through the edit, apply, play loop. A second toy game proves the modules the way the first toy game proves the engine. The game needs the show machine by nature and its pack says so. A hidden fact reaches only its owner's screen.",
       "throughWhat": "Generic modules of the engine's own (the rules, multi-tap player actions, and the place a new kind of screen plugs in), each an ability the pack requires and selects by name; the game's values in its pack.",
       "mustNotNeed": "A separate copy of the engine's code for that game, code with the game's name in it, ALN's pack or ALN's screens, or a screen that filters hidden facts itself.",
       "when": "later (the roadmap's second game's modules block; the game's design track is open now, owner-paced)",

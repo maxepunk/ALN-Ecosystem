@@ -623,7 +623,7 @@
         "Start the engine with a mistyped profile path: the tablet shows a red “profile failed to load” row, not a green summary.",
         "Fire a mixed standing cue with lighting not installed tonight: the finish message and the standing-cue row name the skipped command.",
         "Cut a tablet's connection for a minute: every live panel shows its numbers are old, and the header turns “disconnected”.",
-        "Kill the engine: each player scanner shows offline within one check (the scanners check every ten seconds), and the TV shows its clock as unconfirmed, not counting."
+        "Kill the engine: each player scanner shows offline within one check (the scanners check every ten seconds), and the TV shows its clock as unconfirmed."
       ],
       "parts": [
         "P10",
@@ -634,7 +634,7 @@
       "functional": {
         "people": "The GM mid-show; the venue technician reading the preflight; the designer reading a go/no-go badge in the editor; the audience watching the clock",
         "moment": "At a glance, whenever a screen is read",
-        "need": "Anyone can tell whether a screen is current and whether to act: red means act now, grey means absent on purpose, old looks old, the venue technician's go is a go and a desk check never passes for a room check, the TV's clock never counts on its own, and the editor and the show use the same words.",
+        "need": "Anyone can tell whether a screen is current and whether to act: red means act now, grey means absent on purpose, old looks old, the venue technician's go is a go and a desk check never passes for a room check, the TV's clock shows as unconfirmed while the engine is silent, and the editor and the show use the same words.",
         "proposedTitle": "Anyone reading a screen can act on it without a second question"
       },
       "shapeChange": "Before, this promise asked the engine to tell the truth. Now a label on every fact and reply keeps it, and Delivery and Answering carry that label. One part of its own keeps it too: the Verdict, whose answer reaches no screen today."
@@ -648,7 +648,7 @@
         "the people building the engine, whose green run must mean something",
         "the GM, whose live show no test may touch"
       ],
-      "goal": "Tests run in levels, from logic alone, through the real engine and its programs with stand-ins for the room's equipment, to a home test bed and the venue. Each test run, trial copy of the engine and second kit keeps its own files, network ports and settings, so none reaches a live show. The formats two parts share are written once and stand-ins are checked against the real thing; every change runs on two packs. How an extension a developer makes for all games relates to the engine's main release is the owner's question “How an extension for all games reaches a production”. The owner alone sends a checked machine, and can replug the old one.",
+      "goal": "Tests run in levels, from logic alone, through the real engine and its programs with stand-ins for the room's equipment, to a home test bed and the venue. Each test run, trial copy of the engine and second kit keeps its own files, network ports and settings, so none reaches a live show. The formats two parts share are written once and stand-ins are checked against the real thing; every change runs on two packs. How an extension a developer makes for all games relates to the engine's main release is the owner's question “How an extension for all games reaches a production”. The owner alone sends a checked machine, and can take a version back; at the first swap that is done by replugging the old machine.",
       "goalOpen": false,
       "needs": [
         "The test environment: tests cannot touch the live machine's files that list its running programs, the TV or its players; a test that cannot run says so, and why, instead of passing quietly. Today nothing stops a test copy of the engine from starting the sound system.",
@@ -699,7 +699,7 @@
       "functional": {
         "people": "The developer changing the engine; the owner sending a version to the venue; the GM running a live show",
         "moment": "Before every change reaches anyone, and on release day",
-        "need": "When every test passes, the show still runs for ALN and for the toy game; the owner decides when a new version goes to the venue, the machine carries everything on one written list of what it should carry (the engine's version, the tablet and phone apps, the pack, the media and the venue profile), and the owner can swap back by replugging a machine; no test or rehearsal ever reaches a live show.",
+        "need": "When every test passes, the show still runs for ALN and for the toy game; the owner decides when a new version goes to the venue, the machine carries everything on one written list of what it should carry (the engine's version, the tablet and phone apps, the pack, the media and the venue profile), and a release that fails can be undone before the next game, at the first swap by replugging the old machine; no test or rehearsal ever reaches a live show.",
         "proposedTitle": "A change is proven before it reaches anyone, and the owner alone sends it to the show"
       },
       "shapeChange": "Before, this promise was one sentence about tests, with release day inside. Now three parts keep it, Joins and proofs, Engine instance and Release, because the developer's proof and the owner's release day are different moments; question F stays open."

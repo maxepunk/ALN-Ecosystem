@@ -19,7 +19,7 @@
     {
       "slug": "where-authority-lives-across-devices-offline-and-standalone-included",
       "title": "Where authority lives across devices, offline and standalone included",
-      "decides": "For each fact, which device or program decides it: the show machine in a networked game, the tablet in a standalone one, an outside program for what it alone knows. You decided that a lost connection must not stop the game ([[dec:no-technical-failure-stops-a-game]]). What a GM may tell a team while a tablet's connection is down is your question “[[page:decisions#q-a|A GM tablet cut off from the engine]]”, and who wins when two tablets claimed one token while apart is the agent's call “[[call:who-wins-when-two-tablets-claimed-one-token-while-apart]]”. What the GMs and the players must still be able to do if the show machine itself fails is your question “[[page:decisions#q-b|The show machine fails mid-game]]”. This round puts the ways to build it in front of you, each with its cost, against what you said must be true at a show. It also settles where the fact “this game is standalone” is kept, and how it reaches every device.",
+      "decides": "For each fact, which device or program decides it: the show machine in a networked game, the tablet in a standalone one, an outside program for what it alone knows. You decided that a lost connection must not stop the game ([[dec:no-technical-failure-stops-a-game]]). What a GM may tell a team while a tablet's connection is down is your question “[[page:decisions#q-a|A GM tablet cut off from the engine]]”, and who wins when two tablets claimed one token while apart is the agent's call “[[call:who-wins-when-two-tablets-claimed-one-token-while-apart]]”. What the GMs and the players must still be able to do if the show machine itself fails is your question “[[page:decisions#q-b|The show machine fails mid-game]]”. The first round and this one put the ways to build it in front of you, each with its cost, against what you said must be true at a show. It also settles where the fact “this game is standalone” is kept, and how it reaches every device.",
       "drivers": "The promises [[promise:J2]], [[promise:J3]], [[promise:J8]], [[promise:J9]] and [[promise:J5]]. The quality targets [[qt:QT3]], [[qt:QT7]], [[qt:QT31]], [[qt:QT37]], [[qt:QT38]], [[qt:QT39]], [[qt:QT40]] and [[qt:QT17]]. The extension cases [[ex:EX12]], [[ex:EX4]] and [[ex:EX10]].",
       "settled": "Standalone games are a capability of the engine for rooms where a network connection is not feasible, or where other logistics make it better to use only GM scanners, player scanners (phone or hardware) or both; a game declares it, and no game mixes networked and standalone devices ([[dec:standalone-games-declared-never-mixed]]); where the declaration is held (the venue profile, the game's record or each device) is left to this round, and whether the pack may say it too waits on a reading you are asked to confirm, on who says which way tonight's game runs ([[page:decisions#readings|the readings on Decisions]]). An outside program can be an authority ([[dec:four-words-for-the-game-s-live-facts]]). ALN's devices keep the roles they have today, which the panel gets in the setting as ALN's facts ([[dec:the-role-question-starts-from-settled-roles]]). The question “Who decides each fact” is the central one of the nine ([[dec:the-nine-questions-the-pass-answers]]). Your words “player scanners (phone or hardware)” answer the hardware scanner's standalone mode. Three of your questions feed this round: “[[page:decisions#q-a|A GM tablet cut off from the engine]]”, “[[page:decisions#q-b|The show machine fails mid-game]]” and “[[page:decisions#q-h|Which standalone games the engine must run]]”. Each asks, for a different situation, where the game's rules and its record can run: only on the show machine, or also on a tablet, a laptop or a spare. The last asks whether one standalone game may use more than one GM tablet, whether its devices must play one shared game, and whether its record must hold what the players found. That a standalone game may have no GM tablet at all is a reading you are asked to confirm. The quality target “[[qt:QT3]]” says the game carries on while a tablet is disconnected and leaves what the tablet shows meanwhile to your question; that the first claim holds a token is the agent's call named above.",
       "panel": "The panel brings two or three placements of authority side by side, each tested against the requirements and against these situations: [[flaw:C9]], [[flaw:C1]], [[flaw:C7]], [[flaw:C13]] and the seventeenth design flaw, “[[flaw:N1]]”, from the review of standalone games. Each design must say who decides when there is no show machine, how the rules stay equal on the show machine and on the tablet, with a test that proves it, and what moving today's engine to it would cost."
@@ -88,7 +88,7 @@
           },
           {
             "lead": "The requirements",
-            "text": "As you leave them after review on [[page:requirements]]: the ten promises; the quality targets, each number sorted as the engine's requirement or limit, a production's setting (ALN's given as the first set) or a technical default, a sorting the agent running the pass made and marked as its own; the extension cases, each marked as one of the two kinds of extension or neither; and the standing rules. Each target and case says whether you settled it, partly settled it or the agent proposes it. Where one notes how today's engine behaves, the note sits in a field of its own, shown on [[page:requirements]] under the tag “Today”. The folder leaves that field out, because today's engine is withheld from this round."
+            "text": "As you leave them after review on [[page:requirements]]: the ten promises; the quality targets, each number sorted as the engine's requirement or limit, a production's setting (ALN's given as the first set) or a technical default, a sorting the agent running the pass made and marked as its own; the extension cases, each marked as one of the two kinds of extension or neither; and the standing rules. Each target and case says whether you settled it, partly settled it or the agent proposes it. Where one notes how today's engine behaves, the note sits in a field of its own, shown on [[page:requirements]] under the tag “Today”. The folder leaves that field out, because today's engine is withheld from this round. The second round gets the notes back. Of each promise the folder holds who counts on it and when, what they count on and the long-term goal. The other lists under a promise (where today's engine falls short, what a standalone game does today, what the planned capabilities need from it, the test situations taken from the shows) carry facts about today's engine and wait for the second round."
           },
           {
             "lead": "The setting, as facts",
@@ -116,7 +116,7 @@
         "items": [
           {
             "lead": "Today's engine, as facts",
-            "text": "A fact sheet of what runs where, in what language, and what works today; the code with its component guides, to read but not change; and the requirements' notes on today's behaviour, which the blind round's folder left out. Reading the code is a call of the agent running the pass, listed on [[page:decisions]] for you to overrule."
+            "text": "A fact sheet of what runs where, in what language, and what works today; the code with its component guides, to read but not change; and the requirements' notes on today's behaviour and the lists under each promise that describe today's engine, which the blind round's folder left out. Reading the code is a call of the agent running the pass, listed on [[page:decisions]] for you to overrule."
           },
           {
             "lead": "The sixteen design flaws, as test situations",
@@ -140,8 +140,8 @@
       {
         "title": "What is withheld, and how",
         "paragraphs": [
-          "Withheld from the blind round: the recommendations and leading guesses of the agent running the pass, among them its options and recommendations on your open questions; the earlier candidate, which enters the second round as one more proposal; the earlier lists of design choices; today's engine and its review, with the requirements' notes on today's behaviour. Withheld from both rounds: the reasoning of the agent running the pass, the review's conclusions about fixes, and the earlier candidate's table of alternatives.",
-          "A script builds each round's folder from the sources (the requirements files, the standing rules, the decision record). For the blind round it leaves out the field “today” of every target and case, and writes each open question of yours as its “What it decides” paragraph only. Each architect is told to read only its folder, plus the code in the second round, and never the planning documents. Nothing technical stops an agent from opening a file it was told to leave alone, so the synthesis's checker also looks for traces of withheld material in every proposal."
+          "Withheld from the blind round: the recommendations and leading guesses of the agent running the pass, among them its options and recommendations on your open questions; the earlier candidate, which enters the second round as one more proposal; the earlier lists of design choices; today's engine and its review, with the requirements' notes on today's behaviour and the lists under each promise that describe today's engine. Withheld from both rounds: the reasoning of the agent running the pass, the review's conclusions about fixes, and the earlier candidate's table of alternatives.",
+          "A script builds each round's folder from the sources (the requirements files, the standing rules, the decision record). For the blind round it leaves out the field “today” of every target and case and the lists under each promise that describe today's engine, and writes each open question of yours as its “What it decides” paragraph only. Each architect is told to read only its folder, plus the code in the second round, and never the planning documents. Nothing technical stops an agent from opening a file it was told to leave alone, so the synthesis's checker also looks for traces of withheld material in every proposal."
         ]
       },
       {
@@ -226,43 +226,43 @@
   ],
   "later": [
     {
-      "text": "Where “this game is standalone” is declared: the venue profile (the earlier candidate favours it), the pack, the game's record or each device. It is decided in the round on where authority lives.",
+      "text": "Where the night's set-up holds “this game is standalone”: the venue profile (the earlier candidate favours it), the game's record or each device. Whether the pack may say it too waits on a reading you are asked to confirm, on who says which way tonight's game runs ([[page:decisions#readings|the readings to confirm]]). It is decided in the round on where authority lives across devices.",
       "alt": ""
     },
     {
-      "text": "Getting facts onto screens: one delivery part for every fact, or the parts behind each promise delivering their own facts in one shared format.",
+      "text": "Getting facts onto screens: one delivery part for every fact, or the parts behind each promise delivering their own facts in one shared format. It is decided in the round on how the engine holds the game's state.",
       "alt": "alt-delivery"
     },
     {
-      "text": "The life of a game: one lifecycle part that alone moves the game and resets every part, or a table each part reads and applies itself.",
+      "text": "The life of a game: one lifecycle part that alone moves the game and resets every part, or a table each part reads and applies itself. It is decided in the round on how the engine holds the game's state.",
       "alt": "alt-lifecycle"
     },
     {
-      "text": "The game rules as one shared body of code that the engine and the tablet both run, or two bodies kept equal by tests.",
+      "text": "The game rules as one shared body of code that the engine and the tablet both run, or two bodies kept equal by tests. It is decided in the rounds on how the engine holds the game's state and on where authority lives across devices.",
       "alt": "alt-rules"
     },
     {
-      "text": "The equipment's interface: one per kind of thing the room can do (play a video, light a scene), or one per outside program.",
+      "text": "The equipment's interface: one per kind of thing the room can do (play a video, light a scene), or one per outside program. It is decided in the round on how the engine holds the game's state, or in a round of its own on how the engine drives the room if you add that decision.",
       "alt": "alt-equipment"
     },
     {
-      "text": "The standalone tablet: the same record and lifecycle parts the engine runs, or an engine of its own.",
+      "text": "The standalone tablet: the same record and lifecycle parts the engine runs, or an engine of its own. It is decided in the rounds on how the engine holds the game's state and on where authority lives across devices.",
       "alt": "alt-standalone-tablet"
     },
     {
-      "text": "How the fallback you choose under “The show machine fails mid-game” is built: how a networked game's state carries on without the show machine and comes back together afterwards, inside the rounds on how the engine holds the game's state and where authority lives; whatever is built must not make a mixed game by accident ([[dec:standalone-games-declared-never-mixed]]).",
+      "text": "How a networked game carries on without the show machine, and comes back together afterwards: you choose among the panel's designs inside the rounds on how the engine holds the game's state and where authority lives. Whatever is built must not make a mixed game by accident ([[dec:standalone-games-declared-never-mixed]]).",
       "alt": ""
     },
     {
-      "text": "The scoreboard: one page shown in two places, the TV's browser and the Pi 4, or a view inside the GM app.",
+      "text": "The scoreboard: one page shown in two places, the TV's browser and the second scoreboard screen, or a view inside the GM app. It is decided in the round on how games and venues extend the engine.",
       "alt": "alt-scoreboard"
     },
     {
-      "text": "The config tool, the designer's and venue technician's tool: a separate program that talks to the engine only by sending it requests, never by writing its files, or pages the engine itself serves.",
+      "text": "The config tool, the designer's and venue technician's tool: a separate program that talks to the engine only by sending it requests, never by writing its files, or pages the engine itself serves. It is decided in the round on how one engine runs as many separate copies.",
       "alt": ""
     },
     {
-      "text": "When a changed pack may be loaded while the engine runs. That is not built yet; the requirements allow it only before a game starts or after it ends.",
+      "text": "How a changed pack is taken up between games with no restart. That is not built yet; the requirements allow a change only before a game starts or after it ends. It is decided in the round on how the engine holds the game's state.",
       "alt": ""
     },
     {
@@ -270,7 +270,7 @@
       "alt": ""
     },
     {
-      "text": "Where a production's own settings live (its kit's devices and phones, how long it keeps records): in the venue profile, in per-kit settings, or in both; and where the build plan places your answer to “Which hardware the first new engine requires, and what it must allow replacing” in the roadmap, as the hardware it names as a requirement and the hardware it leaves flexible. The first is decided in the round on how games and venues extend the engine; the second by the build plan ([[dec:the-engine-is-hardware-flexible-the-roadmap-sets-the-bounds]], [[dec:the-engine-says-what-is-fixed-and-what-each-production-sets]]).",
+      "text": "Where a production's own settings live (its kit's devices and phones, how long it keeps records): in the venue profile, in per-kit settings, or in both. It is decided in the round on how games and venues extend the engine. The hardware the roadmap names as required at each of its stages, and the hardware it supports, comes to you with the build plan, as the agent's call “[[call:the-design-allows-other-hardware-what-the-first-release-requires-comes-with-the-build-plan]]” says ([[dec:the-engine-is-hardware-flexible-the-roadmap-sets-the-bounds]], [[dec:the-engine-says-what-is-fixed-and-what-each-production-sets]]).",
       "alt": ""
     },
     {
@@ -278,7 +278,7 @@
       "alt": ""
     },
     {
-      "text": "Whether paper documents join the pack, with “unlocked” recorded during play, so the night's record can say which documents the players opened. “[[dec:the-night-s-record-and-the-after-game-article]]” left this to the design rounds; today the director marks them by hand after the show. It is decided in the round on how games and venues extend the engine.",
+      "text": "Whether paper documents join the pack, with “unlocked” recorded during play, so the night's record can say which documents the players opened. “[[dec:the-night-s-record-and-the-after-game-article]]” left this open; today the director marks them by hand after the show. It is yours to answer, and it comes to you as a question in the round on how games and venues extend the engine.",
       "alt": ""
     },
     {

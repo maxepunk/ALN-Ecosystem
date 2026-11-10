@@ -1,6 +1,6 @@
-// Smoke test for the owner's site, version 10 (site/2026-11-01-site-plan-v2.md; version 10's Decisions page in
-// site/v9/build-log-v10.md): load each of the six pages as a browser would see it, at 1100 and 400 pixels wide, in
-// light and in dark, and fail on:
+// Smoke test for the owner's site, version 11 (site/2026-11-01-site-plan-v2.md; version 10's Decisions page in
+// site/v9/build-log-v10.md; version 11's additions in site/v9/apply-log-v11-builder.md): load each of the six pages
+// as a browser would see it, at 1100 and 400 pixels wide, in light and in dark, and fail on:
 //   - any console error or page error;
 //   - document.documentElement.scrollWidth wider than the viewport (the body scrolling sideways);
 //   - any .dia-svg box without its svg;
@@ -8,7 +8,8 @@
 //   - any link to version 8's retired pages (promises.html, parts.html, flaws.html);
 //   - a section of the page's own anchors (SECTIONS below) missing, without a visible heading, or not reached when
 //     its anchor is followed (version 10: the Decisions page's readings, calls and review, every call's own
-//     anchor, and the change log's letters table);
+//     anchor, and the change log's letters table; version 11: the box on what the panel waits for, the answer
+//     sheet, and the change log's table of version 10's letters);
 //   - an inline tag (a span.tag that opens a paragraph) left alone on its line, with its text below it.
 // It saves one full-page screenshot per page, width and theme: <shotsDir>/<page>-<width>-<theme>.png (24 files).
 //
@@ -29,9 +30,9 @@ const WIDTHS = [1100, 400];
 // The anchors each page must carry, each with a visible heading, and that following them reaches. "call-*" stands
 // for every call's own anchor on Decisions.
 const SECTIONS = {
-  decisions: ['open', 'readings', 'calls', 'review', 'design-rounds', 'decided', 'call-*'],
+  decisions: ['waits-for', 'open', 'answers', 'readings', 'calls', 'review', 'design-rounds', 'decided', 'call-*'],
   requirements: ['promises', 'qualities', 'growth', 'rules'],
-  changes: ['versions', 'letters', 'jargon', 'numbers', 'sequence'],
+  changes: ['versions', 'letters-v10', 'letters', 'jargon', 'numbers', 'sequence'],
 };
 const THEMES = ['light', 'dark'];
 const BASE_RESET = ':root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);'

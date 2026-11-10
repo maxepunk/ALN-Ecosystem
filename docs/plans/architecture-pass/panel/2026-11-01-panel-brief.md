@@ -79,7 +79,13 @@ Each architect gets one prepared folder and nothing else:
   settled it or the agent proposes it. Where a target or a case notes
   how today's engine behaves, the note sits in a field of its own,
   “today”. The folder leaves that field out, because today's engine is
-  withheld from this round. The second round gets the notes back.
+  withheld from this round. The second round gets the notes back. Of
+  each promise the folder holds who counts on it and when, what they
+  count on and the long-term goal. The other lists under a promise
+  (where today's engine falls short, what a standalone game does today,
+  what the planned capabilities need from it, the test situations taken
+  from the shows) carry facts about today's engine and wait for the
+  second round.
 - **The setting**, as facts. ALN's kit is the first production's
   hardware, given as facts and not as the engine's requirements (the
   decision “The engine is hardware-flexible; the roadmap sets the
@@ -225,7 +231,8 @@ After the blind round, each architect also gets:
 - **Today's engine, as facts:** a fact sheet of what runs where, in
   what language, and what works today; the code with its component
   guides, to read but not change; and the requirements' notes on
-  today's behaviour, which the blind round's folder left out.
+  today's behaviour and the lists under each promise that describe
+  today's engine, which the blind round's folder left out.
 - **The sixteen design flaws, as test situations:** what goes wrong at
   a show, the problems behind it and where in today's code they sit,
   with no fix attached.
@@ -249,9 +256,9 @@ and where they did not, the trial runs worth doing before choosing, and
 the questions only the owner can answer. Where an architect would
 merge, reorder or add a decision, the synthesis says so, and the change
 to the owner's list comes to the owner as a question. A checker reads
-the synthesis against the proposals, refute-by-default, and corrects
-anything it misstates or leaves out. The synthesis becomes the agenda
-of the first design round.
+the synthesis against the proposals and corrects anything it misstates
+or leaves out. The synthesis becomes the agenda of the first design
+round.
 
 ## What is withheld, and how
 
@@ -260,19 +267,22 @@ of the agent running the pass, among them its options and
 recommendations on the owner's open questions; the earlier candidate
 (it enters the second round as one more proposal); the earlier lists of
 design choices; today's engine and its review, with the requirements'
-notes on today's behaviour. Withheld from both rounds: the reasoning of
-the agent running the pass, the review's conclusions about fixes, and
-the candidate's table of alternatives.
+notes on today's behaviour and the lists under each promise that
+describe today's engine. Withheld from both rounds: the reasoning of the
+agent running the pass, the review's conclusions about fixes, and the
+candidate's table of alternatives.
 
 How: the prepared folders are built by a script from the sources (the
 requirements files, the standing rules, the decision record). For the
 blind round the script leaves out the field “today” of every target and
-case, and writes each open question as its “What it decides” paragraph
-only. Each architect is told to read only its folder, plus the code in
-the second round, and never the planning folder. Nothing technical
-stops an agent from opening a file it was told to leave alone, so the
-synthesis's checker also looks for traces of withheld material in every
-proposal.
+case and the lists under each promise that describe today's engine, and
+writes each open question as its “What it decides” paragraph only.
+Where a requirement's text points to another requirement, the script
+writes that requirement's title in its place. Each architect is told to
+read only its folder, plus the code in the second round, and never the
+planning documents. Nothing technical stops an agent from opening a file
+it was told to leave alone, so the synthesis's checker also looks for
+traces of withheld material in every proposal.
 
 ## What the owner gets back
 
@@ -287,7 +297,8 @@ repository in full.
 
 About eight agents: three in the blind round, three in the second round,
 the synthesis and its checker. It takes two to three hours and several
-million tokens, about the size of one of the larger site workflows.
+million tokens, about as much as one of the larger runs that built the
+owner's site.
 
 ## The owner's question, and the agent's calls
 
@@ -311,11 +322,11 @@ drives, had no decision of its own. If the owner says no, the list
 stays at six and the room's state stays part of the first decision. The
 owner can also give the panel the binding decisions and no agenda.
 
-**The three lenses** (the agent's call, told to the owner, who can
-overrule it). Three architects: state, authority and keeping the game
-going through a failure, with how the engine drives outside programs;
-growth and extension, naming hardware flexibility, both kinds of
-extension and where an add-on runs; living with it. Why: the owner
+**The panel's three lenses** (the agent's call, told to the owner, who
+can overrule it). Three architects: state, authority and keeping the
+game going through a failure, with how the engine drives outside
+programs; growth and extension, naming hardware flexibility, both kinds
+of extension and where an add-on runs; living with it. Why: the owner
 called pausing a game for a failure “the worst possible scenario”, so
 the state lens names keeping the game going, with the decision “No
 technical failure stops a game” as its first test. Each architect is
@@ -336,7 +347,7 @@ on 2026-11-01. A panel that starts from them answers inside that
 division. One more step for each architect shows whether three
 outsiders would divide it the same way.
 
-**The second round reads the code** (the agent's call, told to the
+**The second round reads today's code** (the agent's call, told to the
 owner, who can overrule it): a fact sheet first, then the code and its
 component guides, to read only. The owner's decision gives the second
 round today's engine as facts and does not say in what form; the form

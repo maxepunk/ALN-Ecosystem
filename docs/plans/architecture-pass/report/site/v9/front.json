@@ -6,7 +6,7 @@
       {"text": "The hardening block's finished pieces: the equipment kinds a pack can ask for and a profile can name, the code marking equipment not installed tonight, and the smallest test set-up; the rest waits for the build half."},
       {"text": "At the definition session of 2026-10-30 you approved the plan for the architecture pass and retired the truth sweep, which was to prove every screen tells the truth; the build half takes over its purpose."},
       {"text": "The review of today's code named sixteen design flaws."},
-      {"text": "On 2026-11-02 your comments on seven open points became five decisions, which head [[page:engine#lately|Decided lately]], and the Decisions page was reworked to hold only your decisions."},
+      {"text": "On 2026-11-02 your comments on seven open points became the decisions that head [[page:engine#lately|Decided lately]], and the Decisions page was reworked to hold only your decisions."},
       {"text": "Versions 8 to 10 of your site were published; version 11 applies the independent review you asked for before answering version 10's questions."}
     ],
     "now": [
@@ -256,7 +256,7 @@
       "line": "A director, with the game's own developer, extends the after-game telling through the night's record, a published file read outside the engine; what reaches the players stays the game's business: [[ex:EX19]]."
     }
   ],
-  "worldKey": "Every message and file between the engine and a device, a tool or a screen crosses one line, the published protocol; the outside programs sit beyond the engine. At a show nobody touches the running engine, and a stranger on the venue wifi gets nothing. Between events the operator installs packs, picks one and swaps machines; a developer changes the code and tests it through the protocol from the test bench. The picture shows the engine's edge, not its inside; the devices are ALN's.",
+  "worldKey": "Every message and file between the engine and a device, a tool or a screen crosses one line, the published protocol; the outside programs sit beyond the engine. At a show nobody touches the running engine, and a stranger on the venue wifi gets nothing. Between events the operator installs packs, picks one and updates the engine; a developer changes the code and tests it through the protocol from the test bench. The picture shows the engine's edge, not its inside; the devices are ALN's.",
   "decidedLately": [
     {
       "slug": "no-technical-failure-stops-a-game",
@@ -340,7 +340,7 @@
   "words": [
     {
       "term": "The engine",
-      "def": "All the software that is the same for every game: the program on the show machine, the GM's app, the player scanners, the screens and the design tool. A standalone game runs with no show machine; it still runs the engine's own software on its devices.",
+      "def": "All the software that is the same for every game: the program on the show machine, the GM's app, the player scanners, the screens and the design tool. A standalone game runs with no show machine; it still runs the engine's own software on its devices. Where a page sets the engine beside a device, as in “a tablet cut off from the engine” or “the engine's edge”, it means the program on the show machine.",
       "group": "page"
     },
     {
@@ -430,7 +430,7 @@
     },
     {
       "term": "Part",
-      "def": "One of the 17 pieces of the earlier candidate. It runs on the engine or on a device.",
+      "def": "One of the 17 pieces of the earlier candidate. It runs on the show machine or on a device.",
       "group": "page"
     },
     {
@@ -607,7 +607,7 @@
   "intros": {
     "requirements": [
       "These are the engine's requirements, for you to review: the ten promises, what each person can count on at a given moment; the quality targets, how well the engine must work, each told as a situation that can be tested; the extension cases, how the platform must grow and who does the growing; and the standing rules from the roadmap. The panel and the design rounds design against them. They say what is needed, never how to build it.",
-      "Each promise reads the same way. Who and when name the people and the moment. What they count on is the promise in full; what already exists for it today is on [[page:today]]. The long-term goal is where the design is heading; a goal marked open is left to the design rounds. The quality targets and extension cases that serve the promise follow. Where today's engine falls short lists the design flaws that break it, each a situation on [[page:today]]. In a standalone game says what changes with no show machine. Folded under the entry are what the planned capabilities need from it and the test situations taken from the shows. The test summary names which of the architecture pass's nine questions the promise answers; the pass asks those of the whole engine, and they are not the questions on Decisions. The promises are offered for review on [[page:decisions]]; their wording questions are the agent's calls there, each with its reason. Each quality target gives what happens and what must then be true, the number it needs, sorted by the agent running the pass as the engine's requirement or limit, a production's setting (ALN's first) or a technical default, the promises it serves, whether it is settled, partly settled or proposed, and why it matters. Each extension case names who extends, which of the two kinds of extension it is or that it is neither, what it goes through, what it must not need, when, the promises it serves, whether it is settled, partly settled or proposed, and why. Where a target or a case notes how today's engine behaves, the note sits under its own tag, “Today”; the panel's folder leaves it out.",
+      "Each promise reads the same way. Who and when name the people and the moment. What they count on is the promise in full; what already exists for it today is on [[page:today]]. The long-term goal is where the design is heading; a goal marked open is left to the design rounds. The quality targets and extension cases that serve the promise follow. Where today's engine falls short lists the design flaws that break it, each a situation on [[page:today]]. In a standalone game says what changes with no show machine. Folded under the entry are what the planned capabilities need from it and the test situations taken from the shows. The test summary names which of the architecture pass's nine questions the promise answers; the pass asks those of the whole engine, and they are not the questions on Decisions. The promises are offered for review on [[page:decisions]]; their wording questions are the agent's calls there, each with its reason. Each quality target gives what happens and what must then be true, the number it needs, sorted by the agent running the pass as the engine's requirement or limit, a production's setting (ALN's first) or a technical default, the promises it serves, whether it is settled, partly settled or proposed, and why it matters. Each extension case names who extends, which of the two kinds of extension it is or that it is neither, what it goes through, what it must not need, when, the promises it serves, whether it is settled, partly settled or proposed, and why. Where a target or a case notes how today's engine behaves, the note sits under its own tag, “Today”; the panel's blind round does not get it, and the second round does.",
       "Nothing on this page is a design. Where a target or a case rests on a decision you made or a roadmap section you ratified, it says so; where it is proposed, you can flag it on [[page:decisions]], where the numbers are sorted in one list under the review and the agent's calls are listed with their reasons. A question the architecture pass asks, or a test situation from the shows, does not settle a target by itself; a target resting only on those is marked proposed. The roadmap's names used below: the hardening block (the engine checks itself and restarts what crashes), the capture block (capturing the roster, notes and photos during play), the preview block (the design tool's first pages, where a designer tries a change on a trial copy), the depth-and-close block (the rest of the design tool's pages), the operations era and release block (running more kits and games, and public release), and the readiness states show-ready (swapping the new machine in for a show becomes your live choice), previewable (a designer friend can try the tool) and adoptable (a stranger can stand the platform up from the guide)."
     ],
     "design": [

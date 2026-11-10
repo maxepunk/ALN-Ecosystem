@@ -1,14 +1,23 @@
-"""Build the owner's site, version 10: six linked pages in the proactive frame (2026-11-02).
+"""Build the owner's site, version 11: six linked pages in the proactive frame (2026-11-10).
 
 Plan: site/2026-11-01-site-plan-v2.md (the pages, anchors, markers and checks of version 9); where it is silent,
 site/2026-11-01-site-plan.md sections 2, 4, 5 and 6 (the frame, the design system, the diagram pipeline).
 Version 10 (2026-11-02) renders the reworked Decisions page ("The Decisions page holds only your decisions" in the
-decision record): ten questions in four groups, each group with an intro and each option with what it means and what
-it costs; then the readings of the owner's words to confirm, the agent's calls with their reasons (the [[call:]]
-marker links one) and the requirements for review. It also shows each quality target's number with its sort
-(numberKind) and each extension case's kind.
-Logs: site/v9/build-log.md (version 9: where each version 8 section went, the jargon rows applied, the checks) and
-site/v9/build-log-v10.md (version 10's changes and checks).
+decision record): the questions in their groups, each group with an intro and each option with what it means and
+what it costs; then the readings of the owner's words to confirm, the agent's calls with their reasons (the
+[[call:]] marker links one) and the requirements for review. It also shows each quality target's number with its
+sort (numberKind) and each extension case's kind.
+Version 11 (2026-11-10) follows the independent review the owner asked for before answering
+(site/checks/v10-review.md). Each question says when to answer it (neededBy). A box before the questions says what
+the panel waits for (waitsFor). An answer sheet closes "Open now" (answerSheet). A group may hold no question.
+Requirements shows a target's or a case's note on today's engine under its own tag (today). The change log says
+where version 10's ten questions went (lettersV10). The counts of questions, readings, calls, targets and cases
+come from the data, and where an overlay writes one of them in words the build checks it (COUNT_PHRASES). A link
+to a question shows that question's exact title on every page, never its letter. The sources are checked before
+any page is drawn (check_sources), so a marker to a question or a call that left the list fails with every such
+place listed; the pages are then checked as drawn (check_v11).
+Logs: site/v9/build-log.md (version 9: where each version 8 section went, the jargon rows applied, the checks),
+site/v9/build-log-v10.md (version 10's changes and checks) and site/v9/apply-log-v11-builder.md (version 11's).
 
 Inputs: the page data in this folder (2026-10-31-cause-cards.json, 2026-10-31-engine-jobs.json,
         2026-10-31-standalone-lines.json, 2026-11-01-engine-shape.json), the parity table in
@@ -119,7 +128,7 @@ TENS_WORD = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', '
 
 
 def num_word(n):
-    """A count as a word, 0 to 99 (the pages spell their counts: "Forty-three quality targets")."""
+    """A count as a word, 0 to 99 (the pages spell their counts, each taken from the data)."""
     if n < len(NUM_WORD):
         return NUM_WORD[n]
     if n < 100:
@@ -213,10 +222,12 @@ SET_ASIDE = [
 # Cells of the parity table restated in plain words (rows F138 to F156; rows 12 and 14 keep version 8's entries
 # for the ids the site never shows). Row number -> {cell index: text}.
 PARITY_WORDS = {
-    '1': {1: 'The web address it is opened from',
+    '1': {0: 'How a game with no show machine is chosen',
+          1: 'The web address it is opened from',
           3: 'A declared standalone setting in the scanner\'s settings file that skips Wi-Fi, the check-in with the engine and the queue of saved scans'},
     '2': {2: 'The settings check wants a Wi-Fi name, the engine\'s address and a 3-digit team id, but a failed check only writes a note; the device starts and scans from its memory card'},
-    '3': {1: 'Its own copy of the token list', 2: 'The token list on its memory card, written only when the engine sends it'},
+    '3': {1: 'Its own copy of the token list', 2: 'The token list on its memory card, written only when the engine sends it',
+          3: 'A way to put the pack\'s tokens on the card with no show machine'},
     '4': {1: 'The pack\'s own format', 2: 'A different format, the list one level deeper',
           3: 'Read the pack\'s format, or convert it when loading the card'},
     '6': {1: None,   # PARITY_PREFIX: the cell's start only
@@ -231,7 +242,9 @@ PARITY_WORDS = {
            3: 'Read the sound the token names, and accept both sound formats'},
     '12': {1: '"New Memory!" or "Memory Revisited", kept in the phone\'s browser for good',
            3: 'Optional. One design for the situation “Tablets and phones decide facts the engine owns” takes the seen mark away from player devices instead.'},
-    '13': {3: 'Neither is right. The agent\'s call “Exposed evidence and video with no engine” sets the same default for both: the token\'s picture with a plain note, never an error'},
+    # Version 11: the call that set this default is gone; it is one of three proposals in the introduction to the
+    # standalone group on Decisions. This cell carries a marker, so parity_html() draws it with rich().
+    '13': {3: 'Neither is right. The agent proposes the same for both: the token\'s picture with a plain note, never an error. It is one of three proposals in the introduction to “[[page:decisions#g-standalone-games|Standalone games]]” on Decisions, for you to flag'},
     '14': {2: 'One line in the queue on the memory card, at most 100, oldest dropped',
            3: 'Decide what a standalone record of player scans is before matching either side.'},
     '15': {2: 'A dummy date in 1970, because it never gets the time from the network'},
@@ -761,8 +774,9 @@ FILE = {k: f for k, f, _ in PAGES}
 PAGE_NAME = {k: n for k, _, n in PAGES}
 RETIRED_MARKER_PAGES = ('promises', 'parts', 'flaws')
 SITE_NAME = 'What the Engine Promises'
+STATUS_DATE = '2026-11-10'   # the newest version's date in changes.json; the build checks the two agree
 STATUS_LINE = ('Architecture pass, design half: the requirements. Nothing in the design is decided unless a page '
-               'says so. Updated 2026-11-02.')
+               f'says so. Updated {STATUS_DATE}.')
 
 PROMISE_ANCHOR = {'J1': 'designers-game', 'J2': 'one-game', 'J3': 'every-tap', 'J4': 'the-room',
                   'J5': 'lifecycle-buttons', 'J6': 'change-a-value', 'J7': 'each-person', 'J8': 'the-venue',
@@ -783,6 +797,37 @@ QT = {}             # quality target id -> the target
 EX = {}             # extension case id -> the case
 DEC = {}            # decision slug -> its decided entry
 CALLS = {}          # call slug -> the agent's call (version 10: decisions.json "calls")
+
+# Version 11: version 10's ten questions, by the letters and titles they carried then. History: the change log's
+# table lettersV10 must hold exactly these ten, in this order. Two left the list (REMOVED_QUESTIONS), and no page
+# but the change log may name them.
+V10_QUESTIONS = {
+    'A': 'A GM tablet cut off from the engine',
+    'B': 'The show machine fails mid-game',
+    'C': 'Release day: what must update together, and how long older devices work',
+    'D': 'What a game\'s maker may build inside the pack',
+    'E': 'How an extension for all games reaches a production',
+    'F': 'Where the trial copy runs while a show runs',
+    'G': 'Which standalone games the engine must run',
+    'H': 'What a standalone game gives up, and what it keeps',
+    'I': 'Which hardware the first new engine requires, and what it must allow replacing',
+    'J': 'What the panel gets in its blind round',
+}
+REMOVED_QUESTIONS = [V10_QUESTIONS['H'], V10_QUESTIONS['I']]
+# The calls version 11 took off the list: three whose content stays in the review's list of numbers, one whose
+# content became three proposals in the standalone group's introduction, and three merged into one call. A marker
+# to one of them fails the build, and no page but the change log may show one of these titles.
+REMOVED_CALL_TITLES = [
+    'The program watcher\'s retries',
+    'How long before a screen says the engine is silent',
+    'The show machine\'s limits',
+    'Exposed evidence and video with no engine',
+    'The venue promise stays one',
+    'Proof and release stay one promise',
+    'The route for equipment state is named in neither promise',
+]
+REMOVED_LETTERS = set()   # version 10's letters that no question carries now; filled by load()
+REMOVED_CALLS = set()     # the slugs of REMOVED_CALL_TITLES; filled by load()
 
 
 def slug(text):
@@ -856,16 +901,14 @@ def flaw_list(ids):
     return '; '.join(flaw_a(i) for i in ids)
 
 
-def q_text(key, capital):
-    return f'{"Question" if capital else "question"} {key}'
-
-
-def q_a(key, capital=False, text=None):
+def q_a(key, text=None):
+    """A link to a question on Decisions. Version 11: on every page the link shows the question's exact title; a
+    letter is never a link's text, because letters move from one version to the next."""
     if key not in QUESTIONS:
-        raise SystemExit(f'unknown question {key}')
-    if text is None and CUR not in ('decisions', 'changes'):
-        text = Q_TITLES[key]   # questions carry letters only on Decisions (and as history on the change log)
-    return f'<a href="{href("decisions", QUESTIONS[key])}">{e(text if text is not None else q_text(key, capital))}</a>'
+        raise SystemExit(f'unknown question {key}' + (', a letter that left the list' if key in REMOVED_LETTERS else ''))
+    if text is not None and text != Q_TITLES[key]:
+        raise SystemExit(f'a link to question {key} is labelled "{text}", not its title "{Q_TITLES[key]}"')
+    return f'<a href="{href("decisions", QUESTIONS[key])}">{e(Q_TITLES[key])}</a>'
 
 
 def qt_a(qid, text=None):
@@ -890,13 +933,16 @@ def call_a(s, text=None):
     """An agent's call by its title, linked to its entry on Decisions (version 10; the slug is the title's, as for
     a decision)."""
     if s not in CALLS:
-        raise SystemExit(f'unknown call [[call:{s}]]')
+        raise SystemExit(f'unknown call [[call:{s}]]' + (', a call that left the list' if s in REMOVED_CALLS else ''))
     return f'<a href="{href("decisions", "call-" + s)}">{e(text if text is not None else CALLS[s]["title"])}</a>'
 
 
 def page_a(name, text=None):
-    """A page by its name; "page#anchor" lands on that id of the page (the check finds every id)."""
+    """A page by its name; "page#anchor" lands on that id of the page (the check finds every id). A link to a
+    question's anchor on Decisions goes through q_a(), so its label is the question's title or the build fails."""
     name, _, anchor = name.partition('#')
+    if name == 'decisions' and re.fullmatch(r'q-[a-z]', anchor):
+        return q_a(anchor[2:].upper(), text if text is not None else PAGE_NAME[name])
     if name in RETIRED_MARKER_PAGES:
         raise SystemExit(f'retired marker [[page:{name}]]: the {name} page is gone in version 9')
     if name not in FILE:
@@ -920,9 +966,7 @@ def rich(text):
         elif kind == 'flaw':
             out.append(flaw_a(key, label))
         elif kind == 'q':
-            before = text[:m.start()].rstrip()
-            capital = before == '' or before[-1] in '.!?:'
-            out.append(q_a(key, capital, label))
+            out.append(q_a(key, label))
         elif kind == 'page':
             out.append(page_a(key, label))
         elif kind == 'qt':
@@ -1035,18 +1079,20 @@ WORDS_INTRO = ('The site\'s own words come first, then the names of the steps of
 LEGEND = ('<div class="legend"><span><span class="sw"></span>where it goes wrong</span>'
           '<span><span class="sw owner"></span>the one place that would own the fact</span></div>')
 STANDALONE_P1 = ('The decision “[[dec:standalone-games-declared-never-mixed]]” adds a requirement: a whole game can run '
-                 'with no engine, as a choice the game declares and never mixed, for a room where a network connection '
-                 'is not feasible, or where other logistics make it better to use only GM scanners, player scanners or '
-                 'both. Which of those shapes '
-                 'the engine must run is your question “Which standalone games the engine must run” on '
-                 '[[page:decisions#q-g|Decisions]]. Today a standalone game is the GM tablet and the player scanners, '
+                 'with no show machine, as a choice the game declares and never mixed, for a room where a network '
+                 'connection is not feasible, or where other logistics make it better to use only GM scanners, player '
+                 'scanners or both. Whether one such game may use more than one GM tablet, whether its devices must '
+                 'play one shared game, and whether its record must hold what the players found are your question '
+                 '“[[page:decisions#q-h|Which standalone games the engine must run]]”. That player scanners alone '
+                 'may play one is among the [[page:decisions#readings|readings for you to confirm]]. '
+                 'Today a standalone game is the GM tablet and the player scanners, '
                  'each working alone. The GM tablet decides everything about the game (used tokens, scores, teams, the '
                  'game\'s start, pause and end) from its own hand-kept copies of the engine\'s rules. Each player '
                  'scanner decides only whether a token is known, and the phone also whether it has seen that token '
                  'before. No channel joins the player scanners to the tablet, and nothing records what players found.')
 STANDALONE_P2 = ('Four design flaws cause no problem in a standalone game, four apply in part and eight in full. Each '
                  'promise and each situation says what changes. The two biggest gaps: nothing says that a game is '
-                 'standalone, and every device shows the missing engine as a failure ("Offline" on the phone all night, '
+                 'standalone, and every device shows the missing show machine as a failure ("Offline" on the phone all night, '
                  'red "DISCONNECTED" on the hardware scanner, "VIDEO UNAVAILABLE, Rescan later" for a video that can '
                  'never play).')   # row F135
 PARITY_NOTE = ('Your parity rule says the two player scanners match wherever possible, and your words of 2026-11-02, '
@@ -1055,7 +1101,7 @@ PARITY_NOTE = ('Your parity rule says the two player scanners match wherever pos
                'a proposal, not decided. Shaded rows are ones where both are weak, or the phone\'s scanner is the weaker '
                'side, so matching it would copy a gap.')
 EVIDENCE_INTRO = ('{total_all} problems came from the records of the show machine in use now, the review\'s survey of today\'s code and, for one, the '
-                  'survey of ALN\'s after-game tools; {total} of them sit under the sixteen situations above, and '
+                  'survey of ALN\'s after-game tools; {total} of them sit under the {n_sit} situations above, and '
                   '{aside_n} were set aside, each with its reason below. The review of standalone games added {sa_all} more: '
                   '{sa_cards} placed under the same situations, and {sa_n1} under the seventeenth, '
                   '[[flaw:N1]].')   # row F157
@@ -1083,8 +1129,8 @@ CARD_GUIDE = ('Each card tells one moment at a show and why it happens, then wha
               'problems and the code they live in.')
 GRID_NOTE = 'A dot means the situation\'s problems sit in that part of the engine.'
 LATER_INTRO = ('Inside the design rounds come these later choices. They are listed here so nothing arrives as a surprise. '
-               'The six with a row in the earlier candidate\'s alternatives table on [[page:design]] link to it, where '
-               'both designs and their costs are compared.')   # rows D45 and D46, as plan v2 frames them
+               'The {n} with a row in the earlier candidate\'s alternatives table on [[page:design]] link to it, where '
+               'both designs and their costs are compared.')   # rows D45 and D46, as plan v2 frames them; {n} from LATER_ALT
 DECIDED_HISTORY = ('Each decision is written as it stands today, with its dated history in the decision record. The '
                    '[[page:changes#numbers|change log]] maps each old number to its title.')
 TODAY_GROUP_TAG = 'Mainly touches'
@@ -1100,8 +1146,9 @@ FOOTERS = {
     'decisions': [
         'Built from the decision record (by topic, with the old numbers mapped to titles); your comments of '
         '2026-11-02 and the agent\'s sorting that day of version 9\'s eighteen questions into your questions, the '
-        'readings of your words to confirm, the agent\'s calls and the requirements for review; the questions of version '
-        '7, the earlier one-page report; the quality targets and the extension cases (2026-11-01, revised 2026-11-02); the earlier '
+        'readings of your words to confirm, the agent\'s calls and the requirements for review; the independent '
+        'review you asked for before answering, with its checks and the agent\'s rulings on it (2026-11-10); the '
+        'questions of version 7, the earlier one-page report; the quality targets and the extension cases (2026-11-01, revised 2026-11-02); the earlier '
         'candidate (2026-11-01, its alternatives and the choices it leaves to the design rounds); the review that '
         'named the design flaws (2026-10-30); the review of standalone games (2026-10-31); the survey of ALN\'s '
         'after-game tools (2026-11-01); the promises (2026-10-31); and the panel\'s brief (2026-11-01).',
@@ -1110,7 +1157,8 @@ FOOTERS = {
         'Built from the promises (2026-10-31, revised 2026-11-02 for your decisions of that day; a check confirmed 171 '
         'of its statements and corrected 53), the quality targets and the extension cases (2026-11-01, revised '
         '2026-11-02 for your decisions of that day, each with its own check), the roadmap\'s standing constraints, and '
-        'the review of standalone games (2026-10-31).',
+        'the review of standalone games (2026-10-31). The promises, the quality targets and the extension cases '
+        'were revised again on 2026-11-10, after the independent review you asked for.',
         'Where today\'s engine falls short comes from the review that named the design flaws (2026-10-30); what the '
         'planned capabilities need comes from the list of planned capabilities drawn from the roadmap you approved.',
     ],
@@ -1118,7 +1166,8 @@ FOOTERS = {
         'Built from the decision record (the design half\'s order, the published protocol, the test bench, the test '
         'rig and the after-game boundary), the quality targets and the extension cases (2026-11-01), and the '
         'earlier candidate (2026-11-01) with the four studies of how the promises fit together that it was drawn '
-        'from, and its check: its picture, qualities, parts, walkthroughs, devices, tangles and alternatives.',
+        'from, and its check: its picture, qualities, parts, walkthroughs, devices, tangles and alternatives. The '
+        'decisions ahead and the panel\'s brief were revised on 2026-11-10, after the independent review you asked for.',
     ],
     'today': [
         'Built from the review that named the design flaws (2026-10-30) and its two checks; the review of standalone '
@@ -1135,8 +1184,9 @@ FOOTERS = {
         'totals), the questions of version 7 (E, F and G, after the candidate shape), the survey of ALN\'s after-game '
         'tools (2026-11-01), the jargon check of 2026-11-01, the glossary, the roadmap (the blocks, the older phase '
         'names and the test stages), the plan for the architecture pass (its old steps), the quality targets and the '
-        'extension cases (2026-11-01, the counts), the panel\'s brief (2026-11-01), and the agent\'s sorting of '
-        'version 9\'s eighteen questions (2026-11-02: where each letter went).',
+        'extension cases (2026-11-01, the counts), the panel\'s brief (2026-11-01), the agent\'s sorting of '
+        'version 9\'s eighteen questions (2026-11-02: where each letter went), and the independent review you asked '
+        'for, with the agent\'s rulings on it (2026-11-10: where each of version 10\'s ten questions went).',
     ],
 }
 
@@ -1230,6 +1280,15 @@ section > * { min-width: 0; }
 .q h4 .letter { color: var(--accent); margin-right: 4px; }
 .q ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 15px; }
 .q .block { display: grid; gap: 4px; }
+.q .needed { font-size: 15px; max-width: 86ch; }
+.q .needed .tag { margin-right: 4px; color: var(--accent); }
+.q .needed.n-first { font-weight: 600; }
+.q .needed.n-first .tag { color: var(--warm); }
+.waits { border-left: 4px solid var(--warm); max-width: 92ch; }
+.waits h2 { font-size: 20px; }
+ul.answer-sheet { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; max-width: 92ch; }
+ul.answer-sheet li { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; display: grid; gap: 3px; font-size: 15px; }
+ul.answer-sheet li strong { font-weight: 600; }
 .q ul.options { list-style: none; padding-left: 0; gap: 10px; }
 .q ul.options li { border-left: 3px solid var(--line); padding-left: 12px; display: grid; gap: 4px; }
 .q ul.options .olabel { font-weight: 600; }
@@ -1288,6 +1347,7 @@ ul.rounds li a.round { font-weight: 600; }
 .req .numset .small { font-size: 13.5px; color: var(--muted); }
 .req .state { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
 .req .state .small { font-size: 13.5px; color: var(--muted); flex: 1 1 20em; }
+.req .today-note { border-top: 1px dashed var(--line-strong); padding-top: 8px; color: var(--muted); }
 .served { display: grid; gap: 6px; }
 .served ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 15px; }
 .rule-group { display: grid; gap: 10px; }
@@ -1441,7 +1501,7 @@ def shell(page, title, body, css, open_n):
 WORLD_CAPTION = 'The people and their devices, the published protocol, the engine, and the outside programs it drives.'
 WORLD_PEOPLE = {   # name -> (wide sublines, narrow sublines)
     'Designer': (['makes the game in the design tool,', 'with content from Notion today'], ['the design tool,', 'content from Notion']),
-    'Operator': (['you, or a future one: installs and picks', 'packs; swaps machines between events'], ['installs and picks packs,', 'swaps machines']),
+    'Operator': (['you, or a future one: installs and picks', 'packs; updates the engine between events'], ['installs and picks packs,', 'updates the engine']),
     'Venue technician': (["fits the venue: tonight's kit"], ['the venue profile']),
     'Director': (['tells the night afterwards,', "in the Director's console"], ["Director's console"]),
     'GM': (['runs the game on the GM tablets'], ['GM tablets']),
@@ -1718,17 +1778,52 @@ ALT_TITLE_START = ['Getting state onto screens', 'The rules', 'Equipment', 'The 
 # marks a call only the owner can make; "Recommendation" is the agent's advice.
 REC_KIND = {'Recommendation': 'advice', 'What we need from you': 'need'}
 # The builder's own lead-ins to the three sections version 10 adds below the questions (they address the owner).
-READINGS_LEAD = ('Each of these is the agent\'s reading of your words, not something you said. Nothing is built on a '
-                 'reading until you confirm it.')
+# Version 11: the wordings the independent review's merged report gives (site/checks/v10-review.md, part (b) and
+# part (e) item 5). The reading already inside a requirement is named by its marker, so its title follows the data.
+READINGS_LEAD = ('Each of these is the agent\'s reading of your words or of how ALN runs today, not something you '
+                 'said. Answer each with yes or no. A yes makes it your decision, and it goes to the panel as one. '
+                 'A no takes it out of the requirements and the panel\'s brief before the panel runs. One you '
+                 'leave unanswered goes to the panel as an open question. One reading is already inside a '
+                 'requirement\'s test: that a device going down includes the show machine is in the target '
+                 '“[[qt:QT44]]”, and it goes to the panel marked as the agent\'s reading until you answer. Three '
+                 'more are named in a requirement, each as a reading for you to confirm.')
 CALLS_LEAD = ('By your ruling these choices are the agent\'s to make, so the agent running the pass made them. Each '
-              'stands unless you overrule it by its title in the chat.')
+              'stands unless you overrule it by its title in the chat. You do not need to answer these. If you say '
+              'nothing, each stands.')
 REVIEW_LEAD = ('The requirements the panel and the design rounds design against, each to read on '
-               '[[page:requirements]]. Flag in the chat anything wrong or missing.')
+               '[[page:requirements]]. Flag in the chat anything wrong or missing. When you have read them, say '
+               '“reviewed” in the chat. The panel does not run before that. If you flag nothing, the requirements go '
+               'to the panel as they stand, each with its status. Your OK of 2026-11-01 said the panel runs after you '
+               'confirm the requirements. The agent reads that as after you review them.')
+# Version 11: when to answer a question (decisions.json neededBy). Each line starts with one of the three marks the
+# page's introduction names; the mark picks the line's style.
+NEEDED_MARKS = {'Needed before the panel': 'first', 'Best answered now': 'now', 'Can wait for the panel': 'wait'}
+NEEDED_TAG = 'When to answer'
+ANSWERS_TITLE = 'Your answers, in one place'
+# Version 11: the decision the agent proposes to add to the list of decisions ahead. It is put to the owner inside
+# the question on what the panel gets, and it is in no list until the owner says yes. The sentence above the design
+# rounds on Decisions says so, as Design's introduction does; it goes once design.json lists the decision.
+SEVENTH_TITLE = 'How the engine drives the room'
+ROUNDS_SEVENTH = (' A seventh, “' + SEVENTH_TITLE + '”, is proposed. It joins this list only if you say yes under '
+                  '“[[page:decisions#q-i|What the panel gets in its blind round]]”.')
+
+
+def needed_kind(q):
+    """The style of a question's "When to answer" line; a question with no line, or a line that starts with none of
+    the three marks, fails the build."""
+    need = (q.get('neededBy') or '').strip()
+    if not need:
+        raise SystemExit(f'question {q["letter"]} has no neededBy (when to answer it)')
+    for mark, kind in NEEDED_MARKS.items():
+        if need.startswith(mark):
+            return kind
+    raise SystemExit(f'question {q["letter"]}: neededBy starts with none of {list(NEEDED_MARKS)}: {need[:60]}')
 
 
 def question_html(q):
     """A question in version 10's shape: status, letter and title; what it decides; what we know; each option with
-    its label, what it means and what it costs; the recommendation under its recKind."""
+    its label, what it means and what it costs; the recommendation under its recKind. Version 11 adds, under the
+    title, when to answer it."""
     if q['anchor'] != 'q-' + q['letter'].lower():
         raise SystemExit(f'question {q["letter"]}: anchor {q["anchor"]} is not q-<letter>')
     if q['recKind'] not in REC_KIND:
@@ -1749,6 +1844,7 @@ def question_html(q):
     stag = '' if q['status'] == 'open' else f'\n  <p class="stag s-{q["status"]}">{e(STATUS_TEXT[q["status"]])}</p>'
     return f'''<article class="q q-{q["status"]}" id="{q["anchor"]}">{stag}
   <h4><span class="letter">{e(q["letter"])}.</span> {rich(q["title"])}</h4>
+  <p class="needed n-{needed_kind(q)}"><span class="tag">{NEEDED_TAG}</span> {rich(q["neededBy"].strip())}</p>
   <div class="block"><span class="tag">What it decides</span><p>{rich(q["decides"])}</p></div>
   <div class="block"><span class="tag">What it means in practice</span><ul>{li(q["evidence"])}</ul></div>
   <div class="block"><span class="tag">The options</span><ul class="options">{"".join(opts)}</ul></div>
@@ -1794,19 +1890,68 @@ def review_html(d):
     return f'<div class="reviews">{"".join(out)}</div>'
 
 
+def waits_html(d):
+    """Version 11: the box before the questions that says what the panel waits for (decisions.json waitsFor)."""
+    w = d.get('waitsFor') or {}
+    if not (w.get('title') or '').strip() or not [x for x in w.get('text') or [] if x.strip()]:
+        raise SystemExit('decisions.json: waitsFor needs a title and at least one paragraph of text')
+    return f'''<section class="sa-box waits" id="waits-for" aria-labelledby="waits-for-h">
+  <h2 id="waits-for-h">{e(w["title"])}</h2>
+  {paras(w["text"])}
+</section>'''
+
+
+def answer_lines(d):
+    """The answer sheet's lines as (label, form, the question the line answers or None). The first lines are the
+    questions', one each, in the page's order, each labelled "<letter>. <title>"; the rest are the page's other
+    asks."""
+    qs = [q for g in d['groups'] for q in g['questions']]
+    sheet = d.get('answerSheet') or []
+    if len(sheet) < len(qs):
+        raise SystemExit(f'decisions.json: answerSheet has {len(sheet)} lines for {len(qs)} questions')
+    out = []
+    for k, a in enumerate(sheet):
+        label, form = (a.get('label') or '').strip(), (a.get('form') or '').strip()
+        if not label or not form:
+            raise SystemExit(f'decisions.json: answerSheet line {k + 1} lacks its label or its form')
+        q = qs[k] if k < len(qs) else None
+        if q and label != f'{q["letter"]}. {q["title"]}':
+            raise SystemExit(f'decisions.json: answerSheet line {k + 1} is "{label}", not "{q["letter"]}. {q["title"]}"')
+        if not q and re.match(r'[A-Z]\. ', label):
+            raise SystemExit(f'decisions.json: answerSheet line {k + 1}, "{label}", is lettered but answers no question')
+        out.append((label, form, q))
+    return out
+
+
+def answers_html(d):
+    """Version 11: the answer sheet that closes "Open now": each line its label in bold, then the exact form of the
+    answer. A question's line links back to the question by its title; the letter stays outside the link."""
+    rows = []
+    for label, form, q in answer_lines(d):
+        head = f'{e(q["letter"])}. {q_a(q["letter"])}' if q else e(label)
+        rows.append(f'<li><strong>{head}</strong><span>{rich(form)}</span></li>')
+    return f'''<div class="qgroup answers" id="answers">
+    <h3>{e(ANSWERS_TITLE)}</h3>
+    <ul class="answer-sheet">{"".join(rows)}</ul>
+  </div>'''
+
+
 def page_decisions(D):
     d = D['decisions']
+    n_q = sum(len(g['questions']) for g in d['groups'])
     groups = ''.join(f'''<div class="qgroup" id="g-{slug(g["title"])}">
     <h3>{e(g["title"])}</h3>
     <div class="prose qintro">{paras(g["intro"])}</div>
     {"".join(question_html(q) for q in g["questions"])}
   </div>''' for g in d['groups'])
     contents = ''.join([
-        f'<li><a href="{href("decisions", "open")}">Open now</a>: '
+        f'<li><a href="{href("decisions", "waits-for")}">{e(d["waitsFor"]["title"])}</a></li>',
+        f'<li><a href="{href("decisions", "open")}">Open now</a>, {num_word(n_q)} questions: '
         + '; '.join(f'<a href="{href("decisions", "g-" + slug(g["title"]))}">{e(g["title"])}</a>' for g in d['groups'])
         + '</li>',
-        f'<li><a href="{href("decisions", "readings")}">Readings of your words, to confirm</a></li>',
-        f'<li><a href="{href("decisions", "calls")}">The agent\'s calls, for you to overrule</a></li>',
+        f'<li><a href="{href("decisions", "answers")}">{e(ANSWERS_TITLE)}</a></li>',
+        f'<li><a href="{href("decisions", "readings")}">Readings of your words, to confirm</a>, {num_word(len(d["readings"]))}</li>',
+        f'<li><a href="{href("decisions", "calls")}">The agent\'s calls, for you to overrule</a>, {num_word(len(d["calls"]))}</li>',
         f'<li><a href="{href("decisions", "review")}">The requirements, for your review</a></li>',
         f'<li><a href="{href("decisions", "design-rounds")}">Coming in the design rounds</a></li>',
         f'<li><a href="{href("decisions", "decided")}">Decided, by topic</a></li>',
@@ -1835,15 +1980,19 @@ def page_decisions(D):
     <h3>{e(t["topic"])}</h3>
     <ul class="decided-list">{entries}</ul>
   </div>''')
+    seventh = '' if any(a['title'] == SEVENTH_TITLE for a in D['design']['ahead']) else rich(ROUNDS_SEVENTH)
     return f'''<header class="page-head">
   <h1>Decisions</h1>
   <div class="prose">{paras(d["intro"])}</div>
   <nav class="onpage" aria-label="On this page"><span class="tag">On this page</span><ul>{contents}</ul></nav>
 </header>
 
+{waits_html(d)}
+
 <section class="questions" id="open" aria-labelledby="open-h">
   <h2 id="open-h">Open now</h2>
   {groups}
+  {answers_html(d)}
 </section>
 
 <section id="readings" aria-labelledby="readings-h">
@@ -1866,10 +2015,10 @@ def page_decisions(D):
 
 <section id="design-rounds" aria-labelledby="design-rounds-h">
   <h2 id="design-rounds-h">Coming in the design rounds, no answer needed now</h2>
-  <p>The top-level decisions, in the order the design rounds take them, hardest to reverse first. Each links to its entry on {page_a("design")}.</p>
+  <p>The top-level decisions, in the order the design rounds take them, hardest to reverse first. Each links to its entry on {page_a("design")}.{seventh}</p>
   <ul class="rounds">{"".join(rounds)}</ul>
   <h3>Later choices</h3>
-  <p>{rich(LATER_INTRO)}</p>
+  <p>{rich(LATER_INTRO.format(n=num_word(len(LATER_ALT))))}</p>
   <ul class="later">{"".join(later)}</ul>
 </section>
 
@@ -2037,6 +2186,22 @@ def case_kind(x):
     raise SystemExit(f'{x["id"]}: unknown kind {k!r}')
 
 
+TODAY_TAG = 'Today'
+
+
+def today_html(item):
+    """Version 11: how today's engine behaves, where a target or a case notes it (the optional field "today"), under
+    its own tag after the item's other fields. The panel's folder leaves the field out. A note that opens with the
+    word "Today" is shown without it, since the tag already says it (as status_grounds() does for a status)."""
+    if 'today' not in item:
+        return ''
+    t = item['today']
+    if not isinstance(t, str) or not t.strip():
+        raise SystemExit(f'{item["id"]}: "today" is there but empty')
+    shown = cap1(re.sub(r'^Today,? ', '', t.strip()))
+    return f'\n  <p class="today-note"><span class="tag">{TODAY_TAG}</span>{rich(shown)}</p>'
+
+
 def qt_html(t):
     num = ''
     kind = number_kind(t)
@@ -2049,7 +2214,7 @@ def qt_html(t):
   {num}
   <p><span class="tag">Serves</span>{promise_served_list(serves(t))}</p>
   {state_html(t)}
-  <p><span class="tag">Why it matters</span>{rich(t["why"])}</p>
+  <p><span class="tag">Why it matters</span>{rich(t["why"])}</p>{today_html(t)}
 </article>'''
 
 
@@ -2064,7 +2229,7 @@ def ex_html(x):
   <p><span class="tag">When</span>{rich(cap1(x["when"]))}</p>
   <p><span class="tag">Serves</span>{promise_served_list(serves(x))}</p>
   {state_html(x)}
-  <p><span class="tag">Why</span>{rich(x["why"])}</p>
+  <p><span class="tag">Why</span>{rich(x["why"])}</p>{today_html(x)}
 </article>'''
 
 
@@ -2117,7 +2282,7 @@ def page_requirements(D):
 
 <section id="promises" aria-labelledby="promises-h">
   <h2 id="promises-h">The promises</h2>
-  <p class="lead-in">Ten promises, each what a person can count on at a given moment. The table counts the quality targets and extension cases that serve each one.</p>
+  <p class="lead-in">{cap1(num_word(len(jobs)))} promises, each what a person can count on at a given moment. The table counts the quality targets and extension cases that serve each one.</p>
   {glance_html(jobs, D)}
   {"".join(promise_html(j, D) for j in jobs)}
 </section>
@@ -2463,12 +2628,14 @@ def grid_html(cards):
 
 
 def parity_html():
+    def cell(text):   # a cell the builder restated may link a page (PARITY_WORDS row 13); the review's own cells are plain
+        return rich(text) if '[[' in text else e(text)
     body = ''.join(
-        f'<tr{" class=both-weak" if weak else ""}><th scope="row">{e(c[0])}</th><td>{e(c[1])}</td><td>{e(c[2])}</td><td>{e(c[3])}</td></tr>'
+        f'<tr{" class=both-weak" if weak else ""}><th scope="row">{e(c[0])}</th><td>{e(c[1])}</td><td>{e(c[2])}</td><td>{cell(c[3])}</td></tr>'
         for n, c, weak in parity_rows())
     # Row F137.
     return ('<div class="tablewrap"><table class="parity"><thead><tr><th>Behaviour</th>'
-            '<th>Phone\'s scanner, standalone</th><th>Hardware scanner, no engine</th><th>What the hardware scanner would need (a proposal, not decided)</th>'
+            '<th>Phone\'s scanner, standalone</th><th>Hardware scanner, no show machine</th><th>What the hardware scanner would need (a proposal, not decided)</th>'
             f'</tr></thead><tbody>{body}</tbody></table></div>')
 
 
@@ -2515,7 +2682,7 @@ def page_today(D):
     sa_all = len(D['new_findings'])
     sa_n1 = sum(1 for f in D['new_findings'] if f['cause'].startswith('N1'))
     intro = EVIDENCE_INTRO.format(total_all=total + aside_n, total=total, aside_n=aside_n, sa_all=sa_all,
-                                  sa_cards=sa_all - sa_n1, sa_n1=sa_n1)
+                                  sa_cards=sa_all - sa_n1, sa_n1=sa_n1, n_sit=num_word(len(cards)))
     D['totals'] = (total, aside_n, total + aside_n)
     n_parity = len(parity_rows())
     return f'''<header class="page-head">
@@ -2532,7 +2699,7 @@ def page_today(D):
 </section>
 
 <section id="situations" aria-labelledby="situations-h">
-  <h2 id="situations-h">Sixteen situations any new design must handle</h2>
+  <h2 id="situations-h">{cap1(num_word(len(cards)))} situations any new design must handle</h2>
   <p class="lead-in">{rich(CARD_GUIDE)}</p>
   {LEGEND}
   {table}
@@ -2544,7 +2711,7 @@ def page_today(D):
 <section class="sa-box" id="standalone" aria-labelledby="standalone-h">
   <h2 id="standalone-h">Standalone today</h2>
   <details>
-    <summary>Standalone games today, and the hardware scanner against the phone's scanner with no engine: {n_parity} differences</summary>
+    <summary>Standalone games today, and the hardware scanner against the phone's scanner with no show machine: {n_parity} differences</summary>
     <p>{rich(STANDALONE_P1)}</p>
     <p style="margin-top:10px">{rich(STANDALONE_P2)}</p>
     <p class="muted" style="margin:10px 0">{e(PARITY_NOTE)}</p>
@@ -2570,6 +2737,38 @@ def page_today(D):
 # ---------------------------------------------------------------------------------------------------
 # changes.html (plan v2 section 3.6).
 # ---------------------------------------------------------------------------------------------------
+LETTERS_V10_TITLE = f'Where version 10\'s {num_word(len(V10_QUESTIONS))} questions went'
+LETTERS_V10_INTRO = (f'Version 10 put {num_word(len(V10_QUESTIONS))} questions to you, by letter. Version 11 follows '
+                     'the independent review you asked for. It rewords the questions, and some carry new letters. '
+                     f'This table says where each of the {num_word(len(V10_QUESTIONS))} went. The letters in its '
+                     'first column are version 10\'s, not the letters of the questions on Decisions now.')
+
+
+def letters_v10_problems(c):
+    """What is wrong with changes.json lettersV10, as a list (empty if it is whole): ten rows, one for each of
+    version 10's letters A to J in order; each "was" the letter and that question's title; each with its "where";
+    both plain text, with no marker of any kind (the letters are history, never links)."""
+    rows = c.get('lettersV10')
+    if not isinstance(rows, list):
+        return ['changes.json has no lettersV10 (where version 10\'s ten questions went)']
+    out = []
+    if len(rows) != len(V10_QUESTIONS):
+        out.append(f'changes.lettersV10 has {len(rows)} rows, not version 10\'s {num_word(len(V10_QUESTIONS))}')
+    letters = [(x.get('was') or '')[:1] for x in rows]
+    if letters != list(V10_QUESTIONS):
+        out.append(f'changes.lettersV10: the letters are {"".join(letters)}, not {"".join(V10_QUESTIONS)} in order')
+    for x in rows:
+        was, where = x.get('was') or '', x.get('where') or ''
+        title = V10_QUESTIONS.get(was[:1])
+        if title is not None and was != f'{was[:1]}. {title}':
+            out.append(f'changes.lettersV10: "was" is "{was}", not version 10\'s "{was[:1]}. {title}"')
+        if not where.strip():
+            out.append(f'changes.lettersV10: "{was[:40]}" has no "where"')
+        if '[[' in was or '[[' in where:
+            out.append(f'changes.lettersV10: "{was[:40]}" carries a marker; the table is plain text')
+    return out
+
+
 def page_changes(D):
     c = D['changes']
     versions = ''.join(f'''<article class="log-entry" id="v{e(v["version"])}">
@@ -2589,17 +2788,11 @@ def page_changes(D):
 </article>''' for x in c['cards'])
     recs = []
     for r in c['recommendations']:
-        # The question is a plain title (version 10: version 9's letters are history, not links to version 10's
-        # questions) or a marker to a question on Decisions; the build's source check refuses that marker outside
-        # decisions.json, so today every entry is a plain title.
-        m = re.fullmatch(r'\[\[q' r':([A-Z])\]\]', r['question'].strip())
-        if m:
-            title = next(q['title'] for g in D['decisions']['groups'] for q in g['questions'] if q['letter'] == m.group(1))
-            head = f'{rich(r["question"])}: {rich(title)}'
-        elif r['question'].strip() and '[[' not in r['question']:
-            head = rich(r['question'].strip())
-        else:
-            raise SystemExit(f'recommendation {r["key"]}: "question" is neither a plain title nor a question marker')
+        # The question is a plain title: version 9's letters are history, not links to the questions on Decisions
+        # now, and the source check refuses a question marker outside decisions.json.
+        if not r['question'].strip() or '[[' in r['question']:
+            raise SystemExit(f'recommendation {r["key"]}: "question" is not a plain title')
+        head = e(r['question'].strip())
         recs.append(f'''<article class="log-entry" id="rec-{r["key"].lower()}">
   <p class="when">Earlier question {e(r["key"])}</p>
   <h3>{head}</h3>
@@ -2620,6 +2813,12 @@ def page_changes(D):
     if len(c['letters']) != 18:
         raise SystemExit(f'changes.letters has {len(c["letters"])} rows, not version 9\'s eighteen')
     letters = ''.join(f'<tr><th scope="row">{e(x["was"])}</th><td>{rich(x["where"])}</td></tr>' for x in c['letters'])
+    # Version 11: where each of version 10's ten questions went. The first column is version 10's letter and title,
+    # plain text; the letters are history, and some belong to other questions now.
+    problems = letters_v10_problems(c)
+    if problems:
+        raise SystemExit('\n'.join(problems))
+    letters_v10 = ''.join(f'<tr><th scope="row">{e(x["was"])}</th><td>{e(x["where"])}</td></tr>' for x in c['lettersV10'])
     return f'''<header class="page-head">
   <h1>Change log</h1>
   <div class="prose">{paras(c["intro"])}</div>
@@ -2650,6 +2849,12 @@ def page_changes(D):
 <section id="vocabulary" aria-labelledby="vocabulary-h">
   <h2 id="vocabulary-h">The words</h2>
   <ul class="plain-list">{li(c["vocabulary"])}</ul>
+</section>
+
+<section id="letters-v10" aria-labelledby="letters-v10-h">
+  <h2 id="letters-v10-h">{e(LETTERS_V10_TITLE)}</h2>
+  <p>{e(LETTERS_V10_INTRO)}</p>
+  <div class="tablewrap"><table class="logtable"><thead><tr><th>Version 10's question</th><th>Where it went</th></tr></thead><tbody>{letters_v10}</tbody></table></div>
 </section>
 
 <section id="letters" aria-labelledby="letters-h">
@@ -2884,11 +3089,11 @@ def check(pages, D):
         + [f'd-{a["slug"]}' for a in D['design']['ahead']] + [f'decided-{x["slug"]}' for x in D['design']['decided']],
         'today': ['c%d' % i for i in range(1, 17)] + ['n1', 'works', 'situations', 'standalone', 'evidence'],
         'decisions': [q['anchor'] for g in D['decisions']['groups'] for q in g['questions']]
-        + ['open', 'readings', 'calls', 'review', 'design-rounds', 'decided']
+        + ['waits-for', 'open', 'answers', 'readings', 'calls', 'review', 'design-rounds', 'decided']
         + [f'g-{slug(g["title"])}' for g in D['decisions']['groups']]
         + [f'call-{slug(c["title"])}' for c in D['decisions']['calls']]
         + [f't-{t["slug"]}' for t in D['decisions']['decided']],
-        'changes': ['letters', 'jargon', 'numbers', 'sequence'],
+        'changes': ['letters-v10', 'letters', 'jargon', 'numbers', 'sequence'],
     }
     for page, anchors in want.items():
         for anc in anchors:
@@ -2898,8 +3103,8 @@ def check(pages, D):
     if len(re.findall(r'class="round" href="design\.html#d-', rounds)) != len(D['decisions']['designRounds']):
         fails.append('a design round does not link to its entry on design.html')
     alt_links = len(re.findall(r'href="design\.html#alt-[a-z-]+"', rounds.split('id="decided"')[0]))
-    if alt_links != 6:
-        fails.append(f'the later choices on decisions.html link to {alt_links} alternatives rows, not 6')
+    if alt_links != len(LATER_ALT):
+        fails.append(f'the later choices on decisions.html link to {alt_links} alternatives rows, not {len(LATER_ALT)}')
     for x in D['design']['later']:
         if (x.get('alt') or '').strip() and x['alt'] not in ids['design']:
             fails.append(f'design.later item with alt {x["alt"]} finds no row')
@@ -2934,6 +3139,7 @@ def check(pages, D):
         if k != 'engine' and not pages[k].startswith('<!doctype html>'):
             fails.append(f'{FILE[k]} is not a full document')
     fails.extend(check_v10(pages, D, ids))
+    fails.extend(check_v11(pages, D, ids))
     # The evidence totals come from the data.
     total, aside_n, total_all = D['totals']
     if (total, aside_n, total_all) != (337, 21, 358):
@@ -2998,35 +3204,55 @@ def builder_texts():
 MARKER_KINDS = {'promise', 'part', 'flaw', 'q', 'page', 'qt', 'ex', 'dec', 'call'}
 
 
-def check_v10(pages, D, ids):
-    """Version 10's checks: question markers only in decisions.json and none in the builder's texts; every marker
-    in every source resolves; the Decisions page's new shape is whole and shows every field; the numbers' sorts
-    and the cases' kinds; the change log's letters are history, never links to version 10's questions."""
+def marker_fails(D, ids=None):
+    """Every marker in every source and in the builder's own texts: its kind is known, a question marker sits only
+    in decisions.json, and its key resolves. Version 11: a marker to a call or a letter that left the list is named
+    as such; a link to a question's anchor on Decisions carries that question's exact title as its label. Before
+    the pages are drawn there are no ids yet (ids is None), and anchors other than a question's wait for the
+    second run."""
     fails = []
-    texts = source_texts(D)
     own = pathlib.Path(__file__).read_text()
     if '[[' + 'q:' in own:
         fails.append('build_site.py: a question marker in the builder\'s own text')
-    for name, t in builder_texts():
-        if '[[' + 'q:' in t:
-            fails.append(f'{name}: a question marker in the builder\'s own text')
     known = {'promise': TITLES, 'part': NAMES, 'flaw': FLAW_TITLES, 'q': QUESTIONS, 'qt': QT, 'ex': EX, 'dec': DEC,
              'call': CALLS}
-    for name, t in texts + builder_texts():
+    for name, t in source_texts(D) + builder_texts():
         for m in MARKER.finditer(t):
-            kind, key = m.group(1), m.group(2).strip()
+            kind, key, label = m.group(1), m.group(2).strip(), m.group(3)
             if kind not in MARKER_KINDS:
                 fails.append(f'{name}: unknown marker kind [[{kind}:{key}]]')
             elif kind == 'q' and name != DECISIONS.name:
                 fails.append(f'{name}: a question marker [[{kind}:{key}]] outside decisions.json')
+            elif kind == 'q' and key in REMOVED_LETTERS:
+                fails.append(f'{name}: [[{kind}:{key}]] points to a letter no question carries since version 11')
+            elif kind == 'call' and key in REMOVED_CALLS:
+                fails.append(f'{name}: [[call:{key}]] points to a call that left the list in version 11')
             elif kind == 'page':
                 pg, _, anchor = key.partition('#')
+                qm = re.fullmatch(r'q-([a-z])', anchor) if pg == 'decisions' else None
                 if pg not in FILE:
                     fails.append(f'{name}: [[page:{key}]] names no page')
-                elif anchor and anchor not in ids[pg]:
+                elif qm and qm.group(1).upper() not in QUESTIONS:
+                    fails.append(f'{name}: [[page:{key}]] points to a letter no question carries'
+                                 + (' since version 11' if qm.group(1).upper() in REMOVED_LETTERS else ''))
+                elif qm and label != Q_TITLES[qm.group(1).upper()]:
+                    fails.append(f'{name}: [[page:{key}]] '
+                                 + ('has no label' if label is None else f'is labelled "{label}"')
+                                 + f', not the question\'s title "{Q_TITLES[qm.group(1).upper()]}"')
+                elif anchor and ids is not None and anchor not in ids[pg]:
                     fails.append(f'{name}: [[page:{key}]] finds no id "{anchor}" on {FILE[pg]}')
             elif key not in known[kind]:
                 fails.append(f'{name}: [[{kind}:{key}]] does not resolve')
+            elif kind == 'q' and label is not None and label != Q_TITLES[key]:
+                fails.append(f'{name}: [[{kind}:{key}]] is labelled "{label}", not the question\'s title')
+    return fails
+
+
+def check_v10(pages, D, ids):
+    """Version 10's checks: question markers only in decisions.json and none in the builder's texts; every marker
+    in every source resolves; the Decisions page's new shape is whole and shows every field; the numbers' sorts
+    and the cases' kinds; the change log's letters are history, never links to version 10's questions."""
+    fails = marker_fails(D, ids)
     d = D['decisions']
     qs = [q for g in d['groups'] for q in g['questions']]
     page = pages['decisions']
@@ -3103,6 +3329,185 @@ def check_v10(pages, D, ids):
     return fails
 
 
+def check_sources(D):
+    """Version 11's checks on the data, made before any page is drawn, so that every problem is listed at once and
+    not only the first one a renderer meets: the markers (marker_fails); when to answer each question; the box on
+    what the panel waits for; the answer sheet, with a line for every question; version 10's letters; the status
+    line's date; and a group's own count of its questions."""
+    fails = marker_fails(D)
+    d, c = D['decisions'], D['changes']
+    qs = [q for g in d['groups'] for q in g['questions']]
+    for q in qs:
+        need = (q.get('neededBy') or '').strip()
+        if not need:
+            fails.append(f'question {q["letter"]} has no neededBy (when to answer it)')
+        elif not any(need.startswith(mark) for mark in NEEDED_MARKS):
+            fails.append(f'question {q["letter"]}: neededBy starts with none of {list(NEEDED_MARKS)}: {need[:60]}')
+    w = d.get('waitsFor') or {}
+    if not (w.get('title') or '').strip() or not [x for x in w.get('text') or [] if x.strip()]:
+        fails.append('decisions.json: waitsFor needs a title and at least one paragraph of text')
+    sheet = d.get('answerSheet') or []
+    labels = [(a.get('label') or '').strip() for a in sheet]
+    for q in qs:
+        if f'{q["letter"]}. {q["title"]}' not in labels:
+            fails.append(f'decisions.json: the answer sheet has no line "{q["letter"]}. {q["title"]}"')
+    if labels[:len(qs)] != [f'{q["letter"]}. {q["title"]}' for q in qs]:
+        fails.append('decisions.json: the answer sheet does not start with one line for each question, in the page\'s order')
+    for k, a in enumerate(sheet, 1):
+        if not (a.get('label') or '').strip() or not (a.get('form') or '').strip():
+            fails.append(f'decisions.json: answer sheet line {k} lacks its label or its form')
+    for lab in labels[len(qs):]:
+        if re.match(r'[A-Z]\. ', lab):
+            fails.append(f'decisions.json: the answer sheet line "{lab}" is lettered but answers no question')
+    fails.extend(letters_v10_problems(c))
+    newest = c['versions'][0]
+    if newest['date'] != STATUS_DATE:
+        fails.append(f'the status line says "Updated {STATUS_DATE}", and the newest version in changes.json is '
+                     f'version {newest["version"]} of {newest["date"]}')
+    for g in d['groups']:
+        for t in g.get('intro') or []:
+            for m in re.finditer(rf'\b({COUNT_WORD}) questions? follows?\b', t, re.I):
+                if m.group(1).lower() != num_word(len(g['questions'])):
+                    fails.append(f'decisions.json: the group "{g["title"]}" says "{m.group(0)}" and holds '
+                                 f'{num_word(len(g["questions"]))}')
+    back = sorted(slug(t) for t in REMOVED_CALL_TITLES if slug(t) in CALLS)
+    if back:
+        fails.append(f'decisions.json lists a call the builder holds as removed in version 11: {back}')
+    return fails
+
+
+# Version 11: counts the overlays write in words, each checked against the data on every page but the change log
+# (which keeps the counts of earlier versions). A phrase that is reworded simply stops being checked; a phrase that
+# stays must carry the right count. Each entry: the pattern, with the count as its first group, and what it counts.
+COUNT_WORD = (r'(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|'
+              r'seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)'
+              r'(?:-(?:one|two|three|four|five|six|seven|eight|nine))?')
+COUNT_PHRASES = [
+    (rf'\b({COUNT_WORD}) questions only you can decide\b', 'questions'),
+    (rf'\b({COUNT_WORD}) readings(?: of your words)?(?: to confirm| with yes or no)', 'readings'),
+    (rf'\bagent\'s ({COUNT_WORD}) calls\b', 'calls'),
+    (rf'\b({COUNT_WORD})(?: quality)? targets under\b', 'targets'),
+    (rf'\b{COUNT_WORD} of the ({COUNT_WORD})(?: targets)? rest on\b', 'targets'),
+    (rf'\b({COUNT_WORD}) of the {COUNT_WORD}(?: targets)? rest on\b', 'targets settled'),
+    (rf'\b({COUNT_WORD}) are proposed or partly settled\b', 'targets not settled'),
+    (rf'\b({COUNT_WORD}) (?:carry|need) a number\b', 'targets with a number'),
+    (rf'\b({COUNT_WORD}) ways the platform must grow\b', 'cases'),
+]
+
+
+def data_counts(D):
+    d, qt = D['decisions'], D['qt_list']
+    return {
+        'questions': sum(len(g['questions']) for g in d['groups']),
+        'readings': len(d['readings']),
+        'calls': len(d['calls']),
+        'targets': len(qt),
+        'targets settled': sum(1 for t in qt if t['statusKind'] == 'settled'),
+        'targets not settled': sum(1 for t in qt if t['statusKind'] != 'settled'),
+        'targets with a number': sum(1 for t in qt if t.get('numberToSet', '').strip()),
+        'cases': len(D['ex_list']),
+    }
+
+
+def link_texts(page_html, to_decisions):
+    """Each link to a question's anchor on Decisions as (letter, the link's text)."""
+    pat = r'<a\b[^>]*?\shref="' + ('' if to_decisions is None else re.escape(to_decisions)) + r'#q-([a-z])"[^>]*>(.*?)</a>'
+    return [(m.group(1).upper(), html.unescape(re.sub(r'<[^>]+>', '', m.group(2))).strip())
+            for m in re.finditer(pat, page_html, re.S)]
+
+
+def check_v11(pages, D, ids):
+    """Version 11's checks on the pages: every new field is drawn (when to answer, the box on what the panel waits
+    for, the answer sheet, a group with no question, the notes on today's engine, version 10's letters); every link
+    to a question shows that question's exact title; no page but the change log names a question or a call that
+    left the list; the navigation's count and the counts the pages write in words agree with the data."""
+    fails = []
+    d, c = D['decisions'], D['changes']
+    qs = [q for g in d['groups'] for q in g['questions']]
+    page = pages['decisions']
+    n_needed = len(re.findall(rf'<p class="needed n-[a-z]+"><span class="tag">{e(NEEDED_TAG)}</span>', page))
+    if n_needed != len(qs):
+        fails.append(f'decisions.html: {n_needed} "{NEEDED_TAG}" lines drawn for {len(qs)} questions')
+    for q in qs:   # the line sits under the question's title, before what it decides
+        art = page.split(f'id="{q["anchor"]}"', 1)[1].split('</article>', 1)[0]
+        order = [art.find(x) for x in ('</h4>', 'class="needed', 'What it decides')]
+        if -1 in order or order != sorted(order):
+            fails.append(f'decisions.html: question {q["letter"]}: "{NEEDED_TAG}" is not under the title')
+    order = [page.find(f'id="{a}"') for a in ('waits-for', 'open', 'answers', 'readings')]
+    if -1 in order or order != sorted(order):
+        fails.append('decisions.html: the box on what the panel waits for, "Open now", the answer sheet and the '
+                     'readings are not in that order')
+    sheet = page.split('id="answers"', 1)[-1].split('</section>', 1)[0]
+    if sheet.count('<li><strong>') != len(d['answerSheet']):
+        fails.append(f'decisions.html: {sheet.count("<li><strong>")} answer sheet lines drawn, '
+                     f'{len(d["answerSheet"])} in decisions.json')
+    onpage = re.search(r'<nav class="onpage".*?</nav>', page, re.S).group(0)
+    listed = re.findall(r'<li><a href="#([a-z-]+)"', onpage)
+    if listed[:1] != ['waits-for'] or 'answers' not in listed:
+        fails.append(f'decisions.html: "On this page" does not list the box on what the panel waits for first, or '
+                     f'leaves out the answer sheet: {listed}')
+    for g in d['groups']:   # a group with no question still shows its title and its introduction
+        block = page.split(f'id="g-{slug(g["title"])}"', 1)[1].split('<div class="qgroup', 1)[0]
+        if f'<h3>{e(g["title"])}</h3>' not in block or '<div class="prose qintro"><p>' not in block:
+            fails.append(f'decisions.html: the group "{g["title"]}" is drawn without its title or its introduction')
+        if block.count('<article class="q ') != len(g['questions']):
+            fails.append(f'decisions.html: the group "{g["title"]}" does not hold its {len(g["questions"])} questions')
+    # The notes on today's engine, each under its own tag.
+    n_today = sum(1 for x in D['qt_list'] + D['ex_list'] if 'today' in x)
+    drawn = pages['requirements'].count(f'<p class="today-note"><span class="tag">{e(TODAY_TAG)}</span>')
+    if drawn != n_today:
+        fails.append(f'requirements.html: {drawn} "{TODAY_TAG}" notes drawn, {n_today} targets and cases carry one')
+    # Version 10's letters: its own table, before version 9's, plain text.
+    ch = pages['changes']
+    order = [ch.find(f'<section id="{a}"') for a in ('letters-v10', 'letters')]
+    if -1 in order or order != sorted(order):
+        fails.append('changes.html: the table of version 10\'s letters is missing or not before version 9\'s')
+    else:
+        v10 = ch.split('<section id="letters-v10"', 1)[1].split('</section>', 1)[0]
+        if f'>{e(LETTERS_V10_TITLE)}</h2>' not in v10:
+            fails.append(f'changes.html: the table of version 10\'s letters is not headed "{LETTERS_V10_TITLE}"')
+        if '<a ' in v10:
+            fails.append('changes.html: the table of version 10\'s letters holds a link; it is plain text')
+        got = re.findall(r'<tr><th scope="row">([A-Z])\. ', v10)
+        if got != list(V10_QUESTIONS):
+            fails.append(f'changes.html: the table of version 10\'s letters shows {"".join(got)}, not '
+                         f'{"".join(V10_QUESTIONS)}')
+    # Every link to a question, on any page, shows that question's exact title.
+    for k, s in pages.items():
+        for letter, text in link_texts(s, 'decisions.html' if k != 'decisions' else '') :
+            if letter not in QUESTIONS:
+                continue   # a missing anchor is reported by the link check
+            if text != Q_TITLES[letter]:
+                fails.append(f'{FILE[k]}: a link to question {letter} reads "{text}", not its title "{Q_TITLES[letter]}"')
+    # No page but the change log names a question or a call that left the list. A title dropped into a sentence
+    # sits in typographic quotes, so the check looks for the quoted title (the merged call on the promises' wording
+    # starts three sentences with the words of the calls it replaced, unquoted, and those are no titles).
+    gone = [(t, 'question') for t in REMOVED_QUESTIONS] + [(t, 'call') for t in REMOVED_CALL_TITLES if slug(t) in REMOVED_CALLS]
+    for k, s in pages.items():
+        if k == 'changes':
+            continue
+        text = re.sub(r'“\s+', '“', re.sub(r'\s+”', '”', re.sub(r'\s+', ' ', reader_text(s))))
+        for title, kind in gone:
+            at = text.find(f'“{title}”')
+            if at >= 0:
+                fails.append(f'{FILE[k]}: names the {kind} “{title}”, which left the list in version 11: '
+                             f'...{text[max(0, at - 60):at + len(title) + 30]!r}')
+    # The navigation's count and the counts written in words.
+    counts = data_counts(D)
+    for k, s in pages.items():
+        m = re.search(r'aria-label="Decisions, (\d+) open questions">Decisions<span class="count" aria-hidden="true">(\d+)</span>', s)
+        if not m or {int(m.group(1)), int(m.group(2))} != {counts['questions']}:
+            fails.append(f'{FILE[k]}: the navigation does not count {counts["questions"]} open questions')
+        if k == 'changes':
+            continue
+        text = re.sub(r'\s+', ' ', visible_text(strip_svgs(s)))
+        for pat, what in COUNT_PHRASES:
+            for m in re.finditer(pat, text, re.I):
+                if m.group(1).lower() != num_word(counts[what]):
+                    fails.append(f'{FILE[k]}: "{m.group(0)}" where the data counts {num_word(counts[what])} ({what})')
+    return fails
+
+
 # ---------------------------------------------------------------------------------------------------
 def load():
     cards = json.loads(CARDS.read_text())['cards']
@@ -3144,6 +3549,8 @@ def load():
         if cs in CALLS:
             raise SystemExit(f'two calls share the anchor call-{cs}')
         CALLS[cs] = c
+    REMOVED_LETTERS.update(k for k in V10_QUESTIONS if k not in QUESTIONS)
+    REMOVED_CALLS.update(slug(t) for t in REMOVED_CALL_TITLES if slug(t) not in CALLS)
     for t in decisions['decided']:
         if t['slug'] != slug(t['topic']):
             raise SystemExit(f'decided topic slug {t["slug"]} is not the slug of "{t["topic"]}"')
@@ -3184,6 +3591,12 @@ def load():
 def build():
     global CUR
     D = load()
+    fails = check_sources(D)
+    if fails:
+        print('CHECKS OF THE SOURCES FAILED, before any page was drawn:', file=sys.stderr)
+        for f in fails:
+            print('  ' + f, file=sys.stderr)
+        raise SystemExit(1)
     css = stylesheet()
     open_n = sum(len(g['questions']) for g in D['decisions']['groups'])
     makers = {'engine': page_engine, 'decisions': page_decisions, 'requirements': page_requirements,
