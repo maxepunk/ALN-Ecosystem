@@ -52,7 +52,7 @@
     {
       "id": "J8",
       "people": "The venue technician; a GM running a game with no show machine; a future operator with a second kit",
-      "moment": "In the days before an event, and on the night when the engine is absent by choice",
+      "moment": "In the days before an event, and on the night when the game runs with no show machine by choice",
       "need": "The venue technician states what the kit brings tonight, binds the pack's names to real instruments and gets one go or no-go. A standalone game knows it is standalone instead of mourning a lost connection. A second kit needs no change to engine code.",
       "proposedTitle": "The game fits the venue it is in tonight"
     },
@@ -60,14 +60,14 @@
       "id": "J9",
       "people": "The GM mid-show with seconds to decide; the venue technician reading the preflight; the audience watching the clock",
       "moment": "At a glance, whenever a screen is read",
-      "need": "Anyone can tell without asking whether what they see is current and whether they must act: red means act now, grey means absent on purpose, old looks old, the venue technician's go is a go, and the TV's clock never counts on its own.",
+      "need": "Anyone can tell without asking whether what they see is current and whether they must act: red means act now, grey means absent on purpose, old looks old, the venue technician's go is a go, and the TV's clock shows as unconfirmed while the engine is silent.",
       "proposedTitle": "Anyone reading a screen can act on it without a second question"
     },
     {
       "id": "J10",
       "people": "The developer who changes the engine; the owner who sends a version to the venue; the GM whose live show no test may touch",
       "moment": "Before every change reaches anyone, and on release day",
-      "need": "A green run means the show path still works for ALN and for the toy game; the owner decides when a new version goes to the venue and can swap back by replugging a machine; no test or rehearsal ever reaches a live show.",
+      "need": "A passing test run means the show path still works for ALN and for the toy game; the owner decides when a new version goes to the venue, and a release that fails can be undone before the next game, at the first swap by replugging the old machine; no test or rehearsal ever reaches a live show.",
       "proposedTitle": "A change is proven before it reaches anyone, and the owner alone sends it to the show"
     }
   ],
@@ -143,7 +143,7 @@
     {
       "name": "Generic",
       "jobs": ["J1", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10"],
-      "plain": "Nothing in the engine assumes ALN, or one kit, one pack or one production where avoiding it costs little. Carried by taking rules only from the pack, and the equipment's names only from the venue technician's profile and from each running copy of the engine's own settings."
+      "plain": "Nothing in the engine assumes ALN. Nothing assumes one kit, one pack or one production where avoiding it costs little. Carried by taking rules only from the pack, and the equipment's names only from the venue technician's profile and from each running copy of the engine's own settings."
     },
     {
       "name": "Who decides when there is no show machine",
@@ -199,7 +199,7 @@
         "flaws": ["C8", "C15"]
       },
       {
-        "title": "The tablet is a command center and a second engine in one, and nothing in the tablet's code keeps the standalone choice in one place",
+        "title": "The tablet is a command center and a second body of rules in one, and nothing in the tablet's code keeps the standalone choice in one place",
         "plain": "Four files carry a second copy of the rules; thirty of the tablet's sixty-seven files would carry a standalone game; the one place built to switch between standalone and networked covers only where data is saved, and twenty places in six modules check the mode themselves; the app's four main sections each reach everything through one shared handle; in three places a lower layer relies on a higher one, so dependencies run both ways.",
         "flaws": ["C9", "N1", "C14", "C11"]
       },
@@ -421,7 +421,7 @@
     {
       "title": "The standalone tablet: the same modules as the engine, or code of its own",
       "a": "The same game record, lifecycle, answering and delivery hosted on the tablet, with a switch that says the game is standalone.",
-      "b": "An engine of the tablet's own, kept equal by tests, as today but improved.",
+      "b": "Code of the tablet's own, kept equal by tests, as today but improved.",
       "cost": "The earlier candidate needs the record, the lifecycle table and answering and delivery to run outside the engine itself, which limits how the engine's code is packaged; the tablet then matches the engine because it runs the same code. The other way keeps the engine free of that constraint and keeps a second body of rules on the tablet, with five rules that nothing keeps equal today as the standing risk."
     },
     {

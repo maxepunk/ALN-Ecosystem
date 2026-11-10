@@ -80,12 +80,14 @@ Each architect gets one prepared folder and nothing else:
   behaves, the note sits in a field of its own, “today”. The folder
   leaves that field out, because today's engine is withheld from this
   round. The second round gets the notes back. Of each promise the
-  folder holds who counts on it and when, what they count on and the
-  long-term goal. The targets and cases that serve a promise name it
-  themselves. The rest under a promise (where today's engine falls
-  short, the line “In a standalone game”, what the planned capabilities
-  need from it, the test situations from the shows) carries facts about
-  today's engine and waits for the second round.
+  folder holds its title, who counts on it and when, what they count on
+  and the long-term goal. The targets and cases that serve a promise
+  name it themselves. The rest under a promise (where today's engine
+  falls short, the line “In a standalone game”, what the planned
+  capabilities need from it, the test situations from the shows) carries
+  facts about today's engine and waits for the second round. Each
+  promise also names which of the nine questions the pass answers it
+  bears on. That line waits with the test situations.
 - **The setting**, as facts. ALN's kit is the first production's
   hardware, given as facts and not as the engine's requirements (the
   decision “The engine is hardware-flexible; the roadmap sets the
@@ -174,6 +176,10 @@ Each architect gets one prepared folder and nothing else:
   standalone included; how games and venues extend the engine; how one
   engine runs as many separate copies; how today's engine moves to the
   new design.
+  - Each of the six goes to the panel with what it decides, as Design
+    gives it. The first includes the state of the room: what the outside
+    programs are doing, how the engine learns it and how old that
+    knowledge is.
   - Each architect first writes their own list of the hardest decisions
     to reverse, from the goal, the requirements, the setting and the
     owner's decisions. Only then do they open the six, say where their
@@ -228,11 +234,11 @@ Each design also says:
 
 After the blind round, each architect also gets:
 
-- **Today's engine, as facts:** a fact sheet of what runs where, in
-  what language, and what works today; the code with its component
-  guides, to read but not change; and the requirements' notes on
-  today's behaviour and the lists under each promise that describe
-  today's engine, which the blind round's folder left out.
+- **Today's engine, as facts:** a fact sheet of what runs where, in what
+  language, and what works today; the code with its component guides, to
+  read but not change; and the requirements' notes on today's behaviour
+  and the rest under each promise, which the blind round's folder left
+  out.
 - **The sixteen design flaws, as test situations:** what goes wrong at
   a show, the problems behind it and where in today's code they sit,
   with no fix attached.
@@ -264,18 +270,18 @@ round.
 
 Withheld from the blind round: the recommendations and leading guesses
 of the agent running the pass, among them its options and
-recommendations on the owner's open questions; the earlier candidate
-(it enters the second round as one more proposal); the earlier lists of
+recommendations on the owner's open questions; the earlier candidate (it
+enters the second round as one more proposal); the earlier lists of
 design choices; today's engine and its review, with the requirements'
-notes on today's behaviour and the lists under each promise that
-describe today's engine. Withheld from both rounds: the reasoning of the
+notes on today's behaviour and the rest under each promise, as “The
+blind round” lists it. Withheld from both rounds: the reasoning of the
 agent running the pass, the review's conclusions about fixes, and the
 candidate's table of alternatives.
 
 How: the prepared folders are built by a script from the sources (the
 requirements files, the standing rules, the decision record). For the
 blind round the script leaves out the field “today” of every target and
-case and the lists under each promise that describe today's engine, and
+case and the rest under each promise, as “The blind round” lists it, and
 writes each open question as its “What it decides” paragraph only. Where
 a requirement's text points to another requirement, the script writes
 that requirement's title in its place. Where a target's status or number

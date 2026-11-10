@@ -680,7 +680,7 @@
         }
       ],
       "standalone": "In a standalone game: nothing tests a player device with no show machine; the phone's pack test passes on a file the deployed site lacks; the one test comparing both modes skips its group case.",
-      "standaloneCandidate": "In the earlier candidate the same tests cover the tablet, or, if the tablet has code of its own, a test that checks the two give the same answers.",
+      "standaloneCandidate": "In the earlier candidate the same tests cover the tablet, or, if the tablet has code of its own, a test that checks the tablet and the engine give the same answers.",
       "questions": [
         4,
         5

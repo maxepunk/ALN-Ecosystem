@@ -465,6 +465,11 @@ History:
   asked first for a careful explanation of the published protocol and
   where it fits in the big picture.
 - 2026-11-01. Made after the explanation. The pending note was removed.
+- 2026-11-10. Wording only. "Tests on an engine of their own" now reads
+  "tests on their own copy of the engine", in this entry and in the
+  entry on the part "Joins and proofs" under "Superseded and withdrawn".
+  In the glossary the engine is all the game-independent software, and a
+  test runs a copy of it. Nothing decided changed.
 
 **No technical failure stops a game**
 
@@ -1009,17 +1014,19 @@ History:
   today's engine behaves, the note sits in a field of its own. The blind
   round's folder leaves that field out, because today's engine is
   withheld from that round, and the second round gets the notes back. Of
-  each promise the blind round's folder holds who counts on it and when,
-  what they count on and the long-term goal. The targets and cases that
-  serve a promise name it themselves. The rest under a promise (where
-  today's engine falls short, the line "In a standalone game", what the
-  planned capabilities need from it, the test situations from the shows)
-  carries facts about today's engine and waits for the second round.
+  each promise the blind round's folder holds its title, who counts on
+  it and when, what they count on and the long-term goal. The targets
+  and cases that serve a promise name it themselves. The rest under a
+  promise (where today's engine falls short, the line "In a standalone
+  game", what the planned capabilities need from it, the test situations
+  from the shows) carries facts about today's engine and waits for the
+  second round. Each promise also names which of the nine questions the
+  pass answers it bears on. That line waits with the test situations.
   Where a target's status or number names a promise's test, the test
-  itself waits for the second round. That is a choice the agent made
-  within the brief after the check of version 11. It is not one of the
-  thirteen calls on the Decisions page. The owner approves or changes it
-  with the brief.
+  itself waits for the second round. What the folder holds of a promise
+  is a choice the agent made within the brief after the check of
+  version 11. It is not one of the thirteen calls on the Decisions page.
+  The owner approves or changes it with the brief.
 
 ---
 
