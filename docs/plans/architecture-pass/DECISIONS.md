@@ -1067,6 +1067,13 @@ History:
 - 2026-11-02. Version 10 went live the same day: the Decisions page
   reworked under "The Decisions page holds only your decisions", and
   the day's other five decisions folded into every page.
+- 2026-11-10. Version 11 went live (version id 1794281701-ac4d). It
+  applies the independent review the owner asked for before answering
+  version 10. The site keeps its six pages. The Decisions page gains
+  what the panel waits for, a mark on each question saying when to
+  answer it, and an answer sheet. Two rounds of independent reading
+  checked the agent's hand fixes before publishing
+  (`report/site/checks/v11-hand-verify-*.md`, `v11-final-verify.md`).
 
 **The Decisions page holds only your decisions**
 
@@ -1119,6 +1126,11 @@ History:
   promise is split after the panel's synthesis, not after the owner's
   review, so the owner and the panel read the same ten. And "The panel's
   three lenses" asks more of each architect, listed in the brief.
+- 2026-11-10. Version 11 published at the owner's address (version id
+  1794281701-ac4d). The owner answers there: the question on what the
+  panel gets, the word "reviewed" for the requirements and approval of
+  the panel's brief are what the panel waits for; every other answer can
+  come in any order.
 
 ---
 

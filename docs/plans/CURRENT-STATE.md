@@ -5,7 +5,7 @@ else is required reading: the pointers at the bottom say what to open
 and when. Check every claim of a summary against git and this page
 before acting.
 
-## 0. Resume here (2026-11-02)
+## 0. Resume here (2026-11-10)
 
 - **The current unit** is the architecture pass, in its design half,
   under the owner's proactive goal: "design a long-term optimal
@@ -18,75 +18,61 @@ before acting.
   build plan, the hostile review, the final questions, the owner's
   sign-off; then the build half. Working log (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
-- **Now: version 11 of the owner site is being built** (2026-11-10).
-  Before answering version 10, the owner asked (2026-11-09) for an
-  independent review "to make sure the design is optimal and what you
-  need input from me about is clearly defined before I give my input".
-  Workflow `wf_7341feb0-0de` (`site-v10-review.js`): four reviewers,
-  a refute-by-default check of each and a merge, in
+- **Now: waiting for the owner's answers to version 11** of the owner
+  site (published 2026-11-10, version id 1794281701-ac4d). Before
+  answering version 10, the owner asked (2026-11-09) for an independent
+  review "to make sure the design is optimal and what you need input
+  from me about is clearly defined before I give my input". Workflow
+  `wf_7341feb0-0de` (`site-v10-review.js`) ran it: four reviewers, a
+  refute-by-default check of each and a merge, in
   `docs/plans/architecture-pass/report/site/checks/v10-review*.md`. Its
   verdict: the approach is right; version 10 asked the owner to choose
   ways to build, the requirements carried some of the agent's design
   choices, four subjects had no decision ahead, and three questions
   rested on a wrong fact. Workflow `wf_971c4c5d-f74`
-  (`site-v11-apply-review.js`) applies it, with ten rulings of the
-  lead's in its brief: nine questions (A to F, a new G "A player who
-  sends a scan without the token", H standalone games, I the panel,
-  which also asks about a seventh decision "How the engine drives the
-  room"), five readings, thirteen calls, four new proposed targets
-  (QT45 to QT48), a "What the panel waits for" block and an answer
-  sheet. Then: fix slips, publish version 11, tell the owner. The
-  history of version 10: after version 9 went live the owner asked
-  whether its eighteen
-  questions were all theirs to decide; most were not. The owner then
-  commented on seven open points (word for word:
-  `docs/plans/architecture-pass/rework/2026-11-02-owner-comments.md`),
-  and six decisions were recorded that day ("No technical failure stops
-  a game", the purpose of "Standalone games: declared, never mixed",
-  "The engine is hardware-flexible; the roadmap sets the bounds", "Two
-  kinds of game extension", "The engine says what is fixed and what
-  each production sets", "The Decisions page holds only your
-  decisions"). Workflow `wf_83fccea8-c94`
-  (`docs/agents/workflow-scripts/decisions-rework.js`) rewrote the
-  Decisions page's content: ten questions only the owner can answer,
-  three readings of the owner's words to confirm, fourteen calls of the
-  agent's with reasons, four requirement reviews; the requirements gained
-  QT44 and EX25 to EX28, a `numberKind` on every number and a `kind` on
-  every case (working files in `docs/plans/architecture-pass/rework/`).
-  Workflow `wf_9573779c-194` (`site-v10-build.js`) built and checked
-  version 10 (124 conflicts, 122 applied by its editor); the lead fixed
-  its seven slips and the record items by hand, and `wf_5cd76bb1-e45`
-  (`site-v10-hand-verify.js`) verified those fixes (its ten new
-  conflicts applied). The owner now answers the ten questions, confirms
-  or corrects the three readings, overrules any of the fourteen calls,
-  and reviews the requirements. The panel runs only after that review
-  and the owner's approval of the brief. Answers go into the decision
-  record first, then the requirements files and the site.
+  (`site-v11-apply-review.js`) applied it with ten rulings of the
+  lead's; the lead then fixed what its checks left in three rounds by
+  hand, checked by `wf_13790099-d88` (`site-v11-hand-verify.js`) and
+  `wf_3d790c9c-fe2` (`site-v11-final-verify.js`). Version 11's Decisions
+  page holds nine questions, A to I, each marked "Best answered now",
+  "Can wait for the panel" or "Needed before the panel"; five readings
+  of the owner's words to confirm; thirteen calls of the agent's; the
+  requirements to review (47 targets with QT45 to QT48 new and proposed,
+  28 cases); a block "What the panel waits for"; and an answer sheet.
+  The panel waits for three things only: the answer to "What the panel
+  gets in its blind round", the word "reviewed" for the requirements,
+  and the owner's approval of the panel's brief. Three facts only the
+  owner has are asked on the answer sheet: whether GMs keep a token once
+  it is sold or exposed, whether the show machine ever failed for good
+  at a show, and any device expected soon. Answers go into the decision
+  record first, then the requirements files and the site. The history
+  before version 11 is in the record's entries "The Decisions page holds
+  only your decisions" and "The owner's site: five linked pages".
 - **Done so far.** Green's three follow-ups merged on 2026-10-30 at
   `089dd527` (full backend suite, coverage check and lint passed). The
   review of today's engine
-  (`docs/plans/architecture-pass/2026-10-30-cause-analysis.md`:
-  sixteen design flaws over 358 findings, 21 set aside) is now
-  evidence and test situations, not the design's input. The decision
-  record by topic. The owner site, version 10: the Decisions page
-  holds only the owner's decisions.
+  (`docs/plans/architecture-pass/2026-10-30-cause-analysis.md`: sixteen
+  design flaws over 358 findings, 21 set aside) is now evidence and test
+  situations, not the design's input. The decision record by topic. The
+  owner site, version 11: the independent review the owner asked for,
+  applied.
 - **The decisions** live in `docs/plans/architecture-pass/DECISIONS.md`,
-  by topic: what stands now, each written as current truth with a
-  dated history beneath, and the superseded ones in their own section.
-  New decisions go there as the owner makes them, then into the pass's
-  documents (`docs/agents/process.md` §5). Open for the owner, by
-  title, each explained on the owner site's Decisions page ("What the
-  Engine Promises", https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL),
-  lettered A to J there from version 10: "A GM tablet cut off from the
+  by topic: what stands now, each written as current truth with a dated
+  history beneath, and the superseded ones in their own section. New
+  decisions go there as the owner makes them, then into the pass's
+  documents (`docs/agents/process.md` §5). Open for the owner, by title,
+  each explained on the owner site's Decisions page ("What the Engine
+  Promises", https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL),
+  lettered A to I there from version 11: "A GM tablet cut off from the
   engine", "The show machine fails mid-game", "Release day: what must
   update together, and how long older devices work", "What a game's
   maker may build inside the pack", "How an extension for all games
   reaches a production", "Where the trial copy runs while a show runs",
-  "Which standalone games the engine must run", "What a standalone game
-  gives up, and what it keeps", "Which hardware the first new engine
-  requires, and what it must allow replacing", "What the panel gets in
-  its blind round". Version 9's eighteen letters map to their new homes
-  in the change log's "letters" table. Kept for the design rounds, not
+  "A player who sends a scan without the token", "Which standalone games
+  the engine must run", "What the panel gets in its blind round".
+  Version 10's ten letters map to their new homes in the change log's
+  table "Where version 10's ten questions went", and version 9's
+  eighteen in its "letters" table. Kept for the design rounds, not
   questions now: fifteen later choices, from where "this game is
   standalone" is declared to how the two kinds of extension are built.
   "How much the rig proves before design" was withdrawn by "Build the
@@ -139,54 +125,59 @@ before acting.
   shape is silent on a short offline claim list on a disconnected
   tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
   worktrees, no test rig.
-- **In flight:** workflow `wf_971c4c5d-f74` (`site-v11-apply-review.js`):
-  five writers, an integration build, four checks, an editor, a
-  verifier. Its logs land in `report/site/v9/apply-log-v11-*.md`,
-  `build-log-v11.md` and `report/site/checks/v11-*.md`.
+- **In flight:** nothing. The site waits for the owner's answers to
+  version 11.
 - **The owner's site.** "What the Engine Promises"
-  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), version 10 live
-  (version id 1793594179-a88d, 2026-11-02), in the proactive frame:
-  six linked pages in `docs/plans/architecture-pass/report/site/`:
-  `index.html` (the engine), `decisions.html` (the ten questions A to
-  J in four groups; the readings to confirm; the agent's calls; the
-  requirements to review; the design rounds and later choices; every
-  decision by topic), `requirements.html` (the
-  promises, the quality targets, the extension cases, the standing
-  rules), `design.html` (the decisions ahead, the panel's brief, the
-  decided directions, the later choices, the earlier candidate folded),
-  `today.html` (what works, the sixteen design flaws as situations,
-  standalone today, the evidence) and `changes.html`. Built by
-  `report/build_site.py` from the four page-data files in `report/`,
-  the two requirements files, and the overlays in `site/v9/`
-  (`front.json`, `decisions.json`, `design.json`, `changes.json`,
-  `rules.json`, whose `[[markers]]` become links; each has a writer's
-  log beside it). Every diagram is drawn at build time
+  (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), version 11 live
+  (version id 1794281701-ac4d, 2026-11-10), in the proactive frame: six
+  linked pages in `docs/plans/architecture-pass/report/site/`:
+  `index.html` (the engine), `decisions.html` (what the panel waits for;
+  the nine questions A to I in four groups, each marked when to answer;
+  the answer sheet; the five readings to confirm; the thirteen calls;
+  the requirements to review; the design rounds and later choices; every
+  decision by topic), `requirements.html` (the promises, the quality
+  targets, the extension cases, the standing rules), `design.html` (the
+  decisions ahead, the panel's brief, the decided directions, the later
+  choices, the earlier candidate folded), `today.html` (what works, the
+  sixteen design flaws as situations, standalone today, the evidence)
+  and `changes.html`. Built by `report/build_site.py` from the four
+  page-data files in `report/`, the two requirements files, and the
+  overlays in `site/v9/` (`front.json`, `decisions.json`, `design.json`,
+  `changes.json`, `rules.json`, whose `[[markers]]` become links; each
+  has a writer's log beside it). Every diagram is drawn at build time
   (`report/render_diagrams.js`, themed by `report/diagram_theme.py`);
   the world picture is hand-drawn in the builder (`world_svg`, a wide
   and a phone layout). Rebuild: `cd docs/plans/architecture-pass/report
   && MERMAID_JS=<a local mermaid 11.4.1 mermaid.min.js, optional>
   python3 -I build_site.py`, then `node site_smoke.js site <shots dir>`
   (24 loads). Plan: `site/2026-11-01-site-plan-v2.md`; build logs:
-  `site/v9/build-log.md` and `site/v9/build-log-v10.md` (the overlays'
-  folder keeps the name v9); checks: `site/checks/v9-*` and
-  `site/checks/v10-*`. Workflows (`docs/agents/workflow-scripts/`):
-  `site-v9-content.js` (`wf_e076baba-f34`), `site-v9-build.js`
-  (`wf_0a97fbef-eae`), `site-v9-check.js` (`wf_43876844-7d9`: 141
-  conflicts applied), `site-v9-fix.js` (`wf_efe6dc9f-89b`: 30),
-  `site-v9-final.js` (`wf_f857198c-557`: 20; two slips fixed by hand),
+  `site/v9/build-log.md`, `site/v9/build-log-v10.md` and
+  `site/v9/build-log-v11.md` (the overlays' folder keeps the name v9);
+  checks: `site/checks/v9-*`, `site/checks/v10-*` and
+  `site/checks/v11-*`, with the independent review in
+  `site/checks/v10-review*.md`. Workflows
+  (`docs/agents/workflow-scripts/`): `site-v9-content.js`
+  (`wf_e076baba-f34`), `site-v9-build.js` (`wf_0a97fbef-eae`),
+  `site-v9-check.js` (`wf_43876844-7d9`: 141 conflicts applied),
+  `site-v9-fix.js` (`wf_efe6dc9f-89b`: 30), `site-v9-final.js`
+  (`wf_f857198c-557`: 20; two slips fixed by hand),
   `decisions-rework.js` (`wf_83fccea8-c94`), `site-v10-build.js`
-  (`wf_9573779c-194`), `site-v10-hand-verify.js` (`wf_5cd76bb1-e45`).
-  Version 9 (version id 1793578135-ee03) is in git history; its pages
-  were last built at `b1852f19`. Wording rules the last rounds settled:
-  the site's own prose says "you"; the shared texts the panel also
-  reads (requirements, standing rules, promise data, cards, the earlier
-  candidate) keep "the owner" as a role, except the requirements'
-  status lines, which say "you" (the panel's folder builder adapts
-  them); "the agent running the pass", never "orchestrator"; no
-  numbered lists of decisions, steps or choices; no code names (the two
-  machines are "the show machine in use now" and "the new show
-  machine"); every reading of the owner's words and every call of the
-  agent's is marked as such, for the owner to confirm or overrule.
+  (`wf_9573779c-194`), `site-v10-hand-verify.js` (`wf_5cd76bb1-e45`),
+  `site-v10-review.js` (`wf_7341feb0-0de`), `site-v11-apply-review.js`
+  (`wf_971c4c5d-f74`), `site-v11-hand-verify.js` (`wf_13790099-d88`),
+  `site-v11-final-verify.js` (`wf_3d790c9c-fe2`). Version 9 (version id
+  1793578135-ee03) is in git history; its pages were last built at
+  `b1852f19`. Version 10 (version id 1793594179-a88d) was last built at
+  `0c31aac2`. Wording rules the last rounds settled: the site's own
+  prose says "you"; the shared texts the panel also reads (requirements,
+  standing rules, promise data, cards, the earlier candidate) keep "the
+  owner" as a role, except the requirements' status lines, which say
+  "you" (the panel's folder builder adapts them); "the agent running the
+  pass", never "orchestrator"; no numbered lists of decisions, steps or
+  choices; no code names (the two machines are "the show machine in use
+  now" and "the new show machine"); every reading of the owner's words
+  and every call of the agent's is marked as such, for the owner to
+  confirm or overrule.
 - **Version 8** (five linked pages, version id 1793525496-560c,
   2026-11-01) is in git history: its overlays (`site/front.json`,
   `site/decisions.json`, `site/changes.json`) and its plan
