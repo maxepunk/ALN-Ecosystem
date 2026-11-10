@@ -395,11 +395,11 @@ OVERVIEW = """flowchart TD
 FIT_DEVICES = [
     ('The engine', 'would decide every fact of a networked game, serve the pack, admit every connection, answer every request in one place and send every fact to the screens through one route.'),
     ('A GM tablet in a networked game', 'would draw what it is sent, with each fact\'s label, and send requests in one shared format. It would keep no list of its own and decide nothing before the engine answers. Today it decides before the engine answers.'),
-    ('A GM tablet in a standalone game', 'would be the same app with its standalone setting on. In the earlier candidate it runs the same record, lifecycle, answering and delivery parts the engine runs, with small stand-ins that report every service the engine runs (video, music, lights) as not installed tonight. The other way is an engine of its own, kept equal by tests.'),
+    ('A GM tablet in a standalone game', 'would be the same app with its standalone setting on. In the earlier candidate it runs the same record, lifecycle, answering and delivery parts the engine runs, with small stand-ins that report every service the engine runs (video, music, lights) as not installed tonight. The other way is code of its own, kept equal by tests.'),
     ('The phone and the hardware scanner', 'would draw, send scans in one shared format, and read the reply words and the few rules they need as data made from the one source. They would stay equal by sharing that data.'),
     ('The scoreboards', 'would be one page in two places, the TV and the Pi 4, drawing what they are sent and deciding nothing. Today the page decides which modes count as evidence. One page or a view inside the GM app is an open choice for the design rounds.'),
     ('The config tool', 'would hold the design studio and the venue technician\'s profile editor, and talk to the running engine only by sending it requests. Today it writes the engine\'s files. A separate program or pages the engine itself serves is an open choice for the design rounds.'),
-    ('The tests', 'would run on an engine of their own, with stand-ins for the equipment, and never touch the live one. Today they use the live display and audio.'),
+    ('The tests', 'would run on their own copy of the engine, with stand-ins for the equipment, and never touch the live one. Today they use the live display and audio.'),
 ]
 
 
@@ -458,7 +458,7 @@ def shape_svg():
     text(44, 124, 'tablets and scanners also keep a copy of the pack, marked with its version, and the game rules', size=11, op='.75')
     box(580, 50, 128, 80, 'Design studio', ('the config tool,', 'sends requests only'))
     box(716, 50, 116, 80, 'Release', ('what each', 'machine carries'))
-    box(840, 50, 136, 80, 'Joins and proofs', ('the tests, on an', 'engine of their own'), name_size=13)
+    box(840, 50, 136, 80, 'Joins and proofs', ('the tests, each on', 'a copy of the engine'), name_size=13)
     # Answering and Delivery
     arrow([(150, 140), (150, 210)], 'requests and replies', (158, 180), accent=True, both=True)
     arrow([(500, 140), (500, 210)], 'a pass at every connection', (492, 196), anchor='end')

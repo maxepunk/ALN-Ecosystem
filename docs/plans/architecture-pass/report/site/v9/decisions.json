@@ -67,7 +67,7 @@
               "cost": "Every result the tablet shows is marked “not yet confirmed”, and a screen shows the GM each result the engine overturned. The tablet must already run the game's rules for standalone games ([[qt:QT37]]), so this option adds little to build. Its cost is at the table: a GM may have to take back a result a team already heard, a group bonus included."
             }
           ],
-          "recommendation": "Whether a GM may tell a team its result before the engine has confirmed it, knowing that a few results may be taken back. If yes, the tablet shows the result at once, marked “not yet confirmed”. If no, the tablet shows “kept” and the team waits until the connection is back. Neither answer is the first option, refusing while cut off. The agent does not put it forward, because every wifi drop then holds the line. Say so if you want it. The agent leans to no for a short gap, because a result taken back costs a GM more than a short wait. If your GMs keep each token they take, almost no result would be taken back, and showing results at once costs little. Your words ask for as little effect on the players as possible, and they can be read for either answer.",
+          "recommendation": "Whether a GM may tell a team its result before the engine has confirmed it, knowing that a few results may be taken back. If yes, the tablet shows the result at once, marked “not yet confirmed”. If no, the tablet shows “kept” and the team waits until the connection is back. Neither answer is the first option, refusing while cut off. The agent does not put it forward, because every wifi drop then makes the teams wait. Say so if you want it. The agent leans to no for a short gap, because a result taken back costs a GM more than a short wait. If your GMs keep each token they take, almost no result would be taken back, and showing results at once costs little. Your words ask for as little effect on the players as possible, and they can be read for either answer.",
           "recKind": "What we need from you"
         },
         {
@@ -93,7 +93,7 @@
           "options": [
             {
               "label": "The game finishes on the tablets.",
-              "means": "The GMs keep taking scans and end the game from a tablet. Each tablet shows each result at once, from its own copy of the game, whatever you answer for a short gap. With more than one tablet, each counts only its own sales: a team's full score, its group bonuses and any token claimed at two tables are known only when the tablets' records are joined after the game. The night's record is put together from the tablets and the player scanners. Video, music, lights, the TV and the cues on the clock are gone for the rest of the night. Today a cut-off tablet goes on counting the clock on its own screen from the last value the show machine sent. It cannot move the game's phases, pause the clock or end the game, because the show machine does all three. So the GMs call the phases and the end themselves unless the design gives a tablet the clock.",
+              "means": "The GMs keep taking scans and end the game from a tablet. Each tablet shows each result at once, from its own copy of the game, whatever you answer for a short gap. With more than one tablet, each counts only its own sales: a team's full score, its group bonuses and any token claimed at two tables are known only when the tablets' records are joined after the game. The night's record is put together from the tablets and the player scanners. Video, music, sound, lights, the TV and the cues on the clock are gone for the rest of the night. Today a cut-off tablet goes on counting the clock on its own screen from the last value the show machine sent. It cannot move the game's phases, pause the clock or end the game, because the show machine does all three. So the GMs call the phases and the end themselves unless the design gives a tablet the clock.",
               "cost": "Each tablet holds enough of the game to finish it, and the records of several tablets are joined afterwards. No extra equipment. The GMs rehearse it."
             },
             {
@@ -432,7 +432,7 @@
     },
     {
       "label": "I. What the panel gets in its blind round",
-      "form": "Yes or no: give the blind round your binding decisions and the six decisions ahead. Yes or no: add the seventh decision, “How the engine drives the room”. Say so if you want the decisions given with no agenda, or the decision on settled roles to bind every design."
+      "form": "Yes or no: give the blind round your binding decisions and the six decisions ahead. Yes or no: add the seventh decision, “How the engine drives the room”. Say so if you want the decisions given with no agenda, the decision on settled roles to bind every design, an open question kept out of the blind round, or the agent's options given to the panel with it."
     },
     {
       "label": "The five readings to confirm",
@@ -633,7 +633,7 @@
       "text": "The equipment's interface: one per kind of thing the room can do (play a video, light a scene), or one per outside program. It is decided in the round on how the engine holds the game's state, or in a round of its own on how the engine drives the room if you add that decision."
     },
     {
-      "text": "The standalone tablet: the same record and lifecycle parts the engine runs, or an engine of its own. It is decided in the rounds on how the engine holds the game's state and on where authority lives across devices."
+      "text": "The standalone tablet: the same record and lifecycle parts the engine runs, or code of its own. It is decided in the rounds on how the engine holds the game's state and on where authority lives across devices."
     },
     {
       "text": "How a networked game carries on without the show machine, and comes back together afterwards: you choose among the panel's designs inside the rounds on how the engine holds the game's state and where authority lives. Whatever is built must not make a mixed game by accident ([[dec:standalone-games-declared-never-mixed]])."

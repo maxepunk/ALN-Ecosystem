@@ -387,12 +387,13 @@ History:
   public view on the GM's tablet. Two of those three rows, the video
   token and the public view, hold the content of the agent's call
   "Exposed evidence and video with no engine", which is deleted. The
-  third, the tablet's clock, is new. Version 10's question "Which
-  standalone games the engine must run" had also asked whether
-  standalone means no show machine or no network. Version 11's page
-  states that a standalone game is a game with no show machine, as this
-  entry's summary does, and asks whether its devices must share one game
-  during play.
+  third, the tablet's clock, was a subject of version 10's question
+  "What a standalone game gives up, and what it keeps" and is new as a
+  proposal. Version 10's question "Which standalone games the engine
+  must run" had also asked whether standalone means no show machine or
+  no network. Version 11's page states that a standalone game is a game
+  with no show machine, as this entry's summary does, and asks whether
+  its devices must share one game during play.
 - 2026-11-10. The same review found that "no engine" in this entry's
   summary told a reader that the engine's own software may not run on a
   standalone device. In the glossary the engine is all the
@@ -454,7 +455,7 @@ schema, the pack schemas) and it is designed in an early design round,
 not merely collected. The tests become a test bench outside the engine.
 "Proof" stays a quality every part must meet. Together these two
 replace the candidate shape's part called "Joins and proofs" (shared
-shapes written once and tests on an engine of their own).
+shapes written once and tests on their own copy of the engine).
 
 Made 2026-11-01.
 
@@ -1009,12 +1010,16 @@ History:
   round's folder leaves that field out, because today's engine is
   withheld from that round, and the second round gets the notes back. Of
   each promise the blind round's folder holds who counts on it and when,
-  what they count on and the long-term goal. The other lists under a
-  promise (where today's engine falls short, what a standalone game does
-  today, what the planned capabilities need from it, the test situations
-  taken from the shows) carry facts about today's engine and wait for
-  the second round. That is the agent's call on how the panel runs, made
-  after the check of version 11, and the owner can overrule it.
+  what they count on and the long-term goal. The targets and cases that
+  serve a promise name it themselves. The rest under a promise (where
+  today's engine falls short, the line "In a standalone game", what the
+  planned capabilities need from it, the test situations from the shows)
+  carries facts about today's engine and waits for the second round.
+  Where a target's status or number names a promise's test, the test
+  itself waits for the second round. That is a choice the agent made
+  within the brief after the check of version 11. It is not one of the
+  thirteen calls on the Decisions page. The owner approves or changes it
+  with the brief.
 
 ---
 
@@ -1243,8 +1248,8 @@ said, when it was made, and what replaced it.
   "Build the test rig when building starts".
 - **2026-11-01. The part "Joins and proofs".** In the candidate shape,
   one part held the shapes two parts share, written once, and the tests
-  on an engine of their own. Replaced by "One published protocol and an
-  outside test bench".
+  on their own copy of the engine. Replaced by "One published protocol
+  and an outside test bench".
 - **2026-11-01. "Phase 1" and "phase 2", and bare step, block and
   round numbers.** In use since 2026-10-30. Replaced by the design half
   and the build half, steps named by what they do, blocks by name,

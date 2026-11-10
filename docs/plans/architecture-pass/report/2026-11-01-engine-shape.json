@@ -51,7 +51,7 @@
     },
     {
       "id": "J8",
-      "people": "The venue technician; a GM running a game with no engine; a future operator with a second kit",
+      "people": "The venue technician; a GM running a game with no show machine; a future operator with a second kit",
       "moment": "In the days before an event, and on the night when the engine is absent by choice",
       "need": "The venue technician states what the kit brings tonight, binds the pack's names to real instruments and gets one go or no-go. A standalone game knows it is standalone instead of mourning a lost connection. A second kit needs no change to engine code.",
       "proposedTitle": "The game fits the venue it is in tonight"
@@ -71,7 +71,7 @@
       "proposedTitle": "A change is proven before it reaches anyone, and the owner alone sends it to the show"
     }
   ],
-  "relationsMermaid": "flowchart TD\n  J1[\"J1 The designer's game is the game the whole kit plays\"]\n  J2[\"J2 One game, the same on every screen\"]\n  J3[\"J3 Every tap gets its answer, and the night can be told afterwards\"]\n  J4[\"J4 The room does what the designer cued and the GM asked\"]\n  J5[\"J5 Each lifecycle button does exactly what its name says\"]\n  J6[\"J6 The designer changes a value and plays it within minutes, and the live show never notices\"]\n  J7[\"J7 Each person sees their part and can do only their part\"]\n  J8[\"J8 Fit the game to the venue it is in tonight\"]\n  J9[\"J9 Anyone reading a screen can act on it without a second question\"]\n  J10[\"J10 A change is proven before it reaches anyone, and the owner alone sends it to the show\"]\n  J1 -->|\"the rules of the pack in use\"| J2\n  J1 -->|\"the cues, the clock rules, what each screen shows\"| J4\n  J1 -->|\"what the game needs from the room\"| J8\n  J1 -->|\"what to check, and which version to show\"| J9\n  J1 -->|\"the toy game to test on\"| J10\n  J6 -->|\"a published pack\"| J1\n  J8 -->|\"what is installed, which instrument is which, which programs the engine starts\"| J4\n  J8 -->|\"the venue profile, and whether the game is standalone\"| J9\n  J8 -->|\"who decides when there is no engine\"| J2\n  J4 -->|\"each program's state and health\"| J9\n  J9 -->|\"not installed tonight: no cues, no restarts\"| J4\n  J9 -->|\"go or no-go before the start\"| J5\n  J9 -->|\"the same go and no-go words on the draft\"| J6\n  J9 -.->|\"a quality: a label on every fact, how old and how sure\"| J2\n  J2 -->|\"what a tap is judged against: claims, teams, phase\"| J3\n  J3 -->|\"accepted taps\"| J2\n  J5 -->|\"between games, what the record keeps or clears\"| J2\n  J5 -->|\"between games, which cues, held items and services reset\"| J4\n  J5 -->|\"which moments allow a scan; the end writes the night's record\"| J3\n  J5 -->|\"a change applies only before or after a game\"| J6\n  J7 -->|\"who is connected, and which role sees what\"| J2\n  J7 -->|\"which device acted, and who may command\"| J3\n  J7 -->|\"how many stations and displays to expect\"| J9\n  J10 -.->|\"shared: each engine copy's own files, ports and settings\"| J6\n  J10 -->|\"each engine copy's own files, ports and settings, for a second kit\"| J8",
+  "relationsMermaid": "flowchart TD\n  J1[\"J1 The designer's game is the game the whole kit plays\"]\n  J2[\"J2 One game, the same on every screen\"]\n  J3[\"J3 Every tap gets its answer, and the night can be told afterwards\"]\n  J4[\"J4 The room does what the designer cued and the GM asked\"]\n  J5[\"J5 Each lifecycle button does exactly what its name says\"]\n  J6[\"J6 The designer changes a value and plays it within minutes, and the live show never notices\"]\n  J7[\"J7 Each person sees their part and can do only their part\"]\n  J8[\"J8 Fit the game to the venue it is in tonight\"]\n  J9[\"J9 Anyone reading a screen can act on it without a second question\"]\n  J10[\"J10 A change is proven before it reaches anyone, and the owner alone sends it to the show\"]\n  J1 -->|\"the rules of the pack in use\"| J2\n  J1 -->|\"the cues, the clock rules, what each screen shows\"| J4\n  J1 -->|\"what the game needs from the room\"| J8\n  J1 -->|\"what to check, and which version to show\"| J9\n  J1 -->|\"the toy game to test on\"| J10\n  J6 -->|\"a published pack\"| J1\n  J8 -->|\"what is installed, which instrument is which, which programs the engine starts\"| J4\n  J8 -->|\"the venue profile, and whether the game is standalone\"| J9\n  J8 -->|\"who decides when there is no show machine\"| J2\n  J4 -->|\"each program's state and health\"| J9\n  J9 -->|\"not installed tonight: no cues, no restarts\"| J4\n  J9 -->|\"go or no-go before the start\"| J5\n  J9 -->|\"the same go and no-go words on the draft\"| J6\n  J9 -.->|\"a quality: a label on every fact, how old and how sure\"| J2\n  J2 -->|\"what a tap is judged against: claims, teams, phase\"| J3\n  J3 -->|\"accepted taps\"| J2\n  J5 -->|\"between games, what the record keeps or clears\"| J2\n  J5 -->|\"between games, which cues, held items and services reset\"| J4\n  J5 -->|\"which moments allow a scan; the end writes the night's record\"| J3\n  J5 -->|\"a change applies only before or after a game\"| J6\n  J7 -->|\"who is connected, and which role sees what\"| J2\n  J7 -->|\"which device acted, and who may command\"| J3\n  J7 -->|\"how many stations and displays to expect\"| J9\n  J10 -.->|\"shared: each engine copy's own files, ports and settings\"| J6\n  J10 -->|\"each engine copy's own files, ports and settings, for a second kit\"| J8",
   "mechanisms": [
     {
       "name": "The rules",
@@ -126,7 +126,7 @@
     {
       "name": "The authority switch",
       "jobs": ["J8", "J2", "J3", "J5", "J9", "J1", "J7"],
-      "plain": "Who decides each fact when there is no engine, and the declared fact that says a game is standalone. Today a tap on the tablet, the web address the phone's page is opened from, nothing on the hardware scanner, nothing in the pack."
+      "plain": "Who decides each fact when there is no show machine, and the declared fact that says a game is standalone. Today a tap on the tablet, the web address the phone's page is opened from, nothing on the hardware scanner, nothing in the pack."
     }
   ],
   "qualities": [
@@ -143,12 +143,12 @@
     {
       "name": "Generic",
       "jobs": ["J1", "J2", "J3", "J4", "J5", "J6", "J7", "J8", "J9", "J10"],
-      "plain": "Nothing in the engine assumes ALN, one kit, one pack or one production. Carried by taking rules only from the pack, and the equipment's names only from the venue technician's profile and from each running copy of the engine's own settings."
+      "plain": "Nothing in the engine assumes ALN, or one kit, one pack or one production where avoiding it costs little. Carried by taking rules only from the pack, and the equipment's names only from the venue technician's profile and from each running copy of the engine's own settings."
     },
     {
-      "name": "Who decides when there is no engine",
+      "name": "Who decides when there is no show machine",
       "jobs": ["J1", "J2", "J3", "J5", "J9"],
-      "plain": "Every design choice says who decides when there is no engine, and a standalone game is a declared fact, never mixed. Carried by hosting the same record, lifecycle and answering modules on the tablet, with the declaration held wherever the design rounds place it; the earlier candidate favours the venue technician's profile."
+      "plain": "Every design choice says who decides when there is no show machine, and a standalone game is a declared fact, never mixed. Carried by hosting the same record, lifecycle and answering modules on the tablet, with the declaration held wherever the design rounds place it; the earlier candidate favours the venue technician's profile."
     },
     {
       "name": "Only the GM moves the game",
@@ -339,7 +339,7 @@
     {
       "id": "P12",
       "name": "Venue fit",
-      "plain": "The venue technician's profile: what the kit brings tonight, which real piece of equipment each name in the pack means tonight, whether the engine starts each program or uses one already running, how many GM tablets and scoreboard screens to expect; and, if the design rounds place it here, the declared fact that a game runs with no engine.",
+      "plain": "The venue technician's profile: what the kit brings tonight, which real piece of equipment each name in the pack means tonight, whether the engine starts each program or uses one already running, how many GM tablets and scoreboard screens to expect; and, if the design rounds place it here, the declared fact that a game runs with no show machine.",
       "level": "module",
       "runsOn": ["backend", "config-tool", "gm-tablet", "player-devices"],
       "jobs": ["J8", "J4", "J9", "J2", "J5"],
@@ -379,7 +379,7 @@
     {
       "id": "P16",
       "name": "Joins and proofs",
-      "plain": "Every format two parts share is written once and both sides read it; every test stand-in is checked against the real code it stands in for; the same tests run on two games, ALN and the toy game; every level of testing runs the real programs it can, under an engine of its own, so no test reaches a live show.",
+      "plain": "Every format two parts share is written once and both sides read it; every test stand-in is checked against the real code it stands in for; the same tests run on two games, ALN and the toy game; every level of testing runs the real programs it can, on its own copy of the engine, so no test reaches a live show.",
       "level": "module",
       "runsOn": ["tests"],
       "jobs": ["J10", "J1", "J2", "J3", "J8"],
@@ -419,7 +419,7 @@
       "cost": "The earlier candidate gives the trial copy of the engine and the test rig a real second thing to plug in and lets the show runner ask one place whether a video is playing; it costs one interface over programs that work differently (a video queue is not a music playlist). The other way is nearer today's code and cheaper first, but leaves the stand-ins on paper only and the questions about several programs at once spread out."
     },
     {
-      "title": "The standalone tablet: the same modules as the engine, or its own engine",
+      "title": "The standalone tablet: the same modules as the engine, or code of its own",
       "a": "The same game record, lifecycle, answering and delivery hosted on the tablet, with a switch that says the game is standalone.",
       "b": "An engine of the tablet's own, kept equal by tests, as today but improved.",
       "cost": "The earlier candidate needs the record, the lifecycle table and answering and delivery to run outside the engine itself, which limits how the engine's code is packaged; the tablet then matches the engine because it runs the same code. The other way keeps the engine free of that constraint and keeps a second body of rules on the tablet, with five rules that nothing keeps equal today as the standing risk."
@@ -476,17 +476,17 @@
     },
     {
       "q": "C",
-      "note": "The map supports the clause: a declared standalone game is a setting every rule takes, and J8, the job that fits the game to tonight's setup, is where it is declared. Where the fact is held is a later choice; the installer's profile is the candidate the map favours, because the dormancy idea (a profile with no engine equipment, so every engine duty reads dormant) already carries the right words. The pack, the game record or each device are the alternatives; whichever is chosen, the pack channel carries the declaration to every device."
+      "note": "The map supports the clause: a declared standalone game is a setting every rule takes, and J8, the job that fits the game to tonight's setup, is where it is declared. Where the fact is held is a later choice; the installer's profile is the candidate the map favours, because the dormancy idea (a profile with no show machine, so every service the show machine runs reads dormant) already carries the right words. The pack, the game record or each device are the alternatives; whichever is chosen, the pack channel carries the declaration to every device."
     }
   ],
   "ownerChoices": [
     "Where the standalone fact lives: the profile (favoured here), the pack, the game record, or each device.",
     "Whether a standalone game means one GM tablet, and whether standalone player devices deliver their scans to it.",
-    "What exposure and a video token do with no engine.",
+    "What exposure and a video token do with no show machine.",
     "D, E, F and G: one J3 or two; J8 renamed or split; J10 widened, split or left; whether J2 or J4 carries the words for equipment on screens, given that one delivery part carries the route either way.",
     "The rules as shared code or as two implementations under one contract.",
     "Equipment's first declared interface: per capability or per program.",
-    "The standalone tablet as the same record and lifecycle modules the engine runs, or its own engine.",
+    "The standalone tablet as the same record and lifecycle modules the engine runs, or code of its own.",
     "The scoreboard as one page in two hosts or a view of the GM app.",
     "Whether the config tool stays a separate process that talks to the engine by message, or becomes a surface the engine itself serves.",
     "Whether refused scans are recorded in the game record or only answered.",

@@ -340,7 +340,7 @@
   "words": [
     {
       "term": "The engine",
-      "def": "All the software that is the same for every game: the program on the show machine, the GM's app, the player scanners, the screens and the design tool. A standalone game runs with no show machine; it still runs the engine's own software on its devices. Where a page sets the engine beside a device, as in “a tablet cut off from the engine” or “the engine's edge”, it means the program on the show machine.",
+      "def": "All the software that is the same for every game: the program on the show machine, the GM's app, the player scanners, the screens and the design tool. A standalone game runs with no show machine; it still runs the engine's own software on its devices. Where a page sets the engine beside a device, as in the question “A GM tablet cut off from the engine” or in “the engine's edge”, it means the program on the show machine.",
       "group": "page"
     },
     {

@@ -317,7 +317,7 @@ The orchestrator's draft, written for any game. Three lines carry a change the m
 
 **What it means for any game.** Unknown, out of date, broken and not installed tonight each look like what they are, on every screen. Red always means act now; grey means absent on purpose. The preflight answers go or no-go honestly, says what it cannot check, and labels each line paper or live. J9 makes a screen say so when it cannot be right.
 
-**Who relies on it.** The GM, who must trust red to mean act now; the venue installer, who reads the preflight's go or no-go; the designer, whose editor badges use the same words as the show; the audience, whose TV clock must not count on its own.
+**Who relies on it.** The GM, who must trust red to mean act now; the venue installer, who reads the preflight's go or no-go; the designer, whose editor badges use the same words as the show; the audience, whose TV clock must show when it is unconfirmed.
 
 **The long-term goal, as the roadmap and the owner's decisions set it.** The preflight states its own limits and labels every check paper or live. Red always means act now; intentional absence shows grey. An equipment list the engine cannot read gives unknown, never broken. A missing or broken profile is a failed check and a start refusal, never 'nothing installed'. One verdict function answers in the editor and at the show. [RM:309-317 and CTX:434-442 via MD:68; CTX:356 and MD:69; C23:251 via MD:157; HP:49 via MD:156; PGS:483-489 via MD:193]
 

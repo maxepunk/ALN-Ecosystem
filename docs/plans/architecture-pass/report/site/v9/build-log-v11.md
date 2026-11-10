@@ -1,5 +1,7 @@
 # Build log, version 11: integration, build and smoke test (2026-11-10)
 
+> Superseded on the counts by `checks/v11-apply-log.md`: 22 settled, 19 partly settled, 6 proposed; 21 notes under “Today”; 1,775 links; 2,610 words.
+
 Written for the agent running the pass. This step applied the items the five writers left for other files, made
 Design's later choices identical to the Decisions page's, built the site, ran the smoke test, checked the counts
 and wrote the pages as text for the checkers. Nothing was committed. No git command that changes anything was run.

@@ -71,21 +71,21 @@ Each architect gets one prepared folder and nothing else:
   maintain, continue development on, and extend”.
 - **The requirements**, as the owner leaves them after review: the ten
   promises; the quality targets, each number sorted as the engine's
-  requirement or limit, a production's setting (ALN's given as the
-  first set) or a technical default, a sorting the agent running the
-  pass made and marked as its own; the extension cases, each marked
-  as one of the two kinds of extension or neither; the standing rules.
-  Each target and case says whether the owner settled it, partly
-  settled it or the agent proposes it. Where a target or a case notes
-  how today's engine behaves, the note sits in a field of its own,
-  “today”. The folder leaves that field out, because today's engine is
-  withheld from this round. The second round gets the notes back. Of
-  each promise the folder holds who counts on it and when, what they
-  count on and the long-term goal. The other lists under a promise
-  (where today's engine falls short, what a standalone game does today,
-  what the planned capabilities need from it, the test situations taken
-  from the shows) carry facts about today's engine and wait for the
-  second round.
+  requirement or limit, a production's setting (ALN's given as the first
+  set) or a technical default, a sorting the agent running the pass made
+  and marked as its own; the extension cases, each marked as one of the
+  two kinds of extension or neither; the standing rules. Each target and
+  case says whether the owner settled it, partly settled it or the agent
+  proposes it. Where a target or a case notes how today's engine
+  behaves, the note sits in a field of its own, “today”. The folder
+  leaves that field out, because today's engine is withheld from this
+  round. The second round gets the notes back. Of each promise the
+  folder holds who counts on it and when, what they count on and the
+  long-term goal. The targets and cases that serve a promise name it
+  themselves. The rest under a promise (where today's engine falls
+  short, the line “In a standalone game”, what the planned capabilities
+  need from it, the test situations from the shows) carries facts about
+  today's engine and waits for the second round.
 - **The setting**, as facts. ALN's kit is the first production's
   hardware, given as facts and not as the engine's requirements (the
   decision “The engine is hardware-flexible; the roadmap sets the
@@ -276,13 +276,14 @@ How: the prepared folders are built by a script from the sources (the
 requirements files, the standing rules, the decision record). For the
 blind round the script leaves out the field “today” of every target and
 case and the lists under each promise that describe today's engine, and
-writes each open question as its “What it decides” paragraph only.
-Where a requirement's text points to another requirement, the script
-writes that requirement's title in its place. Each architect is told to
-read only its folder, plus the code in the second round, and never the
-planning documents. Nothing technical stops an agent from opening a file
-it was told to leave alone, so the synthesis's checker also looks for
-traces of withheld material in every proposal.
+writes each open question as its “What it decides” paragraph only. Where
+a requirement's text points to another requirement, the script writes
+that requirement's title in its place. Where a target's status or number
+names a promise's test, the test itself waits for the second round. Each
+architect is told to read only its folder, plus the code in the second
+round, and never the planning documents. Nothing technical stops an
+agent from opening a file it was told to leave alone, so the synthesis's
+checker also looks for traces of withheld material in every proposal.
 
 ## What the owner gets back
 
@@ -307,20 +308,21 @@ any design, and the six decisions ahead as its agenda? And does a
 seventh decision, “How the engine drives the room”, join that agenda?**
 This is the owner's question: the decision on what the panel sees lists
 only the goal, the requirements and the setting, and adding to it
-changes that decision. The binding list holds the owner's four
-decisions of 2026-11-02 as well, and no longer holds the settled roles,
-which go in the setting. Recommendation: yes to both. The binding
-decisions are the owner's, not the reasoning of the agent running the
-pass, and a panel without them would propose designs already ruled out,
-among them a game that pauses at a lost connection. The cost: the
-agenda frames the architects' thinking, so each first writes their own
-list and they are told they may change the agenda. On the seventh
-decision: about four lines in ten of the program on today's show
-machine drive the room, none of the six decides how, and one of the
-nine questions the pass answers, how the engine reads the programs it
-drives, had no decision of its own. If the owner says no, the list
-stays at six and the room's state stays part of the first decision. The
-owner can also give the panel the binding decisions and no agenda.
+changes that decision. The binding list holds the owner's four decisions
+of 2026-11-02 as well, and no longer holds the settled roles, which go
+in the setting. Recommendation: yes to both. The binding decisions are
+the owner's, not the reasoning of the agent running the pass, and a
+panel without them would propose designs already ruled out, among them a
+game that pauses at a lost connection. The cost: the agenda frames the
+architects' thinking, so each first writes their own list and they are
+told they may change the agenda. On the seventh decision: about four
+lines in ten of the program on today's show machine drive the room.
+Until 2026-11-10 none of the six named it, and one of the nine questions
+the pass answers, how the engine reads the programs it drives, had no
+decision. The first decision now holds the room's state. If the owner
+says yes, the room gets a round of its own. If the owner says no, the
+list stays at six and the room's state stays part of the first decision.
+The owner can also give the panel the binding decisions and no agenda.
 
 **The panel's three lenses** (the agent's call, told to the owner, who
 can overrule it). Three architects: state, authority and keeping the

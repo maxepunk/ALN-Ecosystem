@@ -150,7 +150,7 @@
         }
       ],
       "standalone": "In a standalone game: one tablet holds the only copy, so tablets cannot disagree, but not every screen refreshes. Two tablets are two separate games; whether one standalone game may use more than one GM tablet is the owner's question “Which standalone games the engine must run”.",
-      "standaloneCandidate": "In the earlier candidate the tablet runs the engine's Game record and Delivery, or its own engine kept equal by tests.",
+      "standaloneCandidate": "In the earlier candidate the tablet runs the engine's Game record and Delivery, or code of its own, kept equal by tests.",
       "questions": [
         1,
         5,
@@ -580,7 +580,7 @@
         "the GM, who must trust red to mean act now",
         "the venue installer, who reads the preflight's go or no-go",
         "the designer, whose editor badges use the same words as the show",
-        "the audience, whose TV clock must not count on its own"
+        "the audience, whose TV clock must show when it is unconfirmed"
       ],
       "goal": "Every fact and reply carries a label: how old, how sure, paper or live. Red means act now; grey means absent on purpose; an unreadable equipment list shows unknown. One answer (healthy, down or not installed tonight) serves the editor, the preflight and the start check, and reaches the screen. The preflight says what it cannot check; a broken profile blocks starting.",
       "goalOpen": false,
@@ -680,7 +680,7 @@
         }
       ],
       "standalone": "In a standalone game: nothing tests a player device with no show machine; the phone's pack test passes on a file the deployed site lacks; the one test comparing both modes skips its group case.",
-      "standaloneCandidate": "In the earlier candidate the same tests cover the tablet, or, if the tablet has its own engine, a test that checks the two give the same answers.",
+      "standaloneCandidate": "In the earlier candidate the same tests cover the tablet, or, if the tablet has code of its own, a test that checks the two give the same answers.",
       "questions": [
         4,
         5
