@@ -1,0 +1,535 @@
+<title>Engine Architecture Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: one reading column; the two pictures and the before/after pairs use the full width.
+   The numbers 1 to 7 are information: they tie the picture, the cards, the table and the order together. */
+:root {
+  --bg: #f4f5f8; --surface: #ffffff; --ink: #17202b; --muted: #556170; --line: #d5dae2; --line-soft: #e5e8ee;
+  --accent: #1d5fa6; --accent-bg: #e3edf9;
+  --today: #a04a14; --today-bg: #fbeee3; --today-line: #e8bd9b;
+  --next: #12695a; --next-bg: #e1f3ee; --next-line: #a3d4c8;
+  --room-bg: #f0ebdf; --room-line: #d9cdb1;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10151b; --surface: #171e27; --ink: #e5eaf0; --muted: #9ba7b5; --line: #2b3541; --line-soft: #222b36;
+    --accent: #7fb4f1; --accent-bg: #16283d;
+    --today: #f0a168; --today-bg: #33211a; --today-line: #6b4028;
+    --next: #70d0ba; --next-bg: #11302a; --next-line: #245a4f;
+    --room-bg: #24211a; --room-line: #4a4331;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10151b; --surface: #171e27; --ink: #e5eaf0; --muted: #9ba7b5; --line: #2b3541; --line-soft: #222b36;
+  --accent: #7fb4f1; --accent-bg: #16283d;
+  --today: #f0a168; --today-bg: #33211a; --today-line: #6b4028;
+  --next: #70d0ba; --next-bg: #11302a; --next-line: #245a4f;
+  --room-bg: #24211a; --room-line: #4a4331;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55; margin: 0; }
+.wrap { max-width: 62rem; margin: 0 auto; padding-block: 2.25rem 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.prose { max-width: 43rem; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.1rem, 6vw, 3rem); line-height: 1.04; margin: .3rem 0 0; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.7rem; line-height: 1.15; margin: 3.2rem 0 .6rem; text-wrap: balance; }
+h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.32rem; line-height: 1.2; margin: 0; text-wrap: balance; }
+p { margin: .6rem 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.eyebrow { font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: .09em; font-size: .84rem; color: var(--muted); margin: 0; }
+.lede { font-size: 1.12rem; }
+.muted { color: var(--muted); }
+ul.plain { margin: .5rem 0; padding-left: 1.2rem; display: grid; gap: .3rem; }
+ol.steps { margin: .5rem 0; padding-left: 1.3rem; display: grid; gap: .55rem; }
+
+/* contents */
+.toc { display: flex; flex-wrap: wrap; gap: .4rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.toc a { display: inline-flex; gap: .4rem; align-items: baseline; text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: .2rem .7rem; font-size: .92rem; color: var(--ink); }
+.toc a b { font-family: var(--font-display); color: var(--accent); }
+
+/* numbered markers */
+.mk { display: inline-flex; align-items: center; justify-content: center; min-width: 1.35em; height: 1.35em; padding: 0 .3em; border-radius: 999px; background: var(--today); color: var(--surface); font-family: var(--font-display); font-weight: 700; font-size: .82rem; line-height: 1; text-decoration: none; vertical-align: .08em; }
+.mk.ok { background: var(--next); }
+.mk + .mk { margin-left: .15em; }
+
+/* the two pictures: lanes */
+.pic { display: grid; gap: .35rem; margin: 1rem 0 .5rem; }
+.lane { display: grid; grid-template-columns: 11.5rem 1fr; gap: .75rem; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: .7rem .8rem; }
+.lane.room { background: var(--room-bg); border-color: var(--room-line); }
+.lane-name { font-family: var(--font-display); font-weight: 600; font-size: 1.02rem; line-height: 1.2; }
+.lane-name small { display: block; font-family: var(--font-body); font-weight: 400; font-size: .8rem; color: var(--muted); margin-top: .15rem; }
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; min-width: 0; }
+.chip { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .3rem .55rem; font-size: .88rem; line-height: 1.3; min-width: 0; }
+.lane.room .chip { border-color: var(--room-line); }
+.chip.weak { border-color: var(--today-line); background: var(--today-bg); }
+.chip.good { border-color: var(--next-line); background: var(--next-bg); }
+.chip small { display: block; color: var(--muted); font-size: .8rem; }
+.link { text-align: center; font-size: .85rem; color: var(--muted); padding: .05rem 0; }
+.link::before { content: "\2195\00a0"; }
+.legend { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; font-size: .85rem; color: var(--muted); margin: .4rem 0 0; }
+.legend span { display: inline-flex; gap: .4rem; align-items: center; }
+.sw { width: .9rem; height: .9rem; border-radius: 3px; border: 1px solid var(--line); background: var(--surface); display: inline-block; }
+.sw.room { background: var(--room-bg); border-color: var(--room-line); }
+.sw.weak { background: var(--today-bg); border-color: var(--today-line); }
+.sw.good { background: var(--next-bg); border-color: var(--next-line); }
+@media (max-width: 700px) { .lane { grid-template-columns: 1fr; gap: .45rem; } }
+
+/* improvement cards */
+.imps { display: grid; gap: 1rem; margin-top: 1rem; }
+.imp { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1.15rem 1.2rem; display: grid; gap: .9rem; scroll-margin-top: 1rem; }
+.imp-head { display: flex; flex-wrap: wrap; gap: .5rem .7rem; align-items: baseline; }
+.num { font-family: var(--font-display); font-weight: 700; font-size: 1.32rem; color: var(--accent); }
+.badge { font-family: var(--font-display); font-weight: 600; font-size: .78rem; letter-spacing: .07em; text-transform: uppercase; padding: .08rem .55rem; border-radius: 999px; border: 1px solid var(--next-line); color: var(--next); background: var(--next-bg); white-space: nowrap; }
+.badge.explore { border-color: var(--line); color: var(--accent); background: var(--accent-bg); }
+.ba { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+@media (max-width: 700px) { .ba { grid-template-columns: 1fr; } }
+.side { border: 1px solid var(--line-soft); border-radius: 8px; padding: .7rem .8rem .8rem; min-width: 0; display: grid; gap: .45rem; align-content: start; }
+.side.today { background: var(--today-bg); border-color: var(--today-line); }
+.side.next { background: var(--next-bg); border-color: var(--next-line); }
+.side-label { font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: .09em; font-size: .78rem; margin: 0; }
+.today .side-label { color: var(--today); }
+.next .side-label { color: var(--next); }
+.side p { margin: 0; font-size: .95rem; }
+.flow { display: grid; gap: .3rem; }
+.row { display: flex; flex-wrap: wrap; gap: .35rem; }
+.bx { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .3rem .55rem; font-size: .86rem; line-height: 1.3; min-width: 0; flex: 1 1 8.5rem; }
+.today .bx { border-color: var(--today-line); }
+.next .bx { border-color: var(--next-line); }
+.via { font-size: .82rem; color: var(--muted); padding-left: .2rem; }
+.via::before { content: "\2193\00a0"; }
+.gives { display: grid; gap: .45rem; margin: 0; }
+.gives div { display: grid; grid-template-columns: 9.5rem 1fr; gap: .6rem; }
+.gives dt { font-family: var(--font-display); font-weight: 600; color: var(--muted); }
+.gives dd { margin: 0; min-width: 0; }
+@media (max-width: 700px) { .gives div { grid-template-columns: 1fr; gap: .05rem; } }
+details.files { border-top: 1px solid var(--line-soft); padding-top: .6rem; }
+details.files summary { cursor: pointer; font-size: .88rem; color: var(--muted); }
+details.files ul { margin: .5rem 0 0; padding-left: 1.1rem; display: grid; gap: .2rem; }
+details.files li { font-family: var(--font-mono); font-size: .78rem; overflow-wrap: anywhere; }
+.choice { font-size: .93rem; background: var(--accent-bg); border-radius: 8px; padding: .5rem .7rem; margin: 0; }
+.choice b { font-family: var(--font-display); font-weight: 600; letter-spacing: .02em; }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; margin: .8rem 0; }
+table { border-collapse: collapse; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: .95rem; }
+th, td { text-align: left; padding: .55rem .75rem; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+th { font-family: var(--font-display); font-weight: 600; letter-spacing: .03em; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.nums { white-space: nowrap; }
+
+/* the ask */
+.ask { background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; padding: 1.1rem 1.2rem; margin-top: 1rem; }
+.ask h2 { margin: 0 0 .3rem; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: .88rem; color: var(--muted); }
+code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere; }
+</style>
+
+<div class="wrap">
+
+<header class="prose">
+  <p class="eyebrow">A proposal for your review · 10 November 2026</p>
+  <h1>Engine Architecture Plan</h1>
+  <p class="lede">The game happens in a room. The engine connects a touch on a physical token to a response in the room and a fact on the record, lets staff run a session, and gives the people who make a game their tools. This plan is about the code structure that work stands on.</p>
+  <p>The engine's rules and its pack format are sound. The weak spots are in the plumbing the parts share: how a game's facts are decided and reach screens, how a request is answered, how the room's gear is driven, how a game moves through its life, and how one copy of the engine stays clear of another. Seven improvements fix those, and the rest of the rebuild stands on them.</p>
+  <p>They are judged by what the engine is meant to become: a platform for other people's games, at any size of install, for one night or a run of months. They are not a list of ALN's bugs.</p>
+  <ul class="toc">
+    <li><a href="#imp-1"><b>1</b> One home for the game's facts</a></li>
+    <li><a href="#imp-2"><b>2</b> One copy of the rules</a></li>
+    <li><a href="#imp-3"><b>3</b> One published protocol</a></li>
+    <li><a href="#imp-4"><b>4</b> One door for requests</a></li>
+    <li><a href="#imp-5"><b>5</b> One interface for the gear</a></li>
+    <li><a href="#imp-6"><b>6</b> Each copy keeps to itself</a></li>
+    <li><a href="#imp-7"><b>7</b> One table for a game's life</a></li>
+  </ul>
+</header>
+
+<section>
+  <h2>How it fits together today</h2>
+  <p class="prose">Read from the top: the room, the devices in it, the show machine, the programs it drives, and the gear they move. A numbered mark shows where each improvement lands.</p>
+  <div class="pic" role="group" aria-label="How the engine fits together today">
+    <div class="lane room">
+      <div class="lane-name">In the room<small>physical; the system never sees it directly</small></div>
+      <div class="chips">
+        <span class="chip">Players with characters</span>
+        <span class="chip">Token objects with NFC tags</span>
+        <span class="chip">GMs at their stations</span>
+        <span class="chip">Locks, puzzles, props</span>
+      </div>
+    </div>
+    <div class="link">a token is tapped on a reader; a GM presses a button</div>
+    <div class="lane">
+      <div class="lane-name">Devices<small>physical things running the engine's apps</small></div>
+      <div class="chips">
+        <span class="chip">Hardware scanner</span>
+        <span class="chip">Player's phone</span>
+        <span class="chip weak">GM tablet <a class="mk" href="#imp-1">1</a><a class="mk" href="#imp-2">2</a><small>keeps its own lists and its own copy of the rules</small></span>
+        <span class="chip weak">Wall display <a class="mk" href="#imp-1">1</a><small>filters and decides in the page</small></span>
+      </div>
+    </div>
+    <div class="link">requests go in three ways; names are copied by hand on both sides <a class="mk" href="#imp-3">3</a><a class="mk" href="#imp-4">4</a></div>
+    <div class="lane">
+      <div class="lane-name">The show machine<small>the engine's main program; a kit may not have one</small></div>
+      <div class="chips">
+        <span class="chip weak">The game's facts: accounts, claims, scores, evidence, clock <a class="mk" href="#imp-1">1</a><small>each built twice on the way out</small></span>
+        <span class="chip good">The rules, read from the pack <a class="mk ok" href="#sound">✓</a></span>
+        <span class="chip weak">A game's life: start, end, reset, restart <a class="mk" href="#imp-7">7</a><small>two hand-kept lists</small></span>
+        <span class="chip">Cues, clock, video queue</span>
+        <span class="chip good">What the show needs against what is installed <a class="mk ok" href="#sound">✓</a></span>
+        <span class="chip weak">This copy's files and names <a class="mk" href="#imp-6">6</a><small>assumes it is alone on the machine</small></span>
+      </div>
+    </div>
+    <div class="link">commands out; each program read back in its own way <a class="mk" href="#imp-5">5</a></div>
+    <div class="lane">
+      <div class="lane-name">Outside programs<small>on the show machine</small></div>
+      <div class="chips">
+        <span class="chip weak">Video player</span><span class="chip weak">Music player</span><span class="chip weak">Sound</span><span class="chip weak">Audio routing</span><span class="chip weak">Bluetooth</span><span class="chip weak">Lights hub</span><span class="chip weak">Display browser</span>
+      </div>
+    </div>
+    <div class="link">picture, sound, light</div>
+    <div class="lane room">
+      <div class="lane-name">The room's gear<small>physical; installed for one night or for months</small></div>
+      <div class="chips">
+        <span class="chip">TV</span><span class="chip">Speakers</span><span class="chip">Lights</span><span class="chip">A second display</span>
+      </div>
+    </div>
+  </div>
+  <p class="legend"><span><i class="sw room"></i>physical</span><span><i class="sw"></i>digital</span><span><i class="sw weak"></i>weak spot today</span><span><i class="sw good"></i>sound today</span></p>
+</section>
+
+<section id="sound" class="prose">
+  <h2>What is already sound, and stays</h2>
+  <ul class="plain">
+    <li>The pack, and the check at start-up that refuses a bad pack.</li>
+    <li>The rules on the show machine, written as plain functions that are easy to test.</li>
+    <li>The comparison of what the show needs with what is installed, with its three words: healthy, down, and not installed here.</li>
+    <li>Pack delivery to devices, each showing which pack it holds.</li>
+    <li>Draft and publish in the design tool.</li>
+    <li>The toy game, and the rule that every change passes with both games.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>The seven improvements</h2>
+  <p class="prose">Each one says what is wrong in the structure today, what would change, and what that gives you at a session and for the work still to come. All seven carry my strongest recommendation.</p>
+
+  <div class="imps">
+
+  <article class="imp" id="imp-1">
+    <div class="imp-head"><span class="num">1</span><h3>The game's facts live in one place and reach every screen one way</h3><span class="badge">Strong</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx">The show machine decides a scan</span></div>
+          <div class="via">live updates are built by one piece of code</div>
+          <div class="via">a reconnecting screen is caught up by another</div>
+          <div class="row"><span class="bx">GM tablet: has already marked the token, and keeps its own lists</span><span class="bx">Wall display: gets everything and filters it in the page</span></div>
+        </div>
+        <p>A fact present on one path and missing on the other has happened four times.</p>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx">One game record decides and holds every fact</span></div>
+          <div class="via">one way out: the same code live and after a reconnect, each fact dated, filtered for each screen</div>
+          <div class="row"><span class="bx">Every screen draws what it is sent</span></div>
+        </div>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>At a session</dt><dd>What one GM did is what every tablet and the wall display show, also after a reconnect. A delete or a reset clears every screen. A tablet that loses the show machine keeps working and settles up when it is back.</dd></div>
+      <div><dt>For the rebuild</dt><dd>Capture, the night's record, players' phones and the second game's hidden facts each need one home for a fact and one filtered way out.</dd></div>
+    </dl>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>ALNScanner/src/app/domains/gameOps.js:326 (marks before the answer)</li>
+      <li>ALNScanner/src/core/unifiedDataManager.js, core/storage/</li>
+      <li>backend/src/websocket/broadcasts.js (live), syncHelpers.js:36 (catch-up)</li>
+      <li>backend/src/services/sessionService.js, transactionService.js</li>
+      <li>backend/public/scoreboard.html</li>
+    </ul></details>
+  </article>
+
+  <article class="imp" id="imp-2">
+    <div class="imp-head"><span class="num">2</span><h3>One copy of the game's rules</h3><span class="badge">Strong</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx">Show machine: the rules</span><span class="bx">GM tablet: a second, hand-written copy</span><span class="bx">Wall display: reads the rules file itself</span></div>
+          <div class="via">kept equal by comments and paired tests</div>
+        </div>
+        <p>Eighteen decisions are made again on devices. For five of them nothing checks that the copies agree. Whether a game has a show machine is a tap on the tablet and a web address on the phone, written down nowhere.</p>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx">The rules: one copy, read from the pack</span></div>
+          <div class="via">runs on</div>
+          <div class="row"><span class="bx">The show machine, in a networked game</span><span class="bx">The GM tablet, in a game with no show machine</span></div>
+          <div class="row"><span class="bx">Hardware scanner: the few rules it needs, as data made from the same source</span></div>
+        </div>
+        <p>Whether a game has a show machine is declared once.</p>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>At a session</dt><dd>A small install scores a game exactly as the full rig does.</dd></div>
+      <div><dt>For the rebuild</dt><dd>A touring game that plays with less gear, the second game's new scoring, and every rule a pack declares land once.</dd></div>
+    </dl>
+    <p class="choice"><b>A choice inside this one.</b> The tablet runs the same code, which I recommend, or keeps code of its own that tests check against the first. I will bring both designs when we look at it.</p>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>backend/src/gameRules/ (the sound copy)</li>
+      <li>ALNScanner/src/core/scoring.js, modeSemantics.js, storage/LocalStorage.js</li>
+      <li>backend/public/scoreboard.html:1231</li>
+      <li>ALNScanner/src/app/sessionModeManager.js; aln-memory-scanner/js/orchestratorIntegration.js:33</li>
+    </ul></details>
+  </article>
+
+  <article class="imp" id="imp-3">
+    <div class="imp-head"><span class="num">3</span><h3>One published protocol</h3><span class="badge">Strong</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx">Two contract files describe the messages</span></div>
+          <div class="via">each program copies the names by hand</div>
+          <div class="row"><span class="bx">Show machine</span><span class="bx">GM tablet</span><span class="bx">Phone</span><span class="bx">Hardware scanner</span><span class="bx">Wall display</span></div>
+        </div>
+        <p>The GM tablet keeps a hand-written list of the messages it accepts. A message missing from the list never arrives, and nothing says so.</p>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx">One definition, with a version, of every request, reply, fact and file</span></div>
+          <div class="via">each program's code is made from it, or checked against it when built</div>
+          <div class="row"><span class="bx">Every program and every device</span></div>
+        </div>
+        <p>You decided this on 1 November. This is how it lands in the code.</p>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>At a session</dt><dd>After an update, a tablet or scanner that does not match says so at once. Nothing fails silently mid-game.</dd></div>
+      <div><dt>For the rebuild</dt><dd>Every new device and screen, anyone else's extension, and the rule that a pack can update at any time while the engine updates between events.</dd></div>
+    </dl>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>backend/contracts/openapi.yaml, asyncapi.yaml</li>
+      <li>ALNScanner/src/network/orchestratorClient.js:26 (the hand-kept list)</li>
+      <li>arduino-cyd-player-scanner/ALNScanner_v5/services/PayloadBuilder.h, ScanResponse.h</li>
+    </ul></details>
+  </article>
+
+  <article class="imp" id="imp-4">
+    <div class="imp-head"><span class="num">4</span><h3>One door for requests, and the pack says who may do what</h3><span class="badge">Strong</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx">A player's scan: one way in, its own kind of reply</span></div>
+          <div class="row"><span class="bx">A GM's scan: another way in, another reply</span></div>
+          <div class="row"><span class="bx">A GM's command: a third, matched to its reply by name only</span></div>
+        </div>
+        <p>Only a connection that calls itself a GM is asked for a pass. Which device may do what is fixed by the way in it uses. That is ALN's arrangement, not the engine's.</p>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx">Any tap or button, from any device</span></div>
+          <div class="via">one door: who is asking, and may they</div>
+          <div class="row"><span class="bx">Accepted</span><span class="bx">Refused, and why</span><span class="bx">Held</span><span class="bx">Try again</span></div>
+        </div>
+        <p>What each kind of device may do comes from the pack, above a floor that stays with staff.</p>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>At a session</dt><dd>Every tap gets an answer the person can act on. Nothing is lost or counted twice without a trace.</dd></div>
+      <div><dt>For the rebuild</dt><dd>A game where a station sells without staff, players' phones, scans of several objects, and a record of every attempt.</dd></div>
+    </dl>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>backend/src/routes/scanRoutes.js (game logic inside the route)</li>
+      <li>backend/src/websocket/adminEvents.js, socketServer.js:53</li>
+      <li>backend/src/services/commandExecutor.js; backend/src/gameRules/grants.js</li>
+      <li>ALNScanner/src/admin/utils/CommandSender.js:44</li>
+    </ul></details>
+  </article>
+
+  <article class="imp" id="imp-5">
+    <div class="imp-head"><span class="num">5</span><h3>One interface for the room's gear, and one way to keep its programs running</h3><span class="badge">Strong</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx">Video</span><span class="bx">Music</span><span class="bx">Sound</span><span class="bx">Audio routing</span><span class="bx">Bluetooth</span><span class="bx">Lights</span><span class="bx">Display</span></div>
+          <div class="via">seven drivers, each written its own way</div>
+        </div>
+        <p>A program's state and its health travel separately, so a panel can show a calm value for a dead program. Crashed programs are restarted in more than one way.</p>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx">One interface for each thing the room can do: commands in; state, health and age out together</span></div>
+          <div class="via">underneath, either</div>
+          <div class="row"><span class="bx">The real program</span><span class="bx">A software stand-in</span></div>
+          <div class="row"><span class="bx">One supervisor starts, watches and restarts every program</span></div>
+        </div>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>At a session</dt><dd>A crashed program comes back by itself, or the GM sees red with what to press. Gear that is not installed here shows grey.</dd></div>
+      <div><dt>For the rebuild</dt><dd>The paused work on automatic restarts and the preflight lands once, not seven times. Rehearsing at a desk is the same engine with stand-ins. A venue with less gear is the same interface saying “not installed here”.</dd></div>
+    </dl>
+    <p class="choice"><b>A choice inside this one.</b> One interface per thing the room can do, which I recommend, or one per outside program.</p>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>backend/src/services/vlcMprisService.js, musicService.js, soundService.js, audioRoutingService.js, bluetoothService.js, lightingService.js</li>
+      <li>backend/src/utils/displayDriver.js, processMonitor.js</li>
+      <li>backend/src/services/musicService.js:73 (a private flag beside the shared health list)</li>
+    </ul></details>
+  </article>
+
+  <article class="imp" id="imp-6">
+    <div class="imp-head"><span class="num">6</span><h3>Each running copy of the engine keeps to itself</h3><span class="badge">Strong</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx">The session's copy</span><span class="bx">A test or a rehearsal on the same machine</span></div>
+          <div class="via">both use the same fixed file names and the same display</div>
+          <div class="row"><span class="bx">At start-up, each stops every matching program on the machine, not only its own</span></div>
+        </div>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx">The session's copy: its own files, ports, display and passes</span><span class="bx">A second copy: its own</span></div>
+          <div class="via">each stops only what it started</div>
+        </div>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>At a session</dt><dd>Nothing run at a desk or in a test can interrupt a live game on the same machine.</dd></div>
+      <div><dt>For the rebuild</dt><dd>The rehearsal engine, tests on the real machine, and a second production's kit.</dd></div>
+    </dl>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>backend/src/utils/displayDriver.js:147; backend/src/services/audioRoutingService.js:603</li>
+      <li>about fifteen fixed names under /tmp in backend/src</li>
+    </ul></details>
+  </article>
+
+  <article class="imp" id="imp-7">
+    <div class="imp-head"><span class="num">7</span><h3>One table for the life of a game</h3><span class="badge">Strong</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx">Start-up: one hand-kept list of steps</span><span class="bx">Reset System: another</span></div>
+          <div class="via">tablets and the wall display guess that a new game began; player scanners are never told</div>
+        </div>
+        <p>After a reset the display reads as down until something else reports it.</p>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx">One table: what every fact and every part does at each moment</span></div>
+          <div class="row"><span class="bx">set up</span><span class="bx">start</span><span class="bx">pause</span><span class="bx">end</span><span class="bx">next game</span><span class="bx">reset</span><span class="bx">restart</span><span class="bx">new pack</span></div>
+          <div class="via">one piece of code moves the game along, and every screen is told</div>
+        </div>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>At a session</dt><dd>On a long run the same install plays session after session. “End, reset, next group” leaves every screen clean each time, and a restart mid-game loses nothing.</dd></div>
+      <div><dt>For the rebuild</dt><dd>Applying a pack without a restart is one more row. The night's record is written at the row “end”.</dd></div>
+    </dl>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>backend/src/app.js:178 (start-up), backend/src/services/systemReset.js</li>
+      <li>ALNScanner/src/network/networkedSession.js:246 (the guess)</li>
+    </ul></details>
+  </article>
+
+  </div>
+</section>
+
+<section>
+  <h2>The shape this gives</h2>
+  <p class="prose">The same picture as above, with the show machine's inside as it would be. A GM tablet in a game with no show machine runs the same record, rules and door itself.</p>
+  <div class="pic" role="group" aria-label="The proposed shape of the engine">
+    <div class="lane">
+      <div class="lane-name">Devices<small>every screen and scanner</small></div>
+      <div class="chips">
+        <span class="chip good">Draw what they are sent</span>
+        <span class="chip good">Ask through the one door</span>
+        <span class="chip good">Decide nothing a second time</span>
+      </div>
+    </div>
+    <div class="link">one published protocol <a class="mk ok" href="#imp-3">3</a></div>
+    <div class="lane">
+      <div class="lane-name">The show machine<small>or a GM tablet running a game alone</small></div>
+      <div class="chips">
+        <span class="chip good">One door in <a class="mk ok" href="#imp-4">4</a></span>
+        <span class="chip good">The game record <a class="mk ok" href="#imp-1">1</a></span>
+        <span class="chip good">The rules, one copy <a class="mk ok" href="#imp-2">2</a></span>
+        <span class="chip good">One way out to screens <a class="mk ok" href="#imp-1">1</a></span>
+        <span class="chip good">A game's life, one table <a class="mk ok" href="#imp-7">7</a></span>
+        <span class="chip">Cues, clock, video queue</span>
+        <span class="chip">What the show needs against what is installed</span>
+        <span class="chip good">This copy's own names <a class="mk ok" href="#imp-6">6</a></span>
+      </div>
+    </div>
+    <div class="link">one interface for each thing the room can do; one supervisor <a class="mk ok" href="#imp-5">5</a></div>
+    <div class="lane">
+      <div class="lane-name">Outside programs<small>or software stand-ins, at a desk</small></div>
+      <div class="chips">
+        <span class="chip">Video</span><span class="chip">Music</span><span class="chip">Sound</span><span class="chip">Audio routing</span><span class="chip">Bluetooth</span><span class="chip">Lights</span><span class="chip">Display</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What the rest of the rebuild stands on</h2>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Still to build</th><th>Stands on</th></tr></thead>
+    <tbody>
+      <tr><td>Automatic restarts, a tablet healing a stale pack, the preflight</td><td class="nums">5, 6, 1</td></tr>
+      <tr><td>Applying a pack without a restart, the design tool's pages, rehearsal</td><td class="nums">7, 6, 5, 4</td></tr>
+      <tr><td>Capture during play, and the night's record</td><td class="nums">1, 4, 7</td></tr>
+      <tr><td>Players' phones</td><td class="nums">4, 1, 3</td></tr>
+      <tr><td>The second game's modules</td><td class="nums">2, 1, 4, 3</td></tr>
+      <tr><td>A smaller install, a touring game, a game with scanners only</td><td class="nums">2, 5</td></tr>
+      <tr><td>A release other people can stand up</td><td class="nums">3, 6</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="prose">
+  <h2>The order I would work in</h2>
+  <ol class="steps">
+    <li><b>Now, with no design question open:</b> improvement 6. It is small, and it makes testing on a real machine safe.</li>
+    <li><b>The centre, as one thin slice from end to end:</b> one scan through the one door (4), into the record (1), out to a tablet and the wall display (1), in the published form (3), with the table's rows for start and end (7), proven with both games.</li>
+    <li><b>Then widen:</b> the rest of the facts, the rules on the tablet (2), and the gear's interface and supervisor (5), where the paused hardening work continues.</li>
+  </ol>
+  <h2>Smaller ones, worth exploring</h2>
+  <ul class="plain">
+    <li>The design tool asks the engine through the same door. Today it writes the engine's files and loads the engine's code directly, and a published change shows only at the engine's next restart.</li>
+    <li>What is installed on a machine becomes one described set that the engine checks at start: engine version, apps, pack, media and profile. Today these are separate checkouts and hand-copied media that nothing compares.</li>
+    <li>The wall display becomes a screen like any other. This follows from 1 and 2.</li>
+  </ul>
+</section>
+
+<section class="ask prose">
+  <h2>What I need from you</h2>
+  <p><b>Which of these do you want to look at closely?</b> I recommend starting with 1, the game's facts, because 3, 4 and 7 take their form from it. We work through the one you pick in conversation, and what we decide goes into short decision notes and the revised roadmap.</p>
+  <p class="muted">Improvement 6 needs no decision. I can start it when you say so.</p>
+</section>
+
+<footer class="prose">
+  <p>This page replaces the earlier site. The draft behind it, with every claim tied to a file, is in the repository at <code>docs/plans/architecture-pass/proposal/</code>.</p>
+</footer>
+
+</div>
