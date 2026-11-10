@@ -18,13 +18,26 @@ before acting.
   build plan, the hostile review, the final questions, the owner's
   sign-off; then the build half. Working log (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
-- **Now: waiting for the owner's answers to version 11** of the owner
-  site (published 2026-11-10, version id 1794281701-ac4d). Before
-  answering version 10, the owner asked (2026-11-09) for an independent
-  review "to make sure the design is optimal and what you need input
-  from me about is clearly defined before I give my input". Workflow
-  `wf_7341feb0-0de` (`site-v10-review.js`) ran it: four reviewers, a
-  refute-by-default check of each and a merge, in
+- **Now: the owner asked the agent to step back** (2026-11-10, after
+  version 11 went live): "you've kind of lost the thread and are
+  building out this page to build out this page instead of focusing on
+  the big picture of what we're trying to do with it, same with 'the
+  panel'". Word for word, with the agent's answer and proposal:
+  `docs/plans/architecture-pass/rework/2026-11-10-owner-step-back.md`.
+  The agent agreed: since 2026-11-01 the work went into the site and the
+  panel's rules, and none of the six decisions ahead has started. Until
+  the owner replies, do not ask for answers to version 11's questions,
+  do not rebuild the site and do not add to the panel's brief. Proposed:
+  the owner need not read version 11; one short message with the two or
+  three things needed to start the architects; the architects run; the
+  owner gets designs explained by what happens at a show. What follows
+  describes version 11 as it stands. Version 11 of the owner site
+  (published 2026-11-10, version id 1794281701-ac4d). Before answering
+  version 10, the owner asked (2026-11-09) for an independent review "to
+  make sure the design is optimal and what you need input from me about
+  is clearly defined before I give my input". Workflow `wf_7341feb0-0de`
+  (`site-v10-review.js`) ran it: four reviewers, a refute-by-default
+  check of each and a merge, in
   `docs/plans/architecture-pass/report/site/checks/v10-review*.md`. Its
   verdict: the approach is right; version 10 asked the owner to choose
   ways to build, the requirements carried some of the agent's design
@@ -125,8 +138,8 @@ before acting.
   shape is silent on a short offline claim list on a disconnected
   tablet (`report/2026-11-01-cards-shape-facts-check.md`). No
   worktrees, no test rig.
-- **In flight:** nothing. The site waits for the owner's answers to
-  version 11.
+- **In flight:** nothing. Waiting for the owner's reply on the direction
+  (see "Now").
 - **The owner's site.** "What the Engine Promises"
   (https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL), version 11 live
   (version id 1794281701-ac4d, 2026-11-10), in the proactive frame: six
