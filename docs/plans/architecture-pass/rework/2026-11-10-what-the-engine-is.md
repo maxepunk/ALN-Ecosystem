@@ -72,3 +72,87 @@ a normal install tier (kit model, 2026-06-11); the show machine is
 itself a capability a kit may lack (same); what each device class may
 do is the pack's assignment (design notes P3 and P4); the second game
 needs the show machine by nature (the scoping, 2026-07-17).
+
+## The owner's notes on that statement (2026-11-10)
+
+Word for word:
+
+> This is all technically correct, but I don't think you fully
+> UNDERSTAND how the pieces actually fit together for live games played
+> with physical tokens, and how the process built around this engine
+> would actually work in the real world based on how you've framed some
+> things, so let's make sure we're 100% clear on how this is all
+> supposed to work and the role of the engine within the context of the
+> games it would be used to design and run. Mainly, you seem to be
+> having a hard time distinguishing what happens digitally vs. the real
+> world and how those things relate or the broader physical world
+> circumstances around the potential use cases on the engine as an open
+> source tool. To that end, I'm going to give you some clarifying notes
+> and feedback to see if that helps you refine your understanding:
+>
+> You said: "A game is a pack: data, never code. A pack holds tokens,
+> rules, modes, text, theme and show cues." but to be clear, a pack,
+> which is digital, does not ACTUALLY hold tokens, it hold the token
+> data, which physical tokens with NFC tags would be programmed to
+> represent and be physically interacted with by the players during
+> gameplay.
+>
+> You said: "The venue technician says what tonight's kit has, connects
+> the pack's names to real equipment, and runs one preflight for a go
+> or no-go." but 'tonight's kit' is kind of an unclear handwave of what
+> a 'kit' represents in the real world and what 'tonight's' may mean
+> depending on the game/production. A kit represents physical
+> gear/equipment/furniture that is manipulated by the digital game.
+> Depending on the production logistics for any particular game, that
+> may mean one venue with one set of physical elements that will remain
+> consistent across multiple days, weeks, or even months of running one
+> game for many different groups of players across many different
+> sessions. Or a game may be designed to travel to different venues
+> that may have different capabilities and may have required and
+> optional items in the kit that allow the game to be played in venues
+> with different levels of capability.
+
+What the agent read next, for the real world of the game: the public
+how-to-play page and site (`/home/user/aboutlastnight/how-to-play.html`,
+`index.html`; read only), the UX foundation
+(`docs/plans/2026-09-04-ux-foundation.md`, sections 0a to 2: the
+owner's earlier corrections of the same kind, the hats, the flows),
+the Thursday token-sync runbook, a real session's report
+(`docs/session-report-0327gamereal.md`), and the token tools described
+in `ALN-TokenData/CLAUDE.md` (the tag writer, the token check-in).
+
+The refined statement, as sent, in short:
+
+- The game happens in a room. Players with characters move through a
+  dressed space, open locks, find token objects, talk, trade and
+  decide. The digital side comes in at a few points: a token is tapped
+  on a reader, the room responds, a GM records a player's choice,
+  staff run the night.
+- Physical, digital, and who ties them together. Tokens: objects with
+  NFC tags, and token data in the pack, tied by programming each tag
+  with its id. Kit: the gear the digital game drives or runs on and the
+  furniture that holds it, and the names in the pack with the profile
+  that maps them, tied by the venue technician at each install. People:
+  players and GMs, and account names, tied by what a player tells the
+  GM. Media: what players see and hear, and files on the machines.
+- The system never sees where a token is, who holds it, a trade, a
+  solved lock, or whether the TV is on the right input.
+- Three spans of time, not "tonight": a session (one group playing
+  once), an install (the kit set up at one venue, for one night or for
+  months, with many sessions and a room reset between them), a
+  production (one long stay at one venue, or a tour of venues with
+  different capabilities, with required and optional items).
+- The process has physical and digital work at every step: make the
+  game, rehearse, install, run sessions, after each session.
+- The engine's role: it connects a touch on a physical token to a
+  response in the room and a fact on the record, lets staff run the
+  night, and gives the game's makers their tools for the digital half
+  of each step.
+
+To sharpen in the glossary once the owner confirms (flagged, not yet
+done): `CONTEXT.md` section 3 defines "Token" as both the physical
+object and its data entry, in one entry; section 0 defines "Kit" as
+the pack, the configuration and the hardware together, where the owner
+now says a kit is the physical gear, equipment and furniture the
+digital game manipulates; "tonight" in the dormancy wording stands for
+an install that may last months.

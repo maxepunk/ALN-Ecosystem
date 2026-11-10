@@ -44,9 +44,14 @@ before acting.
   full and sent the owner a one-screen statement of what the engine is
   supposed to be
   (`docs/plans/architecture-pass/rework/2026-11-10-what-the-engine-is.md`,
-  with the sources to read first). Next, once the owner confirms or
-  corrects it: the lead reads the code against that picture, writes the
-  one short proposal in the form of the skill
+  with the sources to read first). The owner answered that the statement
+  was technically correct but blurred what is digital with what is
+  physical (a pack holds token data, not tokens; a kit is physical gear
+  at a real venue, for one night or for months, or on tour with required
+  and optional items). The agent sent a refined statement with the room
+  first (same file, with the owner's notes word for word). Next, once
+  the owner confirms or corrects it: the lead reads the code against
+  that picture, writes the one short proposal in the form of the skill
   `improve-codebase-architecture` (how the engine fits together and
   where its structure is weak, the shape proposed, a short list of
   improvements with before and after pictures and how strongly each is
