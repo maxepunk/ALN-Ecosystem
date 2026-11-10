@@ -49,10 +49,11 @@ a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outli
 ul.plain { margin: .5rem 0; padding-left: 1.2rem; display: grid; gap: .3rem; }
 ol.steps { margin: .5rem 0; padding-left: 1.3rem; display: grid; gap: .55rem; }
 
-/* contents */
-.toc { display: flex; flex-wrap: wrap; gap: .4rem; margin: 1rem 0 0; padding: 0; list-style: none; }
-.toc a { display: inline-flex; gap: .4rem; align-items: baseline; text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: .2rem .7rem; font-size: .92rem; color: var(--ink); }
-.toc a b { font-family: var(--font-display); color: var(--accent); }
+/* contents: the seven changes, one line each */
+.toc { display: grid; gap: .35rem; margin: 1.1rem 0; padding: 0; list-style: none; }
+.toc a { display: grid; grid-template-columns: 1.3rem 1fr; gap: .55rem; align-items: baseline; text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .45rem .8rem; color: var(--ink); }
+.toc a:hover { border-color: var(--accent); }
+.toc a b { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--accent); }
 
 /* numbered markers */
 .mk { display: inline-flex; align-items: center; justify-content: center; min-width: 1.35em; height: 1.35em; padding: 0 .3em; border-radius: 999px; background: var(--today); color: var(--surface); font-family: var(--font-display); font-weight: 700; font-size: .82rem; line-height: 1; text-decoration: none; vertical-align: .08em; }
@@ -125,6 +126,12 @@ th { font-family: var(--font-display); font-weight: 600; letter-spacing: .03em; 
 tr:last-child td { border-bottom: 0; }
 td.nums { white-space: nowrap; font-variant-numeric: tabular-nums; }
 
+/* words used */
+.words { display: grid; gap: .3rem; margin: 1rem 0 0; padding: .8rem 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; font-size: .95rem; }
+.words p { margin: 0; }
+.words b { font-family: var(--font-display); font-weight: 600; }
+.words-title { font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: .09em; font-size: .78rem; color: var(--muted); }
+
 /* the ask */
 .ask { background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; padding: 1.1rem 1.2rem; margin-top: 1rem; }
 .ask h2 { margin: 0 0 .3rem; }
@@ -132,342 +139,352 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere; }
 </style>
 
+
 <div class="wrap">
 
 <header class="prose">
   <p class="eyebrow">A proposal for your review · 10 November 2026</p>
-  <h1>Engine Architecture Plan</h1>
-  <p class="lede">The game happens in a room. The engine connects a touch on a physical token to a response in the room and a fact on the record, lets staff run a session, and gives the people who make a game their tools. This plan is about the code structure all of that stands on.</p>
-  <p>The engine's rules and its pack format are sound. The weak spots are in what the parts share: how a request gets in, where a game's facts are kept, how they reach screens, how the room's gear is driven, and how long each fact is meant to last. Seven improvements address those, and the rest of the rebuild stands on them.</p>
-  <p>They are judged by what the engine is meant to become: a platform for other people's games, at any size of install, for one night or a run of months. They are not a list of ALN's bugs. Three independent readers challenged a first draft with the code in front of them. This version carries what they found.</p>
-  <ul class="toc">
-    <li><a href="#imp-1"><b>1</b> One way in, one record, one way out</a></li>
-    <li><a href="#imp-2"><b>2</b> The same core everywhere</a></li>
-    <li><a href="#imp-3"><b>3</b> One published protocol</a></li>
-    <li><a href="#imp-4"><b>4</b> One interface for gear and devices</a></li>
-    <li><a href="#imp-5"><b>5</b> A stated life for every fact</a></li>
-    <li><a href="#imp-6"><b>6</b> Marked places to plug in</a></li>
-    <li><a href="#imp-7"><b>7</b> Each copy built in one place</a></li>
-  </ul>
+  <h1>Engine architecture plan</h1>
+  <p class="lede">I went through the engine's code looking for places where the way it is organised will make the rest of the rebuild harder. This page proposes seven changes to how the code is organised. None of them changes ALN's rules or content.</p>
+  <ol class="toc">
+    <li><a href="#imp-1"><b>1</b><span>The backend keeps one complete record of each session, and updates every screen from it the same way.</span></a></li>
+    <li><a href="#imp-2"><b>2</b><span>A standalone game runs the same game code as a networked one.</span></a></li>
+    <li><a href="#imp-3"><b>3</b><span>The messages between the backend and the devices are defined in one place and checked automatically.</span></a></li>
+    <li><a href="#imp-4"><b>4</b><span>Video, music, sound and lights are controlled through one pattern, and their programs restart when they crash.</span></a></li>
+    <li><a href="#imp-5"><b>5</b><span>The engine keeps separate what belongs to one session, to one installation and to the whole production.</span></a></li>
+    <li><a href="#imp-6"><b>6</b><span>The code has a known place for adding a new kind of rule, equipment or screen.</span></a></li>
+    <li><a href="#imp-7"><b>7</b><span>A test or a rehearsal can run on the backend's computer without disturbing a live session.</span></a></li>
+  </ol>
+  <p>The game itself happens in a room, with players, token objects and GMs. The engine is the software around it. Its game rules and its pack format are in good shape. The weak spots are in how its programs work together, and that is what the seven changes are about.</p>
+  <p>I judged each change by what the engine is meant to become: open-source software that runs other people's games as well as ALN, on a kit as small as player scanners and tokens or as large as ALN's, at one venue for months or on tour. Three separate reviewers checked my first draft against the code. This version includes their corrections.</p>
+  <div class="words">
+    <p class="words-title">Words used on this page</p>
+    <p><b>Game.</b> A designed game, such as ALN. <b>Session.</b> One group of players playing it once.</p>
+    <p><b>Pack.</b> The data files that define one game: token data, rules, text and cues. A token is a physical object with an NFC tag. The tag holds only an id, which points to that token's entry in the pack.</p>
+    <p><b>Kit.</b> The physical gear a production owns: token objects, scanners, GMs' phones or tablets, a router, and optionally a computer for the backend, a TV, speakers and lights.</p>
+    <p><b>Installation.</b> A kit set up at one venue, for one night or for months. Many sessions are played on it. The installation profile is the file that describes it.</p>
+    <p><b>Production.</b> One game being run by its makers, at one venue for a long stay or on tour.</p>
+    <p><b>Backend.</b> The engine's central program. In ALN it runs on a Raspberry Pi connected to the TV and speakers. A networked game uses it. A standalone game has no backend and runs on scanners alone.</p>
+    <p><b>Engine.</b> The software that is the same for every game: the backend, the GM scanner, the player scanners (the web page on a phone and the hardware scanner), the scoreboard and the config tool.</p>
+  </div>
 </header>
 
 <section>
   <h2>How it fits together today</h2>
-  <p class="prose">Read from the top: the room, the devices in it, the show machine, the programs it drives, and the gear they move. A numbered mark shows where each improvement lands.</p>
+  <p class="prose">Read from the top. A numbered mark shows which change applies there.</p>
   <div class="pic" role="group" aria-label="How the engine fits together today">
     <div class="lane room">
-      <div class="lane-name">In the room<small>physical; the system never sees it directly</small></div>
+      <div class="lane-name">In the room<small>physical; the software cannot see any of it</small></div>
       <div class="chips">
-        <span class="chip">Players with characters</span>
+        <span class="chip">Players</span>
         <span class="chip">Token objects with NFC tags</span>
-        <span class="chip">GMs at their stations</span>
+        <span class="chip">GMs</span>
         <span class="chip">Locks, puzzles, props</span>
       </div>
     </div>
-    <div class="link">a token is tapped on a reader; a GM presses a button</div>
+    <div class="link">a player taps a token on a player scanner; a GM taps one on a GM scanner and presses buttons</div>
     <div class="lane">
-      <div class="lane-name">Devices<small>physical things running the engine's apps</small></div>
+      <div class="lane-name">Scanners and screens<small>physical devices, each running part of the engine</small></div>
       <div class="chips">
-        <span class="chip weak">Hardware scanner <a class="mk" href="#imp-3">3</a><small>its replies are built into its firmware</small></span>
-        <span class="chip weak">Player's phone <a class="mk" href="#imp-5">5</a><small>reads its own copy of the token data</small></span>
-        <span class="chip weak">GM tablet <a class="mk" href="#imp-1">1</a><a class="mk" href="#imp-2">2</a><small>decides before the answer comes; holds a second engine</small></span>
-        <span class="chip weak">Wall display <a class="mk" href="#imp-1">1</a><small>filters and decides in the page</small></span>
+        <span class="chip weak">Hardware player scanner <a class="mk" href="#imp-3">3</a><small>the replies it understands are fixed in its firmware</small></span>
+        <span class="chip weak">Player scanner on a phone <a class="mk" href="#imp-5">5</a><small>loads its own copy of the token data</small></span>
+        <span class="chip weak">GM scanner on a phone or tablet <a class="mk" href="#imp-1">1</a><a class="mk" href="#imp-2">2</a><small>marks a token as used before the backend replies; has its own copy of the rules for standalone games</small></span>
+        <span class="chip weak">Scoreboard on the TV <a class="mk" href="#imp-1">1</a><small>receives everything and works out what to show</small></span>
       </div>
     </div>
-    <div class="link">requests come in six ways; names are copied by hand on both sides <a class="mk" href="#imp-1">1</a><a class="mk" href="#imp-3">3</a></div>
+    <div class="link">over the kit's Wi-Fi: scans and commands reach the backend through six separate entry points; message names are typed by hand at both ends <a class="mk" href="#imp-1">1</a><a class="mk" href="#imp-3">3</a></div>
     <div class="lane">
-      <div class="lane-name">The show machine<small>the engine's main program; a kit may not have one</small></div>
+      <div class="lane-name">The backend<small>the engine's central program; a standalone game has none</small></div>
       <div class="chips">
-        <span class="chip weak">The game's facts: accounts, claims, scores, evidence <a class="mk" href="#imp-1">1</a><small>a snapshot; a delete erases what happened</small></span>
-        <span class="chip good">The rules, read from the pack <a class="mk ok" href="#sound">✓</a></span>
-        <span class="chip weak">A game's life: start, pause, end, reset <a class="mk" href="#imp-5">5</a><small>five hand-kept lists of steps</small></span>
-        <span class="chip weak">Facts about this install <a class="mk" href="#imp-5">5</a><small>in several places, some only in memory</small></span>
-        <span class="chip good">What a game needs against what is installed <a class="mk ok" href="#sound">✓</a></span>
-        <span class="chip">Cues, clock, video queue</span>
-        <span class="chip weak">How this copy is put together <a class="mk" href="#imp-7">7</a><small>by hand; assumes it is alone on the machine</small></span>
+        <span class="chip weak">The session's data: teams, transactions, scores, exposed evidence <a class="mk" href="#imp-1">1</a><small>edited in place; a delete or a score reset leaves no trace</small></span>
+        <span class="chip good">The game rules, read from the pack <a class="mk ok" href="#sound">✓</a></span>
+        <span class="chip weak">Starting, pausing, ending and resetting a session <a class="mk" href="#imp-5">5</a><small>five hand-written lists of steps</small></span>
+        <span class="chip weak">What it knows about this installation <a class="mk" href="#imp-5">5</a><small>spread over several files; some kept only in memory</small></span>
+        <span class="chip good">Comparing what the game needs with the gear that is installed <a class="mk ok" href="#sound">✓</a></span>
+        <span class="chip">Cues, the game clock, the video queue</span>
+        <span class="chip weak">How the program is assembled <a class="mk" href="#imp-7">7</a><small>by hand; assumes it is the only copy running on its computer</small></span>
       </div>
     </div>
-    <div class="link">commands out; state and health read back separately <a class="mk" href="#imp-4">4</a></div>
+    <div class="link">commands go out; what each program is doing, and whether it is working, come back as two separate reports <a class="mk" href="#imp-4">4</a></div>
     <div class="lane">
-      <div class="lane-name">Outside programs<small>on the show machine</small></div>
+      <div class="lane-name">Other programs<small>on the backend's computer, started and controlled by the backend</small></div>
       <div class="chips">
-        <span class="chip weak">Video player</span><span class="chip weak">Music player</span><span class="chip weak">Sound</span><span class="chip weak">Audio routing</span><span class="chip weak">Bluetooth</span><span class="chip weak">Lights hub</span><span class="chip weak">Display browser</span>
+        <span class="chip weak">Video player</span><span class="chip weak">Music player</span><span class="chip weak">Sound effects</span><span class="chip weak">Audio routing</span><span class="chip weak">Bluetooth</span><span class="chip weak">Lights</span><span class="chip weak">Scoreboard browser</span>
       </div>
     </div>
     <div class="link">picture, sound, light</div>
     <div class="lane room">
-      <div class="lane-name">The room's gear<small>physical; installed for one night or for months</small></div>
+      <div class="lane-name">The kit's gear in the room<small>physical; installed for one night or for months</small></div>
       <div class="chips">
         <span class="chip">TV</span><span class="chip">Speakers</span><span class="chip">Lights</span><span class="chip">A second display</span>
       </div>
     </div>
   </div>
-  <p class="legend"><span><i class="sw room"></i>physical</span><span><i class="sw"></i>digital</span><span><i class="sw weak"></i>weak spot today</span><span><i class="sw good"></i>sound today</span></p>
+  <p class="legend"><span><i class="sw room"></i>physical</span><span><i class="sw"></i>software</span><span><i class="sw weak"></i>weak spot today</span><span><i class="sw good"></i>in good shape today</span></p>
 </section>
 
 <section id="sound" class="prose">
-  <h2>What is already sound, and stays</h2>
+  <h2>What is already in good shape, and stays</h2>
   <ul class="plain">
-    <li>The pack format, and the start-up check that refuses a pack the engine cannot run.</li>
-    <li>The rules on the show machine, written as plain functions that are easy to test.</li>
-    <li>The comparison of what a game needs with what is installed, with its three words: healthy, down, and not installed here.</li>
-    <li>The state of the room's programs, which already reaches the GM tablet one way.</li>
-    <li>Draft and publish in the design tool.</li>
-    <li>The toy game, and the rule that every change passes with both games.</li>
+    <li>The pack format, and the check at start-up that refuses a pack the engine cannot run.</li>
+    <li>The game rules in the backend: scoring, duplicates, group bonuses. They are self-contained and easy to test.</li>
+    <li>The comparison of what a game needs with the gear that is installed, and its three words: healthy, down, dormant.</li>
+    <li>The way the state of video, music, sound and lights reaches the GM scanner: one kind of message for all of them.</li>
+    <li>Draft and publish in the config tool.</li>
+    <li>The toy game, and the rule that every change must pass with both ALN and the toy game.</li>
   </ul>
-  <p class="muted">Two limits on that list. The toy game is the same kind of game as ALN and has no media, so passing with both games does not prove the engine is general. And the phone still reads its own copy of the token data while showing the show machine's pack version.</p>
+  <p class="muted">Two limits on that list. The toy game is the same kind of game as ALN and has no media, so passing with both does not prove the engine suits other kinds of game. And the phone's player scanner loads its own copy of the token data but displays the backend's pack version.</p>
 </section>
 
 <section>
-  <h2>The seven improvements</h2>
-  <p class="prose">Each one says what is wrong in the structure today, what would change, what that gives you at a session and for the work still to come, and what it costs. Six carry my strongest recommendation. The sixth is worth exploring.</p>
+  <h2>The seven changes</h2>
+  <p class="prose">Each card says what happens today, what I propose, what you would notice at a session, what later work it makes possible, and what it costs. I recommend six of them. I am less sure about the sixth, and say why there.</p>
 
   <div class="imps">
 
   <article class="imp" id="imp-1">
-    <div class="imp-head"><span class="num">1</span><h3>One way in, one record, one way out</h3><span class="badge">Strong</span></div>
+    <div class="imp-head"><span class="num">1</span><h3>The backend keeps one complete record of each session, and updates every screen from it the same way</h3><span class="badge">Recommended</span></div>
     <div class="ba">
       <div class="side today">
         <p class="side-label">Today</p>
         <div class="flow">
-          <div class="row"><span class="bx">Six ways in, each with its own kind of reply</span></div>
-          <div class="via">which way a device uses fixes what it may do</div>
-          <div class="row"><span class="bx">The record: one snapshot, rewritten. A delete or a score reset erases what happened</span></div>
-          <div class="via">live updates and the catch-up after a reconnect are put together in different places</div>
-          <div class="row"><span class="bx">GM tablet: marks the token before the answer comes, and keeps its own lists</span><span class="bx">Wall display: gets everything and filters it in the page</span></div>
+          <div class="row"><span class="bx">A player scanner's scan, a GM scanner's scan and a GM's command each reach the backend through a different entry point, with its own checks and its own kind of reply. There are six entry points</span></div>
+          <div class="row"><span class="bx">The backend keeps the session's current data: the list of transactions and the scores. Deleting a transaction removes it from the list, and resetting the scores empties the list. The session's data then shows no sign that either happened</span></div>
+          <div class="row"><span class="bx">The GM scanner marks a token as used as soon as it is scanned, before the backend replies, and keeps its own copy of the transactions and scores</span></div>
+          <div class="row"><span class="bx">One piece of code updates a GM scanner that stayed connected. A different piece brings a reconnecting one up to date</span></div>
         </div>
-        <p>Four times, a catch-up has left something out. Anyone on the kit's network can read the whole record and the whole pack without a pass.</p>
+        <p>Four times so far, that second piece has left something out. Separately, any device on the kit's Wi-Fi can read the scores and the whole pack without identifying itself.</p>
       </div>
       <div class="side next">
         <p class="side-label">Proposed</p>
         <div class="flow">
-          <div class="row"><span class="bx"><b>One door.</b> Who is acting, and may they</span></div>
-          <div class="via">every request gets one reply, which says what happened and carries what the device should show</div>
-          <div class="row"><span class="bx"><b>One record</b> that decides and keeps every fact of the game</span></div>
-          <div class="via">one way out: each screen gets its own view, live or after a reconnect, each fact dated</div>
-          <div class="row"><span class="bx">Screens draw what they are sent</span></div>
+          <div class="row"><span class="bx">Every scan and command reaches the backend through one entry point and gets one kind of reply: accepted, refused with the reason, held for later, or failed and worth retrying. The reply also says what the device should show</span></div>
+          <div class="row"><span class="bx">The backend keeps a record that only grows. Every scan, delete, score change and reset is added as a new line, in order. The scores and everything on screen are worked out from it</span></div>
+          <div class="row"><span class="bx">In a networked game, only the backend decides whether a scan counts. One piece of code updates every screen, connected or reconnecting</span></div>
         </div>
-        <p>Who may do what comes from the pack, above a floor that stays with staff. “Players view, GMs score” is ALN's arrangement, not the engine's.</p>
+        <p>What each kind of device may do is set in the pack. Three things always stay with staff: starting and ending a session, controlling the show, and changing scores. "Player scanners only view, GM scanners score" is ALN's choice, not the engine's rule.</p>
       </div>
     </div>
     <dl class="gives">
-      <div><dt>At a session</dt><dd>What one GM did is what every tablet and the wall display show, also after a reconnect. Every tap gets an answer the person can act on. A tablet that loses the show machine keeps working, and its scans join the record when it is back.</dd></div>
-      <div><dt>For the rebuild</dt><dd>Capture and the night's record, players' phones, scans of several objects, and a game that shows different players different things.</dd></div>
-      <div><dt>What it costs</dt><dd>This is the centre of the engine, so it is the largest piece. Every player scanner needs a pass, which none has today.</dd></div>
+      <div><dt>At a session</dt><dd>What a GM does on one GM scanner appears on every other GM scanner and on the scoreboard, including after a reconnect. Every tap gets a clear reply. Scans taken without a connection are added in the right order when it returns.</dd></div>
+      <div><dt>Later work it allows</dt><dd>Staff notes and photos during a session. A full record of each session for the report. Players tapping tokens with their own phones. Actions made of several taps in a row, which the second game needs. Games that show different players different things.</dd></div>
+      <div><dt>What it costs</dt><dd>It is the biggest of the seven, because every scan and command passes through this code. And for the backend to check what a player scanner may do, each one would need a credential, issued automatically with no login. None has one today, and the roadmap leaves that decision to you.</dd></div>
     </dl>
-    <p class="choice"><b>A choice inside this one.</b> Keep the record as an ordered list of everything decided: each scan taken or refused, each delete, each reset. Every screen's view and the night's record are worked out from the list. Or keep only the current state, as today. I recommend the list. A tablet that was cut off adds its scans in order, a restart replays it, and nothing that happened is erased. All three readers pointed the same way.</p>
+    <p class="choice"><b>A choice inside this one.</b> The record can only grow, so that a delete is a new line saying "this transaction was deleted". Or the backend can keep editing the session's data in place, as today. I recommend the growing record. Scans taken without a connection can be added in order. After a restart, the backend reads the record through and is back where it was. And it is already the full account of the session that the report needs. All three reviewers recommended the same.</p>
     <details class="files"><summary>Where this is in the code</summary><ul>
-      <li>backend/src/routes/scanRoutes.js, healthRoutes.js, musicRoutes.js; backend/src/websocket/adminEvents.js (the ways in)</li>
-      <li>backend/src/services/transactionService.js:721; session/persistenceListeners.js:44 (history erased)</li>
-      <li>backend/src/websocket/broadcasts.js (live), syncHelpers.js:36 (catch-up)</li>
-      <li>ALNScanner/src/app/domains/gameOps.js:326 (marks before the answer)</li>
-      <li>backend/src/routes/packRoutes.js:34, stateRoutes.js:32 (no pass asked)</li>
-      <li>backend/src/gameRules/grants.js:26 (ALN's arrangement, built in)</li>
+      <li>backend/src/routes/scanRoutes.js, healthRoutes.js, musicRoutes.js; backend/src/websocket/adminEvents.js (the six entry points)</li>
+      <li>backend/src/services/transactionService.js:721; session/persistenceListeners.js:44 (delete and reset remove transactions)</li>
+      <li>backend/src/websocket/broadcasts.js, syncHelpers.js:36 (the two pieces of code that update screens)</li>
+      <li>ALNScanner/src/app/domains/gameOps.js:326 (the GM scanner marks first)</li>
+      <li>backend/src/routes/packRoutes.js:34, stateRoutes.js:32 (readable by any device)</li>
+      <li>backend/src/gameRules/grants.js:26 (ALN's choice, built into the engine)</li>
     </ul></details>
   </article>
 
   <article class="imp" id="imp-2">
-    <div class="imp-head"><span class="num">2</span><h3>The same core runs wherever a game is decided</h3><span class="badge">Strong</span></div>
+    <div class="imp-head"><span class="num">2</span><h3>A standalone game runs the same game code as a networked one</h3><span class="badge">Recommended</span></div>
     <div class="ba">
       <div class="side today">
         <p class="side-label">Today</p>
         <div class="flow">
-          <div class="row"><span class="bx">Show machine: door, record and rules</span><span class="bx">GM tablet: a second, hand-written engine for a game with no show machine</span></div>
-          <div class="via">kept in step by comments and paired tests</div>
+          <div class="row"><span class="bx"><b>Networked.</b> The backend decides what each GM scan does: whether the token is already used, what it scores, whether it completes a group</span><span class="bx"><b>Standalone.</b> The GM scanner decides, with its own separate copy of those rules and its own way of storing the session</span></div>
+          <div class="via">the two copies are kept the same by hand, with code comments and tests whose expected results are typed in</div>
         </div>
-        <p>Sixteen decisions are made a second time on devices. For five of them nothing checks that the copies agree. The install's profile can say a kit has no show machine, but only the show machine reads the profile. The tablet goes by a tap, the phone by its web address.</p>
+        <p>They already differ. A standalone GM scanner accepts scans before a session starts and after it ends. The backend refuses both. Across the scanners and the scoreboard, sixteen rules are written a second time like this, and for five of them nothing checks that the copies agree.</p>
+        <p>The installation profile can say that an installation has no backend, but only the backend reads that file. The GM scanner goes by a button the GM taps at start-up, and the phone's player scanner by the web address it was opened from.</p>
       </div>
       <div class="side next">
         <p class="side-label">Proposed</p>
         <div class="flow">
-          <div class="row"><span class="bx">The core from improvement 1, as one package that does not care where it runs</span></div>
-          <div class="via">hosted by</div>
-          <div class="row"><span class="bx">The show machine, in a networked game</span><span class="bx">A GM tablet, when the kit has no show machine</span></div>
+          <div class="row"><span class="bx">The code that decides what a scan does and keeps the session's record is written once</span></div>
+          <div class="via">the same code runs in both places</div>
+          <div class="row"><span class="bx">in the backend, for a networked game</span><span class="bx">inside the GM scanner, for a standalone game</span></div>
         </div>
-        <p>Whether an install has a show machine is declared once, where every device can read it.</p>
+        <p>Whether a game is standalone or networked is declared in one place that every device reads.</p>
       </div>
     </div>
     <dl class="gives">
-      <div><dt>At a session</dt><dd>A kit with no show machine scores a game exactly as the full rig does. Records from tablets that ran alone can be joined afterwards.</dd></div>
-      <div><dt>For the rebuild</dt><dd>A touring game that plays with less gear, and every new rule, land once.</dd></div>
-      <div><dt>What it costs</dt><dd>The core must run in a browser as well as on the show machine from its first slice. The code lives in separate repositories today, so the core needs one home that both are built from.</dd></div>
+      <div><dt>At a session</dt><dd>A standalone game scores, refuses duplicates and completes groups exactly as a networked game does, because it is the same code.</dd></div>
+      <div><dt>Later work it allows</dt><dd>Games for places where a network is not feasible, or where it is simpler to bring only scanners. A new rule is written once and works in both.</dd></div>
+      <div><dt>What it costs</dt><dd>That code has to run in two places from the start: in the backend, and inside the GM scanner's web page. The two are in separate repositories today, so the shared code needs one place both can load it from.</dd></div>
     </dl>
-    <p class="choice"><b>A choice inside this one.</b> The tablet hosts the whole core, which I recommend. Or it shares only the rule functions. Or it keeps code of its own that tests check. The readers were firm that sharing the rule functions alone leaves the second engine in place, because most of the repeated decisions sit in the record and not in the rules.</p>
+    <p class="choice"><b>A choice inside this one.</b> The GM scanner can run all of that code, which I recommend. Or it can share only the scoring calculations and keep its own code for the rest. Or it can keep its own copy, with more tests comparing the two. Sharing only the calculations would leave most of the duplication, because most of the sixteen duplicated rules are not calculations. They cover things like when a scan is allowed and where one session ends.</p>
     <details class="files"><summary>Where this is in the code</summary><ul>
-      <li>ALNScanner/src/core/storage/LocalStorage.js (the second engine), core/scoring.js, core/modeSemantics.js</li>
-      <li>backend/src/services/transactionService.js, backend/src/gameRules/</li>
-      <li>backend/src/gameRules/resolution.js:53 (the profile's “no show machine”)</li>
+      <li>ALNScanner/src/core/storage/LocalStorage.js (the GM scanner's own copy; :302 accepts scans unless paused), core/scoring.js, core/modeSemantics.js</li>
+      <li>backend/src/services/transactionService.js (:157 refuses scans unless the session is active), backend/src/gameRules/ (the backend's copy)</li>
+      <li>docs/plans/architecture-pass/relationships/2026-11-01-today-client-modules.md, section 6.2 (the sixteen rules)</li>
+      <li>backend/src/gameRules/resolution.js:53 (the profile's "no backend")</li>
       <li>ALNScanner/src/app/sessionModeManager.js; aln-memory-scanner/js/orchestratorIntegration.js:33</li>
     </ul></details>
   </article>
 
   <article class="imp" id="imp-3">
-    <div class="imp-head"><span class="num">3</span><h3>One published protocol</h3><span class="badge">Strong</span></div>
+    <div class="imp-head"><span class="num">3</span><h3>The messages between the backend and the devices are defined in one place and checked automatically</h3><span class="badge">Recommended</span></div>
     <div class="ba">
       <div class="side today">
         <p class="side-label">Today</p>
         <div class="flow">
-          <div class="row"><span class="bx">Two contract files describe the messages</span></div>
-          <div class="via">tests compare some programs against them when built; names are still copied by hand</div>
-          <div class="row"><span class="bx">Show machine</span><span class="bx">GM tablet</span><span class="bx">Phone</span><span class="bx">Hardware scanner</span><span class="bx">Wall display</span></div>
+          <div class="row"><span class="bx">Two files describe the messages that the scanners, the scoreboard and the backend send each other</span></div>
+          <div class="via">some tests compare the programs with those files, but each program still has the message names typed into it by hand</div>
+          <div class="row"><span class="bx">Backend</span><span class="bx">GM scanner</span><span class="bx">Player scanner on a phone</span><span class="bx">Hardware player scanner</span><span class="bx">Scoreboard</span></div>
         </div>
-        <p>No version of the protocol is checked when a device connects. While a game runs, a message the tablet does not know is dropped without a word. What is written on a tag, which joins an object to its data, is in neither contract file. It lives in the tag-writing tool and the scanner's reader.</p>
+        <p>If the backend sends a message whose name is missing from the GM scanner's hand-typed list, the GM scanner ignores it and nothing warns anyone. When a device connects, nothing checks that it and the backend expect the same messages. And what is written onto a token's NFC tag is described in neither file.</p>
       </div>
       <div class="side next">
         <p class="side-label">Proposed</p>
         <div class="flow">
-          <div class="row"><span class="bx">One definition, with a version: every request, reply and fact; the pack, the profile and the night's record; and what is written on a tag</span></div>
-          <div class="via">every program is checked against it when it is built</div>
-          <div class="row"><span class="bx">Every program and every device</span></div>
+          <div class="row"><span class="bx">One definition, with a version number, of three things: every message, every file the engine reads or writes (the pack, the installation profile, a session's record), and what is written on a tag</span></div>
+          <div class="via">every program is tested against it automatically whenever the program or the definition changes</div>
+          <div class="row"><span class="bx">The backend, the GM scanner, both player scanners, the scoreboard and the config tool</span></div>
         </div>
-        <p>You decided this on 1 November. Checking comes first. Making code from the definition can follow where it pays.</p>
+        <p>You decided on 1 November that the engine would have one published protocol. This is how I would build it. Testing every program against the definition comes first. Generating code from the definition can come later, where it saves work.</p>
       </div>
     </div>
     <dl class="gives">
-      <div><dt>At a session</dt><dd>After an update, a device that does not match is found before the game, not during it.</dd></div>
-      <div><dt>For the rebuild</dt><dd>Every new device and screen, anyone else's extension, and packs that update at any time while the engine updates between events.</dd></div>
-      <div><dt>What it costs</dt><dd>While the old show machine stays the fallback, tablets and scanners must work with both.</dd></div>
+      <div><dt>At a session</dt><dd>After a software update, a scanner that does not match the backend is caught when it connects, before the session starts.</dd></div>
+      <div><dt>Later work it allows</dt><dd>New kinds of device and screen. Software that other people write for the engine. Updating a pack at any time, while the engine's own software is updated only between events.</dd></div>
+      <div><dt>What it costs</dt><dd>While the old backend computer stays as the fallback, the scanners have to work with both the old backend and the new one.</dd></div>
     </dl>
     <details class="files"><summary>Where this is in the code</summary><ul>
-      <li>backend/contracts/openapi.yaml, asyncapi.yaml</li>
-      <li>backend/tests/contract/scanner/ (the build-time checks that exist)</li>
-      <li>ALNScanner/src/network/orchestratorClient.js:26 (the hand-kept list)</li>
-      <li>arduino-cyd-player-scanner/ALNScanner_v5/services/ScanResponse.h:41 (replies in firmware)</li>
+      <li>backend/contracts/openapi.yaml, asyncapi.yaml (the two files)</li>
+      <li>backend/tests/contract/scanner/ (the tests that exist)</li>
+      <li>ALNScanner/src/network/orchestratorClient.js:26 (the GM scanner's hand-typed list of message names)</li>
+      <li>arduino-cyd-player-scanner/ALNScanner_v5/services/ScanResponse.h:41 (replies fixed in the hardware scanner's firmware)</li>
       <li>ALN-TokenData/tag-writer.html (what is written on a tag)</li>
     </ul></details>
   </article>
 
   <article class="imp" id="imp-4">
-    <div class="imp-head"><span class="num">4</span><h3>One interface for the room's gear and the kit's devices</h3><span class="badge">Strong</span></div>
+    <div class="imp-head"><span class="num">4</span><h3>Video, music, sound and lights are controlled through one pattern, and their programs restart when they crash</h3><span class="badge">Recommended</span></div>
     <div class="ba">
       <div class="side today">
         <p class="side-label">Today</p>
         <div class="flow">
-          <div class="row"><span class="bx">Video</span><span class="bx">Music</span><span class="bx">Sound</span><span class="bx">Audio routing</span><span class="bx">Bluetooth</span><span class="bx">Lights</span><span class="bx">Display</span></div>
-          <div class="via">seven drivers that follow a pattern nobody wrote down, each with its own differences</div>
+          <div class="row"><span class="bx">Video player</span><span class="bx">Music player</span><span class="bx">Sound effects</span><span class="bx">Audio routing</span><span class="bx">Bluetooth</span><span class="bx">Lights</span><span class="bx">Scoreboard browser</span></div>
+          <div class="via">the backend has seven pieces of code, one for each. They are alike, but each has its own differences</div>
         </div>
-        <p>A program's state and its health travel separately, so a panel can show a calm value for a dead program. When the engine restarts, it stops the video and the music with it. A scanner that checks in before a session exists is forgotten, so nothing can count the devices before a game.</p>
+        <p>What a program is doing and whether it is working are reported to the GM scanner as two separate things, so the admin panel can still show a program's last known state after that program has stopped. When the backend restarts, it stops the video player and the music player too. And a player scanner that checks in before a session exists is not recorded, so nothing can count the scanners before a session.</p>
       </div>
       <div class="side next">
         <p class="side-label">Proposed</p>
         <div class="flow">
-          <div class="row"><span class="bx">One written interface for each thing the room can do: commands in, with “try it”; state, health and age out together</span></div>
-          <div class="via">the real program underneath, pointed at real gear or at stand-in gear by the install's profile</div>
-          <div class="row"><span class="bx">One way to keep the programs running</span><span class="bx">Tablets, scanners and displays known to the install the same way, with or without a session</span></div>
+          <div class="row"><span class="bx">All seven follow one written pattern. Each accepts commands, including "check this now", and gives one report: what it is doing, whether it is working, and when that was last checked</span></div>
+          <div class="row"><span class="bx">One part of the software keeps all seven programs running and restarts any that crash</span></div>
+          <div class="row"><span class="bx">The backend knows which GM scanners, player scanners and displays are connected, whether or not a session exists</span></div>
         </div>
+        <p>For a rehearsal with no real gear, the same seven programs run, connected to software that stands in for the speakers and lights. You already ruled that a rehearsal works this way, through an ordinary installation profile that points at stand-ins.</p>
       </div>
     </div>
     <dl class="gives">
-      <div><dt>At a session</dt><dd>A crashed program comes back by itself, or the GM sees red with what to press. Gear that is not installed here shows grey. An engine restart does not blank the TV.</dd></div>
-      <div><dt>For the rebuild</dt><dd>The paused work on automatic restarts and the preflight lands once, not seven times. Rehearsing at a desk is the same engine and programs with a profile of stand-in gear, which the test rig already does.</dd></div>
-      <div><dt>What it costs</dt><dd>Seven drivers rewritten to one pattern, one at a time. No question of yours blocks it.</dd></div>
+      <div><dt>At a session</dt><dd>A crashed program restarts by itself. If it cannot, the GM scanner shows it in red with what to do. Gear that is not part of this installation shows grey. With the option I recommend below, restarting the backend no longer stops the video and music.</dd></div>
+      <div><dt>Later work it allows</dt><dd>The paused work on automatic restarts and the preflight is built once for all seven, not seven times.</dd></div>
+      <div><dt>What it costs</dt><dd>Seven pieces of code rewritten to the one pattern, one at a time. It needs no decision from you before it starts.</dd></div>
     </dl>
-    <p class="choice"><b>A choice inside this one.</b> Who keeps the programs running. The show machine's own service manager, which I recommend there because video and music then survive an engine restart. Or the engine itself, which is easier to test and works on any computer. A one-day trial on the new show machine settles it.</p>
+    <p class="choice"><b>A choice inside this one.</b> What should keep the seven programs running? The operating system on the backend's computer can do it, which I recommend, because video and music then keep playing while the backend restarts. Or the backend can do it itself, which is easier to test and works on any computer. One day of testing on the new backend computer would settle it.</p>
     <details class="files"><summary>Where this is in the code</summary><ul>
-      <li>backend/src/services/vlcMprisService.js, musicService.js, soundService.js, audioRoutingService.js, bluetoothService.js, lightingService.js; backend/src/utils/displayDriver.js</li>
-      <li>backend/src/utils/processMonitor.js:92 (stops the programs when the engine exits)</li>
-      <li>backend/src/services/musicService.js:73 (a private flag beside the shared health list)</li>
-      <li>backend/src/routes/healthRoutes.js:86 (a check-in with no session is dropped)</li>
+      <li>backend/src/services/vlcMprisService.js, musicService.js, soundService.js, audioRoutingService.js, bluetoothService.js, lightingService.js; backend/src/utils/displayDriver.js (the seven)</li>
+      <li>backend/src/utils/processMonitor.js:92 (stops the programs when the backend exits)</li>
+      <li>backend/src/services/musicService.js:73 ("working" kept separately)</li>
+      <li>backend/src/routes/healthRoutes.js:86 (a scanner checking in with no session is not recorded)</li>
     </ul></details>
   </article>
 
   <article class="imp" id="imp-5">
-    <div class="imp-head"><span class="num">5</span><h3>Every fact has a stated life: a session, an install or a production</h3><span class="badge">Strong</span></div>
+    <div class="imp-head"><span class="num">5</span><h3>The engine keeps separate what belongs to one session, to one installation and to the whole production</h3><span class="badge">Recommended</span></div>
     <div class="ba">
       <div class="side today">
         <p class="side-label">Today</p>
         <div class="flow">
-          <div class="row"><span class="bx">Five hand-kept lists of steps: start-up, reset, shutdown, and what happens when a game starts, pauses or ends</span></div>
-          <div class="via">tablets and the wall display guess that a new game began; player scanners are never told</div>
+          <div class="row"><span class="bx">The backend holds one session at a time. Five hand-written lists of steps say what to do when it starts up, shuts down or resets, and when a session starts, pauses or ends</span></div>
+          <div class="via">GM scanners and the scoreboard work out that a new session has begun from a changed session id. Player scanners are never told</div>
         </div>
-        <p>Only one session exists at a time, and a phone's queued scans can land in the next group's session. Facts about the install sit in several places, and some live only in memory: a restart forgets a GM's “out of service” mark and logs every tablet out. Every holder of the pack fixes its copy at start-up, and nothing tells it the pack changed.</p>
+        <p>So the devices do not agree on where one session ends and the next begins. Scans that a player scanner stored while it had no connection can be added to the next group's session.</p>
+        <p>Facts about the installation are spread over several files, and some are kept only in memory. Restarting the backend forgets that a GM marked a piece of gear out of service, and logs every GM scanner out. Each device loads its copy of the pack when it starts, and is not told when the pack changes.</p>
       </div>
       <div class="side next">
         <p class="side-label">Proposed</p>
         <div class="flow">
-          <div class="row"><span class="bx"><b>A session.</b> One group's game: set up, start, pause, end. Its record only grows, and stays open after “end” for notes</span></div>
-          <div class="row"><span class="bx"><b>An install.</b> What is set up at this venue, for a night or for months. One document: the gear, the devices, what is out of service, and past sessions' records</span></div>
-          <div class="row"><span class="bx"><b>A production.</b> The game over its whole life: the pack, its versions and its media, as one thing a kit can hold several of</span></div>
-          <div class="via">one table says what each fact does at each moment; one piece of code moves a game along and tells every screen</div>
+          <div class="row"><span class="bx"><b>One session.</b> It is set up, started, paused and ended. Its record only grows. Notes can still be added after it ends</span></div>
+          <div class="row"><span class="bx"><b>One installation.</b> One place holds which gear is installed, which devices belong to it, what is out of service, and the records of the sessions played on it. It survives restarts</span></div>
+          <div class="row"><span class="bx"><b>The production.</b> The pack, its versions and its media files are kept together, so one backend can hold more than one game</span></div>
+          <div class="via">one table says what happens to each piece of data when a session starts, pauses, ends or is reset, and when the backend starts or stops. One piece of code carries it out and tells every device</div>
         </div>
       </div>
     </div>
     <dl class="gives">
-      <div><dt>At a session</dt><dd>On a long run, “end, reset, next group” leaves every screen clean each time. A restart mid-game loses nothing. A touring game arrives with one document to fill in.</dd></div>
-      <div><dt>For the rebuild</dt><dd>Capture, the venue technician's pages, several games on one kit, and applying a pack without a restart.</dd></div>
-      <div><dt>What it costs</dt><dd>Applying a pack without a restart is a large piece of its own, because every copy of the pack is fixed at start-up today.</dd></div>
+      <div><dt>At a session</dt><dd>In a long run, "end this session, reset, start the next group" leaves every screen and every scanner clean each time. A restart in the middle of a session loses nothing. A touring game arrives at a new venue with one installation profile to fill in.</dd></div>
+      <div><dt>Later work it allows</dt><dd>Staff notes and photos. The venue technician's screens. More than one game on one backend. Updating a pack without restarting.</dd></div>
+      <div><dt>What it costs</dt><dd>Updating a pack without a restart is a large job by itself, because today every device loads the pack only when it starts.</dd></div>
     </dl>
     <details class="files"><summary>Where this is in the code</summary><ul>
-      <li>backend/src/app.js:178, services/systemReset.js, server.js:163, services/sessionService.js:284 (the lists)</li>
-      <li>ALNScanner/src/network/networkedSession.js:246 (the guess)</li>
-      <li>backend/src/routes/scanRoutes.js:317 (queued scans into the current session)</li>
+      <li>backend/src/app.js:178, services/systemReset.js, server.js:163, services/sessionService.js:284 (the lists of steps)</li>
+      <li>ALNScanner/src/network/networkedSession.js:246 (working out that a new session began)</li>
+      <li>backend/src/routes/scanRoutes.js:317 (stored scans added to the current session)</li>
       <li>backend/src/services/dormancyService.js:41; backend/src/middleware/auth.js:13 (kept only in memory)</li>
       <li>backend/src/services/packService.js:96 (the pack fixed at start-up)</li>
     </ul></details>
   </article>
 
   <article class="imp" id="imp-6">
-    <div class="imp-head"><span class="num">6</span><h3>Marked places where new rules, new gear and new screens plug in</h3><span class="badge explore">Worth exploring</span></div>
+    <div class="imp-head"><span class="num">6</span><h3>The code has a known place for adding a new kind of rule, equipment or screen</h3><span class="badge explore">Worth exploring</span></div>
     <div class="ba">
       <div class="side today">
         <p class="side-label">Today</p>
         <div class="flow">
-          <div class="row"><span class="bx">The engine lists what it can do, a pack lists what it needs, and the start-up check refuses a pack that asks for more</span></div>
-          <div class="via">that part is sound; where a new ability goes in the code is not marked</div>
-          <div class="row"><span class="bx">The record has the shape of ALN's game: accounts, sales, scores</span><span class="bx">One way of scoring</span></div>
+          <div class="row"><span class="bx">The engine has a list of its capabilities. A pack lists the capabilities it needs. At start-up the backend refuses a pack that needs one the engine does not have</span></div>
+          <div class="via">that check works well. But adding a new capability means changing code in many places, with no pattern to follow</div>
+          <div class="row"><span class="bx">The session's data is built around ALN's kind of game: teams, transactions, scores</span><span class="bx">There is one way of scoring</span></div>
         </div>
       </div>
       <div class="side next">
         <p class="side-label">Proposed</p>
         <div class="flow">
-          <div class="row"><span class="bx">A rules module, named by the pack</span><span class="bx">A gear driver, behind improvement 4's interface</span><span class="bx">A screen's view, worked out by improvement 1's way out</span></div>
-          <div class="via">each says what ability it adds; the start-up check matches packs against what is installed</div>
+          <div class="row"><span class="bx">A new kind of rule, such as another way of scoring, is one new file in one known folder, written to a set pattern. A pack asks for it by name</span></div>
+          <div class="row"><span class="bx">A new kind of equipment is one new file written to the pattern in change 4</span></div>
+          <div class="row"><span class="bx">A new kind of screen is one new page that is told what to show, as in change 1</span></div>
         </div>
-        <p>This is your two kinds of extension. Combining what the engine already has is done in the pack, with no code. A new ability is one module at a marked place, and every game can then use it.</p>
+        <p>This matches the two kinds of extension you described on 2 November. A game's maker combines the engine's existing capabilities inside the pack, with no programming. A developer adds a new capability to the engine as one new piece of code, and then any game can use it.</p>
       </div>
     </div>
     <dl class="gives">
-      <div><dt>For extending it</dt><dd>One place to add each kind of thing, and a game that proves it.</dd></div>
-      <div><dt>For the rebuild</dt><dd>The second game's modules, and other people's games after release.</dd></div>
-      <div><dt>Why not “strong”</dt><dd>I would shape these from the second game's real taps, written first as test cases, and not from ALN alone.</dd></div>
+      <div><dt>For a developer</dt><dd>Someone adding a capability knows where the code goes and what it has to look like. A game that uses the capability proves it works.</dd></div>
+      <div><dt>Later work it allows</dt><dd>What the second game needs. Other people's games after release.</dd></div>
+      <div><dt>Why I am less sure</dt><dd>These places should be designed from what the second game really needs, written first as tests. Designing them from ALN alone would be guessing.</dd></div>
     </dl>
     <details class="files"><summary>Where this is in the code</summary><ul>
-      <li>backend/src/services/packService.js:52 (the list of abilities and the start-up check)</li>
+      <li>backend/src/services/packService.js:52 (the list of capabilities, and the start-up check)</li>
       <li>backend/src/gameRules/scoring.js; backend/src/models/session.js</li>
       <li>docs/plans/2026-07-17-bill-capability-scoping.md (what the second game needs)</li>
     </ul></details>
   </article>
 
   <article class="imp" id="imp-7">
-    <div class="imp-head"><span class="num">7</span><h3>Each copy of the engine is built in one place and keeps to itself</h3><span class="badge">Strong</span></div>
+    <div class="imp-head"><span class="num">7</span><h3>A test or a rehearsal can run on the backend's computer without disturbing a live session</h3><span class="badge">Recommended</span></div>
     <div class="ba">
       <div class="side today">
         <p class="side-label">Today</p>
         <div class="flow">
-          <div class="row"><span class="bx">Fourteen parts each exist once, shared by the whole program</span></div>
-          <div class="via">the list of parts is typed by hand in about a dozen places; the reset list leaves music out</div>
-          <div class="row"><span class="bx">The session's copy</span><span class="bx">A test or a rehearsal on the same machine</span></div>
-          <div class="via">the same thirteen fixed file names, the same display, the same name for the video player</div>
+          <div class="row"><span class="bx">The backend is made of fourteen parts. The list of those parts is typed out by hand in about a dozen places. One of those lists leaves out the music</span></div>
+          <div class="row"><span class="bx">The backend assumes it is the only copy running on its computer. A second copy, started for a test or a rehearsal, would use the same thirteen temporary files, the same screen and the same video player as the live one</span></div>
         </div>
-        <p>At start-up, each copy stops every matching program on the machine, not only its own.</p>
+        <p>When any copy starts, it stops every scoreboard browser and every sound monitor on the computer, including ones a live session is using.</p>
       </div>
       <div class="side next">
         <p class="side-label">Proposed</p>
         <div class="flow">
-          <div class="row"><span class="bx">One place builds a copy of the engine from one list of parts</span></div>
-          <div class="via">each copy has its own names: files, ports, display, passes, programs</div>
-          <div class="row"><span class="bx">Each copy stops only what it started</span></div>
+          <div class="row"><span class="bx">The backend is assembled in one place in the code, from one list of its parts</span></div>
+          <div class="row"><span class="bx">Each running copy has its own files, its own screen and its own video and music players, and stops only what it started</span></div>
         </div>
       </div>
     </div>
     <dl class="gives">
-      <div><dt>At a session</dt><dd>Nothing run at a desk or in a test can interrupt a live game on the same machine.</dd></div>
-      <div><dt>For the rebuild</dt><dd>The rehearsal engine, tests on the real machine, and a second production's kit.</dd></div>
-      <div><dt>What it costs</dt><dd>More than it looks. Beyond file names, two copies collide on the video player's name, on audio streams matched by program name, and on the one display. The trial in improvement 4 decides how much of this is left.</dd></div>
+      <div><dt>At a session</dt><dd>A test or a rehearsal started on the backend's computer cannot interrupt a live session there.</dd></div>
+      <div><dt>Later work it allows</dt><dd>Rehearsing on a backend computer that is in use. Running the automatic tests on the real computer.</dd></div>
+      <div><dt>What it costs</dt><dd>More than it looks. Two copies would also compete for the video player, for the sound outputs and for the one screen. The one-day test in change 4 shows how much of that is left to solve.</dd></div>
     </dl>
     <details class="files"><summary>Where this is in the code</summary><ul>
-      <li>backend/src/websocket/adminEvents.js:77 (a hand-typed list that leaves music out)</li>
-      <li>backend/src/utils/displayDriver.js:56, :147; backend/src/services/audioRoutingService.js:603</li>
+      <li>backend/src/websocket/adminEvents.js:77 (a hand-typed list that leaves out the music)</li>
+      <li>backend/src/utils/displayDriver.js:56, :147; backend/src/services/audioRoutingService.js:603 (stops programs it did not start)</li>
       <li>backend/src/services/vlcMprisService.js:16 (one fixed name for the video player)</li>
     </ul></details>
   </article>
@@ -476,66 +493,66 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
 </section>
 
 <section>
-  <h2>The shape this gives</h2>
-  <p class="prose">The same picture as above, with the show machine's inside as it would be.</p>
-  <div class="pic" role="group" aria-label="The proposed shape of the engine">
+  <h2>How it would fit together afterwards</h2>
+  <p class="prose">The same picture, with the software as it would be.</p>
+  <div class="pic" role="group" aria-label="How the engine would fit together afterwards">
     <div class="lane">
-      <div class="lane-name">Devices<small>every screen and scanner</small></div>
+      <div class="lane-name">Scanners and screens<small>every device</small></div>
       <div class="chips">
-        <span class="chip good">Ask through the one door</span>
-        <span class="chip good">Draw what they are sent</span>
-        <span class="chip good">Decide nothing a second time</span>
-        <span class="chip good">Known to the install <a class="mk ok" href="#imp-4">4</a></span>
+        <span class="chip good">Send every scan and command the same way <a class="mk ok" href="#imp-1">1</a></span>
+        <span class="chip good">Show what they are told to show <a class="mk ok" href="#imp-1">1</a></span>
+        <span class="chip good">Hold no game rules of their own</span>
+        <span class="chip good">Are known to the backend whenever they are connected <a class="mk ok" href="#imp-4">4</a></span>
       </div>
     </div>
-    <div class="link">one published protocol <a class="mk ok" href="#imp-3">3</a></div>
+    <div class="link">one definition of every message <a class="mk ok" href="#imp-3">3</a></div>
     <div class="lane">
-      <div class="lane-name">The core<small>on the show machine, or on a GM tablet when the kit has none <a class="mk ok" href="#imp-2">2</a></small></div>
+      <div class="lane-name">The game code<small>runs in the backend for a networked game, or inside the GM scanner for a standalone game <a class="mk ok" href="#imp-2">2</a></small></div>
       <div class="chips">
-        <span class="chip good">One door in <a class="mk ok" href="#imp-1">1</a></span>
-        <span class="chip good">One record <a class="mk ok" href="#imp-1">1</a></span>
-        <span class="chip good">One way out <a class="mk ok" href="#imp-1">1</a></span>
-        <span class="chip good">The rules, with marked places for new ones <a class="mk ok" href="#imp-6">6</a></span>
-        <span class="chip good">A session's life, from one table <a class="mk ok" href="#imp-5">5</a></span>
+        <span class="chip good">Handles every scan and command the same way <a class="mk ok" href="#imp-1">1</a></span>
+        <span class="chip good">Keeps the session's complete record <a class="mk ok" href="#imp-1">1</a></span>
+        <span class="chip good">Tells every screen what to show <a class="mk ok" href="#imp-1">1</a></span>
+        <span class="chip good">The game rules, with a known place for new ones <a class="mk ok" href="#imp-6">6</a></span>
+        <span class="chip good">What happens when a session starts, pauses, ends or resets, from one table <a class="mk ok" href="#imp-5">5</a></span>
       </div>
     </div>
-    <div class="link">the core asks the room to do things, and reads back what it is doing</div>
+    <div class="link">the game code asks for video, sound and light, and is told what happened</div>
     <div class="lane">
-      <div class="lane-name">The room's side<small>on the show machine only</small></div>
+      <div class="lane-name">The show-control code<small>in the backend only; a standalone game has none</small></div>
       <div class="chips">
-        <span class="chip">Cues, clock, video queue</span>
-        <span class="chip">What a game needs against what is installed</span>
-        <span class="chip good">The install's one document <a class="mk ok" href="#imp-5">5</a></span>
-        <span class="chip good">One interface for each thing the room can do <a class="mk ok" href="#imp-4">4</a></span>
-        <span class="chip good">This copy, built in one place <a class="mk ok" href="#imp-7">7</a></span>
+        <span class="chip">Cues, the game clock, the video queue</span>
+        <span class="chip">Comparing what the game needs with the gear that is installed</span>
+        <span class="chip good">One place for this installation's data <a class="mk ok" href="#imp-5">5</a></span>
+        <span class="chip good">One pattern for controlling each kind of equipment <a class="mk ok" href="#imp-4">4</a></span>
+        <span class="chip good">Assembled in one place; each running copy uses only its own files and programs <a class="mk ok" href="#imp-7">7</a></span>
       </div>
     </div>
-    <div class="link">one way to keep the programs running <a class="mk ok" href="#imp-4">4</a></div>
+    <div class="link">one part of the software keeps these programs running <a class="mk ok" href="#imp-4">4</a></div>
     <div class="lane">
-      <div class="lane-name">Outside programs<small>pointed at real gear, or at stand-in gear</small></div>
+      <div class="lane-name">Other programs<small>on the backend's computer; connected to the real gear, or to stand-ins for a rehearsal</small></div>
       <div class="chips">
-        <span class="chip">Video</span><span class="chip">Music</span><span class="chip">Sound</span><span class="chip">Audio routing</span><span class="chip">Bluetooth</span><span class="chip">Lights</span><span class="chip">Display</span>
+        <span class="chip">Video player</span><span class="chip">Music player</span><span class="chip">Sound effects</span><span class="chip">Audio routing</span><span class="chip">Bluetooth</span><span class="chip">Lights</span><span class="chip">Scoreboard browser</span>
       </div>
     </div>
   </div>
 </section>
 
 <section>
-  <h2>What the rest of the rebuild stands on</h2>
+  <h2>Which changes the rest of the roadmap depends on</h2>
   <div class="tbl-wrap">
   <table>
-    <thead><tr><th>Still to build</th><th>Stands on</th></tr></thead>
+    <thead><tr><th>Still to build</th><th>Depends on changes</th></tr></thead>
     <tbody>
       <tr><td>Automatic restarts, and the preflight</td><td class="nums">4, 7, 5</td></tr>
-      <tr><td>A tablet or scanner noticing that its pack is stale</td><td class="nums">3, 5</td></tr>
-      <tr><td>The design tool's pages, with change, apply, play</td><td class="nums">5, 1, 7</td></tr>
-      <tr><td>Rehearsal at a desk</td><td class="nums">4, 7, 1</td></tr>
-      <tr><td>The venue technician's pages, and a touring game</td><td class="nums">4, 5</td></tr>
-      <tr><td>Capture during play, and the night's record</td><td class="nums">1, 5</td></tr>
-      <tr><td>Players' phones</td><td class="nums">1, 3</td></tr>
-      <tr><td>The second game's modules</td><td class="nums">6, 1, 2</td></tr>
-      <tr><td>A kit with no show machine</td><td class="nums">2, 5</td></tr>
-      <tr><td>A release other people can stand up</td><td class="nums">3, 7, 2</td></tr>
+      <tr><td>A scanner noticing that its copy of the pack is out of date</td><td class="nums">3, 5</td></tr>
+      <tr><td>The config tool's screens: change a value, apply it, try it</td><td class="nums">5, 1, 7</td></tr>
+      <tr><td>Rehearsing without the venue</td><td class="nums">4, 7, 1</td></tr>
+      <tr><td>The venue technician's screens, and a touring game</td><td class="nums">4, 5</td></tr>
+      <tr><td>Staff notes and photos during a session, and the session's record</td><td class="nums">1, 5</td></tr>
+      <tr><td>Players tapping tokens with their own phones</td><td class="nums">1, 3</td></tr>
+      <tr><td>What the second game needs</td><td class="nums">6, 1, 2</td></tr>
+      <tr><td>Standalone games</td><td class="nums">2, 5</td></tr>
+      <tr><td>A release that other people can install</td><td class="nums">3, 7, 2</td></tr>
     </tbody>
   </table>
   </div>
@@ -544,30 +561,25 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
 <section class="prose">
   <h2>The order I would work in</h2>
   <ol class="steps">
-    <li><b>Start with the room's side:</b> the gear (4), with one place that builds each copy (7). No question of yours blocks them, and the paused work on restarts and the preflight continues there. A one-day trial on the new show machine settles who keeps the programs running.</li>
-    <li><b>Meanwhile, work through the core with you</b> (1 and 2). Before it is built I write the second game's taps as test cases, so the core is not shaped by ALN alone.</li>
-    <li><b>Build the core as one thin slice from end to end:</b> one scan through the door, into the record, out to a tablet and the wall display. It runs on the show machine and on a tablet alone. The proof includes a player's device, a cut-off tablet and a restart. It uses the published form (3) and a session's start and end (5).</li>
-    <li><b>Widen from there,</b> adding the marked places (6) as the second game needs them.</li>
+    <li><b>Start with changes 4 and 7,</b> the show-control side. They need no decision from you, and the paused work on automatic restarts and the preflight continues there. One day of testing on the new backend computer settles what keeps the programs running.</li>
+    <li><b>Meanwhile, go through changes 1 and 2 with you.</b> Before building any of it, I write what players do in the second game as tests, so this code is not designed around ALN alone.</li>
+    <li><b>Build changes 1 and 2 first as one small working piece:</b> a single scan, from the tap, into the record, and out to a GM scanner and the scoreboard. It has to work in the backend and inside a standalone GM scanner, with a player scanner, with a GM scanner that loses its connection, and across a restart. It uses the message definition from change 3 and the session start and end from change 5.</li>
+    <li><b>Then extend it</b> to everything else the engine does, adding the known places from change 6 as the second game needs them.</li>
   </ol>
-  <p>Throughout, today's engine keeps running sessions, and the old show machine stays the fallback.</p>
-  <p><b>None of this is small.</b> The show machine's program and the GM tablet's app are about 43,000 lines of code with about 116,000 lines of tests, and the tests move with every change. That is why the work goes in thin slices.</p>
-
-  <h2>Smaller ones, worth exploring</h2>
-  <ul class="plain">
-    <li>The design tool asks the engine through the same door, before its pages are built. Today it writes the engine's files and loads the engine's code directly.</li>
-    <li>The wall display becomes a screen like any other. This follows from 1.</li>
-  </ul>
+  <p>Throughout, today's software keeps running ALN's sessions, and the old backend computer stays as the fallback.</p>
+  <p><b>None of this is small.</b> The backend and the GM scanner together are about 43,000 lines of code, with about 116,000 lines of tests that have to change with them. That is why I would do it in small pieces that each work.</p>
+  <p class="muted">One smaller change is also worth exploring. The config tool should send its changes to the backend as messages, the way the scanners do. Today it writes the engine's files and uses the engine's code directly. I would change that before building the config tool's new screens.</p>
 </section>
 
 <section class="ask prose">
   <h2>What I need from you</h2>
-  <p><b>Which of these do you want to look at closely?</b> I recommend the core, 1 and 2 together, starting with the choice inside 1. We work through it in conversation. What we decide goes into short decision notes and the revised roadmap.</p>
-  <p><b>May I start on the room's side, 4 and 7, meanwhile?</b></p>
-  <p class="muted">Three things this plan does not decide. They come up when we look at the core: what a GM may tell a team while a tablet is cut off, what a device that missed an update may do, and where a rehearsal copy may run while a session is live.</p>
+  <p><b>Which of these do you want to go through in detail?</b> I recommend changes 1 and 2 together, starting with the choice inside change 1. We go through it in conversation, one question at a time. What we decide goes into short decision notes and the roadmap.</p>
+  <p><b>May I start on changes 4 and 7 in the meantime?</b></p>
+  <p class="muted">Three product questions this plan does not answer. They come up inside changes 1 and 2. What may a GM tell a team while their GM scanner has no connection? What may a device do if it missed a software update? Where may a rehearsal run while a session is live?</p>
 </section>
 
 <footer class="prose">
-  <p>This page replaces the earlier site. The draft behind it, with every claim tied to a file, and the three readers' reports are in the repository at <code>docs/plans/architecture-pass/proposal/</code>.</p>
+  <p>This page replaces the earlier six-page site. The three reviewers' reports, and a note on how this plan was made, are in the repository at <code>docs/plans/architecture-pass/proposal/</code>.</p>
 </footer>
 
 </div>
