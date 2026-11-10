@@ -27,15 +27,22 @@ before acting.
   The agent agreed: since 2026-11-01 the work went into the site and the
   panel's rules, and none of the six decisions ahead has started. Until
   the owner replies, do not ask for answers to version 11's questions,
-  do not rebuild the site and do not add to the panel's brief. Proposed:
-  the owner need not read version 11; one short message with the two or
-  three things needed to start the architects; the architects run; the
-  owner gets designs explained by what happens at a show. What follows
-  describes version 11 as it stands. Version 11 of the owner site
-  (published 2026-11-10, version id 1794281701-ac4d). Before answering
-  version 10, the owner asked (2026-11-09) for an independent review "to
-  make sure the design is optimal and what you need input from me about
-  is clearly defined before I give my input". Workflow `wf_7341feb0-0de`
+  do not rebuild the site and do not add to the panel's brief. The owner
+  then rejected the agent's first proposal (keep version 11 as reference
+  and run the architects): the page is "massive and bloated and
+  unhelpful", and the work began as an attempt to run the skill
+  `improve-codebase-architecture` "to make sure that the rest of our
+  engine rebuild is done on a solid architectural foundation", with the
+  page as "the document aimed to help me understand a proposed plan for
+  improvements". The agent put a corrected understanding to the owner as
+  three checks (the subject is improving the engine being rebuilt; one
+  short proposal replaces the site; what the panel is for) and waits for
+  the reply. Do not run the panel. What follows describes version 11 as
+  it stands. Version 11 of the owner site (published 2026-11-10, version
+  id 1794281701-ac4d). Before answering version 10, the owner asked
+  (2026-11-09) for an independent review "to make sure the design is
+  optimal and what you need input from me about is clearly defined
+  before I give my input". Workflow `wf_7341feb0-0de`
   (`site-v10-review.js`) ran it: four reviewers, a refute-by-default
   check of each and a merge, in
   `docs/plans/architecture-pass/report/site/checks/v10-review*.md`. Its
