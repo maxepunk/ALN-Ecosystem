@@ -6,6 +6,8 @@
 
 > **2026-11-02.** The owner's decisions of that day ("No technical failure stops a game", the purpose of "Standalone games: declared, never mixed", "The engine is hardware-flexible; the roadmap sets the bounds", "Two kinds of game extension" and "The engine says what is fixed and what each production sets") are folded in where this record states the same facts as the page's promise data (`report/2026-10-31-engine-jobs.json`, rows 49 to 60 of `rework/impact.md`). Readings the decision record marks to be confirmed are written as open, not as the owner's.
 
+> **2026-11-10.** An independent review the owner asked for found that "no engine" in the texts the architects' panel reads means no show machine: the glossary's engine is all the software that is the same for every game, the GM's app and the player scanners included (`CONTEXT.md` section 0). The page's promise data (`report/2026-10-31-engine-jobs.json`) now says "no show machine", and this record says the same wherever it states the same sentence as that data: under J1, J6, J7, J8 and J10 in section 3. Elsewhere this record stays as written, so "no engine", "a missing engine" and "engine-less" in its older parts mean a game with no show machine. Folded in the same day: the rule against assuming one kit, one pack or one production carries its bound (where avoiding it costs little; features for several kits come later, and the places for them are built now); and the open question on standalone games is named by its title, "Which standalone games the engine must run", which now asks whether one such game may use more than one GM tablet and whether its devices must play one shared game. Which devices a standalone game may use is a reading the owner confirms, not part of that question.
+
 **Status: draft for the owner's confirmation.** Nothing here is decided. The owner reads the ten jobs, says whether they are the right jobs, and answers the questions in section 4. Step 1's cause analysis stays as the full record behind this document; this document replaces the flaw list as the front of step 1.
 
 - **What changed, and why.** Step 1 was built from the problems up: every known problem was grouped into sixteen design flaws, C1 to C16 (`docs/plans/architecture-pass/2026-10-30-cause-analysis.md`), and checked against standalone games (`docs/plans/architecture-pass/2026-10-31-standalone-pass.md`, which proposes a seventeenth flaw, N1). The owner found that hard to follow and asked to restructure step 1 around the engine's jobs first. The owner's decision 26 sets the frame (`docs/plans/CURRENT-STATE.md` section 0, item 26, lines 45-53): design the best architecture for the next iteration of the engine, for long-term use and future development as its use grows beyond ALN; blue's fixes and findings are clues to where today's design is off, never the driver. So the jobs come first here, the flaws sit under the jobs as where today's design falls short, and blue's problems are the clues and the test cases.
@@ -27,7 +29,7 @@ A GM runs the show from four sections (Game Ops, Show Control, Environment, Game
 
 A player taps tokens on a phone or a shared station with no account, no login, no app to install and no recorded identity unless the game designs an identification moment. [MD:56; RM:66-70]
 
-The business is one production, one kit and many games on it; a second kit or operator is not planned, but must stay cheap to start, so nothing in the engine may assume one kit, one pack or one production. The engine is meant to be open-sourced for many games in many production settings, so it says which requirements are fixed and which each production sets for itself. ALN is the first production: one game, one venue, the hardware the owner bought. The engine does not take ALN's hardware as its own requirements. The mature engine is flexible about hardware; the current roadmap sets how much of that flexibility is built now and where it names specific hardware requirements, and where it draws that line is open. [MD:57, MD:59; RM:71-75, RM:102-111; DECISIONS.md, 2026-11-02]
+The business is one production, one kit and many games on it; a second kit or operator is not planned, but must stay cheap to start. So nothing in the engine assumes one kit, one pack or one production where avoiding it costs little; features for several kits come later, and the places for them are built now. The engine is meant to be open-sourced for many games in many production settings, so it says which requirements are fixed and which each production sets for itself. ALN is the first production: one game, one venue, the hardware the owner bought. The engine does not take ALN's hardware as its own requirements. The mature engine is flexible about hardware; the current roadmap sets how much of that flexibility is built now and where it names specific hardware requirements, and where it draws that line is open. [MD:57, MD:59; RM:71-75, RM:102-111; DECISIONS.md, 2026-11-02]
 
 The standing rules: players' data stays on the kit; media never lives inside the pack; phones and hardware scanners stay equal; the engine holds no opinion about game design; no technical failure stops a game, and the GMs know their fallbacks at a failure; red always means act now; the preflight states its own limits; and nothing deploys to the live machine until the owner says the new engine is ready. [MD:58-70]
 
@@ -70,7 +72,7 @@ The orchestrator's draft, written for any game. Three lines carry a change the m
 - **C12** (primary). The pack is read at scattered moments and no message says it changed, so the TV, the engine and a tablet can end up running different versions of one game.
 - C14 (secondary). The shape of the files the pack hands each device is kept by hand on both sides, so the hardware scanner cannot read the pack's own token file.
 - C15 (secondary). The videos and other media files the pack names are copied onto the show machine by hand, and nothing checks that every file the pack names is there.
-- N1 (secondary). The pack has no field that says a game runs without an engine, yet it declares a scoreboard, a clock and videos that an engine-less device cannot show.
+- N1 (secondary). The pack has no field that says a game runs without a show machine, yet it declares a scoreboard, a clock and videos that a device with no show machine cannot show.
 
 **In a standalone game.** Each device loads whatever pack copy its source holds; a tablet that reloads online mid-game adopts the newest published pack under the game in progress, no game record carries a pack stamp, and no player device shows a pack identity, so nothing compares the devices. [SP:115-119; SG-03 at SP:167; SP:291]
 
@@ -110,7 +112,7 @@ The orchestrator's draft, written for any game. Three lines carry a change the m
 - C12 (secondary). A tablet running a different pack than the engine is only written to a log.
 - C14 (secondary). Team Details reads the score from a place the tablet never fills, so it shows the wrong score while the scoreboard screen shows the right one.
 
-**In a standalone game.** One GM tablet holds the only copy, so tablets cannot drift, but it refreshes screens only on wired events. Two standalone tablets are two separate games, and which shapes of standalone game the engine supports, and how many tablets, is the owner's open question. [SP:27-31; SG-06 at SP:170; SP:251, question 2]
+**In a standalone game.** One GM tablet holds the only copy, so tablets cannot drift, but it refreshes screens only on wired events. Two standalone tablets are two separate games, and whether one standalone game may use more than one GM tablet is the owner's question "Which standalone games the engine must run". [SP:27-31; SG-06 at SP:170; SP:251, question 2]
 
 **The pass's questions it answers.** 1 (Who decides each fact the GM sees?), 5 (Does one question get one answer?), 8 (How may a copy be updated, and can a screen tell how old it is?), 9 (Is each fact's reconnect snapshot built the same way as its live update?). Question 1 is the pass's central question and lives here; 5, 8 and 9 come with C11, C1 and C6.
 
@@ -240,7 +242,7 @@ The orchestrator's draft, written for any game. Three lines carry a change the m
 - C8 (secondary). A second engine on the same machine kills some of the live engine's helpers (the sound system's watcher, the TV's browser and the music player); the design-tool plan warns that a preview engine would also write into the live engine's saved records and issue passes the live engine accepts.
 - C12 (secondary). Publishing a pack from the config tool tells the running engine nothing; the engine scores by the change only after a restart, while a reloaded TV already shows it.
 
-**In a standalone game.** No standalone shortfall of its own: a standalone tablet runs no engine to rehearse against. The one standalone finding nearby, a tablet adopting a newer pack on a mid-game reload, is filed under J1. [JF:149; SP:167]
+**In a standalone game.** No standalone shortfall of its own: a standalone game has no show machine to rehearse against. The one standalone finding nearby, a tablet adopting a newer pack on a mid-game reload, is filed under J1. [JF:149; SP:167]
 
 **The pass's questions it answers.** 4 (Can anything other than the live engine touch the live show?), 6 (What does each fact and each copy do at a boundary?). Question 4 for the preview engine beside the live one; question 6 for a pack change while a game runs (PD:101, PD:103).
 
@@ -268,7 +270,7 @@ The orchestrator's draft, written for any game. Three lines carry a change the m
 **Where today's design falls short.** Primary flaws first, then the flaws that touch this job from another home. [JF:155; the unpinned certificate inside C15 and the secrets rotation fit here loosely (JF:220)]
 - **C13** (primary). A client's own word or a route's default decides whether a credential is asked for and what the station is called, so every connection gets everything and the engine cannot tell two tablets or a display from a GM.
 
-**In a standalone game.** No engine, no credential and no connection exist, so this flaw produces no fault; a tablet never set up for a networked game keeps device id 001 and is known to nobody. [SP:121-127]
+**In a standalone game.** No show machine, no credential and no connection exist, so this flaw produces no fault; a tablet never set up for a networked game keeps device id 001 and is known to nobody. [SP:121-127]
 
 **The pass's questions it answers.** 7 (Does each component receive what its role needs, and no more?), 1 (Who decides each fact the GM sees?). Question 7 is this job's question; the analysis files C13 under 7 and 1 (AN:43).
 
@@ -280,7 +282,7 @@ The orchestrator's draft, written for any game. Three lines carry a change the m
 
 ### J8. Run wherever the venue and the game need
 
-**What it means for any game.** On the show machine with this venue's equipment, fitted by the installer through a profile; with or without an engine, as a choice the game declares for a room where a network connection is not feasible, or where other logistics make it better to use only GM scanners, player scanners or both, and never mixed; and on another kit, other hardware, another pack or another operating system later. Nothing in the engine assumes one kit, one pack or one production, and the engine says what is fixed and what each production sets.
+**What it means for any game.** On the show machine with this venue's equipment, fitted by the installer through a profile; with or without a show machine, as a choice the game declares for a room where a network connection is not feasible, or where other logistics make it better to use only GM scanners, player scanners or both, and never mixed; and on another kit, other hardware, another pack or another operating system later. Nothing in the engine assumes one kit, one pack or one production where avoiding it costs little, and the engine says what is fixed and what each production sets.
 
 **Who relies on it.** The venue installer, who fits the game to the room; the GMs running a standalone game, and the players alone with their scanners if the owner confirms that a standalone game may have no GM tablet; players on standalone devices; another production with its own kit, venue and hardware.
 
@@ -294,21 +296,21 @@ The orchestrator's draft, written for any game. Three lines carry a change the m
 - The planning view (capability 25) needs nothing from the running engine. [JC:172; MD:207]
 
 **Where today's design falls short.** Primary flaws first, then the flaws that touch this job from another home. [JF:171; JF:181]
-- **N1** (primary). Nobody declares that a game is standalone, so each device reads a missing engine as an outage, nothing says which of the pack's effects an engine-less game drops, and nothing can refuse a mixed game.
-- C4 (secondary). With no engine the tablet decides every boundary by its own code.
+- **N1** (primary). Nobody declares that a game is standalone, so each device reads the missing show machine as an outage, nothing says which of the pack's effects a game with no show machine drops, and nothing can refuse a mixed game.
+- C4 (secondary). With no show machine the tablet decides every boundary by its own code.
 - C8 (secondary). The engine and its helpers assume one engine per machine.
-- C9 (secondary). With no engine the tablet is the only judge and its copy of the rules has gaps.
+- C9 (secondary). With no show machine the tablet is the only judge and its copy of the rules has gaps.
 - C10 (secondary). A standalone game is drawn as an outage on every player device.
 - C15 (secondary). Program names and install commands are fixed to one operating-system release, so a new machine logs warnings or refuses its install.
 
-**In a standalone game.** This is the standalone job. The tablet's mode is its own tap, the phone's is its URL path, the hardware scanner has none and treats a missing engine as an outage that never ends; the hardware scanner is behind the phone in seven rows of the 24-row parity table. [SP:19; SP:259-284; SP:288-289]
+**In a standalone game.** This is the standalone job. The tablet's mode is its own tap, the phone's is its URL path, the hardware scanner has none and treats the missing show machine as an outage that never ends; the hardware scanner is behind the phone in seven rows of the 24-row parity table. [SP:19; SP:259-284; SP:288-289]
 
 **The pass's questions it answers.** 1 (Who decides each fact the GM sees?), 6 (What does each fact and each copy do at a boundary?). None of the nine names standalone; decision 22 adds it to the list every rule must serve. The standalone pass asks that every rule name its decider with the engine absent (question 1) and that the boundary rule have a defined input (question 6) (SP:288-289).
 
 **Test cases from the shows.** What to do, and what must happen.
 1. In a standalone game, pause the game and scan: refused with a reason and the token not used; end the game and scan: refused. [AN:473 (A-02 / C-09), read with the consistency check's K2 (JF:8)]
 2. On a new machine whose operating system gives the speaker rule and the TV's browser their new names, start the engine: it logs no warning and the TV page opens. [AN:786 (B-98)]
-3. Start a player device with no engine in a game declared standalone: it says 'standalone', not 'offline' or 'disconnected'. [Not an analysis proving test: the standalone pass, parity row 17 (SP:275) and the card change at SP:102; N1 has no proving test in the analysis.]
+3. Start a player device with no show machine in a game declared standalone: it says 'standalone', not 'offline' or 'disconnected'. [Not an analysis proving test: the standalone pass, parity row 17 (SP:275) and the card change at SP:102; N1 has no proving test in the analysis.]
 4. Build a clean machine from the deployment guide: it pairs a speaker and plays through it, and the install line works on the new operating-system image. [AN:786 (A-88 / X-03, B-100)]
 
 ### J9. Tell the truth about what it knows
@@ -348,7 +350,7 @@ The orchestrator's draft, written for any game. Three lines carry a change the m
 
 **Who relies on it.** The owner, who decides when the new engine is ready; the people building the engine, whose green run must mean something; the GM, whose live show no test may touch.
 
-**The long-term goal, as the roadmap and the owner's decisions set it.** A ladder of test environments, with a first rung that runs the real software stack with fake physics. Tests skip loudly with a reason, never silently. Every slice passes the two-pack run. How an extension a developer makes for all games relates to the engine's main release is the owner's open question. Nothing deploys to the live machine until the owner's show-ready decision; rollback is plugging the old machine back in. Open: whether tests and previews share one naming layer. [CTX:443-460 via MD:251; C23:385-388 via MD:252; CTX:248-250 and MD:71; RM:160-166 and RM:442-460 via MD:65 and MD:122; PGS:357-364 via MD:194-196 and MD:256]
+**The long-term goal, as the roadmap and the owner's decisions set it.** A ladder of test environments, with a first rung that runs the real software stack with fake physics. Tests skip loudly with a reason, never silently. Every slice passes the two-pack run. How an extension a developer makes for all games relates to the engine's main release is the owner's question "How an extension for all games reaches a production". Nothing deploys to the live machine until the owner's show-ready decision; rollback is plugging the old machine back in. Open: whether tests and previews share one naming layer. [CTX:443-460 via MD:251; C23:385-388 via MD:252; CTX:248-250 and MD:71; RM:160-166 and RM:442-460 via MD:65 and MD:122; PGS:357-364 via MD:194-196 and MD:256]
 
 **What the planned capabilities need from it.**
 - The test environment (capability 46): tests cannot touch the live machine's tracking files, the TV or its players; they skip loudly with a reason; a switch that stops test copies of the engine from starting the sound system is not built. [JC:184; MD:250-253]

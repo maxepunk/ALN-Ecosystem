@@ -1,9 +1,29 @@
 {
   "intro": [
     "This page keeps the history the other pages no longer carry: every published version of this report, each promise's first wording as a job, what changed on each design-flaw card, the three recommendations the earlier candidate changed, and the words the page has changed, most of them when you settled the words in [[dec:promises-qualities-moments-venue-technician]]. Nothing here is open for decision; the open questions are on [[page:decisions]].",
-    "From version 9 the site goes by titles, not numbers, and by one plain wording per term; this page is the one place the old numbers and words still appear. Four tables at the end map them: [[page:changes#letters|Where version 9's eighteen questions went]], [[page:changes#jargon|The words replaced in version 9]], [[page:changes#numbers|Old numbers and their titles]] and [[page:changes#sequence|Old sequencing words and the new names]]."
+    "From version 9 the site goes by titles, not numbers, and by one plain wording per term; this page is the one place the old numbers and words still appear. Five tables at the end map them: where version 10's ten questions went, [[page:changes#letters|Where version 9's eighteen questions went]], [[page:changes#jargon|The words replaced in version 9]], [[page:changes#numbers|Old numbers and their titles]] and [[page:changes#sequence|Old sequencing words and the new names]]."
   ],
   "versions": [
+    {
+      "version": "11",
+      "date": "2026-11-10",
+      "title": "An independent review, applied before you answer",
+      "items": [
+        "Before answering version 10's questions you asked for an independent review. Four reviewers read version 10: two read the questions, the readings, the agent's calls and the requirements for review; one read the design approach; one read all of it as an outside architect. A second agent checked each review and tried to refute every finding, and one merged report ruled where the checks disagreed. Eighty-eight findings came out, and no check refuted one whole. The agent running the pass accepted the report's rulings and added ten of its own.",
+        "The verdict: the approach is right. Requirements first, then architects who have not seen the agent's reasoning, then design rounds ordered by how hard a choice is to undo, with today's flaws as tests. Version 10 worked against that approach in three places, and this version changes each. Some questions asked you to choose ways to build before the panel had compared them; they now ask what must be true at a show, and the panel brings the ways with their costs. The requirements the panel reads blind held some of the agent's design choices; those are reworded as needs. And four subjects had no decision ahead: how the engine drives the room, how a device gets its pass, the data the kit keeps, and installing and releasing after the first swap.",
+        "Nine questions, where version 10 had ten. Three questions rested on a wrong fact, now corrected. When the show machine dies the TV goes dark, because the show machine drives it; version 10 said it freezes on the scoreboard. Today's pack already holds checked rules of the form “when this happens, do that”, and your lighting example can be written that way today in a networked game. A trial copy never drives the real room. “[[page:decisions#q-b|The show machine fails mid-game]]” now asks which of two outcomes the engine must offer, and the ways to build a fallback go to the panel. “[[page:decisions#q-a|A GM tablet cut off from the engine]]” asks one thing: may a GM tell a team its result before the engine has confirmed it. “[[page:decisions#q-c|Release day: what must update together, and how long older devices work]]” says what everything updating together does to the rollback you ratified, asks for the window in months and asks about old packs on their own. “[[page:decisions#q-d|What a game's maker may build inside the pack]]” starts from what the pack does today. “[[page:decisions#q-e|How an extension for all games reaches a production]]” has two options, and its recommendation no longer presumes your answer. “[[page:decisions#q-f|Where the trial copy runs while a show runs]]” gains a fourth option, the kit's second machine, and a recommendation.",
+        "One question is new: “[[page:decisions#q-g|A player who sends a scan without the token]]”. Two left the list. Version 10's “What a standalone game gives up, and what it keeps” asked for a rule you ratified on 2026-09-04, so the rule is now the agent's call “[[call:a-standalone-game-follows-the-rule-you-ratified-for-missing-equipment]]”; what a standalone game keeps and gives up is in the introduction to the standalone questions, with three rows marked as the agent's proposals; and its ask about the night's record is inside “[[page:decisions#q-h|Which standalone games the engine must run]]”. Version 10's “Which hardware the first new engine requires, and what it must allow replacing” asked what your decision of 2026-11-02 leaves to the build plan, so it is now the agent's call “[[call:the-design-allows-other-hardware-what-the-first-release-requires-comes-with-the-build-plan]]”. The letters changed with the list, and the table that says where each of version 10's ten questions went is below on this page.",
+        "Each question now carries a mark under its title: “Best answered now”, “Can wait for the panel” or, for the last, “Needed before the panel”. A new block, “What the panel waits for”, names the three things the panel cannot run without: your answer to “[[page:decisions#q-i|What the panel gets in its blind round]]”, the word “reviewed” for the requirements, and your approval of the panel's brief. A question you leave goes to the panel as the question alone, without the agent's options or recommendation. An answer sheet after the questions gives the exact form of each answer, with three small facts only you have: whether your GMs keep a token once it is sold or exposed, whether the show machine has ever failed for good during a show, and any device you expect to use soon that is not in ALN's kit.",
+        "Five readings of your words to confirm, each with yes or no, where version 10 had three. One is kept: a standalone game may have no GM tablet at all. One is reworded: a device that goes down includes the show machine. One left, that a cut-off tablet keeps taking scans, because “[[page:decisions#q-a|A GM tablet cut off from the engine]]” asks it. Three are new: who says which way tonight's game runs, networked or standalone; that a networked game which carries on from its devices stays networked; and that the engine may not make a second machine a requirement.",
+        "Thirteen agent's calls, where version 10 had fourteen. Five are new: “[[call:a-standalone-game-follows-the-rule-you-ratified-for-missing-equipment]]”, “[[call:who-wins-when-two-tablets-claimed-one-token-while-apart]]”, “[[call:the-design-allows-other-hardware-what-the-first-release-requires-comes-with-the-build-plan]]”, “[[call:each-architect-lists-the-decisions-before-seeing-the-agenda]]” and “[[call:in-a-standalone-game-whoever-holds-the-gm-tablet-holds-the-game-s-controls]]”. Three calls on the wording of the promises are merged into “[[call:three-choices-about-how-the-promises-are-worded]]”. Three technical defaults left the list: the program watcher's retries, how long before a screen says the engine is silent, and the show machine's limits. Each stays, with its reason, in the list of numbers under the review of the quality targets. “Exposed evidence and video with no engine” is deleted; its content is the three proposed rows in the introduction to the standalone questions.",
+        "The requirements. Four quality targets are new and proposed, which makes forty-seven: “[[qt:QT45]]”, “[[qt:QT46]]”, “[[qt:QT47]]” and “[[qt:QT48]]”. Five targets and one case moved from settled to partly settled: “[[qt:QT11]]”, “[[qt:QT14]]”, “[[qt:QT40]]”, “[[qt:QT42]]”, “[[qt:QT43]]” and “[[ex:EX17]]”. Four titles changed. “[[qt:QT42]]” was “Replugging the old machine undoes a release”: the roadmap ratified the swap of machines for the one move to the new machine, not for every release. “[[ex:EX17]]” was “A new engine version by swapping machines”, for the same reason. “[[qt:QT24]]” was “Nothing assumes one kit, one pack, one production”, which left out the rule's bound, “where avoiding it costs little”. “[[qt:QT38]]” was “No game mixes engine and standalone devices”.",
+        "Three more changes run through the requirements. A standalone game is now “a game with no show machine”, not “a game with no engine”: the engine is all the software that is the same for every game, and a standalone game still runs it on its devices. Where a target or a case notes how today's engine behaves, the note sits under its own tag, “Today”, in twenty places, and the panel's blind round does not get it. And the agent proposes 90 days as the default the engine ships with for how long data is kept, until a production sets its own.",
+        "Design. The six decisions ahead keep their titles and their order, and four say more. The first also covers the state of the room, how the game in progress is kept on the kit, and how a pack and its media reach each device in a game with no show machine. The protocol's form also covers how each kind of device gets its pass and loses it. The decision on separate copies also covers what belongs to the kit, its backup, what a supported machine is, and how a release is put on a kit and taken back. The decision on extension has two parts. The agent proposes a seventh decision, “How the engine drives the room”, and puts it to you inside “[[page:decisions#q-i|What the panel gets in its blind round]]”. The first and third decisions both decide who decides a fact, so each architect is asked whether they are one, and a change to your order may come back to you with the panel's report.",
+        "The panel's brief, on [[page:design#panel|Design]]. Each architect first lists the hardest decisions to reverse, and only then opens your six. Each is asked for more: what the design leaves out, what each mechanism costs to keep for years, one rejected alternative that differs in kind, any requirement that says how to build something, the largest kit the design carries, and what keeping phones and hardware scanners equal costs. The failures every architect must answer now include the kit's whole network. The setting gains the secure connection that phones and tablets need to read a token, and the roles of ALN's devices, which move there from the binding decisions as ALN's facts. An open question of yours goes to the panel as its “What it decides” paragraph only.",
+        "Four facts about today's engine came out of the review and are now on the pages. Both player scanners keep 100 scans while offline and drop the oldest without saying so. Today the kit's only backup is a copy the guide asks you to make by hand after every event; nothing checks it or brings it back. A spare show machine brings back the game and the shared scores, not the TV, the sound or the lights, unless a GM moves them. And hardware scanners updated for a new engine may not work with the old machine when it is plugged back in, which already matters at the first swap."
+      ],
+      "prompt": "Version 10 put ten questions to you. Before answering, on 2026-11-09, you asked for an independent review, “to make sure the design is optimal and what you need input from me about is clearly defined before I give my input”. The review ran on 2026-11-09 and 2026-11-10, and this version applies it. You have not answered any question yet, so nothing you said is changed here; your answers now go to version 11's nine questions."
+    },
     {
       "version": "10",
       "date": "2026-11-02",
@@ -190,7 +210,7 @@
       "id": "J8",
       "earlierTitle": "Run wherever the venue and the game need",
       "changes": [
-        "Before, this promise covered every setup, engine or none. Now it is the venue technician fitting the game to tonight's venue, with a standalone game declared here (where it is kept is a choice for the design rounds) and Release checking each machine. Earlier question E, now “Keep the venue promise whole?”, asked for your confirmation; since version 10 it is the agent's call “The venue promise stays one”.",
+        "Before, this promise covered every setup, engine or none. Now it is the venue technician fitting the game to tonight's venue, with a standalone game declared here (where it is kept is a choice for the design rounds) and Release checking each machine. Earlier question E, now “Keep the venue promise whole?”, asked for your confirmation; since version 11 it is part of the agent's call “Three choices about how the promises are worded”.",
         "In version 3 it gained the owner's words from decision 22: a game runs with or without an engine as a choice the game declares, never mixed (applied for the owner to confirm, then question C; now “The venue promise names declared standalone”, answered since version 10 by [[dec:standalone-games-declared-never-mixed]]).",
         "Mapping how the promises fit together (version 5) found the earlier wording made the engine the subject and named places, with the people missing, and restated it as \"Fit the game to the venue it is in tonight\". The person in it is the venue technician."
       ]
@@ -207,7 +227,7 @@
       "id": "J10",
       "earlierTitle": "Stay trustworthy as it changes",
       "changes": [
-        "Before, this promise was one sentence about tests, with release day inside. Now three parts keep it, Joins and proofs, Engine instance and Release, because the developer's tests, which show a change to the engine works before it reaches a show, and the owner's release day are different moments; then question F, now “Proof and release in one promise?”, since version 10 the agent's call “Proof and release stay one promise”.",
+        "Before, this promise was one sentence about tests, with release day inside. Now three parts keep it, Joins and proofs, Engine instance and Release, because the developer's tests, which show a change to the engine works before it reaches a show, and the owner's release day are different moments; then question F, now “Proof and release in one promise?”, since version 11 part of the agent's call “Three choices about how the promises are worded”.",
         "Release day is named in its title."
       ]
     }
@@ -316,21 +336,21 @@
       "key": "E",
       "before": "Split the venue promise, then \"Run wherever the venue and the game need\", into \"fit the game to the venue\" and \"run in any setup\": fitting a game to a room is the venue technician's work (the profile, binding the pack's names to real equipment, the one preflight); running in any setup is standalone games, other kits and the open-source release. Recommendation: split, because the venue technician is one of the engine's five users and had no job of their own. Version 4 added the alternative of keeping one job renamed \"Fit the game to the venue, whatever the setup\".",
       "after": "One promise, titled [[promise:J8]], with standalone games kept in its first sentences. Two titles fit the candidate shape: \"The game fits the venue, whatever the setup\" keeps standalone games and other kits in the title; \"The game fits the venue it is in tonight\" names the venue technician's moment and leaves them to the sentences. The cost of not splitting is that the GM running a standalone game and a future operator with another kit are named in a sentence, not in a title.",
-      "why": "The candidate shape found that \"run in any setup\" has no part of its own. Fitting the game to tonight's venue is one part with an output, [[part:P12]]: the venue technician's profile, which says what the kit brings, binds each of the pack's names to a real instrument and says whether the engine starts each program; [[part:P10]] turns it into one go or no-go. Running with no engine is a switch every design choice must allow for, declared as part of fitting the game. Running on another kit is each running copy of the engine keeping its own files, network ports and settings, [[part:P13]], the same part that keeps a test from touching the live show. A separate promise would own nothing. Since version 10 this is the agent's call “The venue promise stays one” on Decisions.",
+      "why": "The candidate shape found that \"run in any setup\" has no part of its own. Fitting the game to tonight's venue is one part with an output, [[part:P12]]: the venue technician's profile, which says what the kit brings, binds each of the pack's names to a real instrument and says whether the engine starts each program; [[part:P10]] turns it into one go or no-go. Running with no engine is a switch every design choice must allow for, declared as part of fitting the game. Running on another kit is each running copy of the engine keeping its own files, network ports and settings, [[part:P13]], the same part that keeps a test from touching the live show. A separate promise would own nothing. Since version 11 this is part of the agent's call “Three choices about how the promises are worded” on Decisions.",
       "question": "Keep the venue promise whole?"
     },
     {
       "key": "F",
       "before": "The change promise, then \"Stay trustworthy as it changes\", holds four kinds of work (tests that cannot hurt the live show, tests that follow the real path from a tap to a screen, checks that parts that pass things to each other agree, checks that what is installed matches). Split it into \"Prove it works, away from the live show\" and \"Keep every part in step\", and give each half an architecture pass question of its own. Version 4 added the option of widening one job's sentence to say a new version reaches the show only when the owner says it is ready, with rollback as plugging the old machine back in.",
       "after": "Keep [[promise:J10|one promise]] covering both moments, as its title does, and give the developer's tests and the release an architecture pass question each. The other options stay listed: split release day into a promise of its own; file release day with the venue technician's set-up work under [[promise:J8]]; or go back to the earlier wording, about tests alone, at the cost of leaving the owner's release day unnamed.",
-      "why": "The candidate shape separates the promise's two moments, not its kinds of work. Before every change, the developer's tests pass and show the show still works for ALN and for the toy game; that is a quality every part must have, carried by [[part:P16]] and [[part:P13]], and checking that parts that pass things to each other agree is part of it. On release day, the owner decides when a new version goes to the venue and can swap back by replugging a machine; that is one small part, [[part:P17]], which checks that everything installed matches. The earlier split into \"prove it works\" and \"keep every part in step\" does not match the candidate shape, because keeping parts that pass things to each other in step is part of the testing. Both moments exist so that nothing reaches the live show unproven, or before the owner says so. Since version 10 this is the agent's call “Proof and release stay one promise” on Decisions.",
+      "why": "The candidate shape separates the promise's two moments, not its kinds of work. Before every change, the developer's tests pass and show the show still works for ALN and for the toy game; that is a quality every part must have, carried by [[part:P16]] and [[part:P13]], and checking that parts that pass things to each other agree is part of it. On release day, the owner decides when a new version goes to the venue and can swap back by replugging a machine; that is one small part, [[part:P17]], which checks that everything installed matches. The earlier split into \"prove it works\" and \"keep every part in step\" does not match the candidate shape, because keeping parts that pass things to each other in step is part of the testing. Both moments exist so that nothing reaches the live show unproven, or before the owner says so. Since version 11 this is part of the agent's call “Three choices about how the promises are worded” on Decisions.",
       "question": "Proof and release in one promise?"
     },
     {
       "key": "G",
       "before": "Which job carries the equipment's state to every screen? The record job keeps the game's record true everywhere; the equipment job runs the equipment and knows its state; today the music or lights panel can stay wrong after a reconnect, and neither sentence says whose that is. Recommendation: the equipment job, because it keeps the game's record and the equipment's state apart and matches architecture pass question 2 (does a service's state travel with its health). A first draft of version 5 instead recommended [[promise:J2|the one-game promise]], since the game's running state already includes the video queue, music, held items, the clock and each service's health, and would have moved [[flaw:C2]]'s card under it; it was withdrawn before version 5 was published.",
       "after": "Name the route that carries the equipment's state to every screen in neither promise, as long as the design rounds keep one delivery part; both then hold through it, and [[flaw:C2]]'s card stays under [[promise:J4|the room promise]], where its moment at a show is felt. If the design rounds choose the other way, with the parts behind each promise delivering their own facts, the route belongs with the room promise, beside that card. If the owner still wants one promise to hold the words: under the room promise they sit with the equipment whose state it is, but that promise then names a route the other also needs; under [[promise:J2|the one-game promise]], they match how the game's running state is already defined, but that promise then carries the equipment beside the game's record.",
-      "why": "One part, [[part:P6]], carries every fact to every screen, game facts and equipment alike, each with its label (how sure, how old). [[part:P8]] decides its own state and health as one dated fact; Delivery carries it; the screens draw it. The two promises already cover their halves: under the room promise the GM makes the room do a thing and sees it happen, or sees at once that it did not; under the one-game promise every screen agrees, also after a tablet comes back. So neither sentence needs to name the route. Since version 10 this is the agent's call “The route for equipment state is named in neither promise” on Decisions.",
+      "why": "One part, [[part:P6]], carries every fact to every screen, game facts and equipment alike, each with its label (how sure, how old). [[part:P8]] decides its own state and health as one dated fact; Delivery carries it; the screens draw it. The two promises already cover their halves: under the room promise the GM makes the room do a thing and sees it happen, or sees at once that it did not; under the one-game promise every screen agrees, also after a tablet comes back. So neither sentence needs to name the route. Since version 11 this is part of the agent's call “Three choices about how the promises are worded” on Decisions.",
       "question": "Which promise carries equipment state on screens?"
     }
   ],
@@ -347,7 +367,8 @@
     "Design flaw, not cause, for C1 to C16 in owner-facing text, from version 3; the owner said \"cause analysis\" does not land. \"Green run\" is said as a passing test run from version 5.",
     "The earlier candidate, from version 9, for the candidate shape of 17 parts, drawn bottom-up from today's engine in version 5 and shown on version 8's Parts page. It is one input among the panel's; the panel compares it with its own proposals in its second round. Its part Joins and proofs is replaced by the published protocol and the test bench ([[dec:one-published-protocol-and-an-outside-test-bench]]). \"Candidate shape\" stays in the earlier entries on this page.",
     "Test situations, from version 9, for what the Promises page called each promise's test cases and what the decision record called the sixteen design flaws: situations every design is checked against.",
-    "\"Where today's engine falls short\", from version 9, replaces \"Broken by\" on the Requirements page."
+    "\"Where today's engine falls short\", from version 9, replaces \"Broken by\" on the Requirements page.",
+    "“No show machine”, from version 11, where the pages said a standalone game runs with “no engine”. The engine is all the software that is the same for every game, and a standalone game still runs it on its devices; what such a game lacks is the show machine."
   ],
   "jargon": [
     {
@@ -716,7 +737,7 @@
     {
       "was": "Question 18 (number 18 in the old decision list)",
       "title": "Flaws none of the pass's questions covers",
-      "where": "Still open, folded into “Proof and release in one promise?”, since version 10 the agent's call “Proof and release stay one promise” on Decisions"
+      "where": "Still open, folded into “Proof and release in one promise?”, since version 11 part of the agent's call “Three choices about how the promises are worded” on Decisions"
     },
     {
       "was": "Question 19 (number 19 in the old decision list)",
@@ -751,7 +772,7 @@
     {
       "was": "Question 25 (number 25 in the old decision list)",
       "title": "Exposed evidence and video with no engine",
-      "where": "Since version 10 the agent's call “Exposed evidence and video with no engine” on Decisions"
+      "where": "In version 10 the agent's call of that title; since version 11 two of the three rows the agent proposes in the introduction to “Standalone games” on Decisions"
     },
     {
       "was": "Decision 26",
@@ -881,17 +902,17 @@
     {
       "was": "Question E (versions 3 to 8)",
       "title": "Keep the venue promise whole?",
-      "where": "Since version 10 the agent's call “The venue promise stays one” on Decisions"
+      "where": "Since version 11 part of the agent's call “Three choices about how the promises are worded” on Decisions"
     },
     {
       "was": "Question F (versions 3 to 8)",
       "title": "Proof and release in one promise?",
-      "where": "Since version 10 the agent's call “Proof and release stay one promise” on Decisions"
+      "where": "Since version 11 part of the agent's call “Three choices about how the promises are worded” on Decisions"
     },
     {
       "was": "Question G (versions 3 to 8)",
       "title": "Which promise carries equipment state on screens?",
-      "where": "Since version 10 the agent's call “The route for equipment state is named in neither promise” on Decisions"
+      "where": "Since version 11 part of the agent's call “Three choices about how the promises are worded” on Decisions"
     },
     {
       "was": "After-game survey question 1 (AG1)",
@@ -1138,19 +1159,19 @@
     },
     {
       "was": "H. Split the tap promise in two?",
-      "where": "The agent's call “The tap promise is to be split in two”, when the promises are next revised after your review."
+      "where": "The agent's call “The tap promise is to be split in two”, made after the panel's synthesis, so that you and the panel read the same ten."
     },
     {
       "was": "I. Keep the venue promise whole?",
-      "where": "The agent's call “The venue promise stays one”."
+      "where": "In version 10 the agent's call “The venue promise stays one”; since version 11 part of the agent's call “Three choices about how the promises are worded”."
     },
     {
       "was": "J. Proof and release in one promise?",
-      "where": "The agent's call “Proof and release stay one promise”; what release day means in practice is now your question “Release day: what must update together, and how long older devices work”."
+      "where": "In version 10 the agent's call “Proof and release stay one promise”; since version 11 part of the agent's call “Three choices about how the promises are worded”. What release day means in practice is your question “Release day: what must update together, and how long older devices work”."
     },
     {
       "was": "K. Which promise carries equipment state on screens?",
-      "where": "The agent's call “The route for equipment state is named in neither promise”."
+      "where": "In version 10 the agent's call “The route for equipment state is named in neither promise”; since version 11 part of the agent's call “Three choices about how the promises are worded”."
     },
     {
       "was": "L. The hardware scanner's standalone mode",
@@ -1158,11 +1179,11 @@
     },
     {
       "was": "M. One GM tablet per standalone game?",
-      "where": "Your question “Which standalone games the engine must run”, which asks the fuller version: which shapes of standalone game the engine supports, and how many GM tablets."
+      "where": "Your question “Which standalone games the engine must run”, which since version 11 asks whether one standalone game may use more than one GM tablet, whether its devices must play one shared game, and whether its record must hold what the players found."
     },
     {
       "was": "N. Exposed evidence and video with no engine",
-      "where": "The agent's call “Exposed evidence and video with no engine”, a technical default; the rule above it is your question “What a standalone game gives up, and what it keeps”."
+      "where": "In version 10 the agent's call “Exposed evidence and video with no engine”. Since version 11 that call is gone: what a video token does and what a mode shows in public in a standalone game are two of the three rows the agent proposes in the introduction to “Standalone games” on Decisions. The rule above it was version 10's question “What a standalone game gives up, and what it keeps”, now the agent's call “A standalone game follows the rule you ratified for missing equipment”."
     },
     {
       "was": "O. Record every refused GM scan attempt?",
@@ -1179,6 +1200,48 @@
     {
       "was": "R. The second round reads today's code",
       "where": "The agent's call “The second round reads today's code”."
+    }
+  ],
+  "lettersV10": [
+    {
+      "was": "A. A GM tablet cut off from the engine",
+      "where": "Still question A, with the same title. It now asks one thing: may a GM tell a team its result before the engine has confirmed it. Who wins when two tablets claimed one token is the agent's call “Who wins when two tablets claimed one token while apart”. The reading that a cut-off tablet keeps taking scans left the readings, because this question asks it."
+    },
+    {
+      "was": "B. The show machine fails mid-game",
+      "where": "Still question B, with the same title. It now asks which of two outcomes the engine must offer (the game finishes on the tablets, or it also comes back on a second machine), how long the players may wait, and what they must never lose. The ways to build a fallback go to the panel. Whether the TV's clock keeps counting moved to your review of the target “Screens say when the engine goes silent”. Two parts became readings to confirm: that such a game stays the networked game it was declared as, and that the engine may not make a second machine a requirement."
+    },
+    {
+      "was": "C. Release day: what must update together, and how long older devices work",
+      "where": "Still question C, with the same title. It now says what everything updating together does to the rollback you ratified, asks how long a scanner may go without its update in months, and asks on its own whether a pack built for an older engine must always open."
+    },
+    {
+      "was": "D. What a game's maker may build inside the pack",
+      "where": "Still question D, with the same title. It now starts from what the pack does today, rules for the room that the engine checks at publish, and offers four steps from there. What happens to a rule that cannot run in a standalone game follows the agent's call “A standalone game follows the rule you ratified for missing equipment”."
+    },
+    {
+      "was": "E. How an extension for all games reaches a production",
+      "where": "Still question E, with the same title. Two options where there were three, and a recommendation that does not presume your answer."
+    },
+    {
+      "was": "F. Where the trial copy runs while a show runs",
+      "where": "Still question F, with the same title. It now says that a trial copy never drives the real room, adds a fourth option, the kit's second machine, and gives a recommendation."
+    },
+    {
+      "was": "G. Which standalone games the engine must run",
+      "where": "Now question H, with the same title. It asks three things once: whether one standalone game may use more than one GM tablet, whether its devices must play one shared game during play, and whether its record must hold what the players found. Which devices may play such a game is the first reading to confirm. The letter G now belongs to a new question, “A player who sends a scan without the token”."
+    },
+    {
+      "was": "H. What a standalone game gives up, and what it keeps",
+      "where": "No longer a question. You ratified its rule on 2026-09-04, so the rule is the agent's call “A standalone game follows the rule you ratified for missing equipment”. What a standalone game keeps and gives up is in the introduction to “Standalone games” on Decisions, with three rows marked as the agent's proposals. Its ask about the night's record is inside “Which standalone games the engine must run”."
+    },
+    {
+      "was": "I. Which hardware the first new engine requires, and what it must allow replacing",
+      "where": "No longer a question. Your decision of 2026-11-02 leaves the line to the design rounds and the build plan, so it is the agent's call “The design allows other hardware; what the first release requires comes with the build plan”. One line from you still helps before the panel's folder is built: any device you expect to use soon that is not in ALN's kit."
+    },
+    {
+      "was": "J. What the panel gets in its blind round",
+      "where": "Now question I, with the same title. It also asks yes or no to a seventh decision ahead, “How the engine drives the room”. The roles of ALN's devices move from the binding decisions to the setting, as ALN's facts. That each architect lists the decisions before seeing the agenda is the agent's call “Each architect lists the decisions before seeing the agenda”."
     }
   ]
 }

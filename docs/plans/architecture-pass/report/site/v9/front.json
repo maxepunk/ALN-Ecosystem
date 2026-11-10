@@ -6,12 +6,12 @@
       {"text": "The hardening block's finished pieces: the equipment kinds a pack can ask for and a profile can name, the code marking equipment not installed tonight, and the smallest test set-up; the rest waits for the build half."},
       {"text": "At the definition session of 2026-10-30 you approved the plan for the architecture pass and retired the truth sweep, which was to prove every screen tells the truth; the build half takes over its purpose."},
       {"text": "The review of today's code named sixteen design flaws."},
-      {"text": "Versions 8 and 9 of your site were published."},
-      {"text": "On 2026-11-02 you asked whether every question on the Decisions page was really yours to decide, and commented on seven open points the agent proposed; the decisions recorded that day head [[page:engine#lately|Decided lately]]."}
+      {"text": "On 2026-11-02 your comments on seven open points became five decisions, which head [[page:engine#lately|Decided lately]], and the Decisions page was reworked to hold only your decisions."},
+      {"text": "Versions 8 to 10 of your site were published; version 11 applies the independent review you asked for before answering version 10's questions."}
     ],
     "now": [
       {"text": "The requirements: the promises, the quality targets, the extension cases and the standing rules, for you to review.", "current": true},
-      {"text": "The panel, after you review the requirements; its brief comes to you first."},
+      {"text": "The panel, after you review the requirements and approve its brief."},
       {"text": "The design rounds: hardest to reverse first, two or three designs side by side in each."},
       {"text": "The build plan."},
       {"text": "The hostile review."},
@@ -19,14 +19,14 @@
       {"text": "Your sign-off, which ends the design half with the new roadmap."}
     ],
     "next": [
-      {"text": "The build half: the engine changed to follow the design, one area at a time, from a thin first version running end to end on a new test bench. It also does the hardening block's remaining pieces and the truth sweep's work, in their place among the conditions for show-ready."},
+      {"text": "The build half: the engine changed to follow the design, one area at a time, from a thin first version running end to end on a new test bench."},
       {"text": "Hardware-proven: the new show machine, built from the deployment guide, passes the home hardware test: real video, a real speaker, a real bulb, NFC on a tablet and a hardware scanner's sync. You run it when you choose."},
-      {"text": "Show-ready, where swapping in the new show machine becomes your live choice, needs one full venue rehearsal and your review of the visible changes. Until you say the new engine is ready, shows run on the machine in use now."},
+      {"text": "Show-ready, where swapping in the new show machine becomes your live choice, needs one full venue rehearsal and your review of the visible changes."},
       {"text": "The capture block, the preview block (reaching previewable) and the depth-and-close block, in the new roadmap's order."},
       {"text": "The later blocks: players' phones, the second game's modules, content tooling, the operations era and the release block, reaching adoptable."}
     ]
   },
-  "now": "On [[page:decisions]], review the requirements: the quality targets, each number now sorted; the extension cases; the promises. Answer the ten questions only you can decide. Confirm three readings of your words, and overrule any of the agent's calls you disagree with, in the chat, in any order.",
+  "now": "Three things from you let the panel run: your answer to “[[page:decisions#q-i|What the panel gets in its blind round]]”, the word “reviewed” for the requirements, and your approval of the panel's brief on [[page:design#panel|Design]]. The other eight of the nine questions only you can decide are on [[page:decisions]], each marked “best answered now” or “can wait for the panel”. There you also confirm five readings of your words with yes or no, and overrule any of the agent's thirteen calls you disagree with, in the chat, in any order.",
   "moments": [
     {
       "name": "Author and Rehearse",
@@ -82,13 +82,13 @@
     },
     {
       "name": "During play",
-      "when": "Mid-show, at every tap on a token or a button, every command and every glance at a screen; also when the game runs with no engine, as the game declares, in a room where no network is feasible or where other logistics favour scanners alone.",
+      "when": "Mid-show, at every tap on a token or a button, every command and every glance at a screen; also when the game runs with no show machine, as the game declares, in a room where no network is feasible or where other logistics favour scanners alone.",
       "people": [
         "The GM running the live show: at a token, a button, the start and pause buttons, or the Environment and Show Control sections",
         "The players, each at a token, with no account",
         "The audience, reading the TV and watching the clock",
         "In future games, a player with a hidden fact",
-        "A GM running a game with no engine",
+        "A GM running a game with no show machine",
         "The GMs at a technical failure mid-show, choosing a fallback",
         "A stranger on the venue wifi"
       ],
@@ -115,7 +115,7 @@
         },
         {
           "id": "J9",
-          "why": "Red means act now, grey means absent on purpose, old looks old, and whether the TV's clock may keep counting while the engine is silent waits on your answer to “The show machine fails mid-game”."
+          "why": "Red means act now, grey means absent on purpose, old looks old, and the TV's clock shows as unconfirmed while the engine is silent; whether it then stops or keeps counting is for your review of the target “[[qt:QT5]]”."
         },
         {
           "id": "J8",
@@ -174,12 +174,12 @@
       "promises": [
         {
           "id": "J10",
-          "why": "When every test passes, the show still runs for ALN and for the toy game; you decide when a new version goes to the venue, the machine carries everything on one written list of what it should carry (the engine's version, the tablet and phone apps, the pack, the media and the venue profile), and you can swap back by replugging a machine."
+          "why": "When every test passes, the show still runs for ALN and for the toy game; you decide when a new version goes to the venue, the machine carries everything on one written list of what it should carry (the engine's version, the tablet and phone apps, the pack, the media and the venue profile), and a release that fails can be undone before the next game, at the first swap by replugging the old machine."
         }
       ]
     }
   ],
-  "standaloneLine": "One decision adds a requirement every design choice must serve ([[dec:standalone-games-declared-never-mixed]]). A whole game can run with no engine, as a choice the game declares, for the purpose your words of 2026-11-02 state under [[page:engine#lately|Decided lately]]. No game mixes networked and standalone devices. Which shapes the engine supports, and how many GM tablets, is your open question. Each promise and each design flaw says what changes with no engine; the table comparing the two player scanners is on [[page:today]].",
+  "standaloneLine": "One decision adds a requirement every design choice must serve ([[dec:standalone-games-declared-never-mixed]]). A whole game can run with no show machine, as a choice the game declares, for the purpose your words of 2026-11-02 state under [[page:engine#lately|Decided lately]]. No game mixes networked and standalone devices. Whether one such game may use more than one GM tablet, and whether its devices must play one shared game, is your question “[[page:decisions#q-h|Which standalone games the engine must run]]”. Each promise and each design flaw says what changes with no show machine; the table comparing the two player scanners is on [[page:today]].",
   "qualities": [
     {
       "quality": "Staying up through a live show",
@@ -211,7 +211,7 @@
     },
     {
       "quality": "Privacy and access",
-      "line": "Players have no account; the engine records only a device or session id unless the game designs an identification moment. Game data stays on the kit for as long as the production sets, and players' email addresses stay outside the engine; strangers on the venue wifi get nothing; only staff who log in control a game; each screen gets only what the engine filters for it."
+      "line": "Players have no account, and the engine records only a device or session id. Game data stays on the kit for as long as the production sets, and players' email addresses stay outside the engine; strangers on the venue wifi get nothing; only staff who log in control a game; each screen gets only what the engine filters for it."
     },
     {
       "quality": "Running well on the show machine and the venue network at the size of a show",
@@ -219,11 +219,11 @@
     },
     {
       "quality": "Standalone and offline",
-      "line": "A game declared standalone says standalone, never disconnected; its tablet decides by the engine's rules, proven equal; no game mixes the two kinds of device; its record names the pack it ran; a scanner that loses the network keeps its scans and sends them once."
+      "line": "A game declared standalone says standalone, never disconnected; its tablet decides by the engine's rules, proven equal; its record names the pack it ran; a scanner that loses the network keeps its scans and sends them once."
     },
     {
       "quality": "Safe release and rollback",
-      "line": "The show machine keeps one written list of what it should carry, and a check names any piece that differs; nothing reaches it until you say the new engine is ready; replugging the old machine brings everything back."
+      "line": "The show machine keeps one written list of what it should carry, and a check names any piece that differs; nothing reaches it until you say the new engine is ready; a release that fails can be undone before the next game."
     },
     {
       "quality": "More than one copy, kit or pack without rework",
@@ -233,11 +233,11 @@
   "growth": [
     {
       "who": "Designers",
-      "line": "A designer extends the platform through the pack and its media bundle, built in the design tool and published through the engine's check, never touching engine code, settings or firmware; a mechanic made from what the engine already does should probably be the designer's own, as in your example, the last below: [[ex:EX1]]; [[ex:EX2]]; [[ex:EX3]]; [[ex:EX5]]; [[ex:EX6]]; [[ex:EX7]]; [[ex:EX8]]; [[ex:EX22]]; [[ex:EX11]]; [[ex:EX12]]; [[ex:EX14]]; [[ex:EX25]]."
+      "line": "A designer extends the platform through the pack and its media bundle, built in the design tool and published through the engine's check, never touching engine code, settings or firmware; your own example is the last below: [[ex:EX1]]; [[ex:EX2]]; [[ex:EX3]]; [[ex:EX5]]; [[ex:EX6]]; [[ex:EX7]]; [[ex:EX8]]; [[ex:EX22]]; [[ex:EX11]]; [[ex:EX12]]; [[ex:EX14]]; [[ex:EX25]]."
     },
     {
       "who": "Developers",
-      "line": "A developer extends the engine once, for every game, at the places it leaves for additions, without changing other games; how an addition joins the main release is your open question. Your example is among these: [[ex:EX4]]; [[ex:EX9]]; [[ex:EX10]]; [[ex:EX15]]; [[ex:EX18]]; [[ex:EX20]]; [[ex:EX26]]; [[ex:EX28]]."
+      "line": "A developer extends the engine once, for every game, at the places it leaves for additions, without changing other games. Your example is among these: [[ex:EX4]]; [[ex:EX9]]; [[ex:EX10]]; [[ex:EX15]]; [[ex:EX18]]; [[ex:EX20]]; [[ex:EX26]]; [[ex:EX28]]."
     },
     {
       "who": "Developers from outside the team",
@@ -268,7 +268,7 @@
     },
     {
       "slug": "the-engine-is-hardware-flexible-the-roadmap-sets-the-bounds",
-      "line": "The hardware is fixed only in that ALN runs on your kit; the mature engine is flexible about hardware, and the current roadmap sets how much of that it builds now and where it names specific hardware requirements; where it draws that line is open, for the design rounds and the build plan."
+      "line": "The hardware is fixed only in that ALN runs on your kit; the mature engine is flexible about hardware, and where the roadmap draws the line is open, for the design rounds and the build plan."
     },
     {
       "slug": "two-kinds-of-game-extension",
@@ -318,7 +318,7 @@
     },
     {
       "page": "decisions",
-      "line": "The questions only you can decide; readings of your words to confirm; the agent's calls, for you to overrule; the requirements for review; everything decided."
+      "line": "What the panel waits for; the questions only you can decide; readings of your words to confirm; the agent's calls, for you to overrule; the requirements for review; everything decided."
     },
     {
       "page": "requirements",
@@ -334,10 +334,15 @@
     },
     {
       "page": "changes",
-      "line": "Every version and why; earlier wordings; old numbers and names mapped to titles."
+      "line": "Every version and why; earlier wordings; old questions, numbers and names mapped to titles."
     }
   ],
   "words": [
+    {
+      "term": "The engine",
+      "def": "All the software that is the same for every game: the program on the show machine, the GM's app, the player scanners, the screens and the design tool. A standalone game runs with no show machine; it still runs the engine's own software on its devices.",
+      "group": "page"
+    },
     {
       "term": "Promise",
       "def": "What a person can count on at a given moment. Parts keep promises; design flaws break them. The ten promises are the first of the requirements.",
@@ -385,7 +390,7 @@
     },
     {
       "term": "The standing rules",
-      "def": "The roadmap's rules that bind every block: players never have accounts; the engine's only built-in identity is the device or session id, and naming a person is game policy, never an engine default; game data stays on the kit, and how long it is kept is your decision, per game; media never lives inside the pack; a game is playtested with no code or settings file, by changing a value in the tool, applying it and playing it; phones and hardware scanners stay equal in what the engine lets them do, not in their screens; the engine holds no opinion about game design; nothing assumes one kit, one pack or one production.",
+      "def": "The roadmap's rules that bind every block: players never have accounts; the engine's only built-in identity is the device or session id, and naming a person is game policy, never an engine default; game data stays on the kit, and how long it is kept is your decision, per game; media never lives inside the pack; a game is playtested with no code or settings file, by changing a value in the tool, applying it and playing it; phones and hardware scanners stay equal in what the engine lets them do, not in their screens; the engine holds no opinion about game design; nothing assumes one kit, one pack or one production where avoiding it costs little, so features for several kits come later and the places for them are built now.",
       "group": "page"
     },
     {
@@ -602,12 +607,12 @@
   "intros": {
     "requirements": [
       "These are the engine's requirements, for you to review: the ten promises, what each person can count on at a given moment; the quality targets, how well the engine must work, each told as a situation that can be tested; the extension cases, how the platform must grow and who does the growing; and the standing rules from the roadmap. The panel and the design rounds design against them. They say what is needed, never how to build it.",
-      "Each promise reads the same way. Who and when name the people and the moment. What they count on is the promise in full; what already exists for it today is on [[page:today]]. The long-term goal is where the design is heading; a goal marked open is left to the design rounds. The quality targets and extension cases that serve the promise follow. Where today's engine falls short lists the design flaws that break it, each a situation on [[page:today]]. In a standalone game says what changes with no engine. Folded under the entry are what the planned capabilities need from it and the test situations taken from the shows. The test summary names which of the architecture pass's nine questions the promise answers; the pass asks those of the whole engine, and they are not the questions on Decisions. The promises are offered for review on [[page:decisions]]; their wording questions are the agent's calls there, each with its reason. Each quality target gives what happens and what must then be true, the number it needs, sorted by the agent running the pass as the engine's requirement or limit, a production's setting (ALN's first) or a technical default, the promises it serves, whether it is settled, partly settled or proposed, and why it matters. Each extension case names who extends, which of the two kinds of extension it is or that it is neither, what it goes through, what it must not need, when, the promises it serves, whether it is settled, partly settled or proposed, and why.",
+      "Each promise reads the same way. Who and when name the people and the moment. What they count on is the promise in full; what already exists for it today is on [[page:today]]. The long-term goal is where the design is heading; a goal marked open is left to the design rounds. The quality targets and extension cases that serve the promise follow. Where today's engine falls short lists the design flaws that break it, each a situation on [[page:today]]. In a standalone game says what changes with no show machine. Folded under the entry are what the planned capabilities need from it and the test situations taken from the shows. The test summary names which of the architecture pass's nine questions the promise answers; the pass asks those of the whole engine, and they are not the questions on Decisions. The promises are offered for review on [[page:decisions]]; their wording questions are the agent's calls there, each with its reason. Each quality target gives what happens and what must then be true, the number it needs, sorted by the agent running the pass as the engine's requirement or limit, a production's setting (ALN's first) or a technical default, the promises it serves, whether it is settled, partly settled or proposed, and why it matters. Each extension case names who extends, which of the two kinds of extension it is or that it is neither, what it goes through, what it must not need, when, the promises it serves, whether it is settled, partly settled or proposed, and why. Where a target or a case notes how today's engine behaves, the note sits under its own tag, “Today”; the panel's folder leaves it out.",
       "Nothing on this page is a design. Where a target or a case rests on a decision you made or a roadmap section you ratified, it says so; where it is proposed, you can flag it on [[page:decisions]], where the numbers are sorted in one list under the review and the agent's calls are listed with their reasons. A question the architecture pass asks, or a test situation from the shows, does not settle a target by itself; a target resting only on those is marked proposed. The roadmap's names used below: the hardening block (the engine checks itself and restarts what crashes), the capture block (capturing the roster, notes and photos during play), the preview block (the design tool's first pages, where a designer tries a change on a trial copy), the depth-and-close block (the rest of the design tool's pages), the operations era and release block (running more kits and games, and public release), and the readiness states show-ready (swapping the new machine in for a show becomes your live choice), previewable (a designer friend can try the tool) and adoptable (a stranger can stand the platform up from the guide)."
     ],
     "design": [
       "The design half runs in this order: the requirements, now; the panel; the design rounds; the build plan; the hostile review; the final questions; your sign-off. Designs go top-down from the requirements, the hardest decisions to reverse first ([[dec:design-top-down-hardest-to-reverse-choices-first]]). Today's design flaws are test situations every design is checked against, never the reason for a design.",
-      "The decisions ahead come in this order: how the engine holds the game's state; the published protocol's form; where authority lives across devices, offline and standalone included; how games and venues extend the engine; how one engine runs as many separate copies; how today's engine moves to the new design. Each entry says what it decides, the requirements that drive it, what is already settled around it, and what the panel and the design round will bring. No options are proposed here; the panel proposes them, and each round then puts two or three designs side by side in front of you. Before the panel runs, its brief is here for you to approve; your question on what the blind round gets is on [[page:decisions]], beside the agent's calls on the lenses and the second round.",
+      "The decisions ahead come in this order: how the engine holds the game's state; the published protocol's form; where authority lives across devices, offline and standalone included; how games and venues extend the engine; how one engine runs as many separate copies; how today's engine moves to the new design. A seventh, “How the engine drives the room”, is proposed, and it joins the list only if you say yes under “[[page:decisions#q-i|What the panel gets in its blind round]]”; until then the room's state is part of the first decision. Each entry says what it decides, the requirements that drive it, what is already settled around it, and what the panel and the design round will bring. Four quality targets drive no single decision and are checks on every design: “[[qt:QT8]]”, “[[qt:QT29]]”, “[[qt:QT33]]” and “[[qt:QT34]]”. No options are proposed here; the panel proposes them, and each round then puts two or three designs side by side in front of you. Before the panel runs, its brief is here for you to approve; your question on what the blind round gets is on [[page:decisions]], beside the agent's calls on the lenses, on each architect listing the decisions before seeing the agenda, and on the second round.",
       "Some directions are already decided: the published protocol and the test bench outside the engine ([[dec:one-published-protocol-and-an-outside-test-bench]]), the test rig built when building starts ([[dec:build-the-test-rig-when-building-starts]]), the after-game boundary ([[dec:the-night-s-record-and-the-after-game-article]]), and, from your comments of 2026-11-02, four decisions that bind every design: “[[dec:no-technical-failure-stops-a-game]]”, “[[dec:the-engine-is-hardware-flexible-the-roadmap-sets-the-bounds]]”, “[[dec:two-kinds-of-game-extension]]” and “[[dec:the-engine-says-what-is-fixed-and-what-each-production-sets]]”. Then come the later choices that still stand. The earlier candidate, seventeen parts drawn bottom-up from today's engine, is at the end."
     ],
     "today": [

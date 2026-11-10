@@ -1,5 +1,5 @@
 {
-  "intro": "These are the ways the platform must be able to grow, each told as a situation, with the person who does the growing, what they should need to touch, and what must stay untouched; they say what is needed, never how to build it. The owner named two kinds of game extension, and each case says which it is, or that it is neither: a designer's content or values inside the game that add no new mechanic; a case that fits the engine to a venue or a production; a developer's addition that gives no new game mechanic (support for a program, a content tool or other hardware); or work around the game that adds none, such as rehearsing it, releasing a new engine version or telling the night from its record. In the first kind a game's own maker builds a new mechanic inside the game from what the engine can already do: a new action for the players, or a new way the game responds to a trigger the engine already has. In the second kind a developer extends the engine so that any game can use a response it cannot give yet. The owner's wording is tentative (“should probably”, “probably”), and the cases keep it so. How an extension for all games relates to the engine's main release is the owner's open question; which piece each kind changes (the pack, the engine's code, an added outside service) is decided in the design rounds. The independent panel designs against them beside the ten promises and the quality targets, and every case not marked proposed rests on a decision the owner has already made or a roadmap section the owner ratified. “The published protocol” here is the owner's name for one versioned definition of everything that crosses the engine's edge: what a device may ask, what the engine answers, what it tells screens, and the files that carry a game or a night (the pack, the venue profile, the night's record, the media list). Every program's code is generated from it or checked against it. It is settled, and it is designed in an early design round.",
+  "intro": "These are the ways the platform must be able to grow, each told as a situation, with the person who does the growing, what they should need to touch, and what must stay untouched; they say what is needed, never how to build it. The owner named two kinds of game extension, and each case says which it is, or that it is neither: a designer's content or values inside the game that add no new mechanic; a case that fits the engine to a venue or a production; a developer's addition that gives no new game mechanic (support for a program, a content tool or other hardware); or work around the game that adds none, such as rehearsing it, releasing a new engine version or telling the night from its record. In the first kind a game's own maker builds a new mechanic inside the game from what the engine can already do: a new action for the players, or a new way the game responds to a trigger the engine already has. In the second kind a developer extends the engine so that any game can use a response it cannot give yet. The owner's wording is tentative (“should probably”, “probably”), and the cases keep it so. How an extension for all games relates to the engine's main release is the owner's open question; which piece each kind changes (the pack, the engine's code, an added outside service) is decided in the design rounds. The independent panel designs against them beside the ten promises and the quality targets, and every case not marked proposed rests on a decision the owner has already made or a roadmap section the owner ratified. “The published protocol” here is the owner's name for one versioned definition of everything that crosses the engine's edge: what a device may ask, what the engine answers, what it tells screens, and the files that carry a game or a night (the pack, the venue profile, the night's record, the media list). Every program's code is generated from it or checked against it. It is settled, and it is designed in an early design round. Where a case notes how today's engine behaves, the note sits in a field of its own, “today”, so that the case reads the same without it; that field is left out of the folder the independent panel reads in its blind round.",
   "cases": [
     {
       "id": "EX1",
@@ -155,7 +155,8 @@
       ],
       "status": "settled by the owner (the glossary's entry on kinds of screen; the roadmap's second game's modules block and the roadmap's row for deferred work on new kinds of screen defined by the pack, which keeps the general case as room left beyond the constellation screen)",
       "statusKind": "settled",
-      "why": "Packs can configure the three built-in screens today but cannot define new ones; the second game's constellation screen is the first new kind, and the only one with a slot."
+      "why": "A game's public screens are part of its design, so a pack must be able to ask for a kind of screen the engine did not ship with; the second game's constellation screen is the first new kind, and the only one with a slot.",
+      "today": "Today a pack can configure the three built-in screens and cannot define a new one."
     },
     {
       "id": "EX10",
@@ -180,7 +181,7 @@
       "title": "Who may do what on which device",
       "who": "designer",
       "kind": "inside the game",
-      "case": "One game wants players named: a typed name on their own phone, or a scanned band at a shared station. Another wants nobody named. A third lets a shared station make a transaction that only a GM may make today. The designer sets this per game: which device classes exist, what each may do, whether a person is ever identified. In every game, starting, pausing and ending the game, show control and score changes stay with staff who log in, such as the GM.",
+      "case": "One game wants players named: a typed name on their own phone, or a scanned band at a shared station. Another wants nobody named. A third lets a shared station make a transaction, which in ALN only a GM makes. The designer sets this per game: which device classes exist, what each may do, whether a person is ever identified. In every game, starting, pausing and ending the game, show control and score changes stay with staff who log in, such as the GM.",
       "throughWhat": "The pack (device classes, what each may do, the identification moment); the pack says what each kind of device may do, within the limit that starting, pausing and ending the game, show control and score changes stay with staff who log in, such as the GM.",
       "mustNotNeed": "Player accounts or logins, an engine default about naming people, a change to the engine's code, or any loosening of the limit that keeps starting, pausing and ending the game, show control and score changes with staff who log in.",
       "when": "now for the staff-only limit; later (the roadmap's players' phones block, the access model that grants each right by function) for pack-assigned rights per device class",
@@ -189,25 +190,27 @@
       ],
       "status": "settled by the owner (the roadmap's rules on identity and player data and its rule that the engine holds no opinion; the glossary's entries on the staff-only limit and on the GM scanner versus the player scanner)",
       "statusKind": "settled",
-      "why": "Who may do what on which device is game design, and the engine holds no opinion about game design; only the staff-only limit is engine law."
+      "why": "Who may do what on which device is game design, and the engine holds no opinion about game design; only the staff-only limit is engine law.",
+      "today": "Today only a GM's tablet can make a transaction."
     },
     {
       "id": "EX12",
       "title": "A game with no show machine",
-      "who": "designer declares it; the GMs run it, and whether player scanners alone may is the owner's open question on the shapes",
+      "who": "whoever declares it (the owner's reading to confirm); the GMs run it, and that player scanners alone may play one is a reading for the owner to confirm too",
       "kind": "neither: fitting the engine to a venue or a production",
-      "case": "A game runs where a network connection is not feasible, or where other logistics make it better to use only GM scanners, player scanners (phone or hardware), or both. The designer declares the game standalone. Each device works alone: the tablet says “standalone”, never “disconnected”, runs the same rules the engine would, and its record names the pack version it played. No game mixes devices on an engine with devices working alone. The hardware scanner plays the game as the phone's scanner does; today it cannot, which is a parity gap to close. Which effects a standalone game may use, exposed evidence and video among them, is the owner's question “What a standalone game gives up, and what it keeps”; what a screen draws for an exposure or a video token with no engine, under that rule, is a default the agent running the pass proposes and the owner can overrule. Where the declaration lives (the venue profile, the pack, the game's record or each device) is a question for the design rounds. Which shapes of standalone game the engine supports (GM scanners, player scanners or both, and how many GM tablets) is the owner's open question.",
-      "throughWhat": "A declaration held in the venue profile, the pack, the game's record or each device (the design rounds choose where), read by every device; the same rules module on the tablet.",
-      "mustNotNeed": "An engine, venue equipment, a second hand-kept copy of the rules on the tablet, or any engine code.",
+      "case": "A game runs where a network connection is not feasible, or where other logistics make it better to use only GM scanners, player scanners (phone or hardware), or both. The game is declared standalone. Each device works alone: the tablet says “standalone”, never “disconnected”, reaches the same verdicts the engine would, and its record names the pack version it played. No game mixes devices on a show machine with devices working alone. The hardware scanner plays the game as the phone's scanner does. Which effects a standalone game keeps follows the rule the owner ratified for equipment a venue leaves at home: a need the pack marks “skip it” reads grey, as not installed tonight, and a need marked “block the show” keeps the game from starting standalone unless the GM types the override. Three rows of what a standalone game keeps are the agent's proposals, listed in the target “[[qt:QT37]]”. Where the declaration is held is a question for the design rounds. Whether one such game may use more than one GM tablet, and whether its devices must play one shared game, is the owner's question “Which standalone games the engine must run”.",
+      "throughWhat": "A declaration every device reads (the design rounds choose where it is held); a device that decides anything reaches the same verdicts the engine would, and a test proves it ([[qt:QT37]]).",
+      "mustNotNeed": "A show machine, venue equipment, rules on a device that no test compares with the engine's, or a change to the engine's code.",
       "when": "the design must allow it now; nothing builds it yet, and where the declaration lives is a design-rounds question",
       "promises": [
         "The game fits the venue it is in tonight",
         "One game, the same on every screen",
         "Every tap gets its answer, and the night can be told afterwards"
       ],
-      "status": "settled by the owner (your decision “Standalone games: declared, never mixed”, with its purpose stated 2026-11-02; your words “player scanners (phone or hardware)” settle the hardware scanner's reading); open: where the declaration lives, and which shapes of standalone game the engine supports",
+      "status": "settled by the owner (your decision “Standalone games: declared, never mixed”, with its purpose stated 2026-11-02; your words “player scanners (phone or hardware)” settle the hardware scanner's reading); that a standalone game follows the rule you ratified on 2026-09-04 for equipment a venue leaves at home is the agent's call “A standalone game follows the rule you ratified for missing equipment”, which you can overrule; open for you: whether one such game may use more than one GM tablet, and whether its devices must play one shared game (your question “Which standalone games the engine must run”); for you to confirm: who declares that tonight's game is standalone, and that player scanners alone may play one (two of the readings to confirm); for the design rounds: where the declaration is held",
       "statusKind": "partly settled",
-      "why": "A whole game with no engine is on the list every design choice must serve, and today nothing in the pack can say so."
+      "why": "A whole game with no show machine is on the list every design choice must serve.",
+      "today": "Today nothing declares a game standalone: the GM picks it on the tablet at the start, and the phone's page takes it from the web address it was opened from. The hardware scanner has no standalone setting and treats the missing show machine as an outage."
     },
     {
       "id": "EX13",
@@ -217,7 +220,7 @@
       "case": "The kit goes to a new venue. The technician reads the pack's tech rider, fills in a profile of what the room has tonight (which speakers, which lights, which network, how many stations and how many extra scoreboard screens), binds each of the pack's names to a real instrument on one page, and runs one preflight that says go or no-go. Each line says what it checked and whether it checked paper or the live room. Equipment left at home shows as not installed tonight, grey, never red. A second venue is a second profile; the pack is the same.",
       "throughWhat": "A venue profile, edited in the venue technician's tool, with its bindings page, its profile manager and the preflight; the tech rider derived from the pack.",
       "mustNotNeed": "The pack, the engine's code, kit-unique names inside code, or a developer.",
-      "when": "now for the profile and the hand-run checklist; the one-button preflight with paper or live on every line is hardening work rebuilt inside the architecture pass (today only a minimal check exists); a planned block, the depth-and-close block, for the bindings page and the profile manager; later (the roadmap's row for deferred work on the planning view) for “what does bringing hardware X unlock”",
+      "when": "now for the profile and the hand-run checklist; the one-button preflight with paper or live on every line is hardening work rebuilt inside the architecture pass; a planned block, the depth-and-close block, for the bindings page and the profile manager; later (the roadmap's row for deferred work on the planning view) for “what does bringing hardware X unlock”",
       "promises": [
         "The game fits the venue it is in tonight",
         "Anyone reading a screen can act on it without a second question",
@@ -225,14 +228,15 @@
       ],
       "status": "settled by the owner (the roadmap's final outcome; the glossary's entries on the venue technician, the preflight, paper versus live checks, the hand-off from designer to venue technician to GM, and the tech rider; your decision “Promises, qualities, moments, venue technician”, which names the venue technician)",
       "statusKind": "settled",
-      "why": "Everything specific to a venue lives in its profile, so fitting a game to a room is the technician's work alone."
+      "why": "Everything specific to a venue lives in its profile, so fitting a game to a room is the technician's work alone.",
+      "today": "Today only a minimal check exists: it compares the pack's needs with the profile and with the engine's own list of which services are up, and tests nothing in the room."
     },
     {
       "id": "EX14",
       "title": "Rehearsing the whole show on stand-ins",
       "who": "designer",
       "kind": "neither: rehearsing a game, no new mechanic",
-      "case": "On a laptop with no lights, speakers or TV, or on the show machine between games (where it runs is an open question), the designer rehearses the whole show: every player action performed in its simulated form, the show reacting for real on software stand-ins. The profile for this is generated from the pack's own needs so that every need is met; every verdict on screen says “paper”, never “live”. The live engine, its programs and its records are untouched, and nothing the trial copy issues is accepted by the live one.",
+      "case": "On a laptop with no lights, speakers or TV, or on the show machine between games (where it may run is the owner's question “Where the trial copy runs while a show runs”), the designer rehearses the whole show: every player action performed in its simulated form, the show reacting for real on software stand-ins. The profile for this is generated from the pack's own needs so that every need is met; every verdict on screen says “paper”, never “live”. The live engine, its programs and its records are untouched, and nothing the trial copy issues is accepted by the live one.",
       "throughWhat": "A venue profile whose bindings point at software stand-ins, generated from the pack; a separate trial copy of the engine with its own files, ports and settings.",
       "mustNotNeed": "A change to the pack, the live engine's programs or records, or any hardware.",
       "when": "a planned block: the preview block",
@@ -267,7 +271,7 @@
       "title": "A second production takes the platform",
       "who": "operator",
       "kind": "neither: fitting the engine to a venue or a production",
-      "case": "A second production takes the platform: another operator with their own kit, their own venue profiles and a library of installed packs, picking one per event. Their kit has its own network name and its own machine; two kits in one building never confuse each other's devices. Nothing in the engine assumes one kit, one pack or one production. They read what is fixed and what they may set (the case “Another production adopts the engine for its venue and hardware”), then install the engine and go.",
+      "case": "A second production takes the platform: another operator with their own kit, their own venue profiles and a library of installed packs, picking one per event. Their kit has its own network name and its own machine; two kits in one building never confuse each other's devices. Nothing in the engine assumes one kit, one pack or one production where avoiding it costs little; features for several kits come later, and the places for them are built now. They read what is fixed and what they may set (the case “Another production adopts the engine for its venue and hardware”), then install the engine and go.",
       "throughWhat": "Their own venue profiles and installed packs; the engine's per-kit settings (its network name, one written list of what the machine should carry); their own copy of the engine with its own files, ports and settings.",
       "mustNotNeed": "Engine code, a kit-unique name inside code, the owner's pack, venue profile or live machine.",
       "when": "later (the roadmap's operations era and release block, fleet growth and multi-game kits); what keeps it cheap is built now (the roadmap's rule on growth without corners): each pack and profile picked by name, no kit's own names inside the engine's code, a network name per kit, media that moves between machines",
@@ -281,20 +285,20 @@
     },
     {
       "id": "EX17",
-      "title": "A new engine version by swapping machines",
+      "title": "A new engine version reaches the kit and can be taken back",
       "who": "operator (the owner)",
       "kind": "neither: releasing a new engine version, no new mechanic",
-      "case": "A new engine version is ready. The owner builds a second machine, checks that it carries everything on one written list of what it should carry (engine version, tablet and phone apps, pack version, media by fingerprint, venue profile), rehearses on it, and swaps it in between events by replugging. If the night goes wrong, replugging the old machine brings everything back as it was. After the swap, packs may change at any time by publishing; the engine changes only between events.",
-      "throughWhat": "One written list of what the machine should carry, so the owner can see that a machine carries everything on that list before it goes out; the swap of machines; the pack channel for pack updates.",
-      "mustNotNeed": "An upgrade of the live machine in place, files copied by hand, a change to the pack for the new engine version, or a developer at the venue.",
-      "when": "now for the swap (the method is ratified; the between-events rule takes over after the first swap); the check that a machine carries everything on its written list is new work",
+      "case": "A new engine version is ready. For the first swap the owner builds the new show machine, checks that it carries everything on one written list of what it should carry (engine version, tablet and phone apps, pack version, media by fingerprint, venue profile), rehearses on it, and swaps it in between events by replugging; if the night goes wrong, replugging the old machine brings the software back as it was. For each later release the owner puts the new version on the kit between events and can take it back the same night. Packs may change at any time by publishing; the engine changes only between events.",
+      "throughWhat": "One written list of what the machine should carry, so the owner can see that a machine carries everything on that list before it goes out; for the first swap, the swap of machines; for later releases, the way the design rounds choose; the pack channel for pack updates.",
+      "mustNotNeed": "A release the owner cannot undo, files copied by hand, a change to the pack for the new engine version, or a developer at the venue.",
+      "when": "now for the first swap (the method is ratified; the between-events rule takes over after it); the check that a machine carries everything on its written list is new work; how a later release is put on a kit and taken back is for the design rounds",
       "promises": [
         "A change is proven before it reaches anyone, and the owner alone sends it to the show",
         "Each lifecycle button does exactly what its name says"
       ],
-      "status": "settled by the owner (the roadmap's method for swapping in the new machine and its operations era and release block, steady-state releases; your stated goal of the work, 2026-10-30)",
-      "statusKind": "settled",
-      "why": "The owner alone sends a version to the venue, and must be able to take it back by moving a plug."
+      "status": "settled by the owner for the first swap and for the rule that the engine changes only between events (the roadmap's method for swapping in the new machine and its operations era and release block, steady-state releases; your stated goal of the work, 2026-10-30); proposed: that every later release can be taken back the same night; how a later release is put on a kit and taken back is for the design rounds",
+      "statusKind": "partly settled",
+      "why": "The owner alone sends a version to the venue, and must be able to take it back the same night."
     },
     {
       "id": "EX18",
@@ -368,7 +372,7 @@
       "title": "The pack says what a scan causes",
       "who": "designer",
       "kind": "inside the game",
-      "case": "A designer declares what a scan causes: for example, that a GM's scan of a token plays that token's video, or that a player's scan does nothing on the TV. Today only a player's scan can trigger a video, a rule of ALN's built into the engine; a game played only on GM tablets reaches video through one standing cue per token, which is pack content and works today.",
+      "case": "A designer declares what a scan causes: for example, that a GM's scan of a token plays that token's video, or that a player's scan does nothing on the TV.",
       "throughWhat": "The pack: what each kind of scan triggers, written beside the token or the mode.",
       "mustNotNeed": "Engine code, a change to the scanners, or a standing cue per token once the declaration exists.",
       "when": "later, with multi-tap player actions (the players' phones block); until then, one standing cue per token",
@@ -378,7 +382,8 @@
       ],
       "status": "settled by the owner (the roadmap's rule that the engine holds no opinion and the roadmap's row for deferred work on GM-scan video cueing; the glossary's entry on the resting video versus a video a game event plays; your decision “Two kinds of game extension”, under which the agent running the pass reads what a scan causes as a mechanic made inside the game; your own example, players changing the lighting by scanning tokens, rests on it)",
       "statusKind": "settled",
-      "why": "The engine holds no opinion about game design, so which scan triggers which consequence is a pack value, not an engine rule keyed to one kind of scanner."
+      "why": "The engine holds no opinion about game design, so which scan triggers which consequence is a pack value, not an engine rule keyed to one kind of scanner.",
+      "today": "Today only a player's scan can start a video, a rule of ALN's built into the engine. A game played only on GM tablets reaches video through one standing cue for each token, which is pack content."
     },
     {
       "id": "EX23",
@@ -386,16 +391,17 @@
       "who": "operator (the owner)",
       "kind": "neither: fitting the engine to a venue or a production",
       "case": "The owner's own kit runs a different installed game per event: ALN on Friday, another game on Saturday. The operator picks the installed pack for the night, and the engine, the TV, the tablets and the scanners play it, without copying files or changing code. Both games stay installed; neither is touched by the other's night.",
-      "throughWhat": "An installed pack picked by name: at startup by path or id today; a selection page later.",
+      "throughWhat": "An installed pack picked by name or id; a selection page later.",
       "mustNotNeed": "Engine code, a settings change by hand, files copied in and out, or a second machine per game.",
-      "when": "now, by picking the pack at startup by path or id; a selection page later (the roadmap's operations era and release block, multi-game kits)",
+      "when": "now, by picking the pack when the engine starts; a selection page later (the roadmap's operations era and release block, multi-game kits)",
       "promises": [
         "The designer's game is the game the whole kit plays",
         "The game fits the venue it is in tonight"
       ],
       "status": "settled by the owner (the roadmap's final outcome, the interim state: one kit and a growing library of its own games; its operations era and release block, multi-game kits, “a real requirement”; its rule on growth without corners)",
       "statusKind": "settled",
-      "why": "The business is one production with many games on one kit, so switching games is the operator's choice for the night, never work for a developer."
+      "why": "The business is one production with many games on one kit, so switching games is the operator's choice for the night, never work for a developer.",
+      "today": "Today the pack is picked when the engine starts, by the path to its folder."
     },
     {
       "id": "EX24",
@@ -422,14 +428,15 @@
       "case": "A designer wants the players to change the room's lighting by scanning different tokens on a player scanner. The engine can already read a player's scan and light a named look, so the designer combines the two inside the game, through the case “The pack says what a scan causes”: this token's scan triggers that look. In the owner's tentative words this “should probably” be the game's own maker's work, with no developer; how far the maker may go with no developer is the owner's question “What a game's maker may build inside the pack”. In the long term the designer may share the mechanic with other game makers for their games, a possibility the owner named, not a plan.",
       "throughWhat": "The pack: what a scan causes (the case “The pack says what a scan causes”), naming a lighting look by its role; the venue profile binds the look to the room's lights.",
       "mustNotNeed": "Engine code, new firmware, or a change to another game's pack; probably no developer, as the owner's words have it.",
-      "when": "later, once the pack says what a scan causes (the players' phones block); until then, one standing cue per token",
+      "when": "now in a networked game, as one standing cue for each look that lists its tokens; the line beside the token comes later, with the players' phones block",
       "promises": [
         "The room does what the designer cued and the GM asked",
         "The designer's game is the game the whole kit plays"
       ],
       "status": "settled by the owner on the kind (your decision “Two kinds of game extension”, with this as your own example of a mechanic made inside a game; the roadmap's rule that the engine holds no opinion); open for you: how far the game's maker may go with no developer (the question “What a game's maker may build inside the pack”)",
       "statusKind": "partly settled",
-      "why": "A mechanic built from what the engine already does should probably be the game maker's own work, in the owner's words, so the engine's abilities should combine inside the game without a developer."
+      "why": "A mechanic built from what the engine already does should probably be the game maker's own work, in the owner's words, so the engine's abilities should combine inside the game without a developer.",
+      "today": "Today this works in a networked game: one standing cue for each look, triggered by a player's scan, lists the tokens that light it. A cue's condition can use only what the scan itself carries, so not the token's group or the phase the game is in."
     },
     {
       "id": "EX26",
@@ -469,9 +476,9 @@
     {
       "id": "EX28",
       "title": "A different show machine or scanner hardware",
-      "who": "developer adds the support; the roadmap says whether now",
+      "who": "developer adds the support; the build plan says when",
       "kind": "neither: a developer's addition that is no game mechanic",
-      "case": "A production runs the engine on a different show machine than a Raspberry Pi, or brings a different hardware scanner. A different show machine or hardware scanner can be supported later without changing the packs, the profiles, the game rules or the GM's screens. Whether the current roadmap builds that support now, or names the Raspberry Pi and today's scanner as specific hardware requirements for now, is the bound the roadmap sets.",
+      "case": "A production runs the engine on a different show machine than a Raspberry Pi, or brings a different hardware scanner. A different show machine or hardware scanner can be supported later without changing the packs, the profiles, the game rules or the GM's screens. Whether the current roadmap builds that support now, or names the Raspberry Pi and today's scanner as specific hardware requirements for now, is the bound the roadmap sets. The build plan proposes that line for each stage of the roadmap and brings it to the owner.",
       "throughWhat": "The places the engine leaves for hardware support: the show machine's set-up, each device kind's support through the published protocol, and a software stand-in for each; the written list of what is fixed, which names the hardware the current roadmap requires.",
       "mustNotNeed": "A separate copy of the engine's code, a change to packs, profiles or the game rules, or a change to the GM's screens.",
       "when": "the architecture must allow it now; which hardware the current roadmap supports, and where it names specific requirements, is open for the design rounds and the build plan",
@@ -479,7 +486,7 @@
         "The game fits the venue it is in tonight",
         "The designer's game is the game the whole kit plays"
       ],
-      "status": "settled by the owner on the direction (your decision “The engine is hardware-flexible; the roadmap sets the bounds”); open: where the current roadmap draws the line, the part you must say now in your question “Which hardware the first new engine requires, and what it must allow replacing”, the rest for the design rounds and the build plan",
+      "status": "settled by the owner on the direction (your decision “The engine is hardware-flexible; the roadmap sets the bounds”); open: where the current roadmap draws the line, which the build plan proposes for each stage of the roadmap and brings to you (the agent's call “The design allows other hardware; what the first release requires comes with the build plan”)",
       "statusKind": "partly settled",
       "why": "In the owner's words: “the point of the engine in its mature form is that it is flexible meaning that we should build the fundamental architecture to allow flexibility with the hardware down the line.”"
     }

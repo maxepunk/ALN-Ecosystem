@@ -5,7 +5,7 @@
     "A venue technician fills in a profile of what the venue has, connects the pack's names to the real instruments in the room on one page, and runs one preflight that answers go or no-go, with every line showing where its answer comes from.",
     "A GM runs the show from four sections (Game Ops, Show Control, Environment, Game Admin), and the post-game report builds itself from what was captured during play.",
     "A player taps tokens on a phone or a shared station with no account, no login, no app to install and no recorded identity unless the game designs an identification moment.",
-    "The business is one production, one kit and many games on it; a second kit or operator is not planned, but must stay cheap to start, so nothing in the engine may assume one kit, one pack or one production. The engine is meant to be open-sourced for many games in many production settings, so it says which requirements are fixed and which each production sets for itself. ALN is the first production: one game, one venue, the hardware the owner bought. The engine does not take ALN's hardware as its own requirements. The mature engine is flexible about hardware; the current roadmap sets how much of that flexibility is built now and where it names specific hardware requirements, and where it draws that line is open.",
+    "The business is one production, one kit and many games on it; a second kit or operator is not planned, but must stay cheap to start. So nothing in the engine assumes one kit, one pack or one production where avoiding it costs little; features for several kits come later, and the places for them are built now. The engine is meant to be open-sourced for many games in many production settings, so it says which requirements are fixed and which each production sets for itself. ALN is the first production: one game, one venue, the hardware the owner bought. The engine does not take ALN's hardware as its own requirements. The mature engine is flexible about hardware; the current roadmap sets how much of that flexibility is built now and where it names specific hardware requirements, and where it draws that line is open.",
     "Some rules hold throughout: players' data stays on the kit; media never lives inside the pack; phones and hardware scanners stay equal; the engine holds no opinion about game design; no technical failure stops a game, and the GMs know their fallbacks at a failure; red always means act now; the preflight states its own limits; nothing deploys to the live machine until the owner says the new engine is ready.",
     "A second, toy game stays with the engine's code for good, so every change is proven on two games and ALN stays one pack among others."
   ],
@@ -49,7 +49,7 @@
         {
           "id": "N1",
           "primary": false,
-          "how": "Nothing in the pack says a game runs without an engine, yet it declares a scoreboard, a clock and videos that an engine-less device cannot show."
+          "how": "Nothing in the pack says a game runs without a show machine, yet it declares a scoreboard, a clock and videos that a device with no show machine cannot show."
         }
       ],
       "standalone": "In a standalone game: each device loads whatever pack copy it was given; a tablet reloading mid-game takes the newest pack; no record says which pack a game used.",
@@ -149,7 +149,7 @@
           "how": "Team Details reads the score from a place the tablet never fills, so it shows the wrong score while the scoreboard screen shows the right one."
         }
       ],
-      "standalone": "In a standalone game: one tablet holds the only copy, so tablets cannot disagree, but not every screen refreshes. Two tablets are two separate games; which shapes of standalone game the engine supports, and how many tablets, is the owner's open question.",
+      "standalone": "In a standalone game: one tablet holds the only copy, so tablets cannot disagree, but not every screen refreshes. Two tablets are two separate games; whether one standalone game may use more than one GM tablet is the owner's question “Which standalone games the engine must run”.",
       "standaloneCandidate": "In the earlier candidate the tablet runs the engine's Game record and Delivery, or its own engine kept equal by tests.",
       "questions": [
         1,
@@ -424,7 +424,7 @@
           "how": "Publishing a pack from the config tool tells the running engine nothing; the engine scores by the change only after a restart, while a reloaded TV already shows it."
         }
       ],
-      "standalone": "In a standalone game: no engine exists to rehearse against, so this promise has no gap here; a mid-game reload that takes a newer pack breaks “The designer's game is the game the whole kit plays”.",
+      "standalone": "In a standalone game: no show machine exists to rehearse against, so this promise has no gap here; a mid-game reload that takes a newer pack breaks “The designer's game is the game the whole kit plays”.",
       "standaloneCandidate": "In the earlier candidate the same Pack channel brings a published pack to the tablet, so the designer's publish is what it plays.",
       "questions": [
         4,
@@ -474,7 +474,7 @@
           "how": "A device's own claim, or a default built into the address it connects on, decides whether a password or pass is asked for and what the station is called, so every connection gets everything and the engine cannot tell two tablets or a display from a GM."
         }
       ],
-      "standalone": "In a standalone game: no engine, pass or connection exists, so nothing fails; a tablet never set up for the network is called 001, known to nobody.",
+      "standalone": "In a standalone game: no show machine, pass or connection exists, so nothing fails; a tablet never set up for the network is called 001, known to nobody.",
       "standaloneCandidate": "In the earlier candidate a Connections and roles stand-in knows one connection, itself, so Answering runs the same rights check with no pass to verify.",
       "questions": [
         7,
@@ -500,7 +500,7 @@
     {
       "id": "J8",
       "title": "Run wherever the venue and the game need",
-      "meaning": "On the show machine with this venue's equipment, fitted by the venue technician through a profile; with or without an engine, as a choice the game declares for a room where a network connection is not feasible, or where other logistics make it better to use only GM scanners, player scanners or both, and never mixed; and on another kit, other hardware, another pack or another operating system later. Nothing in the engine assumes one kit, one pack or one production, and the engine says what is fixed and what each production sets.",
+      "meaning": "On the show machine with this venue's equipment, fitted by the venue technician through a profile; with or without a show machine, as a choice the game declares for a room where a network connection is not feasible, or where other logistics make it better to use only GM scanners, player scanners or both, and never mixed; and on another kit, other hardware, another pack or another operating system later. Nothing in the engine assumes one kit, one pack or one production where avoiding it costs little, and the engine says what is fixed and what each production sets.",
       "roles": [
         "the venue technician, who fits the game to the room",
         "the GMs running a standalone game, and the players alone with their scanners if the owner confirms that a standalone game may have no GM tablet",
@@ -520,12 +520,12 @@
         {
           "id": "N1",
           "primary": true,
-          "how": "Nobody declares that a game is standalone, so each device reads a missing engine as an outage, nothing says which of the pack's effects an engine-less game drops, and nothing can refuse a mixed game."
+          "how": "Nobody declares that a game is standalone, so each device reads the missing show machine as an outage, nothing says which of the pack's effects a game with no show machine drops, and nothing can refuse a mixed game."
         },
         {
           "id": "C4",
           "primary": false,
-          "how": "With no engine the tablet decides by its own code what happens between games."
+          "how": "With no show machine the tablet decides by its own code what happens between games."
         },
         {
           "id": "C8",
@@ -535,7 +535,7 @@
         {
           "id": "C9",
           "primary": false,
-          "how": "With no engine the tablet is the only judge and its copy of the rules has gaps."
+          "how": "With no show machine the tablet is the only judge and its copy of the rules has gaps."
         },
         {
           "id": "C10",
@@ -548,7 +548,7 @@
           "how": "Program names and install commands are fixed to one operating-system release, so a new machine logs warnings or refuses its install."
         }
       ],
-      "standalone": "In a standalone game: the tablet's mode is a tap, the phone's is its web address, the hardware scanner has none: it treats a missing engine as an outage and trails the phone in seven of 24 abilities.",
+      "standalone": "In a standalone game: the tablet's mode is a tap, the phone's is its web address, the hardware scanner has none: it treats the missing show machine as an outage and trails the phone in seven of 24 abilities.",
       "standaloneCandidate": "In the earlier candidate the declaration, wherever it is kept, reaches every device with its pack, and the tablet says standalone.",
       "questions": [
         1,
@@ -557,7 +557,7 @@
       "tests": [
         "In a standalone game, pause the game and scan: refused with a reason and the token not used; end the game and scan: refused.",
         "On a new machine whose operating system gives the speaker's audio rule and the TV's browser their new names, start the engine: it logs no warning and the TV page opens.",
-        "Start a player device with no engine in a game declared standalone: it says “standalone”, not “offline” or “disconnected”.",
+        "Start a player device with no show machine in a game declared standalone: it says “standalone”, not “offline” or “disconnected”.",
         "Build a clean machine from the deployment guide: it pairs a speaker and plays through it, and the install line works on the new operating-system image."
       ],
       "parts": [
@@ -565,8 +565,8 @@
         "P17"
       ],
       "functional": {
-        "people": "The venue technician; the GMs running a game with no engine; another production with its own kit, venue and hardware",
-        "moment": "In the days before an event, and on the night when the engine is absent by choice",
+        "people": "The venue technician; the GMs running a game with no show machine; another production with its own kit, venue and hardware",
+        "moment": "In the days before an event, and on the night when the game runs with no show machine by choice",
         "need": "The venue technician states what the kit brings tonight, binds the pack's names to real instruments and gets one go or no-go. A game declared standalone, for a room with no feasible network or where other logistics favour scanners alone, knows it is standalone instead of showing a lost connection all night. A second kit, other hardware or a new machine needs no change to the rest of the engine's code, and another production finds what is fixed and what it may set.",
         "proposedTitle": "The game fits the venue it is in tonight"
       },
@@ -648,7 +648,7 @@
         "the people building the engine, whose green run must mean something",
         "the GM, whose live show no test may touch"
       ],
-      "goal": "Tests run in levels, from logic alone, through the real engine and its programs with stand-ins for the room's equipment, to a home test bed and the venue. Each test run, trial copy of the engine and second kit keeps its own files, network ports and settings, so none reaches a live show. The formats two parts share are written once and stand-ins are checked against the real thing; every change runs on two packs. How an extension a developer makes for all games relates to the engine's main release is the owner's open question. The owner alone sends a checked machine, and can replug the old one.",
+      "goal": "Tests run in levels, from logic alone, through the real engine and its programs with stand-ins for the room's equipment, to a home test bed and the venue. Each test run, trial copy of the engine and second kit keeps its own files, network ports and settings, so none reaches a live show. The formats two parts share are written once and stand-ins are checked against the real thing; every change runs on two packs. How an extension a developer makes for all games relates to the engine's main release is the owner's question “How an extension for all games reaches a production”. The owner alone sends a checked machine, and can replug the old one.",
       "goalOpen": false,
       "needs": [
         "The test environment: tests cannot touch the live machine's files that list its running programs, the TV or its players; a test that cannot run says so, and why, instead of passing quietly. Today nothing stops a test copy of the engine from starting the sound system.",
@@ -679,7 +679,7 @@
           "how": "Hand-written test stand-ins are never checked against the real code, skipped tests and silent passes count as passing, and the share of code the tests reach is counted file by file, so a passing run does not show that what the show actually does works."
         }
       ],
-      "standalone": "In a standalone game: nothing tests a player device with no engine; the phone's pack test passes on a file the deployed site lacks; the one test comparing both modes skips its group case.",
+      "standalone": "In a standalone game: nothing tests a player device with no show machine; the phone's pack test passes on a file the deployed site lacks; the one test comparing both modes skips its group case.",
       "standaloneCandidate": "In the earlier candidate the same tests cover the tablet, or, if the tablet has its own engine, a test that checks the two give the same answers.",
       "questions": [
         4,
