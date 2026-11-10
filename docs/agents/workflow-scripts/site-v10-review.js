@@ -1,6 +1,6 @@
 export const meta = {
-  name: 'site-v10-fable-review',
-  description: 'At the owner\'s request, Fable 5.2 agents review version 10 of the owner site: is the design approach optimal, and is what the owner is asked clearly defined? Four reviewers, a refute-by-default check of each, one merged report',
+  name: 'site-v10-review-review',
+  description: 'At the owner\'s request, independent agents on the model the owner named review version 10 of the owner site: is the design approach optimal, and is what the owner is asked clearly defined? Four reviewers, a refute-by-default check of each, one merged report',
   phases: [
     { title: 'Probe', detail: 'confirm the requested model answers' },
     { title: 'Review', detail: 'four lenses: the conflicts (A to F); the other asks and the page; the design approach; an outside architect' },
@@ -9,7 +9,7 @@ export const meta = {
   ],
 }
 
-// args: { model: 'claude-fable-5-2', fallback: 'fable', date: '2026-11-09', base: '<commit the review reads>', text: '<folder of the pages as text>' }
+// args: { model: '<the model the owner asked for>', fallback: '<an alias to fall back to>', date: '2026-11-09', base: '<commit the review reads>', text: '<folder of the pages as text>' }
 const A = args || {}
 const DATE = A.date || '2026-11-09'
 const ROOT = '/home/user/ALN-Ecosystem'
@@ -17,7 +17,7 @@ const AP = `${ROOT}/docs/plans/architecture-pass`
 const OUT = `${AP}/report/site/checks`
 const TEXT = A.text
 
-let MODEL = A.model || 'claude-fable-5-2'
+let MODEL = A.model
 phase('Probe')
 let probe = null
 try {
@@ -26,8 +26,8 @@ try {
   probe = null
 }
 if (!probe || !String(probe).toLowerCase().includes('ok')) {
-  log(`The model ${MODEL} did not answer; the review falls back to ${A.fallback || 'fable'}.`)
-  MODEL = A.fallback || 'fable'
+  log(`The model ${MODEL} did not answer; the review falls back to ${A.fallback}.`)
+  MODEL = A.fallback
 }
 log(`Every reviewer, checker and the merge run on ${MODEL}.`)
 
@@ -101,11 +101,11 @@ const VERIFY_SUMMARY = {
 
 const results = await pipeline(
   LENSES,
-  (lens) => agent(`${COMMON}\n\n${lens.task}\n\nWrite your report to ${OUT}/v10-fable-${lens.key}.md.`,
+  (lens) => agent(`${COMMON}\n\n${lens.task}\n\nWrite your report to ${OUT}/v10-review-${lens.key}.md.`,
     { label: `review:${lens.key}`, phase: 'Review', model: MODEL, effort: 'high', schema: REVIEW_SUMMARY }),
   (review, lens) => {
     if (!review) return null
-    return agent(`${COMMON}\n\nYour task is different from the reviewers': you check one review. The reviewer of ${lens.title} wrote ${OUT}/v10-fable-${lens.key}.md. Refute by default: a finding survives only if you confirm it yourself from the pages, the sources, the record, the owner's words and the code. Give each finding one verdict: Confirmed (the problem is real and the proposed change is right), Confirmed with a better change (the problem is real; give the change), or Refuted (not a problem; already covered, saying where; or the change would make things worse, saying how). Check every stated fact against the code or the documents; check every proposed text against the owner's rules; refuse any change that turns an agent's call into an owner question, or the reverse, without meeting the four tests. Then list anything the reviewer missed that you saw while checking, marked as yours. Write ${OUT}/v10-fable-${lens.key}-verify.md: a table of every finding (id, verdict, the final change, the evidence), then the missed items. Return a brief summary.`,
+    return agent(`${COMMON}\n\nYour task is different from the reviewers': you check one review. The reviewer of ${lens.title} wrote ${OUT}/v10-review-${lens.key}.md. Refute by default: a finding survives only if you confirm it yourself from the pages, the sources, the record, the owner's words and the code. Give each finding one verdict: Confirmed (the problem is real and the proposed change is right), Confirmed with a better change (the problem is real; give the change), or Refuted (not a problem; already covered, saying where; or the change would make things worse, saying how). Check every stated fact against the code or the documents; check every proposed text against the owner's rules; refuse any change that turns an agent's call into an owner question, or the reverse, without meeting the four tests. Then list anything the reviewer missed that you saw while checking, marked as yours. Write ${OUT}/v10-review-${lens.key}-verify.md: a table of every finding (id, verdict, the final change, the evidence), then the missed items. Return a brief summary.`,
       { label: `verify:${lens.key}`, phase: 'Verify', model: MODEL, effort: 'high', schema: VERIFY_SUMMARY })
   },
 )
@@ -115,8 +115,8 @@ const missing = done.filter((d) => !d.verified)
 if (missing.length) log(`Not verified: ${missing.map((m) => m.key).join(', ')}; the merge reads their reviews unverified and says so.`)
 
 phase('Synthesize')
-const files = LENSES.map((l) => `- ${l.title}: ${OUT}/v10-fable-${l.key}.md and its check ${OUT}/v10-fable-${l.key}-verify.md`).join('\n')
-const synthesis = await agent(`${COMMON}\n\nYour task: merge the review into one report for the agent running the pass, to act on and to report to the owner. Read the four reviews and their checks:\n${files}\n${missing.length ? `These have no check, so mark their findings unverified: ${missing.map((m) => m.key).join(', ')}.\n` : ''}Keep only findings a check confirmed, each with its final change; where two reviews found the same thing, merge them and cite both. Read the pages yourself where findings conflict, and decide. Write ${OUT}/v10-fable-review.md with:\n1. The verdict, in two short plain paragraphs: is the design approach on version 10 the one most likely to give the owner a long-term optimal architecture, and is what the owner is asked clearly defined?\n2. Changes to make before the owner answers, ranked by severity within each group: (a) owner questions to reword, split, merge, add or remove, each with the exact new text and the source field; (b) readings and agent's calls to change, including any that should become an owner question, with the test it meets; (c) facts to correct; (d) changes to the design approach (the decisions ahead, the panel's set-up, the requirements, the standing rules), each with what to change and why; (e) smaller clarity fixes.\n3. What the owner should hear even after the fixes: any risk or open point, in plain words, short.\n4. What the review found right.\nCite the finding ids behind every item. Return a brief summary.`,
+const files = LENSES.map((l) => `- ${l.title}: ${OUT}/v10-review-${l.key}.md and its check ${OUT}/v10-review-${l.key}-verify.md`).join('\n')
+const synthesis = await agent(`${COMMON}\n\nYour task: merge the review into one report for the agent running the pass, to act on and to report to the owner. Read the four reviews and their checks:\n${files}\n${missing.length ? `These have no check, so mark their findings unverified: ${missing.map((m) => m.key).join(', ')}.\n` : ''}Keep only findings a check confirmed, each with its final change; where two reviews found the same thing, merge them and cite both. Read the pages yourself where findings conflict, and decide. Write ${OUT}/v10-review.md with:\n1. The verdict, in two short plain paragraphs: is the design approach on version 10 the one most likely to give the owner a long-term optimal architecture, and is what the owner is asked clearly defined?\n2. Changes to make before the owner answers, ranked by severity within each group: (a) owner questions to reword, split, merge, add or remove, each with the exact new text and the source field; (b) readings and agent's calls to change, including any that should become an owner question, with the test it meets; (c) facts to correct; (d) changes to the design approach (the decisions ahead, the panel's set-up, the requirements, the standing rules), each with what to change and why; (e) smaller clarity fixes.\n3. What the owner should hear even after the fixes: any risk or open point, in plain words, short.\n4. What the review found right.\nCite the finding ids behind every item. Return a brief summary.`,
   { label: 'synthesize', phase: 'Synthesize', model: MODEL, effort: 'high', schema: {
     type: 'object',
     properties: {
