@@ -156,3 +156,19 @@ the pack, the configuration and the hardware together, where the owner
 now says a kit is the physical gear, equipment and furniture the
 digital game manipulates; "tonight" in the dormancy wording stands for
 an install that may last months.
+
+## The owner's answers to the two real-world questions (2026-11-10)
+
+The owner raised nothing further against the refined statement and
+answered, word for word:
+
+> 1 - For ALN, the GM keeps the object, other games may use different
+> designs.
+> 2 - For ALN, the players can pick them up and carry hen, other games
+> may use different designs.
+
+(1 is whether the GM keeps a token object once a player sells or
+exposes it. 2 is whether ALN's hardware scanners are fixed in place or
+carried.) Both are ALN's design choices. The engine must not assume
+either: another game may hand a token back after a scan, or fix its
+scanners in place as shared stations.
