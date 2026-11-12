@@ -132,6 +132,12 @@ td.nums { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .words b { font-family: var(--font-display); font-weight: 600; }
 .words-title { font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: .09em; font-size: .78rem; color: var(--muted); }
 
+/* how ALN runs meanwhile; what changed */
+.meanwhile { display: grid; gap: .35rem; margin: 1rem 0 0; padding: .8rem 1rem; background: var(--accent-bg); border-radius: 10px; }
+.meanwhile p { margin: 0; }
+.changed { margin-top: 3rem; }
+.changed ol { margin: .5rem 0; padding-left: 1.3rem; display: grid; gap: .45rem; }
+
 /* the ask */
 .ask { background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; padding: 1.1rem 1.2rem; margin-top: 1rem; }
 .ask h2 { margin: 0 0 .3rem; }
@@ -153,10 +159,15 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <li><a href="#imp-4"><b>4</b><span>Video, music, sound and lights are controlled through one pattern, and their programs restart when they crash.</span></a></li>
     <li><a href="#imp-5"><b>5</b><span>The engine keeps separate what belongs to one session, to one installation and to the whole production.</span></a></li>
     <li><a href="#imp-6"><b>6</b><span>The code has a known place for adding a new kind of rule, equipment or screen.</span></a></li>
-    <li><a href="#imp-7"><b>7</b><span>A test or a rehearsal can run on the backend's computer without disturbing a live session.</span></a></li>
+    <li><a href="#imp-7"><b>7</b><span>The backend is assembled in one place, and a copy started for a test or a rehearsal leaves the installed backend as it was.</span></a></li>
   </ol>
   <p>The game itself happens in a room, with players, token objects and GMs. The engine is the software around it. Its game rules and its pack format are in good shape. The weak spots are in how its programs work together, and that is what the seven changes are about.</p>
-  <p>I judged each change by what the engine is meant to become: open-source software that runs other people's games as well as ALN, on a kit as small as player scanners and tokens or as large as ALN's, at one venue for months or on tour. Three separate reviewers checked my first draft against the code. This version includes their corrections.</p>
+  <p>I judged each change by what the engine is meant to become: open-source software that runs other people's games as well as ALN, on a kit as small as player scanners and tokens or as large as ALN's, at one venue for months or on tour. Three separate reviewers checked my first draft against the code. This version includes their corrections, and your eight comments of 12 November. What your comments changed is listed at the end.</p>
+  <div class="meanwhile">
+    <p class="words-title">How ALN runs while this work is done</p>
+    <p>Every ALN session runs on blue: the backend computer in use today, with its scanners and its production branch. This work never touches them. Nothing from the new engine reaches a live session until all of it is finished, the backend and the scanners together. Then there is one cutover. Green, the second backend computer, replaces blue, and the hardware scanners get their new firmware.</p>
+    <p>So no part of the new engine has to work with an old part, and no date governs the work. The order of work is set by engineering reasons alone.</p>
+  </div>
   <div class="words">
     <p class="words-title">Words used on this page</p>
     <p><b>Game.</b> A designed game, such as ALN. <b>Session.</b> One group of players playing it once.</p>
@@ -238,7 +249,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
 
 <section>
   <h2>The seven changes</h2>
-  <p class="prose">Each card says what happens today, what I propose, what you would notice at a session, what later work it makes possible, and what it costs. I recommend six of them. I am less sure about the sixth, and say why there.</p>
+  <p class="prose">Each card says what happens today, what I propose, what you would notice at a session, what later work it makes possible, and what it costs. I recommend all seven. The sixth is a rule for designing the others more than a separate piece of work.</p>
 
   <div class="imps">
 
@@ -343,7 +354,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <dl class="gives">
       <div><dt>At a session</dt><dd>After a software update, a scanner that does not match the backend is caught when it connects, before the session starts.</dd></div>
       <div><dt>Later work it allows</dt><dd>New kinds of device and screen. Software that other people write for the engine. Updating a pack at any time, while the engine's own software is updated only between events.</dd></div>
-      <div><dt>What it costs</dt><dd>While the old backend computer stays as the fallback, the scanners have to work with both the old backend and the new one.</dd></div>
+      <div><dt>What it costs</dt><dd>The definition has to be written before the programs that use it, and each program's tests rewritten against it. The hardware scanners' firmware changes too, so they are re-flashed at the cutover. Nothing has to stay compatible with blue or its scanners, because the switch happens all at once.</dd></div>
     </dl>
     <details class="files"><summary>Where this is in the code</summary><ul>
       <li>backend/contracts/openapi.yaml, asyncapi.yaml (the two files)</li>
@@ -426,7 +437,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
   </article>
 
   <article class="imp" id="imp-6">
-    <div class="imp-head"><span class="num">6</span><h3>The code has a known place for adding a new kind of rule, equipment or screen</h3><span class="badge explore">Worth exploring</span></div>
+    <div class="imp-head"><span class="num">6</span><h3>The code has a known place for adding a new kind of rule, equipment or screen</h3><span class="badge">Recommended</span></div>
     <div class="ba">
       <div class="side today">
         <p class="side-label">Today</p>
@@ -448,39 +459,41 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     </div>
     <dl class="gives">
       <div><dt>For a developer</dt><dd>Someone adding a capability knows where the code goes and what it has to look like. A game that uses the capability proves it works.</dd></div>
-      <div><dt>Later work it allows</dt><dd>What the second game needs. Other people's games after release.</dd></div>
-      <div><dt>Why I am less sure</dt><dd>These places should be designed from what the second game really needs, written first as tests. Designing them from ALN alone would be guessing.</dd></div>
+      <div><dt>Later work it allows</dt><dd>The ways the engine is meant to grow. The project's notes already list 28 of them, from a third way to turn in a token, to a different lighting system, to audio in several rooms. Two are your own examples.</dd></div>
+      <div><dt>How the places are designed</dt><dd>From the kinds of addition the engine is meant to allow, not from one game. Each place is checked against at least two different cases from that list, and against one test: what an addition must not need to touch. Today's parts become the first of each kind. Today's scoring is the first rule, the seven programs are the first equipment, and the scoreboard is the first screen. So no place is built on a guess. The second game is one case among the 28, not the measure.</dd></div>
     </dl>
     <details class="files"><summary>Where this is in the code</summary><ul>
       <li>backend/src/services/packService.js:52 (the list of capabilities, and the start-up check)</li>
       <li>backend/src/gameRules/scoring.js; backend/src/models/session.js</li>
+      <li>docs/plans/architecture-pass/requirements/2026-11-01-extension-cases.json (the 28 ways the engine must be able to grow)</li>
       <li>docs/plans/2026-07-17-bill-capability-scoping.md (what the second game needs)</li>
     </ul></details>
   </article>
 
   <article class="imp" id="imp-7">
-    <div class="imp-head"><span class="num">7</span><h3>A test or a rehearsal can run on the backend's computer without disturbing a live session</h3><span class="badge">Recommended</span></div>
+    <div class="imp-head"><span class="num">7</span><h3>The backend is assembled in one place, and a copy started for a test or a rehearsal leaves the installed backend as it was</h3><span class="badge">Recommended</span></div>
     <div class="ba">
       <div class="side today">
         <p class="side-label">Today</p>
         <div class="flow">
           <div class="row"><span class="bx">The backend is made of fourteen parts. The list of those parts is typed out by hand in about a dozen places. One of those lists leaves out the music</span></div>
-          <div class="row"><span class="bx">The backend assumes it is the only copy running on its computer. A second copy, started for a test or a rehearsal, would use the same thirteen temporary files, the same screen and the same video player as the live one</span></div>
+          <div class="row"><span class="bx">The backend assumes it is the only copy running on its computer. The automatic tests start a second copy today, and a rehearsal from the config tool would start one later. That copy uses the same thirteen temporary files, the same screen and the same video player as the installed backend</span></div>
         </div>
-        <p>When any copy starts, it stops every scoreboard browser and every sound monitor on the computer, including ones a live session is using.</p>
+        <p>When any copy starts, it stops every scoreboard browser and every sound monitor on the computer, including the installed backend's. This is a risk between sessions, not during one. No real situation has a test or a rehearsal running in the middle of a live session.</p>
       </div>
       <div class="side next">
         <p class="side-label">Proposed</p>
         <div class="flow">
           <div class="row"><span class="bx">The backend is assembled in one place in the code, from one list of its parts</span></div>
-          <div class="row"><span class="bx">Each running copy has its own files, its own screen and its own video and music players, and stops only what it started</span></div>
+          <div class="row"><span class="bx">Each running copy keeps its files in its own folder and stops only the programs it started</span></div>
+          <div class="row"><span class="bx">Only one copy at a time uses the real TV, speakers and lights. A copy started for a test or a rehearsal uses stand-ins</span></div>
         </div>
       </div>
     </div>
     <dl class="gives">
-      <div><dt>At a session</dt><dd>A test or a rehearsal started on the backend's computer cannot interrupt a live session there.</dd></div>
-      <div><dt>Later work it allows</dt><dd>Rehearsing on a backend computer that is in use. Running the automatic tests on the real computer.</dd></div>
-      <div><dt>What it costs</dt><dd>More than it looks. Two copies would also compete for the video player, for the sound outputs and for the one screen. The one-day test in change 4 shows how much of that is left to solve.</dd></div>
+      <div><dt>Between sessions</dt><dd>A test run or a rehearsal on the backend's computer leaves the installed backend exactly as it was for the next session.</dd></div>
+      <div><dt>For development</dt><dd>A test can start the backend with only the parts it needs, and tests can run side by side. Today the integration tests have to run one at a time.</dd></div>
+      <div><dt>What it costs</dt><dd>Less than I first said. I have dropped two copies sharing the TV and the players at the same moment, because nothing needs it. What is left is one place of assembly, a folder for each copy, and stopping only what a copy started.</dd></div>
     </dl>
     <details class="files"><summary>Where this is in the code</summary><ul>
       <li>backend/src/websocket/adminEvents.js:77 (a hand-typed list that leaves out the music)</li>
@@ -527,7 +540,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
         <span class="chip good">Assembled in one place; each running copy uses only its own files and programs <a class="mk ok" href="#imp-7">7</a></span>
       </div>
     </div>
-    <div class="link">one part of the software keeps these programs running <a class="mk ok" href="#imp-4">4</a></div>
+    <div class="link">the backend starts these programs, restarts any that crash, and stops them when it stops <a class="mk ok" href="#imp-4">4</a></div>
     <div class="lane">
       <div class="lane-name">Other programs<small>on the backend's computer; connected to the real gear, or to stand-ins for a rehearsal</small></div>
       <div class="chips">
@@ -559,23 +572,43 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
 </section>
 
 <section class="prose">
-  <h2>The order I would work in</h2>
+  <h2>The order of work</h2>
+  <p>You decided the order on 30 October and 1 November: design first and then build, and design the hardest things to reverse first. My last version went against both, by starting to build whatever needed no decision from you. The engineering reason for your order is that each step below is built on the ones before it, so nothing is built twice.</p>
   <ol class="steps">
-    <li><b>Start with changes 4 and 7,</b> the show-control side. They need no decision from you, and the paused work on automatic restarts and the preflight continues there. One day of testing on the new backend computer settles what keeps the programs running.</li>
-    <li><b>Meanwhile, go through changes 1 and 2 with you.</b> Before building any of it, I write what players do in the second game as tests, so this code is not designed around ALN alone.</li>
-    <li><b>Build changes 1 and 2 first as one small working piece:</b> a single scan, from the tap, into the record, and out to a GM scanner and the scoreboard. It has to work in the backend and inside a standalone GM scanner, with a player scanner, with a GM scanner that loses its connection, and across a restart. It uses the message definition from change 3 and the session start and end from change 5.</li>
-    <li><b>Then extend it</b> to everything else the engine does, adding the known places from change 6 as the second game needs them.</li>
+    <li><b>Design how the backend keeps a session's data</b> (change 1), with what belongs to a session, an installation and a production (change 5). Everything else reads or writes this data: the rules, every screen, a standalone game, a restart, the report. It is the hardest thing to change later.</li>
+    <li><b>Design the messages and files</b> (change 3). They follow from step 1, and every program is then built and tested against them.</li>
+    <li><b>Design which device decides what</b> (change 2): in a networked game, in a standalone game, and on a GM scanner that has lost its connection. This says where the game code has to be able to run, which has to be known before it is written.</li>
+    <li><b>Design how the engine is extended</b> (change 6), with the pattern for equipment (change 4) and how copies of the backend stay apart (change 7). These join the first three at a few points and are easier to change later.</li>
+    <li><b>Decide how today's code moves to the new design:</b> changed in place, or moved piece by piece into a new structure. That is the build plan.</li>
+    <li><b>Build a thin first version that works end to end:</b> one scan, from the tap, into the session's record, and out to a GM scanner and the scoreboard. It has to work in the backend and inside a standalone GM scanner, across a lost connection and a restart. It proves the design before more is built on it.</li>
+    <li><b>Build the rest one area at a time,</b> each with its detailed design just before it is built. The paused work on automatic restarts and the preflight is rebuilt here, on the new structure.</li>
+    <li><b>Cut over once, when you decide the new engine is ready.</b> Green is set up and rehearsed at the venue before that.</li>
   </ol>
-  <p>Throughout, today's software keeps running ALN's sessions, and the old backend computer stays as the fallback.</p>
-  <p><b>None of this is small.</b> The backend and the GM scanner together are about 43,000 lines of code, with about 116,000 lines of tests that have to change with them. That is why I would do it in small pieces that each work.</p>
-  <p class="muted">One smaller change is also worth exploring. The config tool should send its changes to the backend as messages, the way the scanners do. Today it writes the engine's files and uses the engine's code directly. I would change that before building the config tool's new screens.</p>
+  <p>Steps 1 to 5 are conversations with you, one question at a time, each with my recommendation. They end in short decision notes, not in more pages.</p>
+  <p><b>None of this is small.</b> The backend and the GM scanner together are about 43,000 lines of code, with about 116,000 lines of tests that have to change with them. That is why the build goes in small pieces that each work.</p>
+  <p class="muted">One smaller change is also worth exploring. The config tool should send its changes to the backend as messages, the way the scanners do. Today it writes the engine's files and uses the engine's code directly. I would settle that in step 2.</p>
 </section>
 
 <section class="ask prose">
   <h2>What I need from you</h2>
-  <p><b>Which of these do you want to go through in detail?</b> I recommend changes 1 and 2 together, starting with the choice inside change 1. We go through it in conversation, one question at a time. What we decide goes into short decision notes and the roadmap.</p>
-  <p><b>May I start on changes 4 and 7 in the meantime?</b></p>
-  <p class="muted">Three product questions this plan does not answer. They come up inside changes 1 and 2. What may a GM tell a team while their GM scanner has no connection? What may a device do if it missed a software update? Where may a rehearsal run while a session is live?</p>
+  <p><b>Have I now got right how ALN runs while this work is done?</b> It is in the box near the top: blue runs every session, nothing reaches a live session until everything is finished, and there is one cutover.</p>
+  <p><b>Is the order above what you meant?</b></p>
+  <p><b>If both are right, we start with step 1.</b> Its first question is the choice inside change 1: a record that only grows, or data edited in place.</p>
+  <p class="muted">Two product questions come up inside steps 1 to 3, and I will bring each one when we reach it. What may a GM tell a team while their GM scanner has no connection? What may a device do if it missed a software update?</p>
+</section>
+
+<section class="changed prose">
+  <h2>What your comments changed</h2>
+  <ol>
+    <li><b>Change 3.</b> The cost line assumed the scanners would have to work with both blue and the new backend. That was wrong, and it is gone. Everything switches at once.</li>
+    <li><b>Change 4.</b> What keeps the programs running is no longer shown as an open choice, and the "one day of testing" is gone. You ruled on 12 September that the backend starts and supervises them itself. The card now says what a backend restart in the middle of a session does today, and what it should do.</li>
+    <li><b>Change 5.</b> "Updating a pack without restarting" is no longer listed as something this plan has to deliver. The card says what it was for, the designer's loop of change, apply and playtest, and what this plan does provide: every device follows a pack change by itself.</li>
+    <li><b>Change 6.</b> The places are designed from the kinds of addition the engine is meant to allow. The second game is one case among many.</li>
+    <li><b>Change 7.</b> It is about a test or a rehearsal leaving the installed backend as it was, between sessions. Running beside a live session was never a real need, and that part is dropped.</li>
+    <li><b>The order.</b> It follows your decisions: design first, hardest to reverse first, then build. Nothing is started because it happens to need no decision.</li>
+    <li><b>Blue.</b> Blue runs every ALN session until the new engine is finished. One line of the page had said the opposite.</li>
+    <li><b>What I need from you.</b> The questions are now about whether I have this right, not about what to start building.</li>
+  </ol>
 </section>
 
 <footer class="prose">
