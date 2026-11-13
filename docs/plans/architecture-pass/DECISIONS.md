@@ -94,9 +94,10 @@ Build a thin first version that works end to end. (7) Build the rest
 one area at a time, each with its detailed design just before it is
 built; the paused work on automatic restarts and the preflight is
 rebuilt here. (8) Cut over once, when the owner decides the new engine
-is ready. Steps 1 to 5 are conversations with the owner, question
-rounds with a recommendation for each question, ending in short
-decision notes. Work is never ordered by what needs no decision from
+is ready. The five design topics are conversations with the owner, a
+few questions at a time with a recommendation for each, ending in
+short decision notes. At the start of each topic the agent says which
+decisions are the owner's; the topic is settled when those are made. Work is never ordered by what needs no decision from
 the owner. This restates "One program: design half, then build half"
 (2026-10-30) and "Design top-down, hardest-to-reverse choices first"
 (2026-11-01).
@@ -121,8 +122,8 @@ the glossary has the term "session record".
 Made 2026-11-13.
 
 History:
-- 2026-11-13. Made as the first answer of step 1 ("3 - session's record
-  grows"). The alternative was data edited in place, as today.
+- 2026-11-13. Made as the first answer on how the backend keeps a
+  session's data ("3 - session's record grows"). The alternative was data edited in place, as today.
 
 **The session record holds the game, the capture, the show and the problems**
 
@@ -137,7 +138,8 @@ these lines. The short decision note is `docs/adr/0002`.
 Made 2026-11-13.
 
 History:
-- 2026-11-13. Round 1 of step 1, question 1 ("1 - yes").
+- 2026-11-13. The owner's answer to the first question of that day on
+  how the backend keeps a session's data ("1 - yes").
 
 **Corrections stay visible in the session record**
 
@@ -163,12 +165,13 @@ the next session is created. Player scans that a scanner stored and
 uploads late go into the session they were made in, marked late, and
 never into the next group's. Nothing else is accepted after the end.
 Sales and exposures that a GM scanner stored while it had no connection
-are a question for step 3.
+are a question for the design of which device decides what.
 
 Made 2026-11-13.
 
 History:
-- 2026-11-13. Round 1 of step 1, question 2 ("this makes sense").
+- 2026-11-13. The owner's answer to the second question of that day
+  ("this makes sense").
 
 **What is wiped between groups, and what stays**
 
@@ -186,7 +189,8 @@ from, not a person. The short decision note is `docs/adr/0003`.
 Made 2026-11-13.
 
 History:
-- 2026-11-13. Round 1 of step 1, question 3 ("agreed"). The owner also
+- 2026-11-13. The owner's answer to the third question of that day
+  ("agreed"). The owner also
   confirmed the two things the agent had taken as given (one session at
   a time; the device, not a person): "accurate".
 
@@ -200,9 +204,58 @@ of the 27 March session were.
 Recorded 2026-11-13.
 
 History:
-- 2026-11-13. The owner's answer to round 1's question of fact. Whether
-  a transfer becomes one action for the GM and one line in the record
-  was put to the owner in round 2.
+- 2026-11-13. The owner's answer to that day's question of fact. See
+  "A transfer between accounts is one action" below.
+
+**A transfer between accounts is one action**
+
+Moving value from one entity to another (in ALN, money between
+accounts) becomes one action on the GM scanner (pick the two accounts,
+type the amount once) and one line in the session record. The two sides
+always match, and it is undone as one. It is built with the GM
+scanner's redesign (`docs/plans/ROADMAP.md` row 8.17), not before.
+Until then GMs make two separate score adjustments, as today.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The owner said GMs move money between accounts by hand as
+  part of play in ALN, and answered "yes" to making it one action.
+
+**How the backend keeps a session's data is settled**
+
+Every decision on this topic that was the owner's has been made: the
+six entries above. What is left is the agent's engineering detail (how
+the record is stored, its format and version, when a line is written
+to disk). Three points wait for later topics: who keeps the record in a
+standalone game and the order of scans taken without a connection (the
+design of which device decides what); how screens are told what to show
+(the design of the messages and files); how long records are kept (with
+the installation's settings).
+
+Recorded 2026-11-13.
+
+History:
+- 2026-11-13. The agent asked the owner "is that the whole of step 1?".
+  The owner answered that the agent had defined the steps, so the owner
+  could not judge that; the agent must say what it needs from the
+  owner. The agent needs nothing more on this topic.
+
+**Say what is needed from the owner; no bare step or round numbers**
+
+At the start of each design topic the agent says which decisions it
+needs from the owner. The topic is settled when those are made. The
+agent never asks the owner whether a unit of work the agent defined is
+complete. Pieces of work go by what they do, never by a bare step or
+round number, and question rounds go by date. This restates "Name each
+step by what it does" (2026-11-01).
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The owner: "Be careful about falling into jargon and
+  labels that we haven't explicitly agreed upon (like your current
+  definition of 'steps')".
 
 **What keeps the backend's programs running is already ruled**
 

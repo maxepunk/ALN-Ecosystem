@@ -207,7 +207,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <div class="lane">
       <div class="lane-name">The backend<small>the engine's central program; a standalone game has none</small></div>
       <div class="chips">
-        <span class="chip weak">The session's data: teams, transactions, scores, exposed evidence <a class="mk" href="#imp-1">1</a><small>edited in place; a delete or a score reset leaves no trace</small></span>
+        <span class="chip weak">The session's data: accounts, transactions, scores, exposed evidence <a class="mk" href="#imp-1">1</a><small>edited in place; a delete or a score reset leaves no trace</small></span>
         <span class="chip good">The game rules, read from the pack <a class="mk ok" href="#sound">✓</a></span>
         <span class="chip weak">Starting, pausing, ending and resetting a session <a class="mk" href="#imp-5">5</a><small>five hand-written lists of steps</small></span>
         <span class="chip weak">What it knows about this installation <a class="mk" href="#imp-5">5</a><small>spread over several files; some kept only in memory</small></span>
@@ -451,7 +451,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
         <div class="flow">
           <div class="row"><span class="bx">The engine has a list of its capabilities. A pack lists the capabilities it needs. At start-up the backend refuses a pack that needs one the engine does not have</span></div>
           <div class="via">that check works well. But adding a new capability means changing code in many places, with no pattern to follow</div>
-          <div class="row"><span class="bx">The session's data is built around ALN's kind of game: teams, transactions, scores</span><span class="bx">There is one way of scoring</span></div>
+          <div class="row"><span class="bx">The session's data is built around ALN's kind of game: accounts, transactions, scores</span><span class="bx">There is one way of scoring</span></div>
         </div>
       </div>
       <div class="side next">
@@ -580,10 +580,10 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
 
 <section class="prose">
   <h2>The order of work</h2>
-  <p>You decided the order on 30 October and 1 November: design first and then build, and design the hardest things to reverse first. Each step below is built on the ones before it, so nothing is built twice.</p>
+  <p>You decided the order on 30 October and 1 November: design first and then build, and design the hardest things to reverse first. Each item below is built on the ones before it, so nothing is built twice.</p>
   <ol class="steps">
     <li><b>Design how the backend keeps a session's data</b> (change 1), with what belongs to a session, an installation and a production (change 5). Everything else reads or writes this data, so it is the hardest thing to change later.</li>
-    <li><b>Design the messages and files</b> (change 3). They follow from step 1, and every program is built and tested against them.</li>
+    <li><b>Design the messages and files</b> (change 3). They follow from how the session's data is kept, and every program is built and tested against them.</li>
     <li><b>Design which device decides what</b> (change 2): in a networked game, in a standalone game, and on a GM scanner that has lost its connection. This says where the game code must be able to run.</li>
     <li><b>Design how the engine is extended</b> (change 6), with the pattern for equipment (change 4) and how copies of the backend stay apart (change 7). These join the first three at a few points and are easier to change later.</li>
     <li><b>Decide how today's code moves to the new design:</b> changed in place, or moved piece by piece into a new structure.</li>
@@ -591,23 +591,24 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <li><b>Build the rest one area at a time,</b> each with its detailed design just before it is built. The paused work on automatic restarts and the preflight is rebuilt here.</li>
     <li><b>Cut over once, when you decide the new engine is ready.</b> Green is set up and rehearsed at the venue before that.</li>
   </ol>
-  <p>Steps 1 to 5 are conversations with you, a few questions at a time, each with my recommendation. They end in short decision notes, not in more pages.</p>
+  <p>The five design items are conversations with you, a few questions at a time, each with my recommendation. At the start of each one I say which decisions I need from you, so you can tell when it is settled. They end in short decision notes, not in more pages.</p>
   <p><b>None of this is small.</b> The backend and the GM scanner together are about 43,000 lines of code, with about 116,000 lines of tests that have to change with them. That is why the build goes in small pieces that each work.</p>
-  <p class="muted">One smaller change is also worth exploring. The config tool should send its changes to the backend as messages, the way the scanners do. Today it writes the engine's files and uses the engine's code directly. I would settle that in step 2.</p>
+  <p class="muted">One smaller change is also worth exploring. The config tool should send its changes to the backend as messages, the way the scanners do. Today it writes the engine's files and uses the engine's code directly. I would settle that when the messages are designed.</p>
 </section>
 
 <section class="ask prose">
   <h2>Where we are</h2>
   <p><b>Confirmed on 13 November:</b> how ALN runs while this work is done, and the order of work.</p>
-  <p><b>Decided in step 1:</b></p>
+  <p><b>How the backend keeps a session's data: settled.</b> These were the decisions I needed from you, and you made them all on 13 November:</p>
   <ul class="plain">
     <li>The session record only grows. A correction is a new line.</li>
     <li>It holds the game, the capture, what the room did and what went wrong, with one line for each event a person at the session would recognise.</li>
     <li>After a session ends, notes, photos and the accusation can still be added until the next session is created. Stored player scans that arrive late go into the session they were made in.</li>
     <li>Between groups, everything the group's play produced is wiped and kept only in that session's record. Everything about the room stays. The pack belongs to the production.</li>
+    <li>Moving money between accounts becomes one action for the GM and one line in the record. It is built with the GM scanner's redesign.</li>
   </ul>
-  <p><b>In front of you now:</b> one last question for step 1, and its summary, in our conversation. Step 2 is next: the messages and files.</p>
-  <p class="muted">Two product questions come up inside steps 1 to 3, and I will bring each one when we reach it. What may a GM tell a team while their GM scanner has no connection? What may a device do if it missed a software update?</p>
+  <p>Nothing more is needed from you on this. What is left of it is engineering detail, such as how the record is stored on disk, and that is mine to work out.</p>
+  <p><b>Next: the messages between the backend and the devices, and the files.</b> I will say which decisions I need from you there once I have checked which ones you have already made.</p>
 </section>
 
 <footer class="prose">

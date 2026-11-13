@@ -418,6 +418,11 @@ architecture pass's question.
   session bundle (decision B9), the file the engine writes for the
   report. Avoid "the night's record": a production may play many game
   sessions in one day. (Added 2026-11-13.)
+- **Transfer.** Moving value from one entity to another as one action,
+  recorded as one line of the session record, so the two sides always
+  match. In ALN, a GM moving money between accounts. Planned with the
+  GM-scanner redesign (ROADMAP row 8.17); until then a GM makes two
+  separate score adjustments. (Owner, 2026-11-13.)
 
 ## 5. Venue, kit, and installation
 

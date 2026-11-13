@@ -25,52 +25,57 @@ before acting.
   `docs/plans/architecture-pass/DECISIONS.md`. Working log
   (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
-- **Now: step 1 of the design is closing with the owner** (how the
-  backend keeps a session's data). Decided so far, all on 2026-11-13:
-  the session record only grows (`docs/adr/0001`); it holds the game,
-  the capture, what the room did and what went wrong, one line for each
-  event a person at the session would recognise (`docs/adr/0002`);
-  after a session ends, notes, photos and the accusation can be added
-  until the next session is created, and stored player scans that
-  arrive late go into the session they were made in; between groups,
-  what the group's play produced is wiped and kept only in that
-  session's record, what is about the room stays, and the pack belongs
-  to the production (`docs/adr/0003`); a backend runs one session at a
-  time; each line names the device, not a person. Stated to the owner
-  and not objected to: corrections stay visible in the record. A fact
-  from the owner: in ALN, GMs move money between accounts by hand as
-  part of play, and what the backend calls teams are accounts in ALN
-  (say "account" for ALN; the engine's word is "entity"). The owner
-  also confirmed how ALN runs while this work is done and the order of
-  work, and resolved the eight comments on the page. The page is
-  version 17 (version id 1794535750-1f38; source
+- **Now: the design of how the backend keeps a session's data is
+  settled; the next design topic is the messages and files.** Nothing
+  is waiting on the owner at this moment: the agent owes the owner the
+  list of decisions it needs for the next topic. Decided on 2026-11-13,
+  all by the owner: the session record only grows (`docs/adr/0001`); it
+  holds the game, the capture, what the room did and what went wrong,
+  one line for each event a person at the session would recognise
+  (`docs/adr/0002`); after a session ends, notes, photos and the
+  accusation can be added until the next session is created, and stored
+  player scans that arrive late go into the session they were made in;
+  between groups, what the group's play produced is wiped and kept only
+  in that session's record, what is about the room stays, and the pack
+  belongs to the production (`docs/adr/0003`); a backend runs one
+  session at a time; each line names the device, not a person; moving
+  money between accounts becomes one action for the GM and one line in
+  the record, built with the GM scanner's redesign (ROADMAP row 8.17).
+  Stated to the owner and not objected to: corrections stay visible in
+  the record. The owner also confirmed how ALN runs while this work is
+  done and the order of work. The page is version 18 (version id
+  1794536226-27bd; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
-  and its last box lists what is decided. **Waiting for the owner on
-  round 2 of step 1**, asked in the conversation on 2026-11-13: whether
-  a transfer between accounts becomes one action for the GM and one
-  line in the record (recommended: yes, built with the GM scanner's
-  redesign, not now), and whether the summary of step 1 is the whole of
-  it. **Step 2 is next** (the messages and files). A helper was asked
-  on 2026-11-13 for a fact sheet: what each device shows for each scan
-  outcome today, which behaviours the owner already ruled (decisions A1
-  to A7 of 2026-06-09, the hardening plan's R5 and R19), where the
-  phone and the hardware scanner differ, what a tag holds, who can read
-  what, and the version checks at connect. Its report arrives as a
-  message in the session and is NOT in the repository until written
-  down: check its key lines in the code, then write a note for step 2
-  in `docs/plans/architecture-pass/design/` with what is settled and
-  what is open. If the report is lost (a new session), redo that
-  reading from `docs/plans/architecture-pass/2026-10-30-map-inbound.md`
-  and `relationships/2026-11-01-today-client-modules.md` section 6.
-  Never ask the owner something already ruled. The questions of each
-  round as asked, the recommendations, the owner's answers word for
-  word, what is already settled and the facts looked up are in
-  `docs/plans/architecture-pass/design/2026-11-13-step-1-session-data.md`.
-  When the owner answers: write each answer into that note's "Answers",
-  into `DECISIONS.md` ("Since the proposal"), onto this page, into
-  `CONTEXT.md` when a term settles, and into `docs/adr/` when a
-  decision is hard to reverse; then work out the next round from the
-  design tree in that note. The method is the skills `grilling` and
+  and its last box lists what is decided and what is next. **Two rules
+  from the owner on 2026-11-13.** (1) Never ask the owner whether a
+  unit of work the agent defined is complete: at the start of each
+  design topic, say which decisions are the owner's; the topic is
+  settled when those are made. (2) No bare step or round numbers: name
+  each piece of work by what it does, and question rounds go by date
+  (the owner's rule of 2026-11-01, "Name each step by what it does").
+  **The next topic: the messages between the backend and the devices,
+  and the files.** A helper was asked on 2026-11-13 for a fact sheet:
+  what each device shows for each scan outcome today, which behaviours
+  the owner already ruled (decisions A1 to A7 of 2026-06-09, the
+  hardening plan's R5 and R19), where the phone and the hardware
+  scanner differ, what a tag holds, who can read what, and the version
+  checks at connect. Its report arrives as a message in the session and
+  is NOT in the repository until written down: check its key lines in
+  the code, then write a note for this topic in
+  `docs/plans/architecture-pass/design/` with what is settled and what
+  is open, and tell the owner which decisions are theirs. If the report
+  is lost (a new session), redo that reading from
+  `docs/plans/architecture-pass/2026-10-30-map-inbound.md` and
+  `relationships/2026-11-01-today-client-modules.md` section 6. Never
+  ask the owner something already ruled. The questions as asked, the
+  recommendations, the owner's answers word for word and the facts
+  looked up for the first topic are in
+  `docs/plans/architecture-pass/design/2026-11-13-how-the-backend-keeps-a-sessions-data.md`.
+  When the owner answers a question: write the answer word for word
+  into the topic's note, into `DECISIONS.md` ("Since the proposal"),
+  onto this page, into `CONTEXT.md` when a term settles, and into
+  `docs/adr/` when a decision is hard to reverse; then work out what is
+  still open from the design tree in the note. The method is the skills `grilling` and
   `domain-modeling` (`docs/agents/process.md` section 1, the row for
   `grill-with-docs`). The seven changes: (1) the backend keeps one
   complete record of each session and updates every screen from it the
@@ -116,7 +121,9 @@ before acting.
   phone), scoreboard, config tool, pack, kit, installation, production,
   session, standalone, networked. Never "show machine", "GM tablet",
   "design tool", "venue setup", "core", "door", or any other made-up
-  label. A title is a plain sentence. A "today" line says what happens
+  label. For ALN say "account", never "team" (the engine's own word is
+  "entity"). Never "step 1" or "round 2": name the work by what it does.
+  A title is a plain sentence. A "today" line says what happens
   to a scan, a GM or a restart. The table of replacements is the last
   section of `rework/2026-11-10-owner-step-back.md`. `DECISIONS.md`
   still uses the made-up names; replace them when it is cut down.
@@ -136,8 +143,8 @@ before acting.
   stand. Its entries on how the design half runs (the panel, the design
   rounds, the site's pages) describe the process retired on 2026-11-10
   and are history until the record is cut down. Open for the owner now:
-  round 1 of step 1, under "Now". The proposal does not decide two
-  product questions that come up inside the first design steps: what a GM may
+  nothing at this moment (see "Now"). The proposal does not decide two
+  product questions that come up in the next two design topics: what a GM may
   tell a team while their GM scanner has no connection, and what a
   device that missed a software update may do. The owner answered a
   third on 2026-11-12: no real situation has a test or a rehearsal

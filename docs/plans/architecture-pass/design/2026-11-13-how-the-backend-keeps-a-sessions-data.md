@@ -1,7 +1,7 @@
-# Step 1 of the design: how the backend keeps a session's data
+# The design of how the backend keeps a session's data
 
-Working notes for the conversation with the owner. Step 1 covers
-change 1 (the session record) and change 5 (what belongs to a session,
+Working notes for the conversation with the owner. This design topic
+covers change 1 (the session record) and change 5 (what belongs to a session,
 an installation and a production) of the proposal
 (`../proposal/index.html`). The method is question rounds: look the
 facts up first, ask only what is the owner's to decide, give a
@@ -27,8 +27,19 @@ is hard to reverse, surprising and a real trade-off.
   `docs/decisions/2026-06-09-tier-a-game-rule-semantics.md`).
 - A pack never changes in the middle of a session (decision A2;
   `CONTEXT.md` "Activation").
+- It also holds what the room did and what went wrong, one line for
+  each event a person at the session would recognise, never things
+  that change all the time (owner, 2026-11-13; `docs/adr/0002`).
+- After a session ends, notes, photos and the accusation can be added
+  until the next session is created; stored player scans that arrive
+  late go into the session they were made in (owner, 2026-11-13;
+  `docs/adr/0003`).
+- What is wiped between groups and what stays; one session at a time;
+  each line names the device (owner, 2026-11-13; `docs/adr/0003`).
+- A transfer between accounts is one action and one line, built with
+  the GM scanner's redesign (owner, 2026-11-13).
 
-## Facts looked up for round 1
+## Facts looked up before the questions of 2026-11-13
 
 - One real session's report is in the repository
   (`docs/session-report-0327gamereal.md`): 27 March 2026, 2 hours 29
@@ -51,25 +62,25 @@ is hard to reverse, surprising and a real trade-off.
 Decided: the record only grows. Hanging off it:
 
 1. What gets a line. Settled for the game, the pack and the capture.
-   Open: the show and the problems. ROUND 1, question 1.
+   Open: the show and the problems. Asked 2026-11-13, question 1.
 2. How a correction appears. Follows from "grows" and decision A3;
    stated to the owner, not asked. With it, one fact only the owner
-   has: what the three hand adjustments of 27 March were. ROUND 1,
-   question 4.
+   has: what the three hand adjustments of 27 March were. Asked
+   2026-11-13, question 4.
 3. Where a record starts and ends: what can be added after the end,
-   and late scans. ROUND 1, question 2.
+   and late scans. Asked 2026-11-13, question 2.
 4. What belongs to a session, an installation and a production.
-   ROUND 1, question 3.
+   Asked 2026-11-13, question 3.
 5. Who keeps the record in a standalone game, and the order of scans
-   taken without a connection. Waits for step 3 (which device decides
-   what).
-6. How screens are told what to show from the record. Waits for step 2
-   (the messages and files).
+   taken without a connection. Waits for the design of which device
+   decides what.
+6. How screens are told what to show from the record. Waits for the
+   design of the messages and files.
 7. How long records are kept. Later, with the installation's settings.
    The agent's default until then: until the owner deletes them.
 
-Taken as given unless the owner says otherwise (stated to the owner in
-round 1): a backend runs one session at a time, with everything keyed
+Taken as given unless the owner says otherwise (stated to the owner on
+2026-11-13, and confirmed by the owner the same day): a backend runs one session at a time, with everything keyed
 by the session so that nothing prevents more later
 (`docs/plans/ROADMAP.md` section 2.2); each line names the device it
 came from, not a person (`CONTEXT.md` "Pseudonymous default").
@@ -81,7 +92,7 @@ order and time from the backend when it is added, and keeps the
 device's own time as extra information; the format has a version number
 (change 3).
 
-## Round 1, as asked on 2026-11-13
+## The first questions, as asked on 2026-11-13
 
 Stated to the owner as following from decisions already made, with an
 invitation to object (not asked as questions):
@@ -111,7 +122,8 @@ Asked, each with a recommendation worded so "yes" accepts it:
    stored player scans that arrive late go into the session they were
    made in, marked late, never into the next group's; nothing else is
    accepted after the end. (Sales and exposures a GM scanner stored
-   while it had no connection wait for step 3.)
+   while it had no connection wait for the design of which device
+   decides what.)
 3. What is wiped between groups and what stays. Recommended rule:
    everything a group's play produced is wiped from every screen and
    scanner when the next session is created and lives on only in that
@@ -127,7 +139,7 @@ Asked, each with a recommendation worded so "yes" accepts it:
    hand as part of play, the record could carry a transfer as one line,
    so its two sides cannot drift apart.
 
-## Answers to round 1 (owner, 2026-11-13)
+## The owner's answers to the first questions (2026-11-13)
 
 Word for word:
 
@@ -150,24 +162,56 @@ The owner raised no objection to "corrections stay visible".
 Wording from here on: for ALN say "account", never "team". The
 engine's own word is "entity" (`CONTEXT.md` section 1).
 
-## Round 2, as asked on 2026-11-13 (closing step 1)
+## The closing questions, as asked on 2026-11-13
 
 1. A transfer between accounts as one action. GMs move money between
    accounts today by typing two separate adjustments. Recommended: a
    transfer becomes one action on the GM scanner (pick two accounts,
    type the amount once) and one line in the record, so the two sides
    cannot differ and it can be undone as one. It is built with the GM
-   scanner's redesign, not now. Nothing in step 1 depends on it,
-   because the record takes new kinds of line.
-2. The summary of step 1, for the owner to confirm as the whole of it:
+   scanner's redesign, not now. Nothing in this design topic depends
+   on it, because the record takes new kinds of line.
+2. The summary of this design topic, for the owner to confirm as the
+   whole of it:
    the record only grows; what it holds; scores and screens are worked
    out from it and a restart reads it back; the after-end rule; the
    wipe/stay rule; one session at a time; lines name the device. Left
    for later steps: who keeps the record in a standalone game and the
-   order of scans taken without a connection (step 3); how screens are
-   told what to show (step 2); how long records are kept (with the
+   order of scans taken without a connection (the design of which
+   device decides what); how screens are told what to show (the design
+   of the messages and files); how long records are kept (with the
    installation's settings).
 
-## Answers to round 2
+## The owner's answers to the closing questions (2026-11-13)
 
-(None yet.)
+Word for word:
+
+> 1- yes
+> IS this the whole of step 1: You're the one who's defined each step,
+> so I'm not sure that I can answer this question without you
+> explicitly defining what you need from me in order to be able to
+> consider 'step 1' complete. Be careful about falling into jargon and
+> labels that we haven't explicitly agreed upon (like your current
+> definition of 'steps')
+
+So: a transfer between accounts becomes one action for the GM and one
+line in the record, built with the GM scanner's redesign
+(`docs/plans/ROADMAP.md` row 8.17; glossary term "Transfer").
+
+And two corrections to how the agent works with the owner:
+
+- Never ask the owner whether a unit of work the agent defined is
+  complete. Say at the start of each design topic which decisions are
+  the owner's. The topic is settled when those are made. The rest is
+  the agent's engineering detail.
+- No bare step or round numbers. The owner's rule of 2026-11-01 ("Name
+  each step by what it does", `../DECISIONS.md`) already said so: name
+  each piece of work by what it does; question rounds go by date.
+
+## Status: settled (2026-11-13)
+
+Every decision on this topic that was the owner's has been made. They
+are listed under "Settled" above and in `../DECISIONS.md` ("Since the
+proposal"). Left for the agent, to be written up when the area is
+built: how the record is stored, its format and version, and when a
+line is written to disk.

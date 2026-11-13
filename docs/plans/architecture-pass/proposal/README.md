@@ -116,4 +116,4 @@ needs it.)
 The owner confirmed the picture and the order on 2026-11-13, decided
 that the session record only grows, and resolved the comments. The page
 (version 15) is now the plan, and its last box says where we are. The
-design conversation, step by step, is recorded in `../design/`.
+design conversation, one topic at a time, is recorded in `../design/`.
