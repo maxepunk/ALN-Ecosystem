@@ -56,7 +56,7 @@
     {
       "id": "EX4",
       "title": "A new scoring model added once",
-      "who": "developer, then designer",
+      "who": "developer for a capability the engine lacks, such as the graph in this example; the designer for how the game is scored (corrected 2026-11-13, docs/adr/0011)",
       "kind": "for all games",
       "case": "A game needs a way of scoring the engine has never had, for example a score read off a graph of connected tokens instead of a table of values. A developer adds it once as a generic model with its own parameters. A designer selects the model in their pack and tunes its parameters like any other pack value. A pack that asks for a model the engine lacks is refused when published, with the model named, instead of running with the wrong rules.",
       "throughWhat": "A module of the engine's own rules library, selected by the pack by name and listed among the abilities the pack requires; the parameters in the pack.",
@@ -196,7 +196,7 @@
     {
       "id": "EX12",
       "title": "A game with no show machine",
-      "who": "whoever declares it (a reading for the owner to confirm); the GMs run it, and that player scanners alone may play one is a reading for the owner to confirm too",
+      "who": "the installation's settings say whether there is a backend, and the pack says whether its game can be played without one (owner, 2026-11-13, docs/adr/0008); the GMs run it; player scanners alone may play one (the kit model of 2026-06-11)",
       "kind": "neither: fitting the engine to a venue or a production",
       "case": "A game runs where a network connection is not feasible, or where other logistics make it better to use only GM scanners, player scanners (phone or hardware), or both. The game is declared standalone. Each device works alone: the tablet says “standalone”, never “disconnected”, reaches the same verdicts the engine would, and its record names the pack version it played. No game mixes devices on a show machine with devices working alone. The hardware scanner plays the game as the phone's scanner does. Which effects a standalone game keeps follows the rule the owner ratified for equipment a venue leaves at home: a need the pack marks “skip it” reads grey, as not installed tonight, and a need marked “block the show” keeps the game from starting standalone unless the GM types the override. Three rows of what a standalone game keeps are the agent's proposals, listed in the target “[[qt:QT37]]”. Where the declaration is held is a question for the design rounds. Whether one such game may use more than one GM tablet, and whether its devices must play one shared game, is the owner's question “Which standalone games the engine must run”.",
       "throughWhat": "A declaration every device reads (the design rounds choose where it is held); a device that decides anything reaches the same verdicts the engine would, and a test proves it ([[qt:QT37]]).",

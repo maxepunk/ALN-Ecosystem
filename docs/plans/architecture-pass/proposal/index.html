@@ -158,7 +158,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <li><a href="#imp-3"><b>3</b><span>The messages between the backend and the devices are defined in one place and checked automatically.</span></a></li>
     <li><a href="#imp-4"><b>4</b><span>Video, music, sound and lights are controlled through one pattern, and their programs restart when they crash.</span></a></li>
     <li><a href="#imp-5"><b>5</b><span>The engine keeps separate what belongs to one session, to one installation and to the whole production.</span></a></li>
-    <li><a href="#imp-6"><b>6</b><span>The code has a known place for adding a new kind of rule, equipment or screen.</span></a></li>
+    <li><a href="#imp-6"><b>6</b><span>A designer writes a game's rules in the pack, and the code has a known place for each new capability.</span></a></li>
     <li><a href="#imp-7"><b>7</b><span>The backend is assembled in one place, and a copy started for a test or a rehearsal leaves the installed backend as it was.</span></a></li>
   </ol>
   <p>The game itself happens in a room, with players, token objects and GMs. The engine is the software around it. Its game rules and its pack format are in good shape. The weak spots are in how its programs work together, and that is what the seven changes are about.</p>
@@ -444,34 +444,40 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
   </article>
 
   <article class="imp" id="imp-6">
-    <div class="imp-head"><span class="num">6</span><h3>The code has a known place for adding a new kind of rule, equipment or screen</h3><span class="badge">Recommended</span></div>
+    <div class="imp-head"><span class="num">6</span><h3>A designer writes a game's rules in the pack, and the code has a known place for each new capability</h3><span class="badge">Recommended</span></div>
     <div class="ba">
       <div class="side today">
         <p class="side-label">Today</p>
         <div class="flow">
           <div class="row"><span class="bx">The engine has a list of its capabilities. A pack lists the capabilities it needs. At start-up the backend refuses a pack that needs one the engine does not have</span></div>
           <div class="via">that check works well. But adding a new capability means changing code in many places, with no pattern to follow</div>
-          <div class="row"><span class="bx">The session's data is built around ALN's kind of game: accounts, transactions, scores</span><span class="bx">There is one way of scoring</span></div>
+          <div class="row"><span class="bx">The rules of the game are in the engine's code: one way of scoring, one rule for a complete group, one rule for a used token</span><span class="bx">A pack picks them by name and sets their numbers. A designer cannot write a rule of their own</span></div>
         </div>
       </div>
       <div class="side next">
         <p class="side-label">Proposed</p>
         <div class="flow">
-          <div class="row"><span class="bx">A new kind of rule, such as another way of scoring, is one new file in one known folder, written to a set pattern. A pack asks for it by name</span></div>
+          <div class="row"><span class="bx">A designer writes the game's rules in the pack, in the config tool: what a token carries, what an account is and holds, the verbs, what each verb does, and what the game does by itself. How points are worked out is a formula the designer writes</span></div>
+          <div class="via">the engine's code holds the capabilities these rules are built from, and works the rules out the same way in the backend and inside the GM scanner</div>
+          <div class="row"><span class="bx">A new capability for rules is one new file in one known folder, written to a set pattern</span></div>
           <div class="row"><span class="bx">A new kind of equipment is one new file written to the pattern in change 4</span></div>
           <div class="row"><span class="bx">A new kind of screen is one new page that is told what to show, as in change 1</span></div>
         </div>
-        <p>This matches the two kinds of extension you described on 2 November. A designer combines the engine's existing capabilities inside the pack, with no programming. A developer adds a new capability to the engine as one new piece of code, and then any game can use it.</p>
+        <p>This matches the two kinds of extension you described on 2 November. A designer combines the engine's existing capabilities inside the pack, with no programming. A developer adds a new capability to the engine as one new piece of code, and then any game can use it. ALN's own rules move from the engine's code into ALN's pack, written like any other game's.</p>
       </div>
     </div>
     <dl class="gives">
+      <div><dt>For a designer</dt><dd>A new game is scored its own way and gives its players its own verbs, with no developer. A game that is not ALN might let a player deposit a token for its value, doubled in the last ten minutes, or let one faction steal a token that another has deposited.</dd></div>
       <div><dt>For a developer</dt><dd>Someone adding a capability knows where the code goes and what it has to look like. A game that uses the capability proves it works.</dd></div>
       <div><dt>Later work it allows</dt><dd>The ways the engine is meant to grow. The project's notes already list 28 of them, from a third way to turn in a token, to a different lighting system, to audio in several rooms. Two are your own examples.</dd></div>
-      <div><dt>How the places are designed</dt><dd>From the kinds of addition the engine is meant to allow, not from one game. Each place is checked against at least two different cases from that list, and against one test: what an addition must not need to touch. Today's scoring, the seven programs and the scoreboard become the first rule, the first equipment and the first screen, so no place is built on a guess. The second game is one case among the 28.</dd></div>
+      <div><dt>How the places are designed</dt><dd>From the kinds of addition the engine is meant to allow, not from one game. Each place is checked against at least two different cases from that list, and against one test: what an addition must not need to touch. ALN's rules written in its pack, the seven programs and the scoreboard become the first rules, the first equipment and the first screen, so no place is built on a guess. The second game is one case among the 28.</dd></div>
+      <div><dt>What it costs</dt><dd>Working a game's rules out from its pack is new code at the centre of the engine. ALN's rules have to be written again as pack rules and shown to give the same scores as today on recorded sessions. The config tool needs screens for verbs and formulas, which the roadmap calls the mechanics editor.</dd></div>
     </dl>
+    <p class="choice"><b>Decided on 13 November.</b> A designer designs the game's rules in the pack, scoring and verbs included. A new capability becomes part of the engine and arrives with an engine update, with no add-ons beside it. My first version of this change kept scoring with developers, and you corrected it.</p>
     <details class="files"><summary>Where this is in the code</summary><ul>
       <li>backend/src/services/packService.js:52 (the list of capabilities, and the start-up check)</li>
-      <li>backend/src/gameRules/scoring.js; backend/src/models/session.js</li>
+      <li>backend/src/gameRules/scoring.js:51 (the scoring formula, in the engine's code); backend/src/models/session.js</li>
+      <li>ALN-TokenData/game.json (a mode picks "standard" or "none"; the group bonus is a formula the pack names)</li>
       <li>docs/plans/architecture-pass/requirements/2026-11-01-extension-cases.json (the 28 ways the engine must be able to grow)</li>
       <li>docs/plans/2026-07-17-bill-capability-scoping.md (what the second game needs)</li>
     </ul></details>
@@ -532,7 +538,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
         <span class="chip good">Handles every scan and command the same way <a class="mk ok" href="#imp-1">1</a></span>
         <span class="chip good">Keeps the session's complete record <a class="mk ok" href="#imp-1">1</a></span>
         <span class="chip good">Tells every screen what to show <a class="mk ok" href="#imp-1">1</a></span>
-        <span class="chip good">The game rules, with a known place for new ones <a class="mk ok" href="#imp-6">6</a></span>
+        <span class="chip good">The game's rules come from the pack. The capabilities they are built from have a known place <a class="mk ok" href="#imp-6">6</a></span>
         <span class="chip good">What happens when a session starts, pauses, ends or resets, from one table <a class="mk ok" href="#imp-5">5</a></span>
       </div>
     </div>
@@ -628,12 +634,14 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <li><b>A game with no backend at all.</b> The installation's settings say there is no backend, and the GM no longer chooses when the GM scanner starts. Every device works alone while the session runs. The GM scanner keeps the session's record, and the GM can save it at the end.</li>
   </ul>
   <p>Nothing more is needed from you on this. Scans a GM scanner stored during a session count for that session even when they arrive after it ended.</p>
-  <p><b>Now: how the engine is extended.</b> This is changes 6, 4 and 7. Two of its three decisions are made, on 13 November. The third is with you. I put it wrongly the first time and you corrected it.</p>
+  <p><b>How the engine is extended: settled.</b> This was changes 6, 4 and 7. You made these three decisions on 13 November:</p>
   <ul class="plain">
-    <li><b>With you: what a designer designs in the pack.</b> A designer designs the game's rules in the config tool, with no developer: what a token carries, what an account is and holds, the verbs players and GMs have, what each verb does, and what the game does by itself. How points are worked out is the designer's, written as a formula. A developer adds a capability only when a rule needs one the engine does not have. ALN's own rules move from the engine's code into ALN's pack. My first version kept scoring with developers. Change 6 above still says so, and I will redraw it when you confirm this.</li>
-    <li><b>Decided: how a new capability reaches a production.</b> It becomes part of the engine and arrives with an engine update. There are no add-ons installed beside the engine.</li>
-    <li><b>Decided: what comes back by itself after a restart.</b> The session, the clock, the GMs' logins, the music, the TV, the lights and the volumes come back. A video or a cue that was cut off, or that came due while the backend was down, is listed for the GM to run or drop.</li>
+    <li>A designer designs the game's rules in the pack, in the config tool, with no developer: what a token carries, what an account is and holds, the verbs players and GMs have, what each verb does, and what the game does by itself. How points are worked out is a formula the designer writes. A developer adds a capability only when a rule needs one the engine does not have. ALN's own rules move from the engine's code into ALN's pack.</li>
+    <li>A new capability becomes part of the engine and arrives with an engine update. There are no add-ons installed beside the engine.</li>
+    <li>After a restart, the session, the clock, the GMs' logins, the music, the TV, the lights and the volumes come back by themselves. A video or a cue that was cut off, or that came due while the backend was down, is listed for the GM to run or drop.</li>
   </ul>
+  <p>Nothing more is needed from you on this.</p>
+  <p><b>Now, and the last of the design: how today's code moves to the new design.</b> I am working this out from the facts and will bring you one decision with my recommendation.</p>
 </section>
 
 <footer class="prose">

@@ -230,6 +230,21 @@ you intend.
   `PACK_SCHEMA_VERSION`, which engine and pack must match exactly
   (slice 2b). A brand-new flag arrives the same way, by schema
   evolution plus a gate rule, never by loosening the schema.
+- **Verb.** Something a player or a GM can do with a token, declared
+  in the pack: its name, who may do it, on which kind of device, when
+  it is allowed, and what it does. The owner's word (2026-11-13: "the
+  verbs a designer can allow players to engage in using tokens"). A
+  pack mode (§1, "mode", meaning 1) is today's form of a verb.
+- **Rule (of a game).** Pack content a designer writes in the config
+  tool: what a token carries, what an entity is and holds, the verbs,
+  what each verb does, and what the game does by itself. How points
+  are worked out is a **formula** in the rule: a fixed set of
+  operations over the token's values, tables and what the entity has
+  done. A pack holds rules and formulas, never program code. The
+  engine's capabilities are what rules are built from; a developer
+  adds a capability only when a rule needs one the engine lacks
+  (owner, 2026-11-13; `docs/adr/0011`). Before this, the formulas were
+  in the engine's code and a pack named them.
 - **PACK_PATH.** The environment variable that points the backend at
   an alternate pack directory (`packService.getPackDir()`). It exists
   for testing, preview, and rollback. **PROFILE_PATH** is the same

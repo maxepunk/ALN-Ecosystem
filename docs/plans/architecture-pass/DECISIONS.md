@@ -515,16 +515,19 @@ Made 2026-11-13.
 
 **A designer designs a game's rules, scoring and verbs included**
 
-The engine must let a designer design the rules of a new game, and
-that includes how things are scored and the verbs a designer lets
-players use with tokens. In the owner's words: "designing an engine
-that allows NEW games to be designed which MUST INCLUDE how things are
-scored / the verbs a designer can allow players to engage in using
-tokens." The person is a "designer", not a "maker".
+A designer designs a game's rules in the pack, in the config tool, with
+no developer: what a token carries, what an account is and holds, the
+verbs players and GMs have, what each verb does (points worked out by a
+formula the designer writes, the token used up or not, what is shown,
+what the room does) and what the game does by itself. The engine's code
+holds the capabilities these rules are built from. A developer adds a
+capability only when a rule needs one the engine does not have, once,
+for every game. ALN's own rules become rules in ALN's pack. The three
+staff-only actions stay, and a pack holds rules and formulas, never
+program code. The person is a "designer", not a "maker". Decision note:
+`docs/adr/0011`.
 
-Made 2026-11-13. What exactly a designer builds from, and where a
-developer comes in, is being worked out with the owner
-(`design/2026-11-13-how-the-engine-is-extended.md`).
+Made 2026-11-13.
 
 History:
 - 2026-11-13. The agent had recommended that a designer's rule of the
@@ -534,11 +537,34 @@ History:
   recommend no to a game designer (what you're calling a maker) being
   able to design the rules of a game? This seems like you're somehow
   getting caught up in a bias towards maintaining the existing ALN
-  ruleset". The recommendation is withdrawn. It had read the floor of
-  2026-07-09 (which people and devices may do staff actions) as a limit
-  on the game's own rules, and had taken today's code, where the
-  scoring formula is fixed and only its numbers are in the pack, as the
-  model.
+  ruleset instead of designing an engine that allows NEW games to be
+  designed which MUST INCLUDE how things are scored / the verbs a
+  designer can allow players to engage in using tokens." The
+  recommendation is withdrawn. It had read the floor of 2026-07-09
+  (which people and devices may do staff actions) as a limit on the
+  game's own rules, and had taken today's code, where the scoring
+  formula is fixed and only its numbers are in the pack, as the model.
+- 2026-11-13. The agent read the owner's records on rules, scoring and
+  verbs (the roadmap's final outcome; the second game's section; the
+  two kinds of extension) and put the decision again as it stands
+  above, with three example rules for a game that is not ALN. The
+  owner: "yes". This answers the question the owner named on
+  2026-11-02, "What a game's maker may build inside the pack". The
+  extension case that gave a new way of scoring to a developer (EX4)
+  was the agent's reading and is corrected in the cases file.
+
+**How the engine is extended is settled**
+
+The three decisions on this topic are made: a designer designs the
+game's rules in the pack (`docs/adr/0011`); a new capability is part of
+the engine and arrives with an engine update (`0009`); what comes back
+by itself after a restart (`0010`). Stated beside them and not objected
+to: a copy of the backend started for a test or a rehearsal uses
+stand-ins, and only one copy at a time holds the real TV, speakers and
+lights. The working note is
+`design/2026-11-13-how-the-engine-is-extended.md`.
+
+Made 2026-11-13.
 
 **A new capability is part of the engine and arrives with an engine update**
 

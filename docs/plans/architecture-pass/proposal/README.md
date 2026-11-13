@@ -31,8 +31,11 @@ The seven changes, as the page titles them:
    and their programs restart when they crash.
 5. The engine keeps separate what belongs to one session, to one
    installation and to the whole production.
-6. The code has a known place for adding a new kind of rule, equipment
-   or screen (worth exploring).
+6. A designer writes a game's rules in the pack, and the code has a
+   known place for each new capability. (Until 2026-11-13 this read
+   "the code has a known place for adding a new kind of rule,
+   equipment or screen", with a new way of scoring as a developer's
+   file. The owner corrected that: `docs/adr/0011`.)
 7. A test or a rehearsal can run on the backend's computer without
    disturbing a live session.
 

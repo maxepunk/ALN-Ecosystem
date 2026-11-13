@@ -66,8 +66,8 @@ before acting.
   the record, built with the GM scanner's redesign (ROADMAP row 8.17).
   Stated to the owner and not objected to: corrections stay visible in
   the record. The owner also confirmed how ALN runs while this work is
-  done and the order of work. The page is version 26 (version id
-  1794554524-0c17; source
+  done and the order of work. The page is version 27 (version id
+  1794555687-4cdb; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
   and its last box lists what is decided and what is next. **Two rules
   from the owner on 2026-11-13.** (1) Never ask the owner whether a
@@ -94,43 +94,40 @@ before acting.
   a session count even when they arrive after its end (`docs/adr/0003`,
   amended). The working note:
   `docs/plans/architecture-pass/design/2026-11-13-which-device-decides-what.md`.
-  **In progress: how the engine is extended** (the proposal's changes
-  6, 4 and 7). Two of its three decisions are made (2026-11-13): a new
-  capability becomes part of the engine and arrives with an engine
-  update, with no add-ons (`docs/adr/0009`); and after a restart the
-  session, clock, logins, music, TV, lights and volumes come back by
-  themselves, while a video or cue that was cut off or missed is listed
-  for the GM (`docs/adr/0010`). **The first decision went back to the
-  agent, with a correction that binds everything after it.** The agent
-  had recommended that a designer's rules may only run the room and
-  that scoring is a developer's work. The owner: "This seems like
-  you're somehow getting caught up in a bias towards maintaining the
-  existing ALN ruleset instead of designing an engine that allows NEW
-  games to be designed which MUST INCLUDE how things are scored / the
-  verbs a designer can allow players to engage in using tokens." So: a
-  designer designs a game's rules in the pack, scoring and the players'
-  verbs included. Say "designer", never "maker". Do not treat today's
-  code (one scoring formula, cues that only run the room) or the floor
-  of 2026-07-09 (who may do staff actions) as limits on the game's own
-  rules. The agent then read the owner's records itself (the
-  roadmap's final outcome: "A game designer builds a complete game as a
-  pack: mechanics, economy, text, theme, show cues, content") and put
-  the decision again, corrected, on 2026-11-13: in the pack a designer
-  sets what a token carries, what an account is and holds, the verbs,
-  what each verb does (points by a formula, the token used up or not,
-  what is shown, what the room does) and what the game does by itself;
-  a developer adds a capability only when a rule needs one the engine
-  lacks; ALN's own rules move from the engine's code into ALN's pack;
-  the three staff-only actions stay, and a pack holds formulas, never
-  program code. **Waiting for the owner to confirm it.** The note, with
-  what the records say and what the correction changes in the design:
+  **The design of how the engine is extended is settled too
+  (2026-11-13).** (1) A designer designs the game's rules in the pack,
+  in the config tool, with no developer: what a token carries, what an
+  account is and holds, the verbs, what each verb does (points by a
+  formula the designer writes, the token used up or not, what is shown,
+  what the room does) and what the game does by itself. The engine's
+  code holds the capabilities rules are built from, and a developer
+  adds one only when a rule needs a capability the engine lacks. ALN's
+  own rules move from the engine's code into ALN's pack. The three
+  staff-only actions stay, and a pack holds formulas, never program
+  code (`docs/adr/0011`). (2) A new capability is part of the engine
+  and arrives with an engine update, with no add-ons (`0009`). (3)
+  After a restart the session, clock, logins, music, TV, lights and
+  volumes come back by themselves, and a video or cue that was cut off
+  or missed is listed for the GM (`0010`). **The first of these binds
+  everything after it, and the agent got it wrong before the owner
+  corrected it.** The agent had recommended that a designer's rules may
+  only run the room and that scoring is a developer's work. The owner:
+  "This seems like you're somehow getting caught up in a bias towards
+  maintaining the existing ALN ruleset instead of designing an engine
+  that allows NEW games to be designed which MUST INCLUDE how things
+  are scored / the verbs a designer can allow players to engage in
+  using tokens." Never treat today's code (one scoring formula in the
+  engine, a pack that names it) or the rule about staff-only actions as
+  a limit on what a designer may design. Say "designer", never "maker".
+  The working note, with what the owner's records say:
   `docs/plans/architecture-pass/design/2026-11-13-how-the-engine-is-extended.md`.
-  **After that: how today's code moves to the new design.** A helper
-  was started on 2026-11-13 to gather facts for it into
+  **Next, and the last design topic: how today's code moves to the new
+  design.** A helper's facts for it are committed at
   `docs/plans/architecture-pass/design/2026-11-13-how-todays-code-moves-facts.md`
-  (no recommendation in it; check its claims before relying on them;
-  commit the file when it arrives). The decision itself is the lead's
-  to work out and put to the owner.
+  (no recommendation in it; written before the owner's correction;
+  check its claims before relying on them). The decision is the lead's
+  to work out and put to the owner. Also settle there how the config
+  tool applies a change.
   The questions as asked, the
   recommendations, the owner's answers word for word and the facts
   looked up for the first topic are in
@@ -149,8 +146,8 @@ before acting.
   sound and lights are controlled through one pattern, and their
   programs restart when they crash; (5) the engine keeps separate what
   belongs to one session, one installation and the whole production;
-  (6) the code has a known place for adding a new kind of rule,
-  equipment or screen; (7) the backend is assembled in one place, and a
+  (6) a designer writes a game's rules in the pack, and the code has a
+  known place for each new capability; (7) the backend is assembled in one place, and a
   copy started for a test or a rehearsal leaves the installed backend as
   it was. The picture the owner confirmed: blue (the backend computer
   in use, its scanners, the branch `production-2026-07`) runs every ALN

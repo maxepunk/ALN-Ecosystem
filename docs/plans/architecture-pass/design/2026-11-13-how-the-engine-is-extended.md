@@ -1,7 +1,9 @@
 # How the engine is extended (design topic, opened 2026-11-13)
 
-Status: with the owner. Three decisions asked on 2026-11-13. The topic
-is settled when the owner has made them.
+Status: settled on 2026-11-13. Decision notes: `docs/adr/0009`, `0010`
+and `0011`. The first decision was put wrongly, corrected by the owner
+and put again; read "The owner's answers" and what follows it before
+the decision as first put.
 
 This is the fourth design topic in the order the owner confirmed. It is
 the proposal's change 6 (a known place in the code for a new kind of
@@ -335,4 +337,13 @@ and formulas built in the config tool, never program code.
 - Tests: ALN's rules written the new way must give the same scores as
   today's code on recorded sessions, and the toy game must be scored a
   different way, to prove the rules are not ALN's.
+
+## The owner's answer to the corrected decision (2026-11-13)
+
+Word for word:
+
+> yes
+
+Decision 1 is made as put again (`docs/adr/0011`). With decisions 2 and
+3 this topic is settled. Nothing more is needed from the owner on it.
 
