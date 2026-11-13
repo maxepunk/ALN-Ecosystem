@@ -408,6 +408,13 @@ architecture pass's question.
   engine's cached picture of what VLC is doing. Avoid "mirror".
 - **Delivery path.** The route a runtime fact takes from its authority
   to a screen.
+- **Session record.** The ordered list of everything that happened in
+  one game session. It only grows: a correction is a new line, never a
+  change to an old one (owner, 2026-11-13; `docs/adr/0001`). Scores and
+  everything a screen shows are worked out from it. Related: the
+  session bundle (decision B9), the file the engine writes for the
+  report. Avoid "the night's record": a production may play many game
+  sessions in one day. (Added 2026-11-13.)
 
 ## 5. Venue, kit, and installation
 

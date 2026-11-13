@@ -33,6 +33,140 @@ had said it.
 
 ---
 
+## Since the proposal (2026-11-10 onward)
+
+On 2026-11-10 one proposal page replaced the owner's site
+(`proposal/index.html`; how it was made is in `proposal/README.md`).
+The entries in this section are decisions the owner has made since
+then. The older sections below stand where they do not conflict with
+these. Their entries on how the design half was to run (the site, the
+panel, competing designs for every round) describe a process the owner
+retired on 2026-11-10. This record still uses names made up for the old
+site ("show machine", "GM tablet"); read them as the backend's computer
+and the GM scanner until the record is cut down.
+
+**One proposal page, seven changes**
+
+The architecture pass's output for the owner is one proposal page of
+seven changes to how the engine's code is organised, made by following
+the skill `improve-codebase-architecture`. It replaces the six-page
+site.
+
+Made 2026-11-10.
+
+History:
+- 2026-11-10. The owner said the site and the panel were being built
+  for their own sake and named the origin
+  (`rework/2026-11-10-owner-step-back.md`).
+- 2026-11-10. The owner said the descriptions had drifted into jargon.
+  The page was rewritten in the project's own names (version 13).
+- 2026-11-12. The owner left eight comments on version 13
+  (`rework/2026-11-12-owner-comments-on-proposal.md`). Version 14
+  follows them.
+
+**Blue runs every ALN session until one cutover**
+
+Every ALN session runs on blue (the backend computer in use, its
+scanners, the branch `production-2026-07`) until all of the new engine
+is finished, the backend and the scanners together. Then there is one
+cutover: green replaces blue and the hardware scanners get their new
+firmware. Nothing in the new engine has to work with an old part. This
+restates "The architecture pass is the work now" (2026-10-30).
+
+Confirmed 2026-11-13.
+
+History:
+- 2026-11-12. Version 13 of the page had assumed a gradual switch, with
+  blue as a fallback and scanners working with both backends. The owner
+  corrected it in three comments.
+- 2026-11-13. The owner confirmed the corrected picture ("1 - yes").
+
+**The order of work: design first, hardest to reverse first**
+
+The work goes in this order. (1) Design how the backend keeps a
+session's data, with what belongs to a session, an installation and a
+production. (2) Design the messages and files. (3) Design which device
+decides what: in a networked game, in a standalone game, and on a GM
+scanner that has lost its connection. (4) Design how the engine is
+extended, with the pattern for equipment and how copies of the backend
+stay apart. (5) Decide how today's code moves to the new design. (6)
+Build a thin first version that works end to end. (7) Build the rest
+one area at a time, each with its detailed design just before it is
+built; the paused work on automatic restarts and the preflight is
+rebuilt here. (8) Cut over once, when the owner decides the new engine
+is ready. Steps 1 to 5 are conversations with the owner, question
+rounds with a recommendation for each question, ending in short
+decision notes. Work is never ordered by what needs no decision from
+the owner. This restates "One program: design half, then build half"
+(2026-10-30) and "Design top-down, hardest-to-reverse choices first"
+(2026-11-01).
+
+Confirmed 2026-11-13.
+
+History:
+- 2026-11-12. Version 13 had proposed starting to build two changes
+  while the others were designed. The owner called that false
+  efficiency.
+- 2026-11-13. The owner confirmed the order ("2 - yes").
+
+**The session record only grows**
+
+The backend keeps a session as a record that only grows. Every scan,
+every correction and every reset is added as a new line, in order.
+Scores and everything a screen shows are worked out from the record.
+Nothing changes or removes a line once it is written. The short
+decision note is `docs/adr/0001-the-session-record-only-grows.md`, and
+the glossary has the term "session record".
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Made as the first answer of step 1 ("3 - session's record
+  grows"). The alternative was data edited in place, as today.
+
+**What keeps the backend's programs running is already ruled**
+
+The backend starts and supervises its own programs, through one
+supervision path, and a host can mark a program as run by something
+else on that computer (the hardening plan's rulings R6, R13, R18 and
+R20, owner, 2026-09-12). The proposal does not reopen this. A backend
+restart follows the same steps as a normal start.
+
+Restated 2026-11-12.
+
+History:
+- 2026-11-12. Version 13 had shown this as an open choice and
+  recommended the operating system instead. The owner's comment sent
+  the agent back to the ruling.
+
+**No test or rehearsal runs during a live session**
+
+No real situation has a test or a rehearsal running in the middle of a
+live session. A copy of the backend started for a test or a rehearsal
+must leave the installed backend, its files and the real gear as they
+were, between sessions.
+
+Made 2026-11-12.
+
+History:
+- 2026-11-12. The owner's comment on change 7. It answers the question
+  "where may a rehearsal run while a session is live", which is closed.
+
+**Extension is designed from the kinds of addition, not from one game**
+
+The places in the code for adding a new kind of rule, equipment or
+screen are designed from the kinds of addition the engine is meant to
+allow (the 28 cases in
+`requirements/2026-11-01-extension-cases.json`), not from what the
+second game needs. The second game is one case among them.
+
+Made 2026-11-12.
+
+History:
+- 2026-11-12. The owner's comment on change 6.
+
+---
+
 ## The goal and the frame
 
 **Design for the long term, beyond ALN**

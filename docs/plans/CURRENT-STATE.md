@@ -25,52 +25,63 @@ before acting.
   `docs/plans/architecture-pass/DECISIONS.md`. Working log
   (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
-- **Now: the architecture proposal is with the owner** (version 14,
-  published 2026-11-12 at the owner's address, version id
-  1794528649-c01e; source
-  `docs/plans/architecture-pass/proposal/index.html`, with
-  `proposal/README.md` on how it was made). It replaces the old six-page
-  site, which is retired. The proposal has seven changes: (1) the
-  backend keeps one complete record of each session and updates every
-  screen from it the same way; (2) a standalone game runs the same game
-  code as a networked one; (3) the messages between the backend and the
-  devices are defined in one place and checked automatically; (4) video,
-  music, sound and lights are controlled through one pattern, and their
+- **Now: step 1 of the design is under way with the owner** (how the
+  backend keeps a session's data). On 2026-11-13 the owner confirmed
+  how ALN runs while this work is done ("1 - yes"), confirmed the order
+  of work ("2 - yes"), made the first decision of step 1 ("3 -
+  session's record grows"), and resolved the eight comments on the
+  page. The page is version 15 (version id 1794529336-8982; source
+  `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
+  and its last box says where we are. **Waiting for the owner on round
+  1 of step 1**, five questions asked in the conversation on
+  2026-11-13: whether the session record also holds what the room did
+  and what went wrong; that corrections stay visible in it; what the
+  three hand adjustments of the 27 March session were; what can be
+  added after a session ends; what is wiped between groups and what
+  stays. The questions as asked, the recommendations, what is already
+  settled and the facts looked up are in
+  `docs/plans/architecture-pass/design/2026-11-13-step-1-session-data.md`.
+  When the owner answers: write each answer into that note's "Answers",
+  into `DECISIONS.md` ("Since the proposal"), onto this page, into
+  `CONTEXT.md` when a term settles, and into `docs/adr/` when a
+  decision is hard to reverse; then work out the next round from the
+  design tree in that note. The method is the skills `grilling` and
+  `domain-modeling` (`docs/agents/process.md` section 1, the row for
+  `grill-with-docs`). The seven changes: (1) the backend keeps one
+  complete record of each session and updates every screen from it the
+  same way; (2) a standalone game runs the same game code as a
+  networked one; (3) the messages between the backend and the devices
+  are defined in one place and checked automatically; (4) video, music,
+  sound and lights are controlled through one pattern, and their
   programs restart when they crash; (5) the engine keeps separate what
   belongs to one session, one installation and the whole production;
   (6) the code has a known place for adding a new kind of rule,
   equipment or screen; (7) the backend is assembled in one place, and a
   copy started for a test or a rehearsal leaves the installed backend as
-  it was. On 2026-11-12 the owner left eight comments on version 13.
-  Before talking to the owner, read three notes in
-  `docs/plans/architecture-pass/rework/`: `2026-11-10-owner-step-back.md`
-  (why the old site was retired, and the words to use),
-  `2026-11-10-what-the-engine-is.md` (what the engine is supposed to be;
-  physical against digital) and
-  `2026-11-12-owner-comments-on-proposal.md`. The last one matters most
-  for the proposal: it has the comments word for word, the decisions they
-  rest on, what a backend restart does today, and what changed. The
-  corrected picture: blue (the backend computer in use, its scanners,
-  the branch `production-2026-07`) runs every ALN session until all of
-  the new engine is finished; then one cutover, green replacing blue and
-  the hardware scanners re-flashed; nothing has to stay compatible with
-  the old parts; green has not been started. The order of work, from
-  the owner's decisions of 2026-10-30 and 2026-11-01: design how the
-  backend keeps a session's data (changes 1 and 5); the messages and
-  files (3); which device decides what (2); how the engine is extended
-  (6, with 4 and 7); how today's code moves to the new design; then
-  build a thin first version end to end; then one area at a time; then
-  the cutover. **Waiting for the owner on three things:** whether that
-  picture is now right, whether the order is what they meant, and then
-  the first design question (the choice inside change 1: a record that
-  only grows, or data edited in place). The method for each design step
-  is the skill's third step: a conversation, one question at a time,
-  each with a recommendation, ending in short decision notes. Do not
+  it was. The picture the owner confirmed: blue (the backend computer
+  in use, its scanners, the branch `production-2026-07`) runs every ALN
+  session until all of the new engine is finished; then one cutover,
+  green replacing blue and the hardware scanners re-flashed; nothing has
+  to stay compatible with the old parts; green has not been started.
+  The order the owner confirmed: design how the backend keeps a
+  session's data (changes 1 and 5); the messages and files (3); which
+  device decides what (2); how the engine is extended (6, with 4 and
+  7); how today's code moves to the new design; then build a thin first
+  version end to end; then one area at a time; then the cutover. Do not
   start building anything before the design it depends on is settled.
-  Do not rebuild the old site, run the panel, or ask for answers to the
-  old site's questions. The eight comment threads on the page are still
-  open: they were not sent to Claude, so they cannot be answered or
-  resolved from here.
+  Never order work by what needs no decision from the owner. Before
+  talking to the owner, read three notes in
+  `docs/plans/architecture-pass/rework/`:
+  `2026-11-10-owner-step-back.md` (why the old site was retired, and
+  the words to use), `2026-11-10-what-the-engine-is.md` (what the
+  engine is supposed to be; physical against digital) and
+  `2026-11-12-owner-comments-on-proposal.md` (the eight comments, the
+  decisions they rest on, what a backend restart does today). Do not
+  rebuild the old site, run the panel, or ask for answers to the old
+  site's questions. Owed, and not blocking the conversation: remove the
+  retired site's files and cut `DECISIONS.md` down (keep what the
+  proposal cites: the extension cases, the relationship maps, the cause
+  analysis), and sharpen three glossary entries (Token, Kit, "tonight").
 - **Words for anything the owner reads.** After version 12 the owner
   said the descriptions had drifted into jargon and were ambiguous
   ("what does 'the same core runs wherever a game is decided' even
@@ -100,8 +111,8 @@ before acting.
   stand. Its entries on how the design half runs (the panel, the design
   rounds, the site's pages) describe the process retired on 2026-11-10
   and are history until the record is cut down. Open for the owner now:
-  the three things under "Now". The proposal does not decide two product
-  questions that come up inside the first design steps: what a GM may
+  round 1 of step 1, under "Now". The proposal does not decide two
+  product questions that come up inside the first design steps: what a GM may
   tell a team while their GM scanner has no connection, and what a
   device that missed a software update may do. The owner answered a
   third on 2026-11-12: no real situation has a test or a rehearsal

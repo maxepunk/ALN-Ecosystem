@@ -281,7 +281,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
       <div><dt>Later work it allows</dt><dd>Staff notes and photos during a session. A full record of each session for the report. Players tapping tokens with their own phones. Actions made of several taps in a row, which the second game needs. Games that show different players different things.</dd></div>
       <div><dt>What it costs</dt><dd>It is the biggest of the seven, because every scan and command passes through this code. And for the backend to check what a player scanner may do, each one would need a credential, issued automatically with no login. None has one today, and the roadmap leaves that decision to you.</dd></div>
     </dl>
-    <p class="choice"><b>A choice inside this one.</b> The record can only grow, so that a delete is a new line saying "this transaction was deleted". Or the backend can keep editing the session's data in place, as today. I recommend the growing record. Scans taken without a connection can be added in order. After a restart, the backend reads the record through and is back where it was. And it is already the full account of the session that the report needs. All three reviewers recommended the same.</p>
+    <p class="choice"><b>Decided on 13 November.</b> The record only grows. A delete is a new line saying "this transaction was deleted", and nothing changes or removes a line once it is written. The alternative was to keep editing the session's data in place, as today.</p>
     <details class="files"><summary>Where this is in the code</summary><ul>
       <li>backend/src/routes/scanRoutes.js, healthRoutes.js, musicRoutes.js; backend/src/websocket/adminEvents.js (the six entry points)</li>
       <li>backend/src/services/transactionService.js:721; session/persistenceListeners.js:44 (delete and reset remove transactions)</li>
@@ -597,10 +597,10 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
 </section>
 
 <section class="ask prose">
-  <h2>What I need from you</h2>
-  <p><b>Have I now got right how ALN runs while this work is done?</b> It is in the box near the top: blue runs every session, nothing reaches a live session until everything is finished, and there is one cutover.</p>
-  <p><b>Is the order above what you meant?</b></p>
-  <p><b>If both are right, we start with step 1.</b> Its first question is the choice inside change 1: a record that only grows, or data edited in place.</p>
+  <h2>Where we are</h2>
+  <p><b>Confirmed on 13 November:</b> how ALN runs while this work is done, and the order of work.</p>
+  <p><b>Decided so far in step 1:</b> the session record only grows.</p>
+  <p><b>In front of you now:</b> the next questions of step 1 are in our conversation. They are about what the record holds, how a correction appears in it, what can be added after a session ends, and what is wiped between groups.</p>
   <p class="muted">Two product questions come up inside steps 1 to 3, and I will bring each one when we reach it. What may a GM tell a team while their GM scanner has no connection? What may a device do if it missed a software update?</p>
 </section>
 

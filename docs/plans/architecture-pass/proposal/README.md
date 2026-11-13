@@ -113,8 +113,7 @@ missed a software update may do. (A third, where a rehearsal may run
 while a session is live, was answered by the owner: no real situation
 needs it.)
 
-Next, once the owner replies: confirm the picture of how ALN runs
-during the work and the order; then step 1 of the order, in
-conversation (the skill's third step), starting with the choice inside
-change 1, keeping the glossary and short decision notes current. No
-building starts before the design it depends on is settled.
+The owner confirmed the picture and the order on 2026-11-13, decided
+that the session record only grows, and resolved the comments. The page
+(version 15) is now the plan, and its last box says where we are. The
+design conversation, step by step, is recorded in `../design/`.
