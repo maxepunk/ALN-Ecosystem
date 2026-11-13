@@ -127,6 +127,47 @@ Asked, each with a recommendation worded so "yes" accepts it:
    hand as part of play, the record could carry a transfer as one line,
    so its two sides cannot drift apart.
 
-## Answers
+## Answers to round 1 (owner, 2026-11-13)
+
+Word for word:
+
+> 1 - yes
+> 2 - this makes sense.
+> 3 - agreed
+>
+> Answer: I don't recall what those adjustments were, but GMs do move
+> money between teams/accounts by hand as part of play in ALN. (what's
+> identified as teams in the backend are really framed as accounts in
+> ALN)
+>
+> the two things you're taking as given are accurate.
+
+So: the record holds what the room did and what went wrong
+(`docs/adr/0002`); the after-end rule and the wipe/stay rule stand
+(`docs/adr/0003`); one session at a time, and lines name the device.
+The owner raised no objection to "corrections stay visible".
+
+Wording from here on: for ALN say "account", never "team". The
+engine's own word is "entity" (`CONTEXT.md` section 1).
+
+## Round 2, as asked on 2026-11-13 (closing step 1)
+
+1. A transfer between accounts as one action. GMs move money between
+   accounts today by typing two separate adjustments. Recommended: a
+   transfer becomes one action on the GM scanner (pick two accounts,
+   type the amount once) and one line in the record, so the two sides
+   cannot differ and it can be undone as one. It is built with the GM
+   scanner's redesign, not now. Nothing in step 1 depends on it,
+   because the record takes new kinds of line.
+2. The summary of step 1, for the owner to confirm as the whole of it:
+   the record only grows; what it holds; scores and screens are worked
+   out from it and a restart reads it back; the after-end rule; the
+   wipe/stay rule; one session at a time; lines name the device. Left
+   for later steps: who keeps the record in a standalone game and the
+   order of scans taken without a connection (step 3); how screens are
+   told what to show (step 2); how long records are kept (with the
+   installation's settings).
+
+## Answers to round 2
 
 (None yet.)

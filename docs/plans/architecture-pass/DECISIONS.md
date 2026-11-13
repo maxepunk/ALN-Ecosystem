@@ -124,6 +124,86 @@ History:
 - 2026-11-13. Made as the first answer of step 1 ("3 - session's record
   grows"). The alternative was data edited in place, as today.
 
+**The session record holds the game, the capture, the show and the problems**
+
+Besides every scan (accepted or refused), every correction, the pack
+the session ran, the texts the players saw and the capture, the session
+record gets one line for each thing a person at the session would call
+an event: a video started and finished, a GM paused the music, a
+scanner lost its connection, a program crashed and was restarted. It
+never holds things that change all the time. Scores never depend on
+these lines. The short decision note is `docs/adr/0002`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Round 1 of step 1, question 1 ("1 - yes").
+
+**Corrections stay visible in the session record**
+
+A deleted transaction stays in the record, marked as undone, and the
+token can be scanned again, as today. A score adjustment is a line with
+the amount, the entity (in ALN, the account), the GM scanner it came
+from and the reason if one was typed. "Reset All Scores" keeps its meaning (a fresh start,
+decision A3 of 2026-06-09) as a line; everything before it stays in the
+record and no longer counts.
+
+Stated to the owner 2026-11-13.
+
+History:
+- 2026-11-13. Stated to the owner as following from "The session record
+  only grows" and decision A3, with an invitation to object. The
+  owner's reply raised no objection. It is not an answer the owner gave
+  in so many words.
+
+**After a session ends**
+
+Notes, photos and the accusation can be added to an ended session until
+the next session is created. Player scans that a scanner stored and
+uploads late go into the session they were made in, marked late, and
+never into the next group's. Nothing else is accepted after the end.
+Sales and exposures that a GM scanner stored while it had no connection
+are a question for step 3.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Round 1 of step 1, question 2 ("this makes sense").
+
+**What is wiped between groups, and what stays**
+
+Wiped when the next session is created, and kept only in that
+session's record: entities (ALN's accounts), transactions, scores, the
+clock, cues fired, scans stored on scanners, what the TV was showing. Stays through
+sessions and restarts, because it is about the room: which gear is
+installed, the GMs' logins, volumes and audio routes, the Bluetooth
+speaker, the scanners that belong to the kit. Belongs to the
+production: the pack and its media, which change only when a new pack
+is applied, never in the middle of a session. A backend runs one
+session at a time. Each line of the record names the device it came
+from, not a person. The short decision note is `docs/adr/0003`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Round 1 of step 1, question 3 ("agreed"). The owner also
+  confirmed the two things the agent had taken as given (one session at
+  a time; the device, not a person): "accurate".
+
+**In ALN, GMs move money between accounts by hand**
+
+A fact from the owner, not a decision: in ALN, GMs move money between
+accounts by hand as part of play. What the backend calls teams are
+accounts in ALN. The owner does not recall what the three adjustments
+of the 27 March session were.
+
+Recorded 2026-11-13.
+
+History:
+- 2026-11-13. The owner's answer to round 1's question of fact. Whether
+  a transfer becomes one action for the GM and one line in the record
+  was put to the owner in round 2.
+
 **What keeps the backend's programs running is already ruled**
 
 The backend starts and supervises its own programs, through one

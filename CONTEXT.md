@@ -410,7 +410,10 @@ architecture pass's question.
   to a screen.
 - **Session record.** The ordered list of everything that happened in
   one game session. It only grows: a correction is a new line, never a
-  change to an old one (owner, 2026-11-13; `docs/adr/0001`). Scores and
+  change to an old one (owner, 2026-11-13; `docs/adr/0001`). It holds
+  the game (every scan and correction), the capture, what the room did
+  and what went wrong, one line for each event a person at the session
+  would recognise (`docs/adr/0002`). Scores and
   everything a screen shows are worked out from it. Related: the
   session bundle (decision B9), the file the engine writes for the
   report. Avoid "the night's record": a production may play many game

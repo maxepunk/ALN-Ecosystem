@@ -25,21 +25,46 @@ before acting.
   `docs/plans/architecture-pass/DECISIONS.md`. Working log
   (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
-- **Now: step 1 of the design is under way with the owner** (how the
-  backend keeps a session's data). On 2026-11-13 the owner confirmed
-  how ALN runs while this work is done ("1 - yes"), confirmed the order
-  of work ("2 - yes"), made the first decision of step 1 ("3 -
-  session's record grows"), and resolved the eight comments on the
-  page. The page is version 16 (version id 1794529435-4bdd; source
+- **Now: step 1 of the design is closing with the owner** (how the
+  backend keeps a session's data). Decided so far, all on 2026-11-13:
+  the session record only grows (`docs/adr/0001`); it holds the game,
+  the capture, what the room did and what went wrong, one line for each
+  event a person at the session would recognise (`docs/adr/0002`);
+  after a session ends, notes, photos and the accusation can be added
+  until the next session is created, and stored player scans that
+  arrive late go into the session they were made in; between groups,
+  what the group's play produced is wiped and kept only in that
+  session's record, what is about the room stays, and the pack belongs
+  to the production (`docs/adr/0003`); a backend runs one session at a
+  time; each line names the device, not a person. Stated to the owner
+  and not objected to: corrections stay visible in the record. A fact
+  from the owner: in ALN, GMs move money between accounts by hand as
+  part of play, and what the backend calls teams are accounts in ALN
+  (say "account" for ALN; the engine's word is "entity"). The owner
+  also confirmed how ALN runs while this work is done and the order of
+  work, and resolved the eight comments on the page. The page is
+  version 17 (version id 1794535750-1f38; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
-  and its last box says where we are. **Waiting for the owner on round
-  1 of step 1**, asked in the conversation on 2026-11-13. Three
-  questions: whether the session record also holds what the room did
-  and what went wrong; what can be added after a session ends; what is
-  wiped between groups and what stays. One question of fact: what the
-  three hand adjustments of the 27 March session were. And one thing
-  stated, not asked: corrections stay visible in the record. The questions as asked, the recommendations, what is already
-  settled and the facts looked up are in
+  and its last box lists what is decided. **Waiting for the owner on
+  round 2 of step 1**, asked in the conversation on 2026-11-13: whether
+  a transfer between accounts becomes one action for the GM and one
+  line in the record (recommended: yes, built with the GM scanner's
+  redesign, not now), and whether the summary of step 1 is the whole of
+  it. **Step 2 is next** (the messages and files). A helper was asked
+  on 2026-11-13 for a fact sheet: what each device shows for each scan
+  outcome today, which behaviours the owner already ruled (decisions A1
+  to A7 of 2026-06-09, the hardening plan's R5 and R19), where the
+  phone and the hardware scanner differ, what a tag holds, who can read
+  what, and the version checks at connect. Its report arrives as a
+  message in the session and is NOT in the repository until written
+  down: check its key lines in the code, then write a note for step 2
+  in `docs/plans/architecture-pass/design/` with what is settled and
+  what is open. If the report is lost (a new session), redo that
+  reading from `docs/plans/architecture-pass/2026-10-30-map-inbound.md`
+  and `relationships/2026-11-01-today-client-modules.md` section 6.
+  Never ask the owner something already ruled. The questions of each
+  round as asked, the recommendations, the owner's answers word for
+  word, what is already settled and the facts looked up are in
   `docs/plans/architecture-pass/design/2026-11-13-step-1-session-data.md`.
   When the owner answers: write each answer into that note's "Answers",
   into `DECISIONS.md` ("Since the proposal"), onto this page, into

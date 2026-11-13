@@ -121,6 +121,7 @@ The rule from here on, for anything the owner reads:
 | design tool | config tool |
 | venue setup | installation; its file is the installation profile |
 | a kit with no show machine | a standalone game |
+| team (when talking about ALN) | account. The owner, 2026-11-13: "what's identified as teams in the backend are really framed as accounts in ALN". The engine's own word is entity |
 | the night's record, tonight | the session's record; this session, this installation |
 | core, door, pass, interface, stated life, plug in, the room's side | say what the code does, in a sentence |
 
