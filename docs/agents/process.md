@@ -2,7 +2,8 @@
 
 This file says how work runs for the remainder of the program. It
 complements `docs/agents/issue-tracker.md`, `domain.md`, and
-`triage-labels.md`, and the subagent policy recorded in PHASE3-STATUS,
+`triage-labels.md`, and the subagent policy recorded in PHASE3-STATUS (its "Subagent policy
+ratified" entry; §3(d) below is the working summary),
 which says which model and effort level to use for which kind of agent.
 
 ## 1. Skill map (mattpocock-skills, by trigger)
@@ -12,12 +13,12 @@ occurs.
 
 | Skill | Trigger and instructions |
 |---|---|
-| `grill-with-docs` | Use for every phase-boundary definition session (ROADMAP §9.3) and every batch of owner questions. It runs the interview and also records new or sharpened terms into `CONTEXT.md` as they settle. Plain `grilling` skips that capture, so do not use it for these. |
+| `grill-with-docs` | Use for every phase-boundary definition session (ROADMAP §10.3) and every batch of owner questions. It runs the interview and also records new or sharpened terms into `CONTEXT.md` as they settle. Plain `grilling` skips that capture, so do not use it for these. |
 | `writing-for-agents` | Apply to every document an agent will consume. This includes workflow subagent prompts, skill files, CLAUDE.md edits, the docs/agents files, and the future open-source documentation. See §3 below for what this means for workflow prompts. |
 | `implement` (with `tdd` inside it and `code-review` at the end) | Use as the frame for every build stage (S-unit). The sequence it enforces: write tests first at the agreed seams, run typechecks and single test files often, run the full suite once at the end, run `code-review`, commit. The heavier mixed-model adversarial review still happens once per slice, at slice close. |
 | `wait-what` | The owner's tool. When invoked, re-explain the current state in plain language, using the CONTEXT.md vocabulary. |
 | `domain-modeling` | Use whenever a design discussion creates or sharpens a term. Update CONTEXT.md in the same session. |
-| `wizard` | Use to build the guided setup scripts for steps only a human can do: the green-Pi setup (ROADMAP §3b) and the cutover-day runbook. |
+| `wizard` | Use to build the guided setup scripts for steps only a human can do: the green-Pi setup (ROADMAP §6) and the cutover-day runbook. |
 | `resolving-merge-conflicts` | Use on merge-train day. The likely conflict source is submodule pins. |
 | `prototype` (UI branch) | Use to mock up screens before they are built: the Phase-4 D-track four-domain wireframes (these need no engine work and can start any time), and each B page before its build. Standing rule: never rebuild a screen without an approved design. |
 | `prototype` (LOGIC branch) | Available if the owner wants to feel BILL's contagion math before the real module exists. The owner has declined this by default; the offer stands at about half a work session. |
@@ -25,12 +26,44 @@ occurs.
 | `research` | Use for questions about external facts, for example the Cloudflare DNS-01 details for spike S2. The result is a Markdown file with cited sources, committed to the repo. |
 | `handoff` | Emergencies only: a stage must stop before it is finished. Change from the skill's default: commit the handoff file to the repo, then delete it when the next session has used it. (The skill saves to the OS temp directory; our containers erase that.) Rule 1 below, not handoff, is the normal continuity mechanism. |
 | `unslop` (repo skill at `.claude/skills/unslop/`, installed 2026-08-29 from poteto/plugins, MIT) | Applies to all new human-facing prose: docs, chat replies to the owner, commit messages, PR bodies. It removes AI writing tells and adds plain, direct voice. It pairs with the §4 plain-language standard. §4 governs structure and clarity; unslop governs voice and tells. Scope ruling (owner-confirmed 2026-08-29): the pattern sections apply in full to reference documents; the "adding soul" section applies to prose and replies, never to reference documents, because a glossary must not have opinions; glossary entries use the bold lead-in form the skill itself blesses ("**Term.** Definition."). Application is an editorial read, not search-and-replace; grep may index token-level patterns only. Committed documents are not swept without cause, but retrofit is allowed on demonstrated need (owner amendment, 2026-08-29): when work shows that a committed passage's wording causes real ambiguity or confusion, unslop that passage then and there, and treat the hit as a trigger to review the whole document for the same class of problem, since one bad passage is evidence about its neighbors. Meaning stays; the edit is noted where the document tracks its changes. |
+| `subagent-driven-development` (superpowers plugin; adopted 2026-09-12) | The delegation frame for every build task handed to an implementer subagent: one implementer per task, a file-based brief as the single source of requirements, a task review (spec and quality) after each task, fix loops under the five-round rule with model escalation, and one whole-branch review at the end. Implementers never run in parallel on shared files; coupled seams are one task; a cross-repo parity change is one task holding both sides. Inside a task the implementer follows `implement` and `tdd`. The unit's execution record is the ledger, never the skill's git-ignored scratch directory. |
+| `verification-before-completion` (superpowers plugin; adopted 2026-09-12) | Apply before every completion claim, commit, push, or pull request: run the proving command fresh, read its exit code directly, then claim. An agent's success report is checked against the diff and a fresh run, never trusted. |
+| `improve-codebase-architecture` and `codebase-design` (mattpocock-skills release 1.3.1; recorded 2026-10-30) | Use for the whole-engine architecture pass and for any design of a module's interface or a seam. `codebase-design` supplies the vocabulary of deep modules; `improve-codebase-architecture` looks for places to deepen them. Use confirmed by the owner at the pass's definition session, 2026-10-30 ("The design half's method and tools", `docs/plans/architecture-pass/DECISIONS.md`; the session's record word for word: `docs/plans/2026-10-30-architecture-pass.md`, Appendix A). |
+
+Plugin delivery (recorded 2026-09-12): the mattpocock skills and the
+superpowers skills ship as plugins from the official marketplace and are
+declared in `.claude/settings.json`. A remote container registers only
+that marketplace, so the session-start hook installs any declared
+official-marketplace plugin that is missing. Plugins register at session
+start: a plugin installed mid-session is readable from its cache but the
+Skill tool cannot invoke it until the next session.
+
+Amended 2026-10-30: a cloud session starts in the folder above the
+five repositories, so this project's settings and its start-up hook
+do not load on their own. The owner added a plugin-install line to
+the cloud environment's setup script on 2026-10-30, effective for
+sessions started after that. Running the hook by hand (rule 6, step
+0) also installs the declared plugins, but a plugin installed during
+a session registers only at the next session start. Checked on
+2026-10-30: the setup-script line installs mattpocock-skills only;
+superpowers arrives through the start-up hook. Three mattpocock skills,
+`grill-with-docs`, `wait-what` and `improve-codebase-architecture`,
+carry `disable-model-invocation: true`: only the owner can start them,
+by slash command, and they never appear in an agent's skill list, so a
+restart does not help. An agent runs `grill-with-docs` as its two
+parts, `grilling` and `domain-modeling` (that is the skill's whole
+body), and follows `improve-codebase-architecture` by hand from its
+`SKILL.md` in the plugin cache. That skill writes its HTML report to
+the OS temp directory, which our containers erase; save the report in
+the repository instead. Release 1.3.1 no longer ships
+`resolving-merge-conflicts`; until a replacement is chosen, resolve
+merge conflicts by hand and regenerate pins with the repo's tooling.
 
 Not wired in, because the PHASE3-STATUS and slice-train system already
 covers their jobs (available on request): `to-tickets`, `to-spec`,
 `triage`, `wayfinder`, `ask-matt`, `teach`, `grill-me`.
 
-## 2. Sessions, compaction, and continuity (six rules)
+## 2. Sessions, compaction, and continuity (seven rules)
 
 The working reality: this is one long-running remote session. When the
 conversation grows too large, the harness replaces the history with a
@@ -40,7 +73,7 @@ erases `/tmp`.
 
 What survives all of this is the paper trail: design documents with
 execution records, PHASE3-STATUS rows, and pushed commits. The paper
-trail, not the compaction summary, is the continuity system. The six
+trail, not the compaction summary, is the continuity system. The seven
 rules:
 
 1. **The stage is the unit.** A stage ends with all tests green, the
@@ -71,18 +104,79 @@ rules:
 5. **Write for the cold agent.** The test for every execution record:
    a fresh agent, given only this record and the repo, could continue
    the work.
-6. **Reload before resuming (owner-directed 2026-09-06).** The
-   compaction summary is a pointer to the paper trail, not a working
-   context. After any compaction or container restart, and before the
-   first change to any file: read this file, the root `CONTEXT.md`,
-   `docs/plans/CURRENT-STATE.md`, and the active unit's design
-   document with its execution record, in full. Read the component
-   `CLAUDE.md` for each area the work will touch. Then check the
-   summary's claims against the repository (`git status`, `git log`,
-   the records) before acting on them. This rule exists because
-   resuming from the summary alone has caused real errors: stale
-   verdicts restated as current, and invented vocabulary in place of
-   the project's own terms.
+6. **Reload before resuming (owner-directed 2026-09-06; ordered
+   checklist adopted 2026-09-12; amended the same day, ruling R16 of
+   the hardening plan: the state page first, then its pointers).**
+   After any compaction or container restart, run these steps in this
+   order. Write the result of each step into the active unit's working log
+   (`.superpowers/sdd/<unit>/progress.md`, created if absent)
+   before starting the next.
+   0. Bootstrap (added 2026-10-30). In a cloud session, run
+      `CLAUDE_PROJECT_DIR="$PWD" bash .claude/hooks/session-start.sh` from the ALN-Ecosystem
+      root: it sets up the submodules, dependencies and declared
+      plugins, and it does not run on its own when the session starts
+      outside the project. If the clone is on `main`, first check out
+      the program's working branch, which the root `CLAUDE.md` names.
+   1. Read `docs/plans/CURRENT-STATE.md`, the entry point, one screen.
+      Nothing else is required reading; its pointers say what to open
+      and when.
+   2. Check every claim in the summary against the repository and the
+      page: `git status`, `git log`, the submodule pins. A claim the
+      page or the record does not back is false. Fix the page or drop
+      the claim before going on.
+   3. Reconcile live state against the page's live-state line (§0). List
+      the agents, the background tasks, and the rig and test processes.
+      Stop anything that is not on the page, and record what was
+      stopped.
+   4. Follow the page's pointers for the piece in flight: its brief,
+      the plan's pins for it, the vocabulary sections it names, the
+      tail of the unit's working log, if one survives.
+   5. Send the owner a reload report in the five-line checkpoint
+      format (hardening plan §8): what landed; what is in flight; what
+      is blocked and on whom; what the GM has if we stop here; open
+      risks.
+   Only after step 5 may the agent change a file or dispatch anything.
+   This rule exists because resuming from the summary alone has caused
+   real errors: stale verdicts restated as current, invented vocabulary
+   in place of the project's own terms, twelve dead background waits
+   left running for ten hours because no step looked for them, and a
+   decision made in conversation lost because it was never written to
+   the page.
+7. **Compact only at a checkpoint, with the tree pushed (owner-directed
+   2026-09-12).** What survives: committed and pushed files survive
+   everything; scratchpad files survive compaction but not a container
+   restart; background agents keep running through compaction and
+   their results land in files; a finished agent can be resumed by
+   name with its context, an agent stopped with the stop button cannot
+   (the harness refuses), and a plain message never stops one; a
+   workflow resumes from its run id with its finished agents' results
+   cached (Claude Code docs: sub-agents, workflows; verified
+   2026-09-12); unpushed local branches die with a reclaimed
+   container. Before compacting: (a) commit and
+   push every decision-carrying artifact: the plan with review findings
+   and rulings folded in, the execution record written to the moment,
+   and `docs/plans/CURRENT-STATE.md` naming the checkpoint reached and
+   the owner decision pending; (b) move the working files that matter
+   from the scratchpad into the repo: task briefs (each implementer's
+   single source of requirements) and review findings with their
+   adjudications; (c) end the round: every task reviewed, merged into
+   the designated branch, and pushed, so no task branch holds unmerged
+   work; (d) write a "resume here" paragraph at the top of
+   `CURRENT-STATE.md`: the next round, its briefs, any agents still
+   running and their output paths. The worst moment to compact is
+   mid-round. Compaction keeps the session, so installed skills stay as
+   they are; a new container is a new session.
+
+   Amended 2026-10-30, after a pause in which the container was
+   reclaimed and every scratch file was lost: scratch survives
+   compaction but not an idle stretch. Commit fact sheets, review
+   findings and reports into the repository as they land, not at the
+   next checkpoint, and push the designated branch before any stop.
+   Size workflow fleets to the question. A two-lens red team with one
+   refuter per finding cost about six million subagent tokens (the
+   credentials review's completion notice, 2026-09-13: 5.9 million), and
+   three large review fleets at once exhausted the session's usage limit on 2026-09-13 and
+   stopped every running agent.
 
 ## 3. Workflow-prompt standards
 
@@ -129,3 +223,34 @@ on the spot, and then review the whole document for the same class of
 problem, since one bad passage is evidence about the rest (owner
 amendment, 2026-08-29). Meaning stays; note the edit. New entries added
 to any document follow this standard from now on.
+
+Documents are fixed as we go, always (owner, 2026-10-31, the
+architecture pass's decision "No rule for documents: fix as we go",
+`docs/plans/architecture-pass/DECISIONS.md`). When work finds that a document
+disagrees with the code, the same piece of work fixes the document.
+Dated records stay as written; the rule covers the documents people
+and agents work from: guides, `CLAUDE.md` files, READMEs, the
+contracts and code comments.
+
+## 5. Working with the owner (recorded 2026-10-30 from the owner's words)
+
+- Explain each decision by how the system behaves during a game, in
+  plain language a product manager follows. Leave out internal codes
+  and jargon.
+- Investigate before asking or asserting, and cite the files. A
+  question about implementation detail comes after the question about
+  how the system works in practice.
+- Weigh downstream consequences. Duplicate code paths and new debt
+  count against a choice.
+- State dependencies, never a schedule. The schedule is the owner's.
+- Treat feedback as a reason to check the facts first, not a cue to
+  react.
+- Lessons from the production machine go into the engine's
+  architecture and interfaces, not into patches on production.
+- Put every decision made in conversation on the state page at once.
+
+- Documents record decisions the owner made in conversation. The
+  owner never decides from a document first seen at ratification, so
+  ratifying is a skim. Anything new found while writing comes back as
+  a question first. (Owner, 2026-10-30, the architecture pass's
+  definition session.)

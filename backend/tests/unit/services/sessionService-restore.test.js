@@ -197,6 +197,8 @@ describe('SessionService restart restore (F-SHOW-01)', () => {
       active: true,
       firedClockCues: [],
       disabledCues: [],
+      // T1a D5 (pin P4): once-cues persist in their own provenance set
+      spentOnceCues: [],
     });
     expect(saved.gameClock).toEqual(
       expect.objectContaining({ overtimeThreshold: expect.any(Number) })

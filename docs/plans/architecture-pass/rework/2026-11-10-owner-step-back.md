@@ -1,0 +1,142 @@
+# The owner's request to step back (2026-11-10)
+
+After version 11 of the owner site went live, the owner wrote, word for
+word:
+
+> I'm afraid you've kind of lost the thread and are building out this
+> page to build out this page instead of focusing on the big picture of
+> what we're trying to do with it, same with 'the panel'.  Can you
+> please step back and talk me through the big picture here and how
+> this artifact is intended to be a tool to achieve our goals?
+
+What the agent running the pass answered, in short:
+
+- The owner is right. Since 2026-11-01 the work went into the owner
+  site (versions 9, 10 and 11) and into the panel's rules. None of the
+  six decisions ahead has started.
+- The goal comes down to the six hard-to-reverse design decisions, then
+  a build plan and the build.
+- The site has three jobs, and none of them is the work itself: let the
+  owner check the agent's picture of what the engine must do; get the
+  few things only the owner knows or decides; show the designs side by
+  side, and what was chosen. The third matters most and cannot be done
+  until designs exist.
+- The panel exists to get designs that do not start from today's code
+  or from the agent's earlier candidate. It is one input to the first
+  design round.
+- Proposed, and waiting for the owner's reply: the owner need not read
+  version 11; the agent sends one short message with the two or three
+  things needed to start the architects; the architects run; the owner
+  gets designs explained by what happens at a show; the site is rebuilt
+  only when it has designs to show.
+
+For the next agent: until the owner replies, do not ask for answers to
+version 11's nine questions, do not rebuild the site, and do not add to
+the panel's brief. Size every later change to the site by what it gives
+the owner: a truer premise, a decision, or a design to compare.
+
+## The owner's second message, the same day
+
+The owner did not accept the proposal above. Word for word:
+
+> I think keeping the page as reference for yourself is also not the
+> right approach. It is massive and bloated and unhelpful. We got here
+> from an attempt to run /mattpocock-skills:improve-codebase-architecture
+> on our codebase to make sure that the rest of our engine rebuild is
+> done on a solid architectural foundation and our iterations on the
+> page, instead of simplifying and clarifying the document aimed to help
+> me understand a proposed plan for improvements, instead created a
+> bloated mess. I think you're still kind of missing some of the nuance
+> of what we're trying to do here and pattern matching based on what we
+> HAVE BEEN doing. Let's clarify further what needs to happen here.
+
+What the agent found on going back to the sources (the kickoff brief
+`docs/plans/briefs/2026-10-30-architecture-pass-kickoff.md`, the skill
+`improve-codebase-architecture`, and the owner's messages in the
+session transcript):
+
+- The skill is three steps: explore the codebase; present candidate
+  improvements as one visual report (per candidate: the files, the
+  problem, the change in plain words, the benefits, a before and after
+  picture, how strongly it is recommended; then a top recommendation);
+  the owner picks one and it is worked through in conversation, with
+  the glossary and short decision notes kept current.
+- On 2026-10-31 the owner asked: "did you load the improve architecture
+  skill to help you do this audit?" The agent had not. The page began
+  that day as the skill's report.
+- On 2026-10-31 the owner asked for a long-term way of judging, in
+  place of triage of ALN's issues, and added: "I don't know that this
+  shift in how we're thinking about the architectural improvements is
+  necessarily going to substantially change what improvements/fixes we
+  make, but I think it may improve our overall approach and how we talk
+  about the design and the roadmap going forward."
+- The agent's error since 2026-11-01: it took that as a reason to start
+  a design program from nothing (requirements for review, questions,
+  a panel that designs later). The site holds no proposed plan.
+
+The agent's corrected understanding, put to the owner as three checks
+and not yet confirmed:
+
+1. The subject is improving the architecture of the engine being
+   rebuilt, so the rest of the rebuild is built on a sound structure.
+   It is not a separate new engine designed from nothing.
+2. The document the owner needs is one short proposal: how the engine
+   fits together today and where its structure is weak, the shape
+   proposed, and a short list of improvements, each with what changes,
+   what it gives at a show and in later development, how sure the agent
+   is, and what is needed from the owner. It replaces the site.
+3. The panel's purpose is to make sure the plan is not only the agent's
+   first idea. Offered form: independent architects challenge the
+   draft, with the code in front of them.
+
+For the next agent: wait for the owner's reply. Do not run the panel,
+rebuild the site, or reuse the words of the process built since
+2026-11-01 (the six decisions ahead, readings, calls, the blind round)
+when talking to the owner.
+
+## The owner's note on jargon (2026-11-10, after version 12)
+
+Word for word:
+
+> Your descriptions are starting to veer towards jargon instead of
+> clear, simple english to describe what you're talking about. for
+> example, what does 'the same core runs wherever a game is decided'
+> even mean? there are a lot of ambiguities here.
+
+What the agent found when it looked for the cause. It had been
+replacing the project's own names with names it made up, first for the
+earlier site and then for the proposal's titles. The owner's own
+messages say "backend", "gm scanner", "player scanner (web or esp32)",
+"standalone" and "networked", and never "show machine" or "GM tablet".
+`CONTEXT.md` says to use its terms and no synonyms.
+
+The rule from here on, for anything the owner reads:
+
+| Do not write | Write |
+|---|---|
+| show machine | the backend (the program); the backend's computer (the machine) |
+| main program | the backend |
+| GM tablet | GM scanner (it runs on a phone or tablet) |
+| hardware scanner, phone | player scanner: the hardware one, or the web page on a phone |
+| design tool | config tool |
+| venue setup | installation; its file is the installation profile |
+| a kit with no show machine | a standalone game |
+| team (when talking about ALN) | account. The owner, 2026-11-13: "what's identified as teams in the backend are really framed as accounts in ALN". The engine's own word is entity |
+| the night's record, tonight | the session's record; this session, this installation |
+| core, door, pass, interface, stated life, plug in, the room's side | say what the code does, in a sentence |
+| maker, a game's maker | designer. The owner, 2026-11-13: "a game designer (what you're calling a maker)" |
+| record, text record, address record, record order | the token's id; the web link; which of the two is written first on the tag |
+| exchange, reader, the definition | say what happens: the hardware scanner has to read further into the tag; everything that scans a tag; name the thing |
+
+A title is a plain sentence that says what would be true afterwards.
+A "today" line says what happens to a scan, a GM or a restart. Version
+13 of the page (commit `ae6209f5`, version id 1794295582-1d3a) follows
+this. `DECISIONS.md` still uses the made-up names; replace them when
+that record is cut down to the owner's decisions.
+
+On 2026-11-13 the tag decision went to the owner in the words of the
+left-hand column of the last two rows. The owner: "can you rewrite
+decision 1 in clear, plain english for me please?" Put a decision in
+the words a GM would use, say first what the choice is and what each
+side does to a player or a GM, and give the recommendation last. Keep
+the research's own terms in the research file.

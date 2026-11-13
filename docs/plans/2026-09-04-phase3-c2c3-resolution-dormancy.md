@@ -362,6 +362,10 @@ designed; the estimate follows the design"). This section supersedes
   unresolved, with a typed, logged "start anyway" override. (This
   also fixes C4's `_resolveIdleLoopFile` flip: refuse only
   `onAbsent: require`.)
+  > Supersession note (2026-09-12, Block 2 ruling R12): the gate also
+  > refuses when the installation profile FILE fails its schema check
+  > (Block 2 plan P19); the typed override applies. `blocking` has
+  > exactly three producers and is closed there.
 - **R-C3-2:** enum reconciled to `healthy | down | dormant` at the 3
   contract sites + registry validator; `degraded` deleted.
 - **R-C3-3 (from the sitting, new):** the SUPERVISOR — bounded

@@ -130,8 +130,12 @@ done
 # must never dirty the tree. Mid-session dependency changes are the session's
 # own responsibility.
 for dir in backend ALNScanner aln-memory-scanner config-tool; do
-  if [ -f "$dir/package.json" ] && [ ! -d "$dir/node_modules" ]; then
-    log "npm ci: $dir (cold container)"
+  # Also re-run when the lockfile is newer than the last install: a stale
+  # node_modules with missing declared deps failed config-tool's suite on
+  # 2026-09-12 (jsdom, jsonwebtoken absent) while this guard saw it as warm.
+  if [ -f "$dir/package.json" ] && { [ ! -d "$dir/node_modules" ] \
+       || [ "$dir/package-lock.json" -nt "$dir/node_modules/.package-lock.json" ]; }; then
+    log "npm ci: $dir (cold container or stale install)"
     (cd "$dir" && npm ci --prefer-offline --no-audit --no-fund --loglevel=error) \
       || log "WARN: npm ci failed in $dir"
   fi
@@ -208,4 +212,34 @@ if [ ! -f "ALNScanner/dist/index.html" ] && [ -d "ALNScanner/node_modules" ]; th
   (cd ALNScanner && npm run build --silent) || log "WARN: ALNScanner build failed"
 fi
 
-log "done — submodules, deps, playwright shims, scanner dist ready"
+# ── 5. Declared plugins ──────────────────────────────────────────────────────
+# Remote containers register only the official marketplace, so the plugins
+# .claude/settings.json declares from it (mattpocock-skills, which
+# docs/agents/process.md §1 depends on, and superpowers) are absent on a cold
+# container: the owner's local plugin config never reaches a fresh clone.
+# Install each declared *@claude-plugins-official plugin that is missing.
+# Plugins register at session start, so an install here is usable from the
+# NEXT session; the log line says so. Idempotent: installed plugins are skipped.
+if command -v claude >/dev/null 2>&1 && command -v node >/dev/null 2>&1; then
+  installed=$(claude plugin list --json 2>/dev/null | node -e '
+    let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+      try { for (const p of JSON.parse(s)) console.log(p.id); } catch (e) {}
+    });')
+  for want in $(node -e '
+    const s = require(process.argv[1]).enabledPlugins || {};
+    for (const [k, v] of Object.entries(s))
+      if (v === true && k.endsWith("@claude-plugins-official")) console.log(k);
+  ' "$ROOT/.claude/settings.json"); do
+    if echo "$installed" | grep -qx "$want"; then
+      continue
+    fi
+    log "plugin: installing $want (declared in .claude/settings.json, absent here)"
+    if claude plugin install "$want" >/dev/null 2>&1; then
+      log "plugin: $want installed — its skills load from the NEXT session start"
+    else
+      log "WARN: plugin install failed for $want (marketplace/network?)"
+    fi
+  done
+fi
+
+log "done — submodules, deps, playwright shims, scanner dist, declared plugins ready"

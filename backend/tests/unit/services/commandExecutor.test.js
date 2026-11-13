@@ -38,6 +38,7 @@ jest.mock('../../../src/services/sessionService', () => ({
   updateSession: jest.fn(),
   endSession: jest.fn(),
   addTeamToSession: jest.fn(),
+  startGame: jest.fn(),   // T1a D8: the require gate lives behind this
 }));
 
 jest.mock('../../../src/services/transactionService', () => ({
@@ -135,8 +136,11 @@ jest.mock('../../../src/services/packService', () => ({
 
 jest.mock('../../../src/services/serviceHealthRegistry', () => ({
   isHealthy: jest.fn().mockReturnValue(true),
+  isDormant: jest.fn().mockReturnValue(false),
   getStatus: jest.fn().mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() }),
   report: jest.fn(),
+  markDormant: jest.fn(),
+  clearDormant: jest.fn(),
   on: jest.fn(),
   removeAllListeners: jest.fn(),
 }));
@@ -225,6 +229,7 @@ describe('commandExecutor', () => {
     soundService.fileExists.mockReturnValue(true);
 
     registry.isHealthy.mockReturnValue(true);
+    registry.isDormant.mockReturnValue(false);
     registry.getStatus.mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() });
   });
 
@@ -926,6 +931,74 @@ describe('commandExecutor', () => {
       // service:check should NOT appear in SERVICE_DEPENDENCIES
       expect(SERVICE_DEPENDENCIES['service:check']).toBeUndefined();
     });
+
+    // Block 2 T1a fix round 1, ruling 22. `display` is the ninth service
+    // everywhere else — the registry, the contracts, the dashboard, the
+    // audit — but service:check answered "Unknown service: display" for it.
+    // The probe closes that hole read-only.
+    it('checks the display kiosk through the driver probe', async () => {
+      const displayDriver = require('../../../src/utils/displayDriver');
+      jest.spyOn(displayDriver, 'probe').mockReturnValue(true);
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+
+      const result = await executeCommand({ actor: TEST_OPERATOR,
+        action: 'service:check',
+        payload: { serviceId: 'display' },
+        source: 'gm'
+      });
+
+      expect(result.success).toBe(true);
+      expect(displayDriver.probe).toHaveBeenCalled();
+      expect(result.data.display).toBe(true);
+      expect(result.message).toBe('Health check: display = healthy');
+      displayDriver.probe.mockRestore();
+    });
+
+    it('reports the display kiosk down when the probe says so', async () => {
+      const displayDriver = require('../../../src/utils/displayDriver');
+      jest.spyOn(displayDriver, 'probe').mockReturnValue(false);
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+
+      const result = await executeCommand({ actor: TEST_OPERATOR,
+        action: 'service:check',
+        payload: { serviceId: 'display' },
+        source: 'gm'
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data.display).toBe(false);
+      expect(result.message).toBe('Health check: display = down');
+      displayDriver.probe.mockRestore();
+    });
+
+    it('the all-services sweep includes display', async () => {
+      const displayDriver = require('../../../src/utils/displayDriver');
+      jest.spyOn(displayDriver, 'probe').mockReturnValue(true);
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+      const vlcService = require('../../../src/services/vlcMprisService');
+      const musicService = require('../../../src/services/musicService');
+      const lightingService = require('../../../src/services/lightingService');
+      const bluetoothService = require('../../../src/services/bluetoothService');
+      const audioRoutingService = require('../../../src/services/audioRoutingService');
+      const soundService = require('../../../src/services/soundService');
+
+      vlcService.checkConnection.mockResolvedValue(true);
+      musicService.checkConnection.mockResolvedValue(true);
+      lightingService.checkConnection.mockResolvedValue(undefined);
+      bluetoothService.isAvailable.mockResolvedValue(true);
+      audioRoutingService.checkHealth.mockResolvedValue(true);
+      soundService.checkHealth.mockResolvedValue(true);
+
+      const result = await executeCommand({ actor: TEST_OPERATOR,
+        action: 'service:check',
+        payload: {},
+        source: 'gm'
+      });
+
+      expect(displayDriver.probe).toHaveBeenCalled();
+      expect(result.data).toHaveProperty('display', true);
+      displayDriver.probe.mockRestore();
+    });
   });
 
   describe('cue lifecycle commands', () => {
@@ -1614,6 +1687,7 @@ describe('lighting role normalization (slice 4 S3 — D-4.4)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     registry.isHealthy.mockReturnValue(true);
+    registry.isDormant.mockReturnValue(false);
     registry.getStatus.mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() });
     lightingService.activateScene.mockResolvedValue(true);
     lightingService.sceneExists.mockReturnValue(true);
@@ -1696,5 +1770,352 @@ describe('lighting role normalization (slice 4 S3 — D-4.4)', () => {
     const result = await validateCommand('lighting:scene:activate', { role: 'disco-mode' });
     expect(result.valid).toBe(false);
     expect(JSON.stringify(result.errors)).toMatch(/unresolvable lighting role/);
+  });
+});
+
+
+// ══════════════════════════════════════════════════════════════════════
+// Block 2 T1a D6 — the executor's dormant branch, the three-valued cue
+// acks, and the require gate's ack (pins P3/P5/P7/P16; ruling R11).
+// ══════════════════════════════════════════════════════════════════════
+describe('commandExecutor — dormancy (T1a D6)', () => {
+  const registry = require('../../../src/services/serviceHealthRegistry');
+  const displayControlService = require('../../../src/services/displayControlService');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    registry.isHealthy.mockReturnValue(true);
+    registry.isDormant.mockReturnValue(false);
+    registry.getStatus.mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() });
+  });
+
+  describe('the dormant branch of the health gate (P5)', () => {
+    it('refuses with the PROFILE wording — never "lighting is down"', async () => {
+      registry.isDormant.mockImplementation((id) => id === 'lighting');
+      registry.isHealthy.mockImplementation((id) => id !== 'lighting');
+      registry.getStatus.mockReturnValue({
+        status: 'dormant', message: 'lighting is not installed tonight', door: 'profile',
+      });
+
+      const result = await executeCommand({
+        actor: TEST_OPERATOR, action: 'lighting:scene:activate',
+        payload: { sceneId: 'scene.x' }, source: 'gm',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('lighting is not installed tonight');
+    });
+
+    it('refuses with the OPERATOR wording when a human latched it', async () => {
+      registry.isDormant.mockImplementation((id) => id === 'vlc');
+      registry.isHealthy.mockImplementation((id) => id !== 'vlc');
+      registry.getStatus.mockReturnValue({
+        status: 'dormant', message: 'vlc is out of service', door: 'operator',
+      });
+
+      const result = await executeCommand({
+        actor: TEST_OPERATOR, action: 'video:skip', payload: {}, source: 'gm',
+      });
+
+      expect(result.message).toBe('vlc is out of service');
+    });
+
+    it('the dormant branch runs BEFORE the down branch', async () => {
+      // A dormant service is also not healthy; without the ordering the GM
+      // would read "sound is down: ..." — red for equipment nobody
+      // installed, exactly the alarm the pin exists to prevent.
+      registry.isDormant.mockReturnValue(true);
+      registry.isHealthy.mockReturnValue(false);
+      registry.getStatus.mockReturnValue({
+        status: 'dormant', message: 'x', door: 'profile',
+      });
+
+      const result = await executeCommand({
+        actor: TEST_OPERATOR, action: 'sound:play', payload: { file: 'a.wav' }, source: 'gm',
+      });
+
+      expect(result.message).not.toMatch(/is down/);
+      expect(result.message).toBe('sound is not installed tonight');
+    });
+  });
+
+  describe('display is the ninth service (P16)', () => {
+    it('display:scoreboard is gated on display', () => {
+      expect(SERVICE_DEPENDENCIES['display:scoreboard']).toBe('display');
+    });
+
+    it('display:return-to-video is gated on vlc', () => {
+      expect(SERVICE_DEPENDENCIES['display:return-to-video']).toBe('vlc');
+    });
+
+    it('display:status stays UNGATED — a status read must work when the kiosk is dead', () => {
+      expect(SERVICE_DEPENDENCIES['display:status']).toBeUndefined();
+    });
+
+    it('a dormant display refuses display:scoreboard with the door wording', async () => {
+      registry.isDormant.mockImplementation((id) => id === 'display');
+      registry.getStatus.mockReturnValue({
+        status: 'dormant', message: 'display is not installed tonight', door: 'profile',
+      });
+
+      const result = await executeCommand({
+        actor: TEST_OPERATOR, action: 'display:scoreboard', payload: {}, source: 'gm',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('display is not installed tonight');
+      expect(displayControlService.setScoreboard).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('session:start carries the override and acks a NO-GO (P7, R11)', () => {
+    const sessionService = require('../../../src/services/sessionService');
+    const { PreflightNoGoError } = require('../../../src/services/preflightService');
+
+    it('passes startAnyway, the reason and the actor through to startGame', async () => {
+      sessionService.startGame.mockResolvedValue({});
+      await executeCommand({
+        actor: TEST_OPERATOR, action: 'session:start',
+        payload: { startAnyway: true, reason: 'the rig is in the van' },
+        source: 'gm', deviceId: 'GM_STATION_1',
+      });
+      expect(sessionService.startGame).toHaveBeenCalledWith(
+        { startAnyway: true, reason: 'the rig is in the van' },
+        { deviceId: 'GM_STATION_1', tier: 'operator' }
+      );
+    });
+
+    it('an empty payload asks for a plain start', async () => {
+      sessionService.startGame.mockResolvedValue({});
+      await executeCommand({
+        actor: TEST_OPERATOR, action: 'session:start', payload: {},
+        source: 'gm', deviceId: 'GM_STATION_1',
+      });
+      expect(sessionService.startGame).toHaveBeenCalledWith(
+        { startAnyway: false, reason: undefined },
+        { deviceId: 'GM_STATION_1', tier: 'operator' }
+      );
+    });
+
+    it('a NO-GO acks success:false with the "NO-GO: " prefix and joined reasons', async () => {
+      sessionService.startGame.mockRejectedValue(new PreflightNoGoError([
+        "required endpoint 'lighting.instruments' not installed at this venue",
+        'second reason',
+      ]));
+
+      const r = await executeCommand({
+        actor: TEST_OPERATOR, action: 'session:start', payload: {}, source: 'gm',
+      });
+
+      expect(r.success).toBe(false);
+      expect(r.message).toBe(
+        "NO-GO: required endpoint 'lighting.instruments' not installed at this venue; second reason"
+      );
+    });
+
+    it('a missing reason acks the missing-reason message', async () => {
+      sessionService.startGame.mockRejectedValue(new Error('startAnyway requires a reason'));
+      const r = await executeCommand({
+        actor: TEST_OPERATOR, action: 'session:start',
+        payload: { startAnyway: true }, source: 'gm',
+      });
+      expect(r).toMatchObject({ success: false, message: 'startAnyway requires a reason' });
+    });
+  });
+
+  describe('REQUIRED_PAYLOAD_FIELDS pre-registers T3/T4 actions', () => {
+    // Table entries only — the switch cases land with T3/T4. Registering the
+    // required fields (and the floor prefix in gameRules/grants.js) now means
+    // the guard and the operator floor are already standing when those cases
+    // arrive, rather than being remembered.
+    it.each([
+      ['service:restart', {}, 'serviceId is required'],
+      ['service:out-of-service', { serviceId: 'vlc' }, 'reason is required'],
+      ['service:in-service', {}, 'serviceId is required'],
+    ])('%s validates its required fields before anything else', async (action, payload, message) => {
+      const r = await executeCommand({ actor: TEST_OPERATOR, action, payload, source: 'gm' });
+      expect(r).toMatchObject({ success: false, message });
+    });
+
+    it('preflight:run needs no fields and falls through to the unknown-action default', async () => {
+      const r = await executeCommand({
+        actor: TEST_OPERATOR, action: 'preflight:run', payload: {}, source: 'gm',
+      });
+      expect(r).toMatchObject({ success: false, message: 'Unknown action: preflight:run' });
+    });
+  });
+
+  describe('the operator floor refuses an observe socket BEFORE the unknown-action default', () => {
+    const OBSERVE = { tier: 'device', functions: ['observe'] };
+
+    it.each([
+      'preflight:run', 'service:restart', 'service:out-of-service', 'service:in-service',
+    ])('%s is refused at the floor, not answered "Unknown action"', async (action) => {
+      const r = await executeCommand({
+        actor: OBSERVE, action, payload: { serviceId: 'vlc', reason: 'x' }, source: 'gm',
+      });
+      expect(r.success).toBe(false);
+      expect(r.message).toMatch(/requires the 'show-control' function \(operator floor\)/);
+      expect(r.message).not.toMatch(/Unknown action/);
+    });
+  });
+});
+
+describe('commandExecutor — cue and held acks (T1a D6, lazy cue-engine require)', () => {
+  let cueEngineService, execute, registry, videoQueueService;
+
+  beforeEach(() => {
+    jest.resetModules();
+    cueEngineService = {
+      fireCue: jest.fn().mockResolvedValue({ fired: true, held: false }),
+      enableCue: jest.fn().mockReturnValue({ ok: true }),
+      disableCue: jest.fn(),
+      releaseCue: jest.fn().mockResolvedValue({ released: true }),
+      discardCue: jest.fn(),
+      getHeldCues: jest.fn().mockReturnValue([]),
+      checkHealth: jest.fn().mockReturnValue(true),
+      getCues: jest.fn().mockReturnValue([{ id: 'cue1' }]),
+    };
+    jest.doMock('../../../src/services/cueEngineService', () => cueEngineService);
+    ({ executeCommand: execute } = require('../../../src/services/commandExecutor'));
+    registry = require('../../../src/services/serviceHealthRegistry');
+    videoQueueService = require('../../../src/services/videoQueueService');
+    registry.isHealthy.mockReturnValue(true);
+    registry.isDormant.mockReturnValue(false);
+    registry.getStatus.mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() });
+    videoQueueService.getHeldVideos = jest.fn().mockReturnValue([]);
+    videoQueueService.releaseHeld = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.dontMock('../../../src/services/cueEngineService');
+  });
+
+  describe('cue:fire acks all three fireCue outcomes (P3)', () => {
+    it('fired -> success with the fired message', async () => {
+      const r = await execute({
+        actor: TEST_OPERATOR, action: 'cue:fire', payload: { cueId: 'c1' }, source: 'gm',
+      });
+      expect(r).toMatchObject({ success: true, message: 'Cue fired: c1' });
+    });
+
+    it('held -> SUCCESS with the parked message (a hold is an outcome, not a failure)', async () => {
+      cueEngineService.fireCue.mockResolvedValue({
+        fired: false, held: true, reason: 'c1 held: sound',
+      });
+      const r = await execute({
+        actor: TEST_OPERATOR, action: 'cue:fire', payload: { cueId: 'c1' }, source: 'gm',
+      });
+      expect(r).toMatchObject({ success: true, message: 'Cue held: c1 held: sound' });
+    });
+
+    it('refused -> success:false carrying the refusal reason', async () => {
+      cueEngineService.fireCue.mockResolvedValue({
+        fired: false, held: false, reason: 'c1 is not installed tonight (lighting)',
+      });
+      const r = await execute({
+        actor: TEST_OPERATOR, action: 'cue:fire', payload: { cueId: 'c1' }, source: 'gm',
+      });
+      expect(r).toMatchObject({
+        success: false, message: 'c1 is not installed tonight (lighting)',
+      });
+    });
+  });
+
+  describe('cue:enable refusal (P4)', () => {
+    it('success:false with the reason when the engine refuses', async () => {
+      cueEngineService.enableCue.mockReturnValue({
+        ok: false, reason: 'c1 is not installed tonight (lighting)',
+      });
+      const r = await execute({
+        actor: TEST_OPERATOR, action: 'cue:enable', payload: { cueId: 'c1' }, source: 'gm',
+      });
+      expect(r).toMatchObject({
+        success: false, message: 'c1 is not installed tonight (lighting)',
+      });
+    });
+
+    it('success when the engine accepts', async () => {
+      const r = await execute({
+        actor: TEST_OPERATOR, action: 'cue:enable', payload: { cueId: 'c1' }, source: 'gm',
+      });
+      expect(r).toMatchObject({ success: true, message: 'Cue enabled: c1' });
+    });
+  });
+
+  describe('held:release and held:release-all report a re-hold', () => {
+    it('held:release acks success:false when the cue was re-held', async () => {
+      cueEngineService.releaseCue.mockResolvedValue({
+        released: false, reason: 'c1 is disabled',
+      });
+      const r = await execute({
+        actor: TEST_OPERATOR, action: 'held:release',
+        payload: { heldId: 'held-cue-1' }, source: 'gm',
+      });
+      expect(r).toMatchObject({ success: false, message: 'c1 is disabled' });
+    });
+
+    it('held:release acks success when it went out', async () => {
+      const r = await execute({
+        actor: TEST_OPERATOR, action: 'held:release',
+        payload: { heldId: 'held-cue-1' }, source: 'gm',
+      });
+      expect(r).toMatchObject({ success: true });
+    });
+
+    it('held:release-all stays TRY-ALL and names the ids it could not release', async () => {
+      cueEngineService.getHeldCues.mockReturnValue([
+        { id: 'held-cue-1', cueId: 'a' }, { id: 'held-cue-2', cueId: 'b' },
+      ]);
+      cueEngineService.releaseCue
+        .mockResolvedValueOnce({ released: true })
+        .mockResolvedValueOnce({ released: false, reason: 'b is disabled' });
+
+      const r = await execute({
+        actor: TEST_OPERATOR, action: 'held:release-all', payload: {}, source: 'gm',
+      });
+
+      expect(cueEngineService.releaseCue).toHaveBeenCalledTimes(2);
+      expect(r.message).toContain('held-cue-2');
+    });
+  });
+
+  describe('service:check never probes a dormant service (P5)', () => {
+    it('acks success with "not probed" and calls no health check', async () => {
+      registry.isDormant.mockImplementation((id) => id === 'lighting');
+      registry.getStatus.mockReturnValue({
+        status: 'dormant', message: 'x', door: 'profile',
+      });
+      const lightingService = require('../../../src/services/lightingService');
+      lightingService.checkConnection.mockClear();
+
+      const r = await execute({
+        actor: TEST_OPERATOR, action: 'service:check',
+        payload: { serviceId: 'lighting' }, source: 'gm',
+      });
+
+      expect(r.success).toBe(true);
+      expect(r.message).toBe('lighting is not installed tonight — not probed');
+      expect(lightingService.checkConnection).not.toHaveBeenCalled();
+    });
+
+    it('the all-services sweep skips dormant ids the same way', async () => {
+      registry.isDormant.mockImplementation((id) => id === 'lighting');
+      registry.getStatus.mockReturnValue({
+        status: 'dormant', message: 'x', door: 'operator',
+      });
+      const lightingService = require('../../../src/services/lightingService');
+      const soundService = require('../../../src/services/soundService');
+      lightingService.checkConnection.mockClear();
+      soundService.checkHealth.mockClear();
+
+      const r = await execute({
+        actor: TEST_OPERATOR, action: 'service:check', payload: {}, source: 'gm',
+      });
+
+      expect(lightingService.checkConnection).not.toHaveBeenCalled();
+      expect(soundService.checkHealth).toHaveBeenCalled();
+      expect(r.message).toContain('lighting not probed');
+    });
   });
 });

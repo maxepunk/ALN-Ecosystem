@@ -1,0 +1,795 @@
+<title>Engine Architecture Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: one reading column; the two pictures and the before/after pairs use the full width.
+   The numbers 1 to 7 are information: they tie the picture, the cards, the table and the order together. */
+:root {
+  --bg: #f4f5f8; --surface: #ffffff; --ink: #17202b; --muted: #556170; --line: #d5dae2; --line-soft: #e5e8ee;
+  --accent: #1d5fa6; --accent-bg: #e3edf9;
+  --today: #a04a14; --today-bg: #fbeee3; --today-line: #e8bd9b;
+  --next: #12695a; --next-bg: #e1f3ee; --next-line: #a3d4c8;
+  --room-bg: #f0ebdf; --room-line: #d9cdb1;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10151b; --surface: #171e27; --ink: #e5eaf0; --muted: #9ba7b5; --line: #2b3541; --line-soft: #222b36;
+    --accent: #7fb4f1; --accent-bg: #16283d;
+    --today: #f0a168; --today-bg: #33211a; --today-line: #6b4028;
+    --next: #70d0ba; --next-bg: #11302a; --next-line: #245a4f;
+    --room-bg: #24211a; --room-line: #4a4331;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10151b; --surface: #171e27; --ink: #e5eaf0; --muted: #9ba7b5; --line: #2b3541; --line-soft: #222b36;
+  --accent: #7fb4f1; --accent-bg: #16283d;
+  --today: #f0a168; --today-bg: #33211a; --today-line: #6b4028;
+  --next: #70d0ba; --next-bg: #11302a; --next-line: #245a4f;
+  --room-bg: #24211a; --room-line: #4a4331;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55; margin: 0; }
+.wrap { max-width: 62rem; margin: 0 auto; padding-block: 2.25rem 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.prose { max-width: 43rem; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(2.1rem, 6vw, 3rem); line-height: 1.04; margin: .3rem 0 0; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.7rem; line-height: 1.15; margin: 3.2rem 0 .6rem; text-wrap: balance; }
+h3 { font-family: var(--font-display); font-weight: 600; font-size: 1.32rem; line-height: 1.2; margin: 0; text-wrap: balance; }
+p { margin: .6rem 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.eyebrow { font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: .09em; font-size: .84rem; color: var(--muted); margin: 0; }
+.lede { font-size: 1.12rem; }
+.muted { color: var(--muted); }
+ul.plain { margin: .5rem 0; padding-left: 1.2rem; display: grid; gap: .3rem; }
+ol.steps { margin: .5rem 0; padding-left: 1.3rem; display: grid; gap: .55rem; }
+
+/* contents: the seven changes, one line each */
+.toc { display: grid; gap: .35rem; margin: 1.1rem 0; padding: 0; list-style: none; }
+.toc a { display: grid; grid-template-columns: 1.3rem 1fr; gap: .55rem; align-items: baseline; text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .45rem .8rem; color: var(--ink); }
+.toc a:hover { border-color: var(--accent); }
+.toc a b { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; color: var(--accent); }
+
+/* numbered markers */
+.mk { display: inline-flex; align-items: center; justify-content: center; min-width: 1.35em; height: 1.35em; padding: 0 .3em; border-radius: 999px; background: var(--today); color: var(--surface); font-family: var(--font-display); font-weight: 700; font-size: .82rem; line-height: 1; text-decoration: none; vertical-align: .08em; }
+.mk.ok { background: var(--next); }
+.mk + .mk { margin-left: .15em; }
+
+/* the two pictures: lanes */
+.pic { display: grid; gap: .35rem; margin: 1rem 0 .5rem; }
+.lane { display: grid; grid-template-columns: 11.5rem 1fr; gap: .75rem; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: .7rem .8rem; }
+.lane.room { background: var(--room-bg); border-color: var(--room-line); }
+.lane-name { font-family: var(--font-display); font-weight: 600; font-size: 1.02rem; line-height: 1.2; }
+.lane-name small { display: block; font-family: var(--font-body); font-weight: 400; font-size: .8rem; color: var(--muted); margin-top: .15rem; }
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; min-width: 0; }
+.chip { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .3rem .55rem; font-size: .88rem; line-height: 1.3; min-width: 0; }
+.lane.room .chip { border-color: var(--room-line); }
+.chip.weak { border-color: var(--today-line); background: var(--today-bg); }
+.chip.good { border-color: var(--next-line); background: var(--next-bg); }
+.chip small { display: block; color: var(--muted); font-size: .8rem; }
+.link { text-align: center; font-size: .85rem; color: var(--muted); padding: .05rem 0; }
+.link::before { content: "\2195\00a0"; }
+.legend { display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; font-size: .85rem; color: var(--muted); margin: .4rem 0 0; }
+.legend span { display: inline-flex; gap: .4rem; align-items: center; }
+.sw { width: .9rem; height: .9rem; border-radius: 3px; border: 1px solid var(--line); background: var(--surface); display: inline-block; }
+.sw.room { background: var(--room-bg); border-color: var(--room-line); }
+.sw.weak { background: var(--today-bg); border-color: var(--today-line); }
+.sw.good { background: var(--next-bg); border-color: var(--next-line); }
+@media (max-width: 700px) { .lane { grid-template-columns: 1fr; gap: .45rem; } }
+
+/* improvement cards */
+.imps { display: grid; gap: 1rem; margin-top: 1rem; }
+.imp { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1.15rem 1.2rem; display: grid; gap: .9rem; scroll-margin-top: 1rem; }
+.imp-head { display: flex; flex-wrap: wrap; gap: .5rem .7rem; align-items: baseline; }
+.num { font-family: var(--font-display); font-weight: 700; font-size: 1.32rem; color: var(--accent); }
+.badge { font-family: var(--font-display); font-weight: 600; font-size: .78rem; letter-spacing: .07em; text-transform: uppercase; padding: .08rem .55rem; border-radius: 999px; border: 1px solid var(--next-line); color: var(--next); background: var(--next-bg); white-space: nowrap; }
+.badge.explore { border-color: var(--line); color: var(--accent); background: var(--accent-bg); }
+.ba { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+@media (max-width: 700px) { .ba { grid-template-columns: 1fr; } }
+.side { border: 1px solid var(--line-soft); border-radius: 8px; padding: .7rem .8rem .8rem; min-width: 0; display: grid; gap: .45rem; align-content: start; }
+.side.today { background: var(--today-bg); border-color: var(--today-line); }
+.side.next { background: var(--next-bg); border-color: var(--next-line); }
+.side-label { font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: .09em; font-size: .78rem; margin: 0; }
+.today .side-label { color: var(--today); }
+.next .side-label { color: var(--next); }
+.side p { margin: 0; font-size: .95rem; }
+.flow { display: grid; gap: .3rem; }
+.row { display: flex; flex-wrap: wrap; gap: .35rem; }
+.bx { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .3rem .55rem; font-size: .86rem; line-height: 1.3; min-width: 0; flex: 1 1 8.5rem; }
+.today .bx { border-color: var(--today-line); }
+.next .bx { border-color: var(--next-line); }
+.bx b { font-family: var(--font-display); font-weight: 600; }
+.via { font-size: .82rem; color: var(--muted); padding-left: .2rem; }
+.via::before { content: "\2193\00a0"; }
+.gives { display: grid; gap: .45rem; margin: 0; }
+.gives div { display: grid; grid-template-columns: 9.5rem 1fr; gap: .6rem; }
+.gives dt { font-family: var(--font-display); font-weight: 600; color: var(--muted); }
+.gives dd { margin: 0; min-width: 0; }
+@media (max-width: 700px) { .gives div { grid-template-columns: 1fr; gap: .05rem; } }
+details.files { border-top: 1px solid var(--line-soft); padding-top: .6rem; }
+details.files summary { cursor: pointer; font-size: .88rem; color: var(--muted); }
+details.files ul { margin: .5rem 0 0; padding-left: 1.1rem; display: grid; gap: .2rem; }
+details.files li { font-family: var(--font-mono); font-size: .78rem; overflow-wrap: anywhere; }
+.choice { font-size: .93rem; background: var(--accent-bg); border-radius: 8px; padding: .5rem .7rem; margin: 0; }
+.choice b { font-family: var(--font-display); font-weight: 600; letter-spacing: .02em; }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; margin: .8rem 0; }
+table { border-collapse: collapse; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: .95rem; }
+th, td { text-align: left; padding: .55rem .75rem; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+th { font-family: var(--font-display); font-weight: 600; letter-spacing: .03em; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.nums { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* words used */
+.words { display: grid; gap: .3rem; margin: 1rem 0 0; padding: .8rem 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; font-size: .95rem; }
+.words p { margin: 0; }
+.words b { font-family: var(--font-display); font-weight: 600; }
+.words-title { font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: .09em; font-size: .78rem; color: var(--muted); }
+
+/* how ALN runs meanwhile; what changed */
+.meanwhile { display: grid; gap: .35rem; margin: 1rem 0 0; padding: .8rem 1rem; background: var(--accent-bg); border-radius: 10px; }
+.meanwhile p { margin: 0; }
+.changed { margin-top: 3rem; }
+.changed ol { margin: .5rem 0; padding-left: 1.3rem; display: grid; gap: .45rem; }
+
+/* the ask */
+.ask { background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; padding: 1.1rem 1.2rem; margin-top: 1rem; }
+.ask h2 { margin: 0 0 .3rem; }
+#move h3 { margin: 2rem 0 .45rem; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: .88rem; color: var(--muted); }
+code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere; }
+</style>
+
+
+<div class="wrap">
+
+<header class="prose">
+  <p class="eyebrow">A proposal for your review · 10 November 2026</p>
+  <h1>Engine architecture plan</h1>
+  <p class="lede">I went through the engine's code looking for places where the way it is organised will make the rest of the rebuild harder. This page proposes seven changes to how the code is organised. None of them changes ALN's rules or content.</p>
+  <ol class="toc">
+    <li><a href="#imp-1"><b>1</b><span>The backend keeps one complete record of each session, and updates every screen from it the same way.</span></a></li>
+    <li><a href="#imp-2"><b>2</b><span>A standalone game runs the same game code as a networked one.</span></a></li>
+    <li><a href="#imp-3"><b>3</b><span>The messages between the backend and the devices are defined in one place and checked automatically.</span></a></li>
+    <li><a href="#imp-4"><b>4</b><span>Video, music, sound and lights are controlled through one pattern, and their programs restart when they crash.</span></a></li>
+    <li><a href="#imp-5"><b>5</b><span>The engine keeps separate what belongs to one session, to one installation and to the whole production.</span></a></li>
+    <li><a href="#imp-6"><b>6</b><span>A designer writes a game's rules in the pack, and the code has a known place for each new capability.</span></a></li>
+    <li><a href="#imp-7"><b>7</b><span>The backend is assembled in one place, and a copy started for a test or a rehearsal leaves the installed backend as it was.</span></a></li>
+  </ol>
+  <p>The game itself happens in a room, with players, token objects and GMs. The engine is the software around it. Its game rules and its pack format are in good shape. The weak spots are in how its programs work together, and that is what the seven changes are about.</p>
+  <p>I judged each change by what the engine is meant to become: open-source software that runs other people's games as well as ALN, on a kit as small as player scanners and tokens or as large as ALN's, at one venue for months or on tour. Three separate reviewers checked my first draft against the code. This version includes their corrections and your eight comments of 12 November.</p>
+  <div class="meanwhile">
+    <p class="words-title">How ALN runs while this work is done</p>
+    <p>Every ALN session runs on blue: the backend computer in use today, with its scanners and its production branch. This work never touches them. Nothing from the new engine reaches a live session until all of it is finished. Then there is one cutover: green, the second backend computer, replaces blue, and the hardware scanners get their new firmware.</p>
+    <p>So no part of the new engine has to work with an old part, and the order of work is set by engineering reasons alone.</p>
+  </div>
+  <div class="words">
+    <p class="words-title">Words used on this page</p>
+    <p><b>Game.</b> A designed game, such as ALN. <b>Session.</b> One group of players playing it once.</p>
+    <p><b>Pack.</b> The data files that define one game: token data, rules, text and cues. A token is a physical object with an NFC tag. The tag holds a web link and the token's id. The id points to that token's entry in the pack.</p>
+    <p><b>Kit.</b> The physical gear a production owns: token objects, scanners, GMs' phones or tablets, a router, and optionally a computer for the backend, a TV, speakers and lights.</p>
+    <p><b>Installation.</b> A kit set up at one venue, for one night or for months. Many sessions are played on it. The installation profile is the file that describes it.</p>
+    <p><b>Production.</b> One game being run by its makers, at one venue for a long stay or on tour.</p>
+    <p><b>Backend.</b> The engine's central program. In ALN it runs on a Raspberry Pi connected to the TV and speakers. A networked game uses it. A standalone game has no backend and runs on scanners alone.</p>
+    <p><b>Engine.</b> The software that is the same for every game: the backend, the GM scanner, the player scanners (the web page on a phone and the hardware scanner), the scoreboard and the config tool.</p>
+  </div>
+</header>
+
+<section>
+  <h2>How it fits together today</h2>
+  <p class="prose">Read from the top. A numbered mark shows which change applies there.</p>
+  <div class="pic" role="group" aria-label="How the engine fits together today">
+    <div class="lane room">
+      <div class="lane-name">In the room<small>physical; the software cannot see any of it</small></div>
+      <div class="chips">
+        <span class="chip">Players</span>
+        <span class="chip">Token objects with NFC tags</span>
+        <span class="chip">GMs</span>
+        <span class="chip">Locks, puzzles, props</span>
+      </div>
+    </div>
+    <div class="link">a player taps a token on a player scanner; a GM taps one on a GM scanner and presses buttons</div>
+    <div class="lane">
+      <div class="lane-name">Scanners and screens<small>physical devices, each running part of the engine</small></div>
+      <div class="chips">
+        <span class="chip weak">Hardware player scanner <a class="mk" href="#imp-3">3</a><small>the replies it understands are fixed in its firmware</small></span>
+        <span class="chip weak">Player scanner on a phone <a class="mk" href="#imp-5">5</a><small>loads its own copy of the token data</small></span>
+        <span class="chip weak">GM scanner on a phone or tablet <a class="mk" href="#imp-1">1</a><a class="mk" href="#imp-2">2</a><small>marks a token as used before the backend replies; has its own copy of the rules for standalone games</small></span>
+        <span class="chip weak">Scoreboard on the TV <a class="mk" href="#imp-1">1</a><small>receives everything and works out what to show</small></span>
+      </div>
+    </div>
+    <div class="link">over the kit's Wi-Fi: scans and commands reach the backend through six separate entry points; message names are typed by hand at both ends <a class="mk" href="#imp-1">1</a><a class="mk" href="#imp-3">3</a></div>
+    <div class="lane">
+      <div class="lane-name">The backend<small>the engine's central program; a standalone game has none</small></div>
+      <div class="chips">
+        <span class="chip weak">The session's data: accounts, transactions, scores, exposed evidence <a class="mk" href="#imp-1">1</a><small>edited in place; a delete or a score reset leaves no trace</small></span>
+        <span class="chip good">The game rules, read from the pack <a class="mk ok" href="#sound">✓</a></span>
+        <span class="chip weak">Starting, pausing, ending and resetting a session <a class="mk" href="#imp-5">5</a><small>five hand-written lists of steps</small></span>
+        <span class="chip weak">What it knows about this installation <a class="mk" href="#imp-5">5</a><small>spread over several files; some kept only in memory</small></span>
+        <span class="chip good">Comparing what the game needs with the gear that is installed <a class="mk ok" href="#sound">✓</a></span>
+        <span class="chip">Cues, the game clock, the video queue</span>
+        <span class="chip weak">How the program is assembled <a class="mk" href="#imp-7">7</a><small>by hand; assumes it is the only copy running on its computer</small></span>
+      </div>
+    </div>
+    <div class="link">commands go out; what each program is doing, and whether it is working, come back as two separate reports <a class="mk" href="#imp-4">4</a></div>
+    <div class="lane">
+      <div class="lane-name">Other programs<small>on the backend's computer, started and controlled by the backend</small></div>
+      <div class="chips">
+        <span class="chip weak">Video player</span><span class="chip weak">Music player</span><span class="chip weak">Sound effects</span><span class="chip weak">Audio routing</span><span class="chip weak">Bluetooth</span><span class="chip weak">Lights</span><span class="chip weak">Scoreboard browser</span>
+      </div>
+    </div>
+    <div class="link">picture, sound, light</div>
+    <div class="lane room">
+      <div class="lane-name">The kit's gear in the room<small>physical; installed for one night or for months</small></div>
+      <div class="chips">
+        <span class="chip">TV</span><span class="chip">Speakers</span><span class="chip">Lights</span><span class="chip">A second display</span>
+      </div>
+    </div>
+  </div>
+  <p class="legend"><span><i class="sw room"></i>physical</span><span><i class="sw"></i>software</span><span><i class="sw weak"></i>weak spot today</span><span><i class="sw good"></i>in good shape today</span></p>
+</section>
+
+<section id="sound" class="prose">
+  <h2>What is already in good shape, and stays</h2>
+  <ul class="plain">
+    <li>The pack format, and the check at start-up that refuses a pack the engine cannot run.</li>
+    <li>The game rules in the backend: scoring, duplicates, group bonuses. They are self-contained and easy to test.</li>
+    <li>The comparison of what a game needs with the gear that is installed, and its three words: healthy, down, dormant.</li>
+    <li>The way the state of video, music, sound and lights reaches the GM scanner: one kind of message for all of them.</li>
+    <li>Draft and publish in the config tool.</li>
+    <li>The toy game, and the rule that every change must pass with both ALN and the toy game.</li>
+  </ul>
+  <p class="muted">Two limits on that list. The toy game is the same kind of game as ALN and has no media, so passing with both does not prove the engine suits other kinds of game. And the phone's player scanner loads its own copy of the token data but displays the backend's pack version.</p>
+</section>
+
+<section>
+  <h2>The seven changes</h2>
+  <p class="prose">Each card says what happens today, what I propose, what you would notice at a session, what later work it makes possible, and what it costs. I recommend all seven. The sixth is a rule for designing the others more than a separate piece of work.</p>
+
+  <div class="imps">
+
+  <article class="imp" id="imp-1">
+    <div class="imp-head"><span class="num">1</span><h3>The backend keeps one complete record of each session, and updates every screen from it the same way</h3><span class="badge">Recommended</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx">A player scanner's scan, a GM scanner's scan and a GM's command each reach the backend through a different entry point, with its own checks and its own kind of reply. There are six entry points</span></div>
+          <div class="row"><span class="bx">The backend keeps the session's current data: the list of transactions and the scores. Deleting a transaction removes it from the list, and resetting the scores empties the list. The session's data then shows no sign that either happened</span></div>
+          <div class="row"><span class="bx">The GM scanner marks a token as used as soon as it is scanned, before the backend replies, and keeps its own copy of the transactions and scores</span></div>
+          <div class="row"><span class="bx">One piece of code updates a GM scanner that stayed connected. A different piece brings a reconnecting one up to date</span></div>
+        </div>
+        <p>Four times so far, that second piece has left something out. Separately, any device on the kit's Wi-Fi can read the scores and the whole pack without identifying itself.</p>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx">Every scan and command reaches the backend through one entry point and gets one kind of reply: accepted, refused with the reason, held for later, or failed and worth retrying. The reply also says what the device should show</span></div>
+          <div class="row"><span class="bx">The backend keeps a record that only grows. Every scan, delete, score change and reset is added as a new line, in order. The scores and everything on screen are worked out from it</span></div>
+          <div class="row"><span class="bx">In a networked game, only the backend decides whether a scan counts. One piece of code updates every screen, connected or reconnecting</span></div>
+        </div>
+        <p>What each kind of device may do is set in the pack. Three things always stay with staff: starting and ending a session, controlling the show, and changing scores. "Player scanners only view, GM scanners score" is ALN's choice, not the engine's rule.</p>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>At a session</dt><dd>What a GM does on one GM scanner appears on every other GM scanner and on the scoreboard, including after a reconnect. Every tap gets a clear reply. Scans taken without a connection are added in the right order when it returns.</dd></div>
+      <div><dt>Later work it allows</dt><dd>Staff notes and photos during a session. A full record of each session for the report. Players tapping tokens with their own phones. Actions made of several taps in a row, which the second game needs. Games that show different players different things.</dd></div>
+      <div><dt>What it costs</dt><dd>It is the biggest of the seven, because every scan and command passes through this code. And for the backend to check what a player scanner may do, each one needs a credential, issued automatically with no login. None has one today. You decided on 13 November that every device gets one.</dd></div>
+    </dl>
+    <p class="choice"><b>Decided on 13 November.</b> The record only grows. A delete is a new line saying "this transaction was deleted", and nothing changes or removes a line once it is written. The alternative was to keep editing the session's data in place, as today.</p>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>backend/src/routes/scanRoutes.js, healthRoutes.js, musicRoutes.js; backend/src/websocket/adminEvents.js (the six entry points)</li>
+      <li>backend/src/services/transactionService.js:721; session/persistenceListeners.js:44 (delete and reset remove transactions)</li>
+      <li>backend/src/websocket/broadcasts.js, syncHelpers.js:36 (the two pieces of code that update screens)</li>
+      <li>ALNScanner/src/app/domains/gameOps.js:326 (the GM scanner marks first)</li>
+      <li>backend/src/routes/packRoutes.js:34, stateRoutes.js:32 (readable by any device)</li>
+      <li>backend/src/gameRules/grants.js:26 (ALN's choice, built into the engine)</li>
+    </ul></details>
+  </article>
+
+  <article class="imp" id="imp-2">
+    <div class="imp-head"><span class="num">2</span><h3>A standalone game runs the same game code as a networked one</h3><span class="badge">Recommended</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx"><b>Networked.</b> The backend decides what each GM scan does: whether the token is already used, what it scores, whether it completes a group</span><span class="bx"><b>Standalone.</b> The GM scanner decides, with its own separate copy of those rules and its own way of storing the session</span></div>
+          <div class="via">the two copies are kept the same by hand, with code comments and tests whose expected results are typed in</div>
+        </div>
+        <p>They already differ. A standalone GM scanner accepts scans before a session starts and after it ends. The backend refuses both. Across the scanners and the scoreboard, sixteen rules are written a second time like this, and for five of them nothing checks that the copies agree.</p>
+        <p>The installation profile can say that an installation has no backend, but only the backend reads that file. The GM scanner goes by a button the GM taps at start-up, and the phone's player scanner by the web address it was opened from.</p>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx">The code that decides what a scan does and keeps the session's record is written once</span></div>
+          <div class="via">the same code runs in both places</div>
+          <div class="row"><span class="bx">in the backend, for a networked game</span><span class="bx">inside the GM scanner, for a standalone game</span></div>
+        </div>
+        <p>Whether a game is standalone or networked is declared in one place that every device reads.</p>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>At a session</dt><dd>A standalone game scores, refuses duplicates and completes groups exactly as a networked game does, because it is the same code.</dd></div>
+      <div><dt>Later work it allows</dt><dd>Games for places where a network is not feasible, or where it is simpler to bring only scanners. A new rule is written once and works in both.</dd></div>
+      <div><dt>What it costs</dt><dd>That code has to run in two places from the start: in the backend, and inside the GM scanner's web page. The two are in separate repositories today, so the shared code needs one place both can load it from.</dd></div>
+    </dl>
+    <p class="choice"><b>Decided on 13 November.</b> The GM scanner runs all of the game's rules, as the same code the backend runs. It follows from three decisions you made that day. A GM scanner with no connection works out a result itself and shows it marked "not confirmed". If the backend's computer dies, the session goes on at the GM scanners. And in a game with no backend, the GM scanner keeps the session's record. The alternatives were to share only the scoring calculations, or to keep a separate copy with more tests comparing the two.</p>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>ALNScanner/src/core/storage/LocalStorage.js (the GM scanner's own copy; :302 accepts scans unless paused), core/scoring.js, core/modeSemantics.js</li>
+      <li>backend/src/services/transactionService.js (:157 refuses scans unless the session is active), backend/src/gameRules/ (the backend's copy)</li>
+      <li>docs/plans/architecture-pass/relationships/2026-11-01-today-client-modules.md, section 6.2 (the sixteen rules)</li>
+      <li>backend/src/gameRules/resolution.js:53 (the profile's "no backend")</li>
+      <li>ALNScanner/src/app/sessionModeManager.js; aln-memory-scanner/js/orchestratorIntegration.js:33</li>
+    </ul></details>
+  </article>
+
+  <article class="imp" id="imp-3">
+    <div class="imp-head"><span class="num">3</span><h3>The messages between the backend and the devices are defined in one place and checked automatically</h3><span class="badge">Recommended</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx">Two files describe the messages that the scanners, the scoreboard and the backend send each other</span></div>
+          <div class="via">some tests compare the programs with those files, but each program still has the message names typed into it by hand</div>
+          <div class="row"><span class="bx">Backend</span><span class="bx">GM scanner</span><span class="bx">Player scanner on a phone</span><span class="bx">Hardware player scanner</span><span class="bx">Scoreboard</span></div>
+        </div>
+        <p>If the backend sends a message whose name is missing from the GM scanner's hand-typed list, the GM scanner ignores it and nothing warns anyone. When a device connects, nothing checks that it and the backend expect the same messages. And what is written onto a token's NFC tag is described in neither file.</p>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx">One definition, with a version number, of three things: every message, every file the engine reads or writes (the pack, the installation profile, a session's record), and what is written on a tag</span></div>
+          <div class="via">every program is tested against it automatically whenever the program or the definition changes</div>
+          <div class="row"><span class="bx">The backend, the GM scanner, both player scanners, the scoreboard and the config tool</span></div>
+        </div>
+        <p>You decided on 1 November that the engine would have one published protocol. This is how I would build it. Testing every program against the definition comes first. Generating code from the definition can come later, where it saves work.</p>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>At a session</dt><dd>After a software update, a scanner that does not match the backend is caught when it connects, before the session starts.</dd></div>
+      <div><dt>Later work it allows</dt><dd>New kinds of device and screen. Software that other people write for the engine. Updating a pack at any time, while the engine's own software is updated only between events.</dd></div>
+      <div><dt>What it costs</dt><dd>The definition has to be written before the programs that use it, and each program's tests rewritten against it. The hardware scanners' firmware changes too, so they are re-flashed at the cutover. After that flash they take their updates over the air. Nothing has to stay compatible with blue or its scanners, because the switch happens all at once.</dd></div>
+    </dl>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>backend/contracts/openapi.yaml, asyncapi.yaml (the two files)</li>
+      <li>backend/tests/contract/scanner/ (the tests that exist)</li>
+      <li>ALNScanner/src/network/orchestratorClient.js:26 (the GM scanner's hand-typed list of message names)</li>
+      <li>arduino-cyd-player-scanner/ALNScanner_v5/services/ScanResponse.h:41 (replies fixed in the hardware scanner's firmware)</li>
+      <li>ALN-TokenData/tag-writer.html (what is written on a tag)</li>
+    </ul></details>
+  </article>
+
+  <article class="imp" id="imp-4">
+    <div class="imp-head"><span class="num">4</span><h3>Video, music, sound and lights are controlled through one pattern, and their programs restart when they crash</h3><span class="badge">Recommended</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx">Video player</span><span class="bx">Music player</span><span class="bx">Sound effects</span><span class="bx">Audio routing</span><span class="bx">Bluetooth</span><span class="bx">Lights</span><span class="bx">Scoreboard browser</span></div>
+          <div class="via">the backend has seven pieces of code, one for each. They are alike, but each has its own differences</div>
+        </div>
+        <p>What a program is doing and whether it is working are reported to the GM scanner as two separate things, so the admin panel can still show a program's last known state after that program has stopped. And a player scanner that checks in before a session exists is not recorded, so nothing can count the scanners before a session.</p>
+        <p>If the backend itself restarts in the middle of a session, the session's data, the clock and the list of cues already fired come back. Much else does not. Every GM is logged out. Music stops and stays stopped. The TV goes back to the idle loop. A cue part-way through its timeline stops there. Held items are gone.</p>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx">All seven follow one written pattern. Each accepts commands, including "check this now", and gives one report: what it is doing, whether it is working, and when that was last checked</span></div>
+          <div class="row"><span class="bx">One part of the backend starts all seven programs, restarts any that crash, and stops them when the backend stops</span></div>
+          <div class="row"><span class="bx">A backend restart follows the same steps as a normal start, then puts the show back from the session's record. The GMs stay logged in. The TV and the music return to where they were. Anything that was cut off is offered to the GM, not replayed by itself</span></div>
+          <div class="row"><span class="bx">The backend knows which GM scanners, player scanners and displays are connected, whether or not a session exists</span></div>
+        </div>
+        <p>For a rehearsal with no real gear, the same seven programs run, connected to software that stands in for the speakers and lights. You already ruled that a rehearsal works this way, through an ordinary installation profile that points at stand-ins.</p>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>At a session</dt><dd>A crashed program restarts by itself. If it cannot, the GM scanner shows it in red with what to do. Gear that is not part of this installation shows grey. If the backend itself restarts, the show comes back to where it was, with nobody logging in again or setting things up again.</dd></div>
+      <div><dt>Later work it allows</dt><dd>The paused work on automatic restarts and the preflight is built once for all seven, not seven times.</dd></div>
+      <div><dt>What it costs</dt><dd>Seven pieces of code rewritten to the one pattern, one at a time. Putting the show back after a restart also needs the session's record (change 1) to hold what the show was doing.</dd></div>
+    </dl>
+    <p class="choice"><b>Already decided, not a choice.</b> You ruled on 12 September that the backend starts and supervises these programs itself, through one supervision path. That stands, and it is the sound choice: the backend is the only part that knows which programs this game and this installation need, and a restart then has one way back. My earlier version reopened it so that video and music could keep playing through a backend restart. That is not what goes wrong in a restart, and it is not worth a second way of recovering.</p>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>backend/src/services/vlcMprisService.js, musicService.js, soundService.js, audioRoutingService.js, bluetoothService.js, lightingService.js; backend/src/utils/displayDriver.js (the seven)</li>
+      <li>backend/src/utils/processMonitor.js:92 (stops the programs when the backend exits)</li>
+      <li>backend/src/middleware/auth.js:13 (GM logins kept only in memory); services/displayControlService.js:31; services/cue/timelineRuntime.js:63; services/heldItemsStore.js:40 (lost in a restart)</li>
+      <li>backend/src/services/sessionService.js:108; services/gameClockService.js:218 (what comes back after a restart)</li>
+      <li>docs/plans/2026-09-12-block2-hardening-plan.md, rulings R6, R13, R18, R20 (the backend supervises its programs)</li>
+      <li>backend/src/services/musicService.js:73 ("working" kept separately)</li>
+      <li>backend/src/routes/healthRoutes.js:86 (a scanner checking in with no session is not recorded)</li>
+    </ul></details>
+  </article>
+
+  <article class="imp" id="imp-5">
+    <div class="imp-head"><span class="num">5</span><h3>The engine keeps separate what belongs to one session, to one installation and to the whole production</h3><span class="badge">Recommended</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx">The backend holds one session at a time. Five hand-written lists of steps say what to do when it starts up, shuts down or resets, and when a session starts, pauses or ends</span></div>
+          <div class="via">GM scanners and the scoreboard work out that a new session has begun from a changed session id. Player scanners are never told</div>
+        </div>
+        <p>So the devices do not agree on where one session ends and the next begins. Scans that a player scanner stored while it had no connection can be added to the next group's session.</p>
+        <p>Facts about the installation are spread over several files, and the GMs' logins are kept only in memory, so restarting the backend logs every GM scanner out. Each device loads its copy of the pack when it starts, and is not told when the pack changes. A backend that restarts in the middle of a session picks up any pack edit made since the session began, with only a line in the log.</p>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx"><b>One session.</b> It is set up, started, paused and ended. Its record only grows. Notes can still be added after it ends</span></div>
+          <div class="row"><span class="bx"><b>One installation.</b> One place holds which gear is installed, which devices belong to it and are logged in, and the records of the sessions played on it. It survives restarts</span></div>
+          <div class="row"><span class="bx"><b>The production.</b> The pack, its versions and its media files are kept together, so one backend can hold more than one game</span></div>
+          <div class="via">one table says what happens to each piece of data when a session starts, pauses, ends or is reset, when the backend starts or stops, and when a new pack is applied. One piece of code carries it out and tells every device. A session keeps the pack it started with</div>
+        </div>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>At a session</dt><dd>In a long run, "end this session, reset, start the next group" leaves every screen and every scanner clean each time. A restart in the middle of a session loses nothing. A touring game arrives at a new venue with one installation profile to fill in.</dd></div>
+      <div><dt>Later work it allows</dt><dd>Staff notes and photos. The venue technician's screens. More than one game on one backend. The designer's loop from the roadmap: change a value in the config tool, apply it, and playtest.</dd></div>
+      <div><dt>What it costs</dt><dd>Every device has to be told when a new pack is applied, and reload it. Today each loads its copy once, when it starts. This plan does not require the backend to change packs without restarting. The roadmap asks for that only to make the designer's loop fast, and whether a restart is fast enough can be settled when the config tool's editor is built.</dd></div>
+    </dl>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>backend/src/app.js:178, services/systemReset.js, server.js:163, services/sessionService.js:284 (the lists of steps)</li>
+      <li>ALNScanner/src/network/networkedSession.js:246 (working out that a new session began)</li>
+      <li>backend/src/routes/scanRoutes.js:317 (stored scans added to the current session)</li>
+      <li>backend/src/middleware/auth.js:13 (GM logins kept only in memory)</li>
+      <li>backend/src/services/sessionService.js:113 (a restart under a different pack only logs a warning)</li>
+      <li>docs/plans/ROADMAP.md, section 2.4 (the designer's loop, and applying a pack without a restart)</li>
+      <li>backend/src/services/packService.js:96 (the pack fixed at start-up)</li>
+    </ul></details>
+  </article>
+
+  <article class="imp" id="imp-6">
+    <div class="imp-head"><span class="num">6</span><h3>A designer writes a game's rules in the pack, and the code has a known place for each new capability</h3><span class="badge">Recommended</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx">The engine has a list of its capabilities. A pack lists the capabilities it needs. At start-up the backend refuses a pack that needs one the engine does not have</span></div>
+          <div class="via">that check works well. But adding a new capability means changing code in many places, with no pattern to follow</div>
+          <div class="row"><span class="bx">The rules of the game are in the engine's code: one way of scoring, one rule for a complete group, one rule for a used token</span><span class="bx">A pack picks them by name and sets their numbers. A designer cannot write a rule of their own</span></div>
+        </div>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx">A designer writes the game's rules in the pack, in the config tool: what a token carries, what an account is and holds, the verbs, what each verb does, and what the game does by itself. How points are worked out is a formula the designer writes</span></div>
+          <div class="via">the engine's code holds the capabilities these rules are built from, and works the rules out the same way in the backend and inside the GM scanner</div>
+          <div class="row"><span class="bx">A new capability for rules is one new file in one known folder, written to a set pattern</span></div>
+          <div class="row"><span class="bx">A new kind of equipment is one new file written to the pattern in change 4</span></div>
+          <div class="row"><span class="bx">A new kind of screen is one new page that is told what to show, as in change 1</span></div>
+        </div>
+        <p>This matches the two kinds of extension you described on 2 November. A designer combines the engine's existing capabilities inside the pack, with no programming. A developer adds a new capability to the engine as one new piece of code, and then any game can use it. ALN's own rules move from the engine's code into ALN's pack, written like any other game's.</p>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>For a designer</dt><dd>A new game is scored its own way and gives its players its own verbs, with no developer. A game that is not ALN might let a player deposit a token for its value, doubled in the last ten minutes, or let one faction steal a token that another has deposited.</dd></div>
+      <div><dt>For a developer</dt><dd>Someone adding a capability knows where the code goes and what it has to look like. A game that uses the capability proves it works.</dd></div>
+      <div><dt>Later work it allows</dt><dd>The ways the engine is meant to grow. The project's notes already list 28 of them, from a third way to turn in a token, to a different lighting system, to audio in several rooms. Two are your own examples.</dd></div>
+      <div><dt>How the places are designed</dt><dd>From the kinds of addition the engine is meant to allow, not from one game. Each place is checked against at least two different cases from that list, and against one test: what an addition must not need to touch. ALN's rules written in its pack, the seven programs and the scoreboard become the first rules, the first equipment and the first screen, so no place is built on a guess. The second game is one case among the 28.</dd></div>
+      <div><dt>What it costs</dt><dd>Working a game's rules out from its pack is new code at the centre of the engine. ALN's rules have to be written again as pack rules and shown to give the same scores as today on recorded sessions. The config tool needs screens for verbs and formulas, which the roadmap calls the mechanics editor.</dd></div>
+    </dl>
+    <p class="choice"><b>Decided on 13 November.</b> A designer designs the game's rules in the pack, scoring and verbs included. A new capability becomes part of the engine and arrives with an engine update, with no add-ons beside it. My first version of this change kept scoring with developers, and you corrected it.</p>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>backend/src/services/packService.js:52 (the list of capabilities, and the start-up check)</li>
+      <li>backend/src/gameRules/scoring.js:51 (the scoring formula, in the engine's code); backend/src/models/session.js</li>
+      <li>ALN-TokenData/game.json (a mode picks "standard" or "none"; the group bonus is a formula the pack names)</li>
+      <li>docs/plans/architecture-pass/requirements/2026-11-01-extension-cases.json (the 28 ways the engine must be able to grow)</li>
+      <li>docs/plans/2026-07-17-bill-capability-scoping.md (what the second game needs)</li>
+    </ul></details>
+  </article>
+
+  <article class="imp" id="imp-7">
+    <div class="imp-head"><span class="num">7</span><h3>The backend is assembled in one place, and a copy started for a test or a rehearsal leaves the installed backend as it was</h3><span class="badge">Recommended</span></div>
+    <div class="ba">
+      <div class="side today">
+        <p class="side-label">Today</p>
+        <div class="flow">
+          <div class="row"><span class="bx">The backend is made of fourteen parts. The list of those parts is typed out by hand in about a dozen places. One of those lists leaves out the music</span></div>
+          <div class="row"><span class="bx">The backend assumes it is the only copy running on its computer. The automatic tests start a second copy today, and a rehearsal from the config tool would start one later. That copy uses the same thirteen temporary files, the same screen and the same video player as the installed backend</span></div>
+        </div>
+        <p>When any copy starts, it stops every scoreboard browser and every sound monitor on the computer, including the installed backend's. This is a risk between sessions, not during one. No real situation has a test or a rehearsal running in the middle of a live session.</p>
+      </div>
+      <div class="side next">
+        <p class="side-label">Proposed</p>
+        <div class="flow">
+          <div class="row"><span class="bx">The backend is assembled in one place in the code, from one list of its parts</span></div>
+          <div class="row"><span class="bx">Each running copy keeps its files in its own folder and stops only the programs it started</span></div>
+          <div class="row"><span class="bx">Only one copy at a time uses the real TV, speakers and lights. A copy started for a test or a rehearsal uses stand-ins</span></div>
+        </div>
+      </div>
+    </div>
+    <dl class="gives">
+      <div><dt>Between sessions</dt><dd>A test run or a rehearsal on the backend's computer leaves the installed backend exactly as it was for the next session.</dd></div>
+      <div><dt>For development</dt><dd>A test can start the backend with only the parts it needs, and tests can run side by side. Today the integration tests have to run one at a time.</dd></div>
+      <div><dt>What it costs</dt><dd>Less than I first said. I have dropped two copies sharing the TV and the players at the same moment, because nothing needs it. What is left is one place of assembly, a folder for each copy, and stopping only what a copy started.</dd></div>
+    </dl>
+    <details class="files"><summary>Where this is in the code</summary><ul>
+      <li>backend/src/websocket/adminEvents.js:77 (a hand-typed list that leaves out the music)</li>
+      <li>backend/src/utils/displayDriver.js:56, :147; backend/src/services/audioRoutingService.js:603 (stops programs it did not start)</li>
+      <li>backend/src/services/vlcMprisService.js:16 (one fixed name for the video player)</li>
+    </ul></details>
+  </article>
+
+  </div>
+</section>
+
+<section>
+  <h2>How it would fit together afterwards</h2>
+  <p class="prose">The same picture, with the software as it would be.</p>
+  <div class="pic" role="group" aria-label="How the engine would fit together afterwards">
+    <div class="lane">
+      <div class="lane-name">Scanners and screens<small>every device</small></div>
+      <div class="chips">
+        <span class="chip good">Send every scan and command the same way <a class="mk ok" href="#imp-1">1</a></span>
+        <span class="chip good">Show what they are told to show <a class="mk ok" href="#imp-1">1</a></span>
+        <span class="chip good">Hold no game rules of their own</span>
+        <span class="chip good">Are known to the backend whenever they are connected <a class="mk ok" href="#imp-4">4</a></span>
+      </div>
+    </div>
+    <div class="link">one definition of every message <a class="mk ok" href="#imp-3">3</a></div>
+    <div class="lane">
+      <div class="lane-name">The game code<small>runs in the backend for a networked game, or inside the GM scanner for a standalone game <a class="mk ok" href="#imp-2">2</a></small></div>
+      <div class="chips">
+        <span class="chip good">Handles every scan and command the same way <a class="mk ok" href="#imp-1">1</a></span>
+        <span class="chip good">Keeps the session's complete record <a class="mk ok" href="#imp-1">1</a></span>
+        <span class="chip good">Tells every screen what to show <a class="mk ok" href="#imp-1">1</a></span>
+        <span class="chip good">The game's rules come from the pack. The capabilities they are built from have a known place <a class="mk ok" href="#imp-6">6</a></span>
+        <span class="chip good">What happens when a session starts, pauses, ends or resets, from one table <a class="mk ok" href="#imp-5">5</a></span>
+      </div>
+    </div>
+    <div class="link">the game code asks for video, sound and light, and is told what happened</div>
+    <div class="lane">
+      <div class="lane-name">The show-control code<small>in the backend only; a standalone game has none</small></div>
+      <div class="chips">
+        <span class="chip">Cues, the game clock, the video queue</span>
+        <span class="chip">Comparing what the game needs with the gear that is installed</span>
+        <span class="chip good">One place for this installation's data <a class="mk ok" href="#imp-5">5</a></span>
+        <span class="chip good">One pattern for controlling each kind of equipment <a class="mk ok" href="#imp-4">4</a></span>
+        <span class="chip good">Assembled in one place; each running copy uses only its own files and programs <a class="mk ok" href="#imp-7">7</a></span>
+      </div>
+    </div>
+    <div class="link">the backend starts these programs, restarts any that crash, and stops them when it stops <a class="mk ok" href="#imp-4">4</a></div>
+    <div class="lane">
+      <div class="lane-name">Other programs<small>on the backend's computer; connected to the real gear, or to stand-ins for a rehearsal</small></div>
+      <div class="chips">
+        <span class="chip">Video player</span><span class="chip">Music player</span><span class="chip">Sound effects</span><span class="chip">Audio routing</span><span class="chip">Bluetooth</span><span class="chip">Lights</span><span class="chip">Scoreboard browser</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Which changes the rest of the roadmap depends on</h2>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Still to build</th><th>Depends on changes</th></tr></thead>
+    <tbody>
+      <tr><td>Automatic restarts, and the preflight</td><td class="nums">4, 7, 5</td></tr>
+      <tr><td>A scanner noticing that its copy of the pack is out of date</td><td class="nums">3, 5</td></tr>
+      <tr><td>The config tool's screens: change a value, apply it, try it</td><td class="nums">5, 1, 7</td></tr>
+      <tr><td>Rehearsing without the venue</td><td class="nums">4, 7, 1</td></tr>
+      <tr><td>The venue technician's screens, and a touring game</td><td class="nums">4, 5</td></tr>
+      <tr><td>Staff notes and photos during a session, and the session's record</td><td class="nums">1, 5</td></tr>
+      <tr><td>Players tapping tokens with their own phones</td><td class="nums">1, 3</td></tr>
+      <tr><td>What the second game needs</td><td class="nums">6, 1, 2</td></tr>
+      <tr><td>Standalone games</td><td class="nums">2, 5</td></tr>
+      <tr><td>A release that other people can install</td><td class="nums">3, 7, 2</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="prose">
+  <h2>The order of work</h2>
+  <p>You decided the order on 30 October and 1 November: design first and then build, and design the hardest things to reverse first. Each item below is built on the ones before it, so nothing is built twice.</p>
+  <ol class="steps">
+    <li><b>Design how the backend keeps a session's data</b> (change 1), with what belongs to a session, an installation and a production (change 5). Everything else reads or writes this data, so it is the hardest thing to change later.</li>
+    <li><b>Design the messages and files</b> (change 3). They follow from how the session's data is kept, and every program is built and tested against them.</li>
+    <li><b>Design which device decides what</b> (change 2): in a networked game, in a standalone game, and on a GM scanner that has lost its connection. This says where the game code must be able to run.</li>
+    <li><b>Design how the engine is extended</b> (change 6), with the pattern for equipment (change 4) and how copies of the backend stay apart (change 7). These join the first three at a few points and are easier to change later.</li>
+    <li><b>Decide how today's code moves to the new design:</b> changed in place, or moved piece by piece into a new structure.</li>
+    <li><b>Build a thin first version that works end to end:</b> one scan, from the tap, into the session's record, and out to a GM scanner and the scoreboard, in the backend and inside a standalone GM scanner, across a lost connection and a restart.</li>
+    <li><b>Build the rest one area at a time,</b> each with its detailed design just before it is built. The paused work on automatic restarts and the preflight is rebuilt here.</li>
+    <li><b>Cut over once, when you decide the new engine is ready.</b> Green is set up and rehearsed at the venue before that.</li>
+  </ol>
+  <p>The five design items are conversations with you, a few questions at a time, each with my recommendation. At the start of each one I say which decisions I need from you, so you can tell when it is settled. They end in short decision notes, not in more pages.</p>
+  <p><b>None of this is small.</b> The backend and the GM scanner together are about 43,000 lines of code, with about 116,000 lines of tests that have to change with them. That is why the build goes in small pieces that each work.</p>
+  <p class="muted">One smaller change is also worth exploring. The config tool should send its changes to the backend as messages, the way the scanners do. Today it writes the engine's files and uses the engine's code directly. I would settle that when the messages are designed.</p>
+</section>
+
+<section id="move">
+  <h2>How today's code moves to the new design</h2>
+  <div class="prose">
+  <p>This is the last topic of the design. On 13 November you sent my first two decisions on it back as not fully considered. This is the considered version. I waited for the research to finish and read all of it. One independent reader then challenged my answer and found fourteen things wrong or missing. They are fixed here, and two of my recommendations changed because of them.</p>
+
+  <h3>1. What the "thin first version" is</h3>
+  <p>It is the smallest engine in which one token goes through every part of the new design. It is thin in what it does. It is not small in work, because it holds the first form of every new central part.</p>
+  <p>What a person can do with it:</p>
+  <ol class="steps">
+    <li>Start the backend on a laptop with a pack of three tokens.</li>
+    <li>Open the GM scanner's page on a phone, log in, choose an account and enter a token, typed or read from a tag.</li>
+    <li>See the result on the GM scanner, and see the scoreboard page change on another screen.</li>
+    <li>Open the player scanner page from a link like the one on a tag, with no login, and see the token's picture.</li>
+    <li>Turn the phone's Wi-Fi off and enter another token. The result shows as "not confirmed". Turn Wi-Fi on. It becomes confirmed.</li>
+    <li>Two GM scanners, one with no connection, take the same token. The scan that reaches the backend first counts. The other GM is told which scan was refused and why.</li>
+    <li>Stop the backend and start it again. The session, the scores and the login are back.</li>
+    <li>End the session. A scan stored on a GM scanner arrives afterwards and lands in that session, marked late. Create the next session: every screen is cleared, and the record of the last one is kept.</li>
+    <li>Open the GM scanner with no backend at all. The same verbs give the same scores, and the session's record can be saved.</li>
+    <li>A rule asks the room for a sound. A stand-in for the sound player gets the command. Stop the stand-in: the backend starts it again, the crash is a line in the record, and what was cut off is on the GM's list.</li>
+    <li>The firmware's two small files that build and read messages are brought to the new definition and tested on a computer. The hardware scanner itself joins later, in its own area.</li>
+  </ol>
+  <p>Between them the eleven steps use every decision you made on 13 November once.</p>
+  <p><b>What it runs on.</b> Two packs. A new toy game scored its own way, because today's toy game is scored by ALN's formulas. And three of ALN's tokens, with ALN's two verbs written as rules in the pack, which must give ALN's numbers.</p>
+  <p><b>How it is checked.</b> By tests that use it only from outside, as a device would. They run with stand-ins for the gear, and on the test rig with the real video and music players. You decided on 1 November that the rig is rebuilt when building starts.</p>
+  <p><b>What it leaves out.</b> ALN's 81 tokens and their media, video, music, lights, Bluetooth, cues, held items, the session and admin screens, the look of every page, the config tool, the preflight, the report, the hardware scanner as a device, and updates over the air. Each is an area built after it.</p>
+  <p><b>What it needs first.</b> Four detailed designs. Three are mine: the form of a line in the record, how a rule and its formula are written in a pack, and the language the messages are defined in. I will show you ALN's rules and the toy game's written the new way before anything is built. One is yours: how a device is added to a kit, with a backend and without one. Two of your decisions rest on it.</p>
+
+  <h3>2. Change today's code in place, or build beside it</h3>
+  <p><b>In place.</b> Today's code is changed where it stands, in stages, and every stage leaves a whole working engine. Its strength is real: nothing is forgotten by default. Its costs here are four. Every central change needs in-between states that serve nobody, because blue runs ALN. Most of today's tests reach inside the code being replaced, and would have to be kept passing or rewritten at each stage. Your decision of 1 November brings back "pin down today's behaviour first" if this way is chosen. And it starts from ALN's shape and widens it, which is the bias you named.</p>
+  <p><b>Beside.</b> A new structure is started with the first version, and parts of today's code are moved into it. It is not a rewrite of everything. It is decided program by program:</p>
+  </div>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Program</th><th>Way</th><th>Rewritten</th><th>Moved and fitted</th></tr></thead>
+    <tbody>
+      <tr><td>Backend</td><td>Beside</td><td>The session store, how a scan is handled, the messages, the commands, credentials, how it is put together. About four lines in ten.</td><td>The code for the video player, music, sound, audio, Bluetooth, lights and the TV browser. The part that restarts a crashed program. September's "not installed" work. The check that refuses a broken pack. Cues, the video queue, the game clock and held items, each fitted to the record when its area is built.</td></tr>
+      <tr><td>GM scanner</td><td>Beside</td><td>Its two stores, its copy of the rules, its network code, and its game screens, which are built around ALN's fields and ALN's two modes.</td><td>Tag reading, pack loading, the show-control screens and the styles. The GM scanner's redesign is designed with you before this area is built.</td></tr>
+      <tr><td>Player scanner page</td><td>Beside</td><td>How it talks to the backend, and its start from a link.</td><td>How it shows a memory.</td></tr>
+      <tr><td>Scoreboard</td><td>Beside</td><td>Its script. It becomes a screen that is told what to show.</td><td>Its look.</td></tr>
+      <tr><td>Config tool</td><td>Decided at its area</td><td>Its link to the engine. Today it signs its own logins with the backend's secret, writes the backend's settings files and loads the backend's code. Screens for verbs and formulas are new.</td><td>Its cue screens, and its draft and publish.</td></tr>
+      <tr><td>Hardware scanner firmware</td><td>In place</td><td></td><td>Changed where it stands, file by file.</td></tr>
+      <tr><td>Tag tools, post-session checks</td><td>Rewritten</td><td>The tag tools write the id first today. The checks read today's session file and score with ALN's formulas.</td><td></td></tr>
+      <tr><td>ALN's pack</td><td>Rewritten in part</td><td>Its rules, as a designer's rules.</td><td>Its tokens, texts, cues and look.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="prose">
+  <p>The risks of building beside, and what answers each:</p>
+  <ul class="plain">
+    <li><b>A fix nobody wrote down is lost.</b> The equipment code is moved, not rewritten. Before each area a list is made from the end-to-end tests, the audit against the real players, the warnings in the guides, the cause analysis and the list of blue's fixes.</li>
+    <li><b>ALN's scores change without anyone noticing.</b> Real sessions, turned into the new record, must give the same final scores. No recorded session is in the repository, so I need some from you.</li>
+    <li><b>A long time with no working whole.</b> The first version, then one area at a time into it.</li>
+    <li><b>A fault fixed on blue never reaches the new engine.</b> Each area keeps a list of cases still to cover. A fix on blue adds a case, and the case becomes a test when that area is built.</li>
+  </ul>
+  <p class="choice"><b>Recommended.</b> Beside for the backend, the GM scanner, the player scanner page and the scoreboard. In place for the firmware. The config tool is decided when its area is built.</p>
+
+  <h3>3. The repositories</h3>
+  <p>This is three questions.</p>
+  <p><b>(a) One repository for the engine's web programs and the code they share, or one for each program as today.</b> That means the backend, the GM scanner, the player scanner page, the scoreboard, the config tool, the rules code, the definitions and the tag tools.</p>
+  </div>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th></th><th>One repository</th><th>One for each program, joined by pins</th></tr></thead>
+    <tbody>
+      <tr><td><b>Running kits</b></td><td>A release is one commit. Updating a kit is installing one release, and going back is installing the one before. A release becomes a built bundle that is installed, where today the Pi holds the code and builds the GM scanner when the backend starts.</td><td>A release is a set of pins. Today three copies of the pack data sit at two different commits, and the guide has a section on copies that have come loose. A wrong mix would be caught when devices connect, but it can be built.</td></tr>
+      <tr><td><b>Upkeep</b></td><td>A change to a message is one commit and one review, and one run of the checks sees every program. The rules code has one source that the backend and the GM scanner both load. Cost: the checks must run only what a change touches, and one mistake can break every program at once.</td><td>The same change is a commit in each repository and then the pins, in a set order. Between merges the programs disagree. Each repository's own checks cannot see the others. The shared rules code must be published as a package on every change, nested in each program, or copied, as today.</td></tr>
+      <tr><td><b>Extending</b></td><td>A developer adding a capability may touch the rules code, a backend module, a GM scanner screen and the definition. It is one repository to copy and one change to offer back. The edge of the repository is the line between the engine and any game.</td><td>The same addition is several repositories and their pins. What this side gives: a person can be given one program without the rest, and each program can have its own release rhythm. The programs cannot run across versions, so neither is wanted here.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="prose">
+  <p class="choice"><b>Recommended.</b> One. The shared code has to be proved with one real build in the first version. My first answer claimed it would work without checking, and the review showed the claim was wrong for code written the backend's way.</p>
+  <p><b>(b) The firmware in that repository, or in its own.</b> I first leaned to putting it in. The review's facts turn that.</p>
+  <ul class="plain">
+    <li>It is built with different tools, with parts of no fixed version, and no automatic check compiles it today.</li>
+    <li>Its repository holds 86 MB of copied libraries. One, 30 MB, is used by nothing. The display library is changed by hand for this board.</li>
+    <li>Two libraries inside it are under the GPL licence. So the firmware must be released under the GPL when the engine goes public, wherever it lives. That bears on the licence you choose for the rest.</li>
+    <li>Its tie to the engine is narrow, a handful of messages. And it is for one kind of hardware. Another production may use another, or none.</li>
+  </ul>
+  <p>The cost of keeping it apart: a change to a message the scanner uses is two repositories and a pin, and each engine release names the firmware version it carries.</p>
+  <p class="choice"><b>Recommended.</b> Its own repository, checked against the definition that the engine publishes with each release.</p>
+  <p><b>(c) Where the engine's repository starts: a new one created now, or a folder in today's repository, lifted out at release.</b></p>
+  <ul class="plain">
+    <li><b>A folder in today's repository</b> keeps everything in one place during the build. But the file with a live secret is tracked there today. The repository's checks run every old end-to-end test on every push. Two backends, two GM scanners and two player pages would sit side by side for months. And lifting the folder out later rewrites its history and breaks every link to it.</li>
+    <li><b>A new repository</b> starts clean, with no secret, nothing of ALN's and no old program beside the new one. It can be made public when you choose. Its costs: two repositories during the build, with today's code and this design's records in the old one. A file that moves loses its line-by-line history unless it is brought with it, so each move names where it came from.</li>
+  </ul>
+  <p class="choice"><b>Recommended.</b> A new repository, created now. Today's repository stays as it is, with blue's branch and the code to refer to. What it becomes after the cutover is part of the cutover plan. A change is then one pull request, where your rule of 12 September had one for each repository touched.</p>
+
+  <h3>4. ALN's report pipeline</h3>
+  <ul class="plain">
+    <li>The Director Console and the emailer stay ALN's own programs, outside the kit and outside the engine, as you decided on 1 November.</li>
+    <li>The report the GM downloads stays what you ruled on 29 August: its structure is fixed in the engine, its wording comes from the pack, and the ★ stays where the console's parser expects it. My first answer put the report's layout in ALN's pack. That went against your ruling and is withdrawn.</li>
+    <li>The report is made from the session's record. It then also works in a game with no backend, where today it does not.</li>
+    <li>The record keeps what a formula read, and not only its result, so the report can still print how a sale's value was worked out.</li>
+    <li>The check is the report's format on made-up records, and the same final scores on real sessions. It cannot be "byte for byte against old downloads": old reports print times in the timezone of the device that made them, and print adjustments nine hours off on some sessions. That fault goes away, because every line in the record is stamped by one clock.</li>
+    <li>The roster, the notes, the photos and the accusation join the record in the capture work, which the roadmap places after this build. So at the cutover the director still types them into the console, as today.</li>
+    <li>Moving the console to read the record directly stays at your pace.</li>
+  </ul>
+
+  <h3>5. What in these repositories is ALN's</h3>
+  </div>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Today</th><th>What it is</th><th>Where it goes</th></tr></thead>
+    <tbody>
+      <tr><td>The tokens, rules, cues, texts and look in the pack data</td><td>ALN's pack</td><td>ALN's pack, in its own repository</td></tr>
+      <tr><td>The six files that say what a pack must look like</td><td>The engine's</td><td>The engine</td></tr>
+      <tr><td>The tag-writing and check-in tools</td><td>Engine tools</td><td>The engine, rewritten</td></tr>
+      <tr><td>131 pictures and sounds in the player scanner's repository, and the sounds, fonts and loop pictures in the backend's</td><td>ALN's media</td><td>ALN's media, outside the engine and outside any pack</td></tr>
+      <tr><td>The Notion sync and the picture generator</td><td>ALN's content tools</td><td>With ALN's pack</td></tr>
+      <tr><td>The phone auto-reply script</td><td>ALN's</td><td>ALN's. Its guide holds a real phone number</td></tr>
+      <tr><td>ALN's installation profile, playlists and audio routes</td><td>ALN's installation settings</td><td>The installation's data</td></tr>
+      <tr><td>The QR codes and the sync script in the player scanner's repository</td><td>ALN's</td><td>With ALN's pack</td></tr>
+      <tr><td>The post-session checks</td><td>An engine tool</td><td>The engine, rewritten to read the record</td></tr>
+      <tr><td>The Notion skill, the report command and the ALN helpers used by agents</td><td>ALN's working tools</td><td>ALN's</td></tr>
+      <tr><td>The component guides and the scoring guide</td><td>Half engine, half ALN</td><td>Rewritten for the engine. ALN's part goes to ALN</td></tr>
+      <tr><td>The report pipeline</td><td>ALN's</td><td>Stays where it is</td></tr>
+      <tr><td>The toy games</td><td>The engine's test games</td><td>The engine. One is scored its own way</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="prose">
+  <p>Before anything is made public, the documents need a sweep for private details.</p>
+
+  <h3>6. The cutover, and going back</h3>
+  <p>On 29 August you ratified that the cutover is a swap of computers, that the scanners never notice, and that going back is immediate: swap back to blue. Three of your decisions of 13 November change that, and I did not say so when you made them.</p>
+  <ul class="plain">
+    <li>The hardware scanners get new firmware. Blue cannot talk to them. Going back means flashing each one back by USB.</li>
+    <li>Tags are rewritten with the link first. Blue's firmware reads only a tag with the id first.</li>
+    <li>Every device gets a credential from the new backend.</li>
+  </ul>
+  <p>Rehearsals at the venue are touched the same way. The real hardware scanners cannot serve blue and green on the same day.</p>
+  <p>What keeps a way back, to be designed in the cutover plan and confirmed by you there: the new firmware reads tags written either way, so the tags are rewritten only when you call the new engine good. Some scanners stay on the old firmware until then. A venue rehearsal uses spare scanners.</p>
+  </div>
+</section>
+
+<section class="ask prose">
+  <h2>Where we are</h2>
+  <p><b>Confirmed on 13 November:</b> how ALN runs while this work is done, and the order of work.</p>
+  <p><b>How the backend keeps a session's data: settled.</b> These were the decisions I needed from you, and you made them all on 13 November:</p>
+  <ul class="plain">
+    <li>The session record only grows. A correction is a new line.</li>
+    <li>It holds the game, the capture, what the room did and what went wrong, with one line for each event a person at the session would recognise.</li>
+    <li>After a session ends, notes, photos and the accusation can still be added until the next session is created. Stored player scans that arrive late go into the session they were made in.</li>
+    <li>Between groups, everything the group's play produced is wiped and kept only in that session's record. Everything about the room stays. The pack belongs to the production.</li>
+    <li>Moving money between accounts becomes one action for the GM and one line in the record. It is built with the GM scanner's redesign.</li>
+  </ul>
+  <p>Nothing more is needed from you on this. What is left of it is engineering detail, such as how the record is stored on disk, and that is mine to work out.</p>
+  <p><b>The messages between the backend and the devices, and the files: settled.</b> You made these six decisions on 13 November:</p>
+  <ul class="plain">
+    <li>A player sees the same thing after a scan on the phone page and on the hardware scanner. The memory appears at once, and it still shows when there is no session, with a notice.</li>
+    <li>A device says which pack and which version it has when it connects. A wrong pack fixes itself. A hardware scanner whose firmware is too old says so and shows red on the GM scanner.</li>
+    <li>The pack says what each kind of device is sent. For ALN, a player scanner gets each token's picture, sound and video name.</li>
+  </ul>
+  <p>And these three, after the research on phones and on the hardware scanner's firmware:</p>
+  <ul class="plain">
+    <li>Every device shows the backend a credential before it can read or send anything. Staff log in. The kit's own scanners and screens get theirs when they are added to the kit. A player's own phone gets one on its first visit, with nothing for the player to do, and it lasts for one session.</li>
+    <li>After the cutover a hardware scanner fetches new firmware from the backend when it starts up, and never during a session. The cutover's flash by USB is the last one that needs a cable.</li>
+    <li>After the cutover an iPhone and an Android phone scan a token the same way. The player holds the phone to the token, and the phone opens the token's web link. So the link is written first on the tag and the token's id second. The tags are rewritten once, after the cutover.</li>
+  </ul>
+  <p>Nothing more is needed from you on this.</p>
+  <p><b>Which device decides what: settled.</b> This covered a GM scanner that loses its connection, a backend computer that dies during a session, and a game with no backend at all. You made these three decisions on 13 November:</p>
+  <ul class="plain">
+    <li><b>A GM scanner loses its connection.</b> It works out the result itself and shows it at once, marked "not confirmed". It sends the scan when the connection returns, and shows the GM any scan the backend then refuses.</li>
+    <li><b>The backend's computer dies during a session and does not come back.</b> The session goes on at the GM scanners. Video, music, lights and the TV scoreboard stop. The scores and the session's record are completed when a backend runs again. The engine never requires a spare computer.</li>
+    <li><b>A game with no backend at all.</b> The installation's settings say there is no backend, and the GM no longer chooses when the GM scanner starts. Every device works alone while the session runs. The GM scanner keeps the session's record, and the GM can save it at the end.</li>
+  </ul>
+  <p>Nothing more is needed from you on this. Scans a GM scanner stored during a session count for that session even when they arrive after it ended.</p>
+  <p><b>How the engine is extended: settled.</b> This was changes 6, 4 and 7. You made these three decisions on 13 November:</p>
+  <ul class="plain">
+    <li>A designer designs the game's rules in the pack, in the config tool, with no developer: what a token carries, what an account is and holds, the verbs players and GMs have, what each verb does, and what the game does by itself. How points are worked out is a formula the designer writes. A developer adds a capability only when a rule needs one the engine does not have. ALN's own rules move from the engine's code into ALN's pack.</li>
+    <li>A new capability becomes part of the engine and arrives with an engine update. There are no add-ons installed beside the engine.</li>
+    <li>After a restart, the session, the clock, the GMs' logins, the music, the TV, the lights and the volumes come back by themselves. A video or a cue that was cut off, or that came due while the backend was down, is listed for the GM to run or drop.</li>
+  </ul>
+  <p>Nothing more is needed from you on this.</p>
+  <p><b>Now, and the last of the design: how today's code moves to the new design.</b> You sent my first two decisions on this back as not fully considered. The considered version is the section above this box. It asks you for this:</p>
+  <ul class="plain">
+    <li><b>Decision 1.</b> Build beside today's code for the backend, the GM scanner, the player scanner page and the scoreboard, and change the firmware in place. Or change everything in place.</li>
+    <li><b>Decision 2.</b> The repositories, in three parts: one repository for the engine's web programs and the code they share; the firmware in its own; and a new repository created now.</li>
+    <li><b>A need.</b> A few session files from real ALN sessions on blue, the report the GM downloaded for each, and which pack and which of blue's versions each ran.</li>
+    <li><b>To know.</b> Going back to blue after the cutover is no longer only a swap of computers. And one decision of yours comes before the first version: how a device is added to a kit.</li>
+  </ul>
+  <p>After these the design is done, and I write the build plan.</p>
+</section>
+
+<footer class="prose">
+  <p>This page replaces the earlier six-page site. The three reviewers' reports, and a note on how this plan was made, are in the repository at <code>docs/plans/architecture-pass/proposal/</code>.</p>
+</footer>
+
+</div>

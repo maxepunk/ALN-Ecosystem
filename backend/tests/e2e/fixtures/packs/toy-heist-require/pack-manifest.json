@@ -1,0 +1,75 @@
+{
+  "kind": "pack-manifest",
+  "schemaVersion": 2,
+  "packId": "midnight-heist",
+  "version": "0.1.0",
+  "contentHash": "sha256:966e775ab354a04105bfc27329f0eee0692431846e9b8bb77dcd832c3e782bd1",
+  "engine": {
+    "minVersion": "3.0.0"
+  },
+  "files": [
+    {
+      "path": "cues.json",
+      "role": "cues",
+      "sha1": "bc0eea7db2d27e926ee7a785131371b31521c420",
+      "size": 1503
+    },
+    {
+      "path": "game.json",
+      "role": "game",
+      "sha1": "fac217cb307caa0cb7f4b8eac958f8502f9a65e0",
+      "size": 3830
+    },
+    {
+      "path": "strings.json",
+      "role": "strings",
+      "sha1": "7e3da33ec323cce7e7677ecc92b9f78f0bf1304b",
+      "size": 1012
+    },
+    {
+      "path": "theme.json",
+      "role": "theme",
+      "sha1": "fbbfcebaa692eda62235ac2ff2927ec7053ff4f1",
+      "size": 286
+    },
+    {
+      "path": "tokens.json",
+      "role": "tokens",
+      "sha1": "0e590053a8b68bbecf1631f2b55ed6ad01c485e5",
+      "size": 4194
+    }
+  ],
+  "hardware": {
+    "deviceClasses": [
+      {
+        "class": "staffed",
+        "min": 1,
+        "rationale": "all transacting is staffed in this toy"
+      }
+    ],
+    "tokens": {
+      "count": 14,
+      "tech": "nfc-ntag"
+    },
+    "stack": {
+      "sound": {
+        "usedBy": "cue sound effects",
+        "onAbsent": "degrade"
+      },
+      "lighting": {
+        "usedBy": "lighting cues (role-addressed)",
+        "onAbsent": "degrade"
+      }
+    },
+    "endpoints": {
+      "lighting.instruments": {
+        "usedBy": "lighting cues (role-addressed)",
+        "onAbsent": "require"
+      },
+      "audio.sinks": {
+        "usedBy": "cue sound effects",
+        "onAbsent": "degrade"
+      }
+    }
+  }
+}

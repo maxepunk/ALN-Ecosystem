@@ -18,6 +18,9 @@ const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('..
 const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
+// Block 2 T1a: the health vocabulary is three words. Importing the registry's
+// own list rather than restating it means this pin cannot fall behind it.
+const { HEALTH_STATUSES } = require('../../src/services/serviceHealthRegistry');
 const TestTokens = require('../fixtures/test-tokens');
 
 describe('State Synchronization Integration - REAL Scanner', () => {
@@ -133,14 +136,14 @@ describe('State Synchronization Integration - REAL Scanner', () => {
     scanner.socket.emit('sync:request');
     const syncEvent = await syncPromise;
 
-    // Validate: serviceHealth structure (registry snapshot with all 8 services)
+    // Validate: serviceHealth structure (registry snapshot with all 9 services)
     expect(syncEvent.data.serviceHealth).toBeDefined();
     expect(syncEvent.data.serviceHealth).toHaveProperty('vlc');
     expect(syncEvent.data.serviceHealth).toHaveProperty('music');
     expect(syncEvent.data.serviceHealth).toHaveProperty('lighting');
     expect(syncEvent.data.serviceHealth.vlc).toHaveProperty('status');
     expect(syncEvent.data.serviceHealth.vlc).toHaveProperty('message');
-    expect(['healthy', 'down']).toContain(syncEvent.data.serviceHealth.vlc.status);
+    expect(HEALTH_STATUSES).toContain(syncEvent.data.serviceHealth.vlc.status);
   });
 
   it('should include music + playlists in sync:full (from real musicService, not default fallback)', async () => {

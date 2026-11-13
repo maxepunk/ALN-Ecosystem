@@ -66,6 +66,13 @@ describe('gameRules/grants — the one-auth v1 table', () => {
     // operator commands — the service: family joined the map (it was
     // the ONE gm:command family an observe socket could fire).
     expect(grants.requiredFloorFunction('service:check')).toBe('show-control');
+    // T1a D6: the preflight family joins its neighbour. preflight:run reads
+    // the venue and drives the pre-show certificate the operator acts on;
+    // service:out-of-service and service:restart (T3) are equipment control.
+    expect(grants.requiredFloorFunction('preflight:run')).toBe('show-control');
+    expect(grants.requiredFloorFunction('service:restart')).toBe('show-control');
+    expect(grants.requiredFloorFunction('service:out-of-service')).toBe('show-control');
+    expect(grants.requiredFloorFunction('service:in-service')).toBe('show-control');
     // Non-floor actions return null — v1 leaves them to the operator
     // all-or-nothing ceiling (finer taxonomy is E4).
     expect(grants.requiredFloorFunction('transaction:submit')).toBeNull();

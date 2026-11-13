@@ -161,6 +161,50 @@ describe('standingEvaluator', () => {
   });
 });
 
+  // Block 2 T1a D5 (pin P4): three disable provenances now ride the
+  // persistence snapshot. Only two of them are persisted — dormancy is
+  // recomputed from the profile every boot, never stored, because a
+  // profile edit must change it.
+  describe('toPersistence/fromPersistence with spentOnceCues (R17)', () => {
+    const { toPersistence, fromPersistence } = require('../../../../src/services/cue/standingEvaluator');
+
+    it('round-trips all three persisted fields plus spentOnceCues', () => {
+      const snap = toPersistence(
+        new Set(['clock-a']), new Set(['gm-off']), new Set(['once-spent']), true
+      );
+      expect(snap).toEqual({
+        firedClockCues: ['clock-a'],
+        disabledCues: ['gm-off'],
+        spentOnceCues: ['once-spent'],
+        active: true,
+      });
+      const back = fromPersistence(snap);
+      expect([...back.firedClockCues]).toEqual(['clock-a']);
+      expect([...back.disabledCues]).toEqual(['gm-off']);
+      expect([...back.spentOnceCues]).toEqual(['once-spent']);
+      expect(back.active).toBe(true);
+    });
+
+    it('a session persisted BEFORE this change has no spentOnceCues key — restore reads it as empty', () => {
+      // R17, recorded and accepted: a once-cue that fired before the
+      // upgrade re-arms exactly once. The alternative (treating a missing
+      // key as "everything spent") would silence the whole show.
+      const legacy = { firedClockCues: ['c'], disabledCues: ['d'], active: true };
+      const back = fromPersistence(legacy);
+      expect(back.spentOnceCues).toBeInstanceOf(Set);
+      expect(back.spentOnceCues.size).toBe(0);
+      expect([...back.disabledCues]).toEqual(['d']);
+    });
+
+    it('a null snapshot yields three empty sets', () => {
+      const back = fromPersistence(null);
+      expect(back.spentOnceCues.size).toBe(0);
+      expect(back.disabledCues.size).toBe(0);
+      expect(back.firedClockCues.size).toBe(0);
+      expect(back.active).toBe(false);
+    });
+  });
+
 describe('cueVocabulary (game-event normalizers)', () => {
   let cueVocabulary;
 

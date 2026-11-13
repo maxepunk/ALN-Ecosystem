@@ -1,0 +1,2228 @@
+# What the owner has decided
+
+This is the architecture pass's decision record, written 2026-11-01. It
+says what stands now, by topic. Each entry is the decision as it holds
+today, with every later change already merged in, and a dated history
+beneath it that says what changed, when and why. Decisions that no
+longer hold are in "Superseded and withdrawn". The questions the owner
+has not yet answered, the readings of the owner's words to confirm and
+the agent's calls live on the owner site's Decisions page; the "Still
+open" section lists them by title and points there.
+
+The owner's frame for all of it, in their words (2026-11-01): "design a
+long-term optimal architecture for our engine that makes it intuitive
+and easy to maintain, continue development on, and extend (proactive)".
+
+Decisions, questions and design flaws go by title here and everywhere
+the owner reads. Older dated records still use numbers; the last section
+maps every old number to its title.
+
+Sources: the program document
+(`docs/plans/2026-10-30-architecture-pass.md`, whose Appendix A holds
+the definition session's decisions word for word), the state page
+(`docs/plans/CURRENT-STATE.md`) and its git history, the cause analysis,
+the engine-jobs document, the standalone pass, the after-game survey,
+the owner site's Decisions page data, and the inventory beside this file
+(`decision-record/inventory.md`).
+
+Where a later decision contradicts part of an earlier one without naming
+it, this record keeps the earlier decision as made and says, in the
+entry and in "Read as overtaken, confirmed as the agent's call", what
+the later decision implies. Nothing inferred is written as if the owner
+had said it.
+
+---
+
+## Since the proposal (2026-11-10 onward)
+
+On 2026-11-10 one proposal page replaced the owner's site
+(`proposal/index.html`; how it was made is in `proposal/README.md`).
+The entries in this section are decisions the owner has made since
+then. The older sections below stand where they do not conflict with
+these. Their entries on how the design half was to run (the site, the
+panel, competing designs for every round) describe a process the owner
+retired on 2026-11-10. This record still uses names made up for the old
+site ("show machine", "GM tablet"); read them as the backend's computer
+and the GM scanner until the record is cut down.
+
+**One proposal page, seven changes**
+
+The architecture pass's output for the owner is one proposal page of
+seven changes to how the engine's code is organised, made by following
+the skill `improve-codebase-architecture`. It replaces the six-page
+site.
+
+Made 2026-11-10.
+
+History:
+- 2026-11-10. The owner said the site and the panel were being built
+  for their own sake and named the origin
+  (`rework/2026-11-10-owner-step-back.md`).
+- 2026-11-10. The owner said the descriptions had drifted into jargon.
+  The page was rewritten in the project's own names (version 13).
+- 2026-11-12. The owner left eight comments on version 13
+  (`rework/2026-11-12-owner-comments-on-proposal.md`). Version 14
+  follows them.
+
+**Blue runs every ALN session until one cutover**
+
+Every ALN session runs on blue (the backend computer in use, its
+scanners, the branch `production-2026-07`) until all of the new engine
+is finished, the backend and the scanners together. Then there is one
+cutover: green replaces blue and the hardware scanners get their new
+firmware. Nothing in the new engine has to work with an old part. This
+restates "The architecture pass is the work now" (2026-10-30).
+
+Confirmed 2026-11-13.
+
+History:
+- 2026-11-12. Version 13 of the page had assumed a gradual switch, with
+  blue as a fallback and scanners working with both backends. The owner
+  corrected it in three comments.
+- 2026-11-13. The owner confirmed the corrected picture ("1 - yes").
+
+**The order of work: design first, hardest to reverse first**
+
+The work goes in this order. (1) Design how the backend keeps a
+session's data, with what belongs to a session, an installation and a
+production. (2) Design the messages and files. (3) Design which device
+decides what: in a networked game, in a standalone game, and on a GM
+scanner that has lost its connection. (4) Design how the engine is
+extended, with the pattern for equipment and how copies of the backend
+stay apart. (5) Decide how today's code moves to the new design. (6)
+Build a thin first version that works end to end. (7) Build the rest
+one area at a time, each with its detailed design just before it is
+built; the paused work on automatic restarts and the preflight is
+rebuilt here. (8) Cut over once, when the owner decides the new engine
+is ready. The five design topics are conversations with the owner, a
+few questions at a time with a recommendation for each, ending in
+short decision notes. At the start of each topic the agent says which
+decisions are the owner's; the topic is settled when those are made. Work is never ordered by what needs no decision from
+the owner. This restates "One program: design half, then build half"
+(2026-10-30) and "Design top-down, hardest-to-reverse choices first"
+(2026-11-01).
+
+Confirmed 2026-11-13.
+
+History:
+- 2026-11-12. Version 13 had proposed starting to build two changes
+  while the others were designed. The owner called that false
+  efficiency.
+- 2026-11-13. The owner confirmed the order ("2 - yes").
+
+**The session record only grows**
+
+The backend keeps a session as a record that only grows. Every scan,
+every correction and every reset is added as a new line, in order.
+Scores and everything a screen shows are worked out from the record.
+Nothing changes or removes a line once it is written. The short
+decision note is `docs/adr/0001-the-session-record-only-grows.md`, and
+the glossary has the term "session record".
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Made as the first answer on how the backend keeps a
+  session's data ("3 - session's record grows"). The alternative was data edited in place, as today.
+
+**The session record holds the game, the capture, the show and the problems**
+
+Besides every scan (accepted or refused), every correction, the pack
+the session ran, the texts the players saw and the capture, the session
+record gets one line for each thing a person at the session would call
+an event: a video started and finished, a GM paused the music, a
+scanner lost its connection, a program crashed and was restarted. It
+never holds things that change all the time. Scores never depend on
+these lines. The short decision note is `docs/adr/0002`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The owner's answer to the first question of that day on
+  how the backend keeps a session's data ("1 - yes").
+
+**Corrections stay visible in the session record**
+
+A deleted transaction stays in the record, marked as undone, and the
+token can be scanned again. (Today the backend frees the token, but the
+GM scanner that scanned it keeps refusing it:
+`ALNScanner/src/network/messageRouters.js:47-54`. The new design
+removes that, because a scanner no longer blocks a scan by itself.) A score adjustment is a line with
+the amount, the entity (in ALN, the account), the GM scanner it came
+from and the reason if one was typed. "Reset All Scores" keeps its meaning (a fresh start,
+decision A3 of 2026-06-09) as a line; everything before it stays in the
+record and no longer counts.
+
+Stated to the owner 2026-11-13.
+
+History:
+- 2026-11-13. Stated to the owner as following from "The session record
+  only grows" and decision A3, with an invitation to object. The
+  owner's reply raised no objection. It is not an answer the owner gave
+  in so many words.
+
+**After a session ends**
+
+Notes, photos and the accusation can be added to an ended session until
+the next session is created. Player scans that a scanner stored and
+uploads late go into the session they were made in, marked late, and
+never into the next group's. Nothing else is accepted after the end.
+Sales and exposures that a GM scanner stored while it had no connection
+are a question for the design of which device decides what.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The owner's answer to the second question of that day
+  ("this makes sense").
+
+**What is wiped between groups, and what stays**
+
+Wiped when the next session is created, and kept only in that
+session's record: entities (ALN's accounts), transactions, scores, the
+clock, cues fired, scans stored on scanners, what the TV was showing. Stays through
+sessions and restarts, because it is about the room: which gear is
+installed, the GMs' logins, volumes and audio routes, the Bluetooth
+speaker, the scanners that belong to the kit. Belongs to the
+production: the pack and its media, which change only when a new pack
+is applied, never in the middle of a session. A backend runs one
+session at a time. Each line of the record names the device it came
+from, not a person. The short decision note is `docs/adr/0003`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The owner's answer to the third question of that day
+  ("agreed"). The owner also
+  confirmed the two things the agent had taken as given (one session at
+  a time; the device, not a person): "accurate".
+
+**In ALN, GMs move money between accounts by hand**
+
+A fact from the owner, not a decision: in ALN, GMs move money between
+accounts by hand as part of play. What the backend calls teams are
+accounts in ALN. The owner does not recall what the three adjustments
+of the 27 March session were.
+
+Recorded 2026-11-13.
+
+History:
+- 2026-11-13. The owner's answer to that day's question of fact. See
+  "A transfer between accounts is one action" below.
+
+**A transfer between accounts is one action**
+
+Moving value from one entity to another (in ALN, money between
+accounts) becomes one action on the GM scanner (pick the two accounts,
+type the amount once) and one line in the session record. The two sides
+always match, and it is undone as one. It is built with the GM
+scanner's redesign (`docs/plans/ROADMAP.md` row 8.17), not before.
+Until then GMs make two separate score adjustments, as today.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The owner said GMs move money between accounts by hand as
+  part of play in ALN, and answered "yes" to making it one action.
+
+**How the backend keeps a session's data is settled**
+
+Every decision on this topic that was the owner's has been made: the
+six entries above. What is left is the agent's engineering detail (how
+the record is stored, its format and version, when a line is written
+to disk). Three points wait for later topics: who keeps the record in a
+standalone game and the order of scans taken without a connection (the
+design of which device decides what); how screens are told what to show
+(the design of the messages and files); how long records are kept (with
+the installation's settings).
+
+Recorded 2026-11-13.
+
+History:
+- 2026-11-13. The agent asked the owner "is that the whole of step 1?".
+  The owner answered that the agent had defined the steps, so the owner
+  could not judge that; the agent must say what it needs from the
+  owner. The agent needs nothing more on this topic.
+
+**Say what is needed from the owner; no bare step or round numbers**
+
+At the start of each design topic the agent says which decisions it
+needs from the owner. The topic is settled when those are made. The
+agent never asks the owner whether a unit of work the agent defined is
+complete. Pieces of work go by what they do, never by a bare step or
+round number, and question rounds go by date. This restates "Name each
+step by what it does" (2026-11-01).
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The owner: "Be careful about falling into jargon and
+  labels that we haven't explicitly agreed upon (like your current
+  definition of 'steps')".
+
+**What a player sees after a scan, the same on both player scanners**
+
+The phone page and the hardware scanner show a player the same thing
+after a scan. The memory appears at once; the scanner does not wait for
+the backend's reply (for ALN; another game's pack may make a scanner
+wait). With no session, or after the session has ended, the memory
+still shows, with a notice that the scan was not recorded (decision A5
+of 2026-06-09: "Local content display is unaffected in all cases"). A
+video token shows the token's picture with a line that the video is
+starting on the TV, or "Video unavailable, rescan later" when it cannot
+play now (decision A4). With no connection, an ordinary token shows the
+memory and nothing else, and a video token shows "Video unavailable,
+rescan later". The wording comes from the pack's text.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The owner's "1 - yes" on the messages and files. Before
+  this the two scanners differed: the hardware scanner waited for the
+  reply and showed "NO SESSION" with no memory; the phone page added
+  "Scan queued" when it had no connection.
+
+**A device that is out of date**
+
+When a device connects it says which pack it holds and which version of
+the messages it speaks. A wrong pack: the device fetches the right one
+by itself (ruling R-C2-1 of 2026-09-04, extended from the GM scanner to
+every device). Old software on a GM scanner, a phone page or the
+scoreboard: the page reloads itself from the backend. Old firmware on a
+hardware scanner: it cannot fix itself, so it says "UPDATE NEEDED" on
+its own screen, shows red on the GM scanner with what to do, and the
+preflight reports it before a session. The backend keeps working with
+older firmware until a change to the messages truly breaks it.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The owner's "3 - yes", with a request to find out whether
+  the hardware scanner can take firmware updates over the air. The
+  research is `docs/plans/2026-11-13-hardware-scanner-ota-research.md`.
+
+**The pack says what each kind of device is sent**
+
+Each device is sent only what it may show, and what that is depends on
+the game it is running: the pack declares it for each kind of device.
+For ALN, a player scanner gets each token's picture (with what is baked
+into the picture, such as the owner's name), its sound and its video
+name, and not the value, type, group, owner or summary fields. Another
+game's pack may give a player scanner more. The scoreboard no longer
+receives every transaction. This applies "server-side per-surface
+projection" (adopted 2026-07-17).
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The agent stated the rule; the owner confirmed ALN's
+  split and added that it must be decided per game.
+
+**A GM sees the result of a scan when the backend replies**
+
+No "Transaction Complete!" before the backend has replied (decision A7
+of 2026-06-09). What a GM sees with no connection belongs to the design
+of which device decides what.
+
+Confirmed 2026-11-13.
+
+History:
+- 2026-11-13. Stated by the agent; the owner: "yes".
+
+**What a tag holds, and token ids**
+
+After the cutover a tag holds a web link first and the token's id as
+text second. The link opens that token in the player scanner page. An
+iPhone and an Android phone scan a token the same way: the player holds
+the phone to the token and the phone itself opens the link. The
+hardware scanner and the GM scanner read the id. The new engine's
+scanners also read a tag with the id first, so today's tags work until
+they are rewritten after the cutover. A token id is lowercase letters,
+digits and underscores, and every device matches it the same way.
+Decision note: `docs/adr/0005`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Stated by the agent as "a tag keeps what it holds
+  today"; the owner: "yes, keep in mind this may need to be adjusted to
+  make phone scanners iphone compatible" and "yes". Research on what
+  iPhones and Android phones need from a tag:
+  `docs/plans/2026-11-13-phone-tap-to-web-tag-research.md`.
+- 2026-11-13. The research said the layout already works for an iPhone
+  and that an Android phone opens nothing on a tap. The owner: "an
+  android phone using the phone scanner currently first accesses the
+  player scanner being served by the backend before scanning a tag."
+- 2026-11-13. The agent recommended that ALN keep the id first, with
+  Android players opening the page before scanning, and that each
+  production choose the order. The owner asked for it "in clear, plain
+  english", then ruled: "no, let's stick with the decision that AFTER
+  the cutover, iphone and android paths to scan a token should be the
+  same. That seems like the better long-term choice, does it not?" The
+  agent agreed and withdrew the recommendation: one instruction for
+  every player, one way in to build and test, it rests on what every
+  phone does with a tag, and both costs (the hardware scanner's read, a
+  token touching a GM's device) can be designed away.
+
+**Players' own phones are designed in, not left for later**
+
+The architecture is designed now so that a player's own phone can take
+part. The agent must not push it off as later work. What the owner has
+already decided about it is gathered in
+`design/2026-11-13-the-messages-and-files.md` ("Players' own phones"):
+the kit's own Wi-Fi with a real name and certificate; tap-to-web
+through the phone's own tag reader; three kinds of device, with the
+pack saying what each may do; one kind of credential in three
+strengths, with a phone's issued silently and no login; no person
+identified unless the game chooses; each device sent only what it may
+show.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The agent had written "players' own phones are decided
+  with that later work" beside the question about credentials. The
+  owner: "We need to make sure we design the architecture to enable
+  this and can't handwave it as a vague 'later' consideration." The
+  question about credentials was put again in full.
+
+**Every device shows a credential**
+
+Every device shows the backend a credential before it can read or send
+anything. Staff log in. The kit's own scanners and screens get theirs
+when they are added to the kit. A player's own phone gets one on its
+first visit, with nothing for the player to do, and it lasts for one
+session. A device with none can read nothing and send nothing.
+Decision note: `docs/adr/0004`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Put in full after the owner's "design the architecture
+  to enable this", and again beside the other two open decisions. The
+  owner: "2 - yes to credentials". This answers roadmap row 8.11
+  (whether the kit's own machines get a credential nobody sees): yes.
+
+**The hardware scanner takes its firmware over the air**
+
+After the cutover a hardware scanner fetches new firmware from the
+backend when it starts up, never during a session. The cutover's flash
+by USB gives each scanner a layout with room for two copies of the
+firmware, and it is the last flash that needs a cable. Decision note:
+`docs/adr/0006`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The owner: "we should also investigate whether it's
+  possible enable OTA firmware updates for the hardware scanner". The
+  research (`docs/plans/2026-11-13-hardware-scanner-ota-research.md`)
+  found it possible after one more flash by USB. Put with a
+  recommendation; the owner: "3 - yes to OTA updates for hardware
+  scanner".
+
+**The messages and the files are settled**
+
+Every decision the agent needed from the owner on the messages between
+the backend and the devices, and on the files, is made: what a player
+sees after a scan; what a device that is out of date does; the pack
+says what each kind of device is sent; every device shows a
+credential; the hardware scanner takes its firmware over the air; both
+phones scan a token the same way, with the link first on the tag. The
+rest is engineering detail. The working note is
+`design/2026-11-13-the-messages-and-files.md`.
+
+Made 2026-11-13.
+
+**A GM scanner with no connection shows the result at once, not confirmed**
+
+When a GM scanner cannot reach the backend, it works out the result
+itself and shows it at once, marked "not confirmed". It stores the scan
+and sends it when the connection returns. If the backend then refuses a
+scan, the GM scanner shows the GM which one and why. A result the
+backend has confirmed is never taken back. If two GMs take the same
+token, the scan that reached the backend first counts. Decision note:
+`docs/adr/0007`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Put as decision 1 of the topic "which device decides
+  what", against the other way (show nothing until the connection
+  returns). The owner: "yes to all 3". This answers the old site's
+  question "A GM tablet cut off from the engine".
+
+**When the backend's computer dies, the session goes on at the GM scanners**
+
+If the backend's computer dies during a session and does not come back,
+the session goes on at the GM scanners, each taking scans and showing
+its own part. Video, music, lights and the TV scoreboard stop. When a
+backend runs again (the same computer restarted, a spare, or the same
+computer after the session) each GM scanner hands over what it stored,
+and the scores and the session's record are completed. The engine never
+requires a spare computer, and a kit that brings one can move the
+session onto it. A game that cannot be played without the backend says
+so in its pack, and every GM scanner then tells its GM that the session
+cannot go on. Decision note: `docs/adr/0007`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Put as decision 2 of the same topic. The owner: "yes to
+  all 3". It confirms the three readings of "No technical failure stops
+  a game" and answers the old site's question "The show machine fails
+  mid-game".
+
+**A game with no backend: the installation says so, and every device works alone**
+
+The installation's settings say whether there is a backend, and every
+device gets that when it is added to the kit. The GM no longer chooses
+networked or standalone when the GM scanner starts. The pack says
+whether its game can be played without a backend. Every device works
+alone while the session runs. A GM scanner keeps its own part with the
+same rules as the backend; several GM scanners each show only their own
+part, and the parts are put together afterwards. A production that
+wants shared scores during play brings a backend. The GM scanner keeps
+the session's record and the GM can save it off the device at the end.
+It holds what the GMs scanned and not what players looked at. Decision
+note: `docs/adr/0008`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Put as decision 3 of the same topic. The owner: "yes to
+  all 3". It settles where the fact "this game is standalone" is held,
+  which "Standalone games: declared, never mixed" had left to the
+  design, and answers the old site's question "Which standalone games
+  the engine must run".
+
+**Which device decides what is settled**
+
+The three decisions above were all the agent needed from the owner on
+this topic. Four things were stated beside them and drew no objection:
+the GM scanner runs all of the game's rules, the same code as the
+backend (this settles the choice the proposal showed under change 2);
+in a standalone game the GM scanner runs the game clock and can show
+the scoreboard, exposed evidence included, and a video token on a
+player scanner shows its picture and a line saying the video cannot be
+played here; scans a GM scanner stored during a session count for that
+session even when they arrive after it ended (`docs/adr/0003`,
+amended); in a networked game a GM scanner with no connection cannot
+pause or end the session or run the room. The working note is
+`design/2026-11-13-which-device-decides-what.md`.
+
+Made 2026-11-13.
+
+**A designer designs a game's rules, scoring and verbs included**
+
+A designer designs a game's rules in the pack, in the config tool, with
+no developer: what a token carries, what an account is and holds, the
+verbs players and GMs have, what each verb does (points worked out by a
+formula the designer writes, the token used up or not, what is shown,
+what the room does) and what the game does by itself. The engine's code
+holds the capabilities these rules are built from. A developer adds a
+capability only when a rule needs one the engine does not have, once,
+for every game. ALN's own rules become rules in ALN's pack. The three
+staff-only actions stay, and a pack holds rules and formulas, never
+program code. The person is a "designer", not a "maker". Decision note:
+`docs/adr/0011`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The agent had recommended that a designer's rule of the
+  form "when this happens, do that" may run the room only and never
+  change points, and that a new way of scoring is a developer's work.
+  The owner: "I think you're getting confused here. Why would you
+  recommend no to a game designer (what you're calling a maker) being
+  able to design the rules of a game? This seems like you're somehow
+  getting caught up in a bias towards maintaining the existing ALN
+  ruleset instead of designing an engine that allows NEW games to be
+  designed which MUST INCLUDE how things are scored / the verbs a
+  designer can allow players to engage in using tokens." The
+  recommendation is withdrawn. It had read the floor of 2026-07-09
+  (which people and devices may do staff actions) as a limit on the
+  game's own rules, and had taken today's code, where the scoring
+  formula is fixed and only its numbers are in the pack, as the model.
+- 2026-11-13. The agent read the owner's records on rules, scoring and
+  verbs (the roadmap's final outcome; the second game's section; the
+  two kinds of extension) and put the decision again as it stands
+  above, with three example rules for a game that is not ALN. The
+  owner: "yes". This answers the question the owner named on
+  2026-11-02, "What a game's maker may build inside the pack". The
+  extension case that gave a new way of scoring to a developer (EX4)
+  was the agent's reading and is corrected in the cases file.
+
+**How the engine is extended is settled**
+
+The three decisions on this topic are made: a designer designs the
+game's rules in the pack (`docs/adr/0011`); a new capability is part of
+the engine and arrives with an engine update (`0009`); what comes back
+by itself after a restart (`0010`). Stated beside them and not objected
+to: a copy of the backend started for a test or a rehearsal uses
+stand-ins, and only one copy at a time holds the real TV, speakers and
+lights. The working note is
+`design/2026-11-13-how-the-engine-is-extended.md`.
+
+Made 2026-11-13.
+
+**A new capability is part of the engine and arrives with an engine update**
+
+When a developer adds something the engine could not do, it becomes
+part of the engine and reaches a production with an engine update. The
+engine loads no add-ons installed beside it. Decision note:
+`docs/adr/0009`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Put as decision 2 of the topic "how the engine is
+  extended", against add-ons. The owner: "the first." This answers the
+  question the owner named on 2026-11-02, "How an extension for all
+  games reaches a production".
+
+**What comes back by itself after a restart**
+
+After the backend restarts in the middle of a session, or a video or
+music player crashes and is restarted, these come back by themselves:
+the session, the clock, the GMs' logins, the music where it stopped,
+what the TV was showing, the lights and the volumes. A video that was
+cut off, a cue that was part-way through and a cue that came due while
+the backend was down do not replay by themselves: they are listed on
+the GM scanner, and the GM runs or drops each. Decision note:
+`docs/adr/0010`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Put as decision 3 of the same topic. The owner: "agreed
+  with the recommendation." It keeps decision E1 of 2026-06-10 and adds
+  the list.
+
+**What keeps the backend's programs running is already ruled**
+
+The backend starts and supervises its own programs, through one
+supervision path, and a host can mark a program as run by something
+else on that computer (the hardening plan's rulings R6, R13, R18 and
+R20, owner, 2026-09-12). The proposal does not reopen this. A backend
+restart follows the same steps as a normal start.
+
+Restated 2026-11-12.
+
+History:
+- 2026-11-12. Version 13 had shown this as an open choice and
+  recommended the operating system instead. The owner's comment sent
+  the agent back to the ruling.
+
+**No test or rehearsal runs during a live session**
+
+No real situation has a test or a rehearsal running in the middle of a
+live session. A copy of the backend started for a test or a rehearsal
+must leave the installed backend, its files and the real gear as they
+were, between sessions.
+
+Made 2026-11-12.
+
+History:
+- 2026-11-12. The owner's comment on change 7. It answers the question
+  "where may a rehearsal run while a session is live", which is closed.
+
+**Extension is designed from the kinds of addition, not from one game**
+
+The places in the code for adding a new kind of rule, equipment or
+screen are designed from the kinds of addition the engine is meant to
+allow (the 28 cases in
+`requirements/2026-11-01-extension-cases.json`), not from what the
+second game needs. The second game is one case among them.
+
+Made 2026-11-12.
+
+History:
+- 2026-11-12. The owner's comment on change 6.
+
+---
+
+## The goal and the frame
+
+**Design for the long term, beyond ALN**
+
+The pass designs the best architecture for the next iteration of the
+engine, for long-term use and future development as its use grows beyond
+ALN. The fixes and findings from the show machine in use now are clues
+to where today's design is off, never the driver: the pass is not a
+triage of ALN's issues renamed as architecture fixes. The owner expects
+this frame to change the approach, and how the design and the roadmap
+are discussed, more than the fixes themselves. The owner's words for the
+goal: "design a long-term optimal architecture for our engine that makes
+it intuitive and easy to maintain, continue development on, and extend
+(proactive)", in place of "fixing issues seen / fixed on blue to run ALN
+(reactive)".
+
+Made 2026-10-31.
+
+History:
+- 2026-10-31. Made as owner direction, answering no question. The
+  glossary's "architecture pass" entry carries it.
+- 2026-11-01. The owner's own words for the goal were recorded, and the
+  rest of the design half was reordered to fit this frame (see "Design
+  top-down, hardest-to-reverse choices first").
+
+**The architecture pass is the work now**
+
+The architecture pass is the current work, design half first. The
+paused hardening pieces and the truth sweep wait for its answers. It
+covers the whole engine: the backend orchestrator, the GM scanner, the
+player scanners (web and ESP32), the scoreboards and the config tool.
+Today's engine keeps running the game on the show machine in use now
+until the new engine is ready to swap in on the new show machine, and
+no date governs the work. The owner's condition with the yes: the agent
+running the pass must understand the engine being built and the roadmap
+being adjusted, starting with how the truth sweep differs from
+the pass. The questions the pass must answer are listed under "The nine
+questions the pass answers".
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session. Made as the next work, with six
+  questions, the central one being who decides each fact the GM sees.
+  The owner asked: "how is the truth sweep different from the
+  architecture pass?" The nine evidence files in the program document
+  were made to meet that condition.
+- 2026-10-30, the definition session, in the rounds that reworded and
+  widened the question set. Two of the six questions were reworded and
+  three more added; the set is now nine (see "The nine questions the
+  pass answers").
+- 2026-10-30, the definition session's sign-off. The owner ratified the
+  program document, and the pass became the current work, design half
+  first ("The owner ratified the program document").
+
+**Fixes to today's engine are evidence of design causes**
+
+The fixes made on the show machine in use now, and the findings left
+unfixed there, are evidence of where today's design is weak. They are
+never the driver of the pass. For each one the cause analysis records
+the problem area, the design cause, every other place with that cause,
+the design choice that removes it, and the proving test. Fixes that
+share a cause become one design decision. The sixteen design flaws the
+cause analysis found are now test cases: every design in the design
+rounds is checked against them.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session. Made. The owner's meaning of the
+  kickoff brief's question on the fixes made on the show machine in use
+  now was an evidence method, not
+  a process for future fixes. Two worked examples: the claimed-token
+  list (three more places that update it) and the frozen music and
+  lighting panels (a hand-written table that re-sends state).
+- 2026-10-31. Qualified by "Design for the long term, beyond ALN": clues
+  to where the design is off, never the driver.
+- 2026-11-01. "Design top-down, hardest-to-reverse choices first" made
+  the sixteen flaws test cases for the designs.
+- 2026-11-02. Retitled from "Blue's fixes are evidence of design
+  causes": the owner's pages name the two show machines in plain words,
+  with no code names. The meaning is unchanged.
+
+---
+
+## The words
+
+**Four words for the game's live facts**
+
+Four terms are in the glossary: runtime state (every fact about a
+running game that can change during it), authority (the place that
+decides a runtime fact), copy (that fact held anywhere else) and
+delivery path (its route from the authority to a screen). An outside
+program can be an authority: VLC decides what is playing. "Verdicts"
+names what one truth checks.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session. Made. The outside-program clause
+  was flagged for the owner.
+- 2026-10-30, the definition session, the round after. The owner
+  confirmed that an outside program can be an authority.
+
+**Promises, qualities, moments, venue technician**
+
+A promise is what a person can count on at a given moment. The owner's
+page is organized around the promises, and "job" is retired. The draft
+has ten promises; they are offered to the owner for review (see "Still
+open"). Parts keep promises; design flaws break them. A quality
+is something every part must have so a promise holds everywhere; it is
+never a promise itself. A moment is when a promise matters: a
+production stage, a point in a show, release day. The person who fits a
+kit to a venue is the venue technician, not "installer". Promises carry
+titles only, so a card reads without memorizing ids. The title "The
+game fits the venue it is in tonight" is itself a promise. Shared work
+that several promises depend on needs no word of its own: each piece
+becomes one part.
+
+Made 2026-11-01.
+
+History:
+- 2026-10-31. The front of the cause analysis was rebuilt around the
+  engine's ten "jobs", at the owner's request, because the flaw list
+  was hard to follow.
+- 2026-11-01. Made. The owner found "job" forced once the jobs were
+  restated from people's side and the relationship map split them into
+  promises, qualities and parts. The glossary carries the words.
+- 2026-11-01. Widened by "Titles, not numbers, and a topic record":
+  decisions, questions and design flaws also go by title.
+
+**Name each step by what it does**
+
+One set of sequencing names. The architecture pass has a design half
+and a build half. Its steps are named by what they do: the
+requirements, the panel, the design rounds, the build plan, the hostile
+review, the final questions, the owner's sign-off. The roadmap's blocks
+go by name only (the unlock block, the hardening block, the truth
+sweep, the capture block, the preview block, the depth-and-close
+block). Question rounds go by date. Test levels go by name: logic only;
+real programs with stand-in hardware; the home test bed; the venue. No
+page uses a bare phase, step, block or round number.
+
+Made 2026-11-01.
+
+History:
+- 2026-11-01. The owner asked "which phase 1?" and the ambiguity was
+  recorded with "Design top-down, hardest-to-reverse choices first".
+- 2026-11-01. Made, owner OK, except decision numbers, which the owner
+  put under discussion. "Titles, not numbers, and a topic record"
+  settled that the same day.
+
+---
+
+## What the engine must do
+
+**The nine questions the pass answers**
+
+The pass answers these nine questions for the whole engine:
+
+- Who decides each fact: who decides each fact the GM sees (the
+  authority)?
+- Service state travels with its health: does a service's state travel
+  with its health?
+- How the engine reads its programs: how does the engine read the
+  programs it drives?
+- Only the live engine touches the show: can anything other than the
+  live engine touch the live show (tests today, the preview engine
+  later)?
+- One question gets one answer: does one question get one answer?
+- Each fact at a game boundary: what does each fact and each copy do at
+  a boundary (a game starting or ending, a system reset, a restart, a
+  pack change while running)?
+- Each component gets what its role needs: does each component receive
+  what its role needs, and no more?
+- How copies update and show their age: how may a copy be updated, and
+  can a screen tell how old it is?
+- Reconnect snapshot built like live update: is each fact's reconnect
+  snapshot built the same way as its live update?
+
+The nine stand. Since the design half was reordered top-down, the design
+rounds go by the hardest decisions to reverse, not one rule per
+question. The record does not yet say in so many words how the nine fit
+that order. The reading here is the agent's call "Four readings of
+earlier decisions are confirmed" (2026-11-02, changed 2026-11-10), which
+the owner can overrule. The nine serve as checks on each design. The
+four questions on the game's live facts ("Who decides each fact", "Each
+fact at a game boundary", "How copies update and show their age",
+"Reconnect snapshot built like live update") all bear on the first
+decision, "How the engine holds the game's state", and are designed
+together there.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session. Six questions, with "Who decides
+  each fact" central. "Only the live engine touches the show" then read
+  "can a test touch the live show?" and "Each fact at a game boundary"
+  read "who re-checks after a reset?".
+- 2026-10-30, the definition session, the round after. "Only the live
+  engine touches the show" became "can anything other than the live
+  engine touch the live show?" and "Each fact at a game boundary" became
+  "what does each fact and each copy do at a boundary?". "Each component
+  gets what its role needs" was added, on what each component receives;
+  the owner ruled it must start from the settled roles.
+- 2026-10-30, the definition session, the round after that. "Each
+  component gets what its role needs" was worded (see "The role question
+  starts from settled roles").
+- 2026-10-30, the definition session, the round that settled the method.
+  "How copies update and show their age" and "Reconnect snapshot built
+  like live update" were added from the code map. Each question was to
+  get its own rule and test, and "Who decides each fact", "Each fact at
+  a game boundary", "How copies update and show their age" and
+  "Reconnect snapshot built like live update" were to be designed
+  together as one rule for live state.
+- 2026-11-01. "Design top-down, hardest-to-reverse choices first"
+  ordered the design rounds by decision, not by question. Whether
+  "designed together" and "one rule per question" still hold is to be
+  confirmed.
+- 2026-11-02. The agent's call "Four readings of earlier decisions are
+  confirmed", on version 10 of the Decisions page, reads both as
+  overtaken: the design rounds go by decision, the four questions on the
+  game's live facts are no longer designed together as one rule, and the
+  nine serve as checks on each design. Readings that follow from the
+  owner's earlier decisions are the agent's calls ("The Decisions page
+  holds only your decisions"); the owner can overrule this one.
+- 2026-11-10. The independent review the owner asked for found that the
+  call contradicted the Design page, which lists all four questions on
+  the game's live facts under the first decision. The call was
+  corrected. It now says that the four questions all bear on the first
+  decision and are designed together there. The rest of the reading
+  stands: the design rounds go by decision, and the nine serve as checks
+  on each design. The review also found that one of the nine, "How the
+  engine reads its programs", was named under no decision ahead; see the
+  2026-11-10 line under "Design top-down, hardest-to-reverse choices
+  first".
+
+**The role question starts from settled roles**
+
+The components keep their settled roles. The player scanners, web and
+ESP32, have the same functions: they show token content and report
+scans, with no scoring and no live game feed. The GM scanner is the
+command center. The scoreboards show the public results: team scores
+and exposed evidence. The question about roles reads "does each
+component receive what its role needs, and no more?", and it starts
+from these roles.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session, the round that reworded the
+  questions. The owner said "sure" to widening two questions but found
+  that the new role question ignored the settled roles; it was sent
+  back to be reworded from them.
+- 2026-10-30, the definition session, the round after. Made with the
+  wording above.
+- 2026-11-10. The decision is unchanged. Version 11 of the Decisions
+  page says, inside the owner's question "What the panel gets in its
+  blind round", that the agent gives this decision to the panel in the
+  setting, as facts about ALN's devices today, and leaves it out of the
+  list of decisions that bind any design. The agent's reason: the
+  requirements already ask more of a player's device in other games. The
+  owner can say that it binds every design.
+
+**Standalone games: declared, never mixed**
+
+Standalone games are a capability of the engine: a game can be designed
+and set up to run with no show machine, where a network connection is
+not feasible, or where other logistics make it better to use only GM
+scanners, player scanners (phone or hardware), or both. In the owner's
+words (2026-11-02): "Standalone games are a capability of the "engine"
+to enable design and set-up of games that can run in environments where
+a network connection is simply not feasible, or other logistics making
+it more preferable to use only gm and/or player scanners (phone or
+hardware) for a game."
+
+A game declares that it is standalone, and no game mixes networked and
+standalone devices. Standalone games join the list every design choice
+must serve, beside applying a change while the engine runs, the trial
+copy of the engine, capture and players' phones. The hardware scanner
+plays standalone games as the phone's scanner does: the owner's words
+name "player scanners (phone or hardware)", which answers "The hardware
+scanner's standalone mode". Where the fact "this game is standalone" is
+held (the venue profile, the game's record or each device) is a
+question for the design rounds; whether the pack may hold it too waits
+on the second reading below.
+
+Two readings by the agent follow, each to be confirmed with the owner.
+The first is read from the owner's words "gm and/or player scanners": a
+standalone game may have no GM tablet at all. This one reading covers GM
+scanners alone, player scanners alone, and both together. The second is
+read from how ALN runs today, not from the owner's words: one pack can
+be played networked on one night and standalone on another, and the pack
+says only which of its effects the game cannot run without. The owner's
+words do not say who decides which way tonight's game runs: the
+designer, in the pack, or whoever sets up the night. Today the GM picks
+on the tablet at the start, and ALN's one pack plays either way. The
+agent reads the decision as keeping that.
+
+What a standalone game does with a need it cannot meet is the agent's
+call "A standalone game follows the rule you ratified for missing
+equipment" (2026-11-10), which the owner can overrule. The rule the
+owner ratified on 2026-09-04 for equipment a venue leaves at home
+applies: the pack says what the show needs and marks each need "block
+the show" or "skip it". In a standalone game a need marked "skip it"
+reads grey, as not installed tonight. A need marked "block the show"
+keeps the game from starting standalone and names the need, unless the
+GM types the override that rule allows.
+
+Made 2026-10-31; its purpose stated 2026-11-02.
+
+History:
+- 2026-10-31, the question round of 2026-10-30 to 2026-11-01. Made: yes
+  to whole standalone games, no to mixed games. On the ESP32 the owner
+  asked why a standalone mode would be new, given parity; it was
+  recorded as covered under the parity rule, pending the owner's word.
+- 2026-10-31. A standalone pass checked the sixteen flaws against a
+  whole standalone game and raised three questions (where each went is
+  in the 2026-11-02 line on version 10 and the first 2026-11-10 line
+  below).
+- 2026-11-01. The venue promise on the owner site carries these words
+  as a clause ("The venue promise names declared standalone").
+- 2026-11-02. In the chat after version 9 of the site, the owner said
+  what standalone games are for (quoted above). The agent had asked
+  whether they are an occasional fallback or a line of shows; the owner
+  saw no distinction between the two, and the purpose replaces that
+  framing. The statement answers "The hardware scanner's standalone
+  mode", which had waited for the owner's explicit word since
+  2026-10-31.
+- 2026-11-02. Version 10 of the Decisions page asked one of the
+  standalone pass's three questions as the owner's "Which standalone
+  games the engine must run". The other two became the agent's calls
+  "The missing standalone declaration is a design flaw of its own" and
+  "Exposed evidence and video with no engine"; the rule above the second
+  became the owner's question "What a standalone game gives up, and what
+  it keeps".
+- 2026-11-10. The independent review the owner asked for found that
+  version 10's question "What a standalone game gives up, and what it
+  keeps" asked again for a rule the owner ratified on 2026-09-04. The
+  question left the Decisions page. Its rule is the agent's call "A
+  standalone game follows the rule you ratified for missing equipment".
+  Its ask on whether the record holds what the players found moved into
+  the owner's question "Which standalone games the engine must run". Its
+  list of what a standalone game keeps and gives up is in the
+  introduction to the page's standalone group. Two rows are settled: the
+  GM tablet decides teams, scores, group bonuses and the game's start,
+  pause and end; and nothing drives the room, so video on the TV, music,
+  lights and sound each read grey. Three rows are the agent's proposals,
+  for the owner to flag: a video token on a player's device shows its
+  picture and a plain note, never an error; a GM tablet counts the
+  game's clock and its phases; and what a mode shows in public gets a
+  public view on the GM's tablet. Two of those three rows, the video
+  token and the public view, hold the content of the agent's call
+  "Exposed evidence and video with no engine", which is deleted. The
+  third, the tablet's clock, was a subject of version 10's question
+  "What a standalone game gives up, and what it keeps" and is new as a
+  proposal. Version 10's question "Which standalone games the engine
+  must run" had also asked whether standalone means no show machine or
+  no network. Version 11's page states that a standalone game is a game
+  with no show machine, as this entry's summary does, and asks whether
+  its devices must share one game during play.
+- 2026-11-10. The same review found that "no engine" in this entry's
+  summary told a reader that the engine's own software may not run on a
+  standalone device. In the glossary the engine is all the
+  game-independent software, the GM scanner and the player scanners
+  included. The summary now says "no show machine". The owner's words
+  are unchanged.
+- 2026-11-13. The owner decided where the fact is held and who decides
+  ("yes to all 3"; see "A game with no backend: the installation says
+  so, and every device works alone" under "Since the proposal"). The
+  installation's settings say whether there is a backend, the pack says
+  whether its game can be played without one, and the GM no longer
+  picks on the GM scanner. The reading below, which kept the GM's pick,
+  is replaced. That a standalone game may have no GM scanner at all was
+  already settled by the kit model of 2026-06-11.
+- 2026-11-10. The reading on who decides which way tonight's game runs
+  was added, to be confirmed. Version 10 carried it only as a detail of
+  where the fact is held. A third reading that bears on this decision is
+  under "No technical failure stops a game": a networked game that
+  carries on from its devices after its show machine fails stays the
+  networked game it was declared as. The quality target "No game mixes
+  networked and standalone devices" is marked partly settled from the
+  same day, where it was marked settled: its test refuses a networked
+  device that plays alone, and that holds when the show machine fails
+  only if the owner confirms this third reading. It was a finding of the
+  check of version 11, applied by the agent.
+
+**The night's record and the after-game article**
+
+What the players receive after the show, and their contact details, are
+the game's business, outside the engine; the engine's record is
+designed so the game's own tools can read it. The second half of the
+promise "Every tap gets its answer, and the night can be told
+afterwards" names the director and the players after the show. The
+engine makes the players no promise of their own for what they receive
+after the show. The night's record carries the pack the game ran and
+the texts the players saw, so the article quotes what they held.
+Players' emails stay outside the engine; later the game's own tools
+could collect them from the ticketing service. The Director Console
+stays a separate program, for now, that reads the engine's record; the
+record is designed so the console can later become ALN's own part of
+the engine's Review stage. The two clocks (a sale stamped by the
+tablet, an adjustment by the engine) join the flaw "Tablets and phones
+decide facts the engine owns" as a finding. Whether paper documents
+join the pack, with "unlocked" recorded during play, was not answered
+and waits for the design rounds.
+
+Made 2026-11-01.
+
+History:
+- 2026-11-01. The owner asked to bring the after-game article and
+  emailer into the engine map. A read-only survey asked six questions;
+  the owner answered five of them, and the first half of the third, the
+  same day. Whether paper documents join the pack was not answered. The
+  answers were folded into the promise's people, the night's record
+  part, the flaw card, the glossary's Review entry and the roadmap's
+  capture block.
+
+**One published protocol and an outside test bench**
+
+One published, versioned protocol defines everything that crosses the
+engine's edge: what a device may ask, what the engine answers, what it
+tells screens, and the files that carry a game or a night (the pack,
+the venue profile, the night's record, the media list). Every program's
+code is generated from it or checked against it. It consolidates
+today's scattered contracts (the backend contracts, the venue-profile
+schema, the pack schemas) and it is designed in an early design round,
+not merely collected. The tests become a test bench outside the engine.
+"Proof" stays a quality every part must meet. Together these two
+replace the candidate shape's part called "Joins and proofs" (shared
+shapes written once and tests on their own copy of the engine).
+
+Made 2026-11-01.
+
+History:
+- 2026-11-01. Proposed with "Independent architects propose the
+  top-level design" and recorded as pending: the owner leaned yes and
+  asked first for a careful explanation of the published protocol and
+  where it fits in the big picture.
+- 2026-11-01. Made after the explanation. The pending note was removed.
+- 2026-11-10. Wording only. "Tests on an engine of their own" now reads
+  "tests on their own copy of the engine", in this entry and in the
+  entry on the part "Joins and proofs" under "Superseded and withdrawn".
+  In the glossary the engine is all the game-independent software, and a
+  test runs a copy of it. Nothing decided changed.
+
+**No technical failure stops a game**
+
+A lost connection or a device that goes down mid-game must not stop
+the game. At that moment the GMs must know the fallbacks that keep it
+running, with as little effect on the players as possible. In the
+owner's words: "For more or less all use cases, having to pause a game
+because a connection was lost or a device goes down mid-game is the
+worst possible scenario. During a game situation, the GMs need to know
+their available fallbacks to keep a game running with as minimal impact
+on the player experience as possible if at all possible if ever there's
+a technical failure mid-game."
+
+Three readings follow, each to be confirmed with the owner. First, the
+owner's words "a device goes down mid-game" include the show machine
+itself, so the game must go on without it too. How it goes on is the
+owner's question "The show machine fails mid-game". Second, a networked
+game that loses its show machine and carries on from its devices stays
+the networked game it was declared as. It does not become a standalone
+game, and "Standalone games: declared, never mixed" does not change: no
+device is on a show machine, so nothing is mixed. When a machine is
+back, the devices' records are joined into the game's record. Third,
+when the show machine dies and the kit has no second machine, the game
+still carries on with less (no video, music, lights or TV) wherever the
+game can be played that way, so the engine may not make a second machine
+a requirement for it. A game that needs the show machine by its nature,
+as the owner's second game does, may end in an orderly way instead, and
+every GM tablet says so. The agent reads the owner's words "For more or
+less all use cases" and "if at all possible" that way.
+
+What a GM tablet does with a scan while it cannot reach the engine is
+not among the readings. It is the owner's question "A GM tablet cut off
+from the engine".
+
+Made 2026-11-02.
+
+History:
+- 2026-11-02. The owner's comment, in the chat after version 9 of the
+  site, on the agent's question of what a GM tablet does when it loses
+  the show machine mid-show. Two readings were recorded with it, to be
+  confirmed: that a GM tablet which loses the engine keeps taking scans,
+  and that the design must say how a networked game carries on if the
+  show machine itself fails.
+- 2026-11-13. The owner made the decisions these readings waited for
+  ("yes to all 3"; see "A GM scanner with no connection shows the
+  result at once, not confirmed" and "When the backend's computer dies,
+  the session goes on at the GM scanners" under "Since the proposal").
+  All three readings are confirmed.
+- 2026-11-10. The independent review the owner asked for changed the
+  readings. The first reading of 2026-11-02, that a GM tablet which
+  loses the engine keeps taking scans, left the list. It is one of the
+  options of the owner's question "A GM tablet cut off from the engine",
+  so a yes to it would have answered half of that question. The second
+  was reworded: it now says only that a device going down includes the
+  show machine. Two readings are new. That the game stays the networked
+  game it was declared as replaces what version 10 asked inside its
+  question on the failed show machine, where declaring the game
+  standalone once was offered as an amendment to the standalone
+  decision. That the engine may not make a second machine a requirement
+  is read from the limits in the owner's own words.
+
+**The engine is hardware-flexible; the roadmap sets the bounds**
+
+The hardware is fixed only in that ALN runs on the kit the owner has
+bought. The mature engine is meant to be flexible about hardware, so
+the fundamental architecture must allow that flexibility later. The
+current roadmap sets realistic bounds: which flexibility it builds now,
+and where it names specific hardware requirements. In the owner's
+words: "The hardware is fixed only insofar as I have the hardware I
+have on which I am running ALN, but the point of the engine in its
+mature form is that it is flexible meaning that we should build the
+fundamental architecture to allow flexibility with the hardware down
+the line. Meanwhile, we need to set realistic boundaries about what our
+current roadmap should incorporate in terms of that flexibility vs.
+where it should establish specific hardware requirements." Where the
+current roadmap draws that line is open, for the design rounds and the
+build plan.
+
+How the line comes to the owner is the agent's call "The design allows
+other hardware; what the first release requires comes with the build
+plan" (2026-11-10), which the owner can overrule. Every class of device
+in ALN's kit can be replaced in the design: the show machine, the GM's
+station, the players' devices, the public screens, the room's programs
+and the network. The panel gets ALN's kit as the first production's
+hardware, as facts. The build plan proposes, for each stage of the
+roadmap, the hardware the engine names as required and the hardware it
+supports, and brings that list to the owner.
+
+Made 2026-11-02.
+
+History:
+- 2026-11-02. The owner's comment, in the chat after version 9 of the
+  site, on the agent's question "Which hardware is fixed?".
+- 2026-11-10. Version 10 of the Decisions page had asked where the line
+  falls, as the owner's question "Which hardware the first new engine
+  requires, and what it must allow replacing". The independent review
+  the owner asked for found that the record already answers it: the
+  owner's words settle the design side, and this decision leaves the
+  line to the design rounds and the build plan. The question left the
+  page, and the agent's call above replaces it. One line is still asked
+  of the owner before the panel's folder is built: any device the owner
+  expects to use soon that is not in ALN's kit.
+
+**Two kinds of game extension**
+
+A game can be extended in two ways, and the design keeps them apart.
+
+- A new game mechanic built from what the engine can already do: a new
+  action for the players, or a new way for the game to respond to
+  triggers the engine already has. The game's own maker builds it,
+  inside the game; in the long term it may be shared with other game
+  makers for their games. The owner's example: players change the
+  room's lighting by scanning different tokens on a player scanner.
+- A response the engine cannot give yet. A developer extends the engine
+  so that any game can use it. The owner's example: adding a service
+  such as Snapcast for audio in several rooms, so that different areas
+  get different soundtracks and the GMs can play a sound cue on every
+  speaker or on chosen speakers (areas or rooms of the game space).
+
+Two questions stay open, as the owner named them: how an extension made
+for all games relates to the engine's main release, and which piece each
+kind of extension changes (packs, the engine's code, added outside
+services). The first is the owner's question "How an extension for all
+games reaches a production". The second is kept for the design round
+"How games and venues extend the engine": where an extension plugs in is
+how to build it, not what the product must allow. That placement is the
+agent's, under "The Decisions page holds only your decisions", and the
+owner can move it back to the Decisions page. How far the first kind may
+go with no developer is the owner's question "What a game's maker may
+build inside the pack". The owner's wording is tentative ("should
+probably", "probably"), and this record keeps it so. In the owner's
+words: "Game mechanics could be different ways to combine existing
+in-engine capabilities to create different gameplay verbs for the
+players to engage with or different ways the game might actually respond
+to existing game triggers within the engine. This should probably be
+able to be done by the game's own maker inside that game. (though
+possibly, in the long term, with a way to share with other game makers
+for their games too) Game mechanics could also be for an existing
+gameplay action triggering a response that the game engine is not
+currently capable of. This probably requires a developer to extend the
+code of the engine in a way that any game can use."
+
+Made 2026-11-02.
+
+History:
+- 2026-11-02. The owner's comment, in the chat after version 9 of the
+  site, on the agent's question "When a future game needs a new kind of
+  mechanic, who adds it?". The owner found that the question mixed two
+  framings: what is being extended, and which piece the extension
+  changes.
+- 2026-11-02. Version 10 of the site put the first open question to the
+  owner and kept the second for the design round, under "The Decisions
+  page holds only your decisions".
+
+**The engine says what is fixed and what each production sets**
+
+The engine is meant to serve many games in many production settings,
+so it stays agnostic about any one production's numbers: the devices
+and phones in a kit, the time from power-on to a running show, set-up
+time, how long records are kept, and the like. Someone adopting the
+engine needs to know which requirements are fixed and which affordances
+the engine allows, so they can fit it to their needs and their venue.
+ALN is one production: one game, one venue, the hardware the owner
+bought. The owner's next game may share them; the next person to use
+the engine may not. In the owner's words: "many are stuff that the
+engine itself should be relatively agnostic about if it's going to be
+open sourced to support many different games in many different
+production scenarios. [...] what they need to know is what is a fixes
+requirement vs what affordances the engine allows in order for them to
+fit its use into their needs and venue realities."
+
+Read from this, as the agent's call "The quality targets' numbers are
+sorted, not asked" (2026-11-02), which the owner can overrule: each
+number a quality target needs is an engine requirement or stated limit,
+the same for every production; a production's own setting, with ALN's
+as the first set; or a technical default the agent proposes and a
+production may change.
+
+Made 2026-11-02.
+
+History:
+- 2026-11-02. The owner's comment, in the chat after version 9 of the
+  site, on the show-size and timing numbers the agent proposed to ask.
+- 2026-11-02. The split, first written here as two sorts to be
+  confirmed, became the agent's call with three sorts on version 10 of
+  the Decisions page, each number's sort shown with its target.
+- 2026-11-10. After the independent review the owner asked for, the call
+  gained two things. Where an engine requirement has no value yet, the
+  agent proposes an order of size now, marked proposed, and the measured
+  value in the design round that builds it. And each design states its
+  own time from power back to a running game. Three calls about
+  technical defaults ("The program watcher's retries", "How long before
+  a screen says the engine is silent", "The show machine's limits") left
+  the list of calls; each stands, with its reason, in the numbers list
+  of the quality targets' review. The agent proposes one more default
+  there: the engine ships keeping every kind of data for 90 days, until
+  a production sets its own.
+
+---
+
+## How the design is made, and in what order
+
+**One program: design half, then build half**
+
+The pass is one program in two halves. The design half decides the
+shared rules for the whole engine with the owner, one question round at
+a time, with throwaway prototypes allowed, and ends with the new
+roadmap. The build half changes the engine to follow the design, one
+area at a time, as the first work in that roadmap, before the capture
+block, the preview block and players' phones. It takes the show-ready
+gate's second condition. The remaining hardening pieces and the truth
+sweep's purpose are rebuilt inside it. Each area gets its detailed
+design just before it is built. The build half starts with a thin
+first version of the new design running end to end on a new test bench.
+The pass ends when every rule's test passes on the rig.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session. Made as two phases, the third
+  option the owner was shown. The owner had asked why the pass changes
+  no code and when the engine code changes. Each area was to start with
+  its proof test failing on today's engine.
+- 2026-11-01. The halves were renamed design half and build half ("Name
+  each step by what it does").
+- 2026-11-01. "Build the test rig when building starts" and "Design
+  top-down, hardest-to-reverse choices first" made the build plan start
+  with a thin first version on a new test bench. Starting each area with
+  its proof test failing on today's engine returns only if the move from
+  today's engine chooses to change it in place. The record does not name
+  this as a change to the two-halves decision; the reading is to be
+  confirmed.
+- 2026-11-02. Confirmed as the agent's call "Four readings of earlier
+  decisions are confirmed" (version 10 of the Decisions page), which the
+  owner can overrule.
+
+**Run the pass like the re-charter**
+
+The pass is a roadmap revision, run the way the September re-charter
+ran: evidence, a draft with questions, a hostile review, question
+rounds, the owner's sign-off. Its new roadmap becomes the roadmap's
+next revision; the earlier text survives in git history. The glossary
+entry for "architecture pass" is written. The order of the design
+half's steps is the top-down order. On the owner's pages the draft's
+questions go by title, not number.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session. Made, with ratification as the
+  last step's name. The glossary entry waited until the pass's
+  difference from the truth sweep was settled.
+- 2026-10-30, the definition session, two rounds later. The difference
+  was settled and the entry written.
+- 2026-11-01. The order of the steps became the top-down order, and
+  "Titles, not numbers, and a topic record" replaced numbered
+  questions with titled ones on the owner's pages. "Name each step by
+  what it does" named the last step the owner's sign-off.
+
+**The truth sweep's charter is retired**
+
+The truth sweep's charter is retired. Its purpose, proving with rig
+tests and screen captures that every screen tells the truth, moves into
+the build work the pass plans and covers every screen, the scoring,
+transaction and session screens included. Its census and its five
+recorded desync bugs are evidence for the pass. The roadmap and the
+glossary carry notes.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session, the round that reworded the
+  questions. Made. The sweep had been a repair job on the routes by
+  which service status reaches the GM's admin panel, taking today's
+  design as given; the pass decides the design itself.
+
+**Five documents the design half hands over**
+
+The design half hands over: the rules, one per question, each with a
+proof test in plain words (what to do, and what must happen); the cause
+analysis, with every fix made on the show machine in use now and every
+finding assigned to a cause and
+a rule or set aside with a reason; contract proposals, drafted for the
+two contract files before code; decision records, one short note per
+hard-to-reverse choice, in a new `docs/adr/` folder; and the new
+roadmap, with the build half's areas in order, the remaining hardening
+pieces and the sweep's purpose placed inside them, the show-ready gate
+restated and the later blocks after the build half. Two parts of this
+are read as overtaken (the agent's call "Four readings of earlier
+decisions are confirmed", 2026-11-02, which the owner can overrule):
+"one per question", by the design rounds going by hard-to-reverse
+decision; and the contract proposals, by the one published protocol.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session, the round that settled the method.
+  Made.
+- 2026-11-01. "Design top-down, hardest-to-reverse choices first" orders
+  the design by decision, not by question, so "one rule per question"
+  may change; "One published protocol and an outside test bench" would
+  turn the contract proposals into one protocol. The record does not
+  name either as a change to this decision; both readings are to be
+  confirmed.
+- 2026-11-02. Both confirmed as the agent's call "Four readings of
+  earlier decisions are confirmed" (version 10 of the Decisions page),
+  which the owner can overrule.
+
+**The design half's method and tools**
+
+The design half's work, in its current order: the cause analysis (done:
+readers split by source, merged by cause, checked); the requirements
+(the owner's answers on the promises, quality targets written as
+testable situations, and the ways the platform must be extended, and by
+whom); the independent panel; the design rounds, ordered by the hardest
+decisions to reverse; the build plan; the hostile review (two reviewers
+with different angles, a checker for each finding, one group of
+reviewers at a time); the final questions; the owner's sign-off. The
+design rounds use the skills `codebase-design` and
+`improve-codebase-architecture`. Each round writes two or three
+competing designs side by side, with before-and-after diagrams,
+published as pages for the owner, never left as temporary files. A
+throwaway prototype is written where the code's behaviour is uncertain
+and never merged. Every design is checked against the promises, the
+quality targets, the extension cases and the sixteen design flaws, and
+every rule says how it serves hot-apply, the preview engine, capture,
+players' phones and standalone games. The test rig is built when
+building starts, not before design.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session, the round that settled the
+  method. Made, in the order: cause analysis, with its readers grouped
+  by cause; the test rig rebuilt and used to reproduce the unrun
+  findings; design rule by rule; the hostile review; grill rounds;
+  ratification. The two design skills were confirmed for this pass.
+- 2026-10-30, the definition session, the record check's round. The
+  order corrected (a proposed build order drafted before the review,
+  and one question round with the review's findings and the order) and
+  the readers changed: split by source, then merged by cause, then
+  checked ("Corrections to the readers and the hardening pieces").
+- 2026-10-31. Standalone games joined the list every rule serves
+  ("Standalone games: declared, never mixed").
+- 2026-11-01. The test rig moved to the start of building ("Build the
+  test rig when building starts").
+- 2026-11-01. The order became top-down and the design rounds go by
+  decision ("Design top-down, hardest-to-reverse choices first").
+
+**When the design half is finished**
+
+The design half ends at the owner's sign-off, and only once all of
+these hold: every finding and every fix made on the show machine in
+use now is assigned to a rule, or
+set aside with a reason; every rule says how it serves the planned
+capabilities and standalone games; the review's blocking findings are
+resolved; every question has a rule and a proof test; and the rig
+reproduces each finding marked for live proof. Two of these are read as
+overtaken (the agent's call "Four readings of earlier decisions are
+confirmed", 2026-11-02, which the owner can overrule): "every question
+has a rule", by the top-down order of the design rounds; and the rig
+condition, by "Build the test rig when building starts", which builds
+the rig at the start of building, after design.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session, the round that settled the method.
+  Made with five conditions.
+- 2026-10-31. "Standalone games: declared, never mixed" put standalone
+  games on the list every rule must serve.
+- 2026-11-01. "Build the test rig when building starts" moves the rig
+  after design. The record does not name this as a change to the end
+  conditions; the reading is to be confirmed.
+- 2026-11-01. "Design top-down, hardest-to-reverse choices first" may
+  change "every question has a rule"; to be confirmed.
+- 2026-11-02. Both readings confirmed as the agent's call "Four readings
+  of earlier decisions are confirmed" (version 10 of the Decisions
+  page), which the owner can overrule.
+
+**Corrections to the readers and the hardening pieces**
+
+The merged hardening pieces (the kinds of equipment a pack can ask for
+and a venue profile can name, the code that marks equipment not
+installed tonight, and the smallest test set-up) stay in the engine. The
+build half changes them only where a rule requires, and their standing
+review findings fed the cause analysis like every other finding. The
+cause analysis's readers were split by source (the records of the show
+machine in use now, the backend, the GM scanner, the other clients and
+tests), then a merge grouped every finding by cause, then a skeptical
+check ran. That work is done.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session, the record check's round. Made
+  as three corrections from a record check: the design half's order,
+  the hardening pieces, the readers. The owner said yes to all three.
+- 2026-11-01. The correction to the order was superseded by "Build the
+  test rig when building starts" and "Design top-down,
+  hardest-to-reverse choices first". The hardening pieces and the
+  readers stand.
+
+**Build the test rig when building starts**
+
+The test rig no longer comes before design. It is built at the start of
+building, as part of the new test bench where a thin first version of
+the new design runs end to end, not to reproduce today's problems first.
+Exception: if the decision on how to move from today's engine chooses to
+change it in place, pinning down today's behaviour first comes back.
+
+Made 2026-11-01.
+
+History:
+- 2026-10-30. The rig had been the design half's second step, meant to
+  reproduce four unrun findings before design (the deleted token still
+  refused, the music panel behind live music, the ended game returning
+  after a restart, the reset that leaves music out). The question "how
+  much the rig proves before design" was open.
+- 2026-11-01. Made, answering "withdraw that question?". The question
+  is withdrawn.
+
+**Design top-down, hardest-to-reverse choices first**
+
+The rest of the design half goes top-down. First finish the
+requirements: the owner's answers, plus quality targets written as
+testable situations and the ways the platform must be extended, and by
+whom. Then design rounds ordered by the hardest decisions to reverse:
+how the engine holds the game's state; the published protocol and file
+formats; where authority lives across devices, offline and standalone
+included; how games and venues extend the engine; how one engine runs
+as many separate copies; how today's engine moves to the new design.
+Each round has two or three designs side by side, checked against the
+promises, the quality targets, the extension cases and today's sixteen
+design flaws as test cases. Then a build plan that starts with a thin
+first version. The owner site is to be reframed fully to the long-term
+frame, and the sequencing words are made unambiguous.
+
+Made 2026-11-01.
+
+History:
+- 2026-11-01. Made, for the frame of "Design for the long term, beyond
+  ALN". It amends "The design half's method and tools", "Decide in
+  question rounds, never at sign-off" and "Corrections to the readers
+  and the hardening pieces". The owner asked "which phase 1?", so no
+  page uses a bare phase, step, round or block number again.
+- 2026-11-01. The owner's words for the goal were recorded the same
+  day: "design a long-term optimal architecture for our engine that
+  makes it intuitive and easy to maintain, continue development on, and
+  extend (proactive)", in place of "fixing issues seen / fixed on blue
+  to run ALN (reactive)".
+- 2026-11-10. The independent review the owner asked for found four
+  subjects with no decision of their own among the six: how the engine
+  drives the room, passes, the kit's stored data, and installing and
+  releasing a kit after the first swap. The six titles and their order
+  stand, because the list is the owner's. The agent added passes, the
+  kit's stored data, and installing and releasing to what the existing
+  decisions decide, on the Design page. The owner can overrule any of
+  it. For the room, the agent proposes a seventh decision, "How the
+  engine drives the room", inside the owner's question "What the panel
+  gets in its blind round". The list stays at six unless the owner says
+  yes. Until then the question "How the engine reads its programs" is
+  named under the first decision. The review also found that the first
+  and third decisions look like one decision asked in two rounds. The
+  order is not changed before the panel: each architect is asked whether
+  they would merge or reorder the six, and any change to the list comes
+  back to the owner with the panel's report. Two more changes are on the
+  Design page. The agent also set the decision on how games and venues
+  extend the engine in two parts, each with its own designs: what a game
+  and a venue declare, and where a developer adds to the engine. The
+  last decision also settles what the hardware scanners run during the
+  events when the old machine is still the fallback.
+
+**Independent architects propose the top-level design**
+
+An independent panel of architects, who have not seen the reasoning of
+the agent running the pass, proposes and stress-tests the top-level
+design decisions before the first design round. The owner said the
+context the panel gets is critical: its brief comes to the owner before
+the panel runs. What the panel sees, and when, is "What the architects'
+panel sees, and when".
+
+Made 2026-11-01.
+
+History:
+- 2026-11-01. Made.
+
+**What the architects' panel sees, and when**
+
+The panel first gets the goal, the requirements (the promises with the
+owner's answers, the quality targets and extension cases as the owner
+reviewed them, the standing constraints) and the setting (one owner and
+AI agents developing it; the hardware and a local network that can drop;
+one two-hour show for a few dozen devices). Only after its first
+proposals does it get today's engine as facts and the sixteen design
+flaws as test situations. Withheld: the recommendations of the agent
+running the pass, the candidate shape of the engine's parts (it enters
+in a second round as one more proposal) and the earlier lists of design
+choices. Three architects with different lenses propose blind, then
+critique each other and the candidate shape. A synthesis lists the
+decisions, options, costs, trial runs and the owner's questions. The
+panel runs after the owner reviews the requirements, and its brief goes
+to the owner first.
+
+Made 2026-11-01.
+
+History:
+- 2026-11-01. Made, owner OK.
+- 2026-11-02. Read from "The Decisions page holds only your decisions",
+  which offers the requirements for review, not for confirmation: the
+  panel runs after the owner reviews them, where the owner's OK of
+  2026-11-01 was to "after the owner confirms the requirements". The
+  reading is the agent's, which the owner can overrule.
+- 2026-11-10. Read from this decision, after the independent review the
+  owner asked for: a question the owner leaves unanswered goes to the
+  panel as its "What it decides" paragraph only, without the agent's
+  options or recommendation, and comes back to the owner in the panel's
+  report with the costs. The reading rests on this decision's rule that
+  the recommendations of the agent running the pass are withheld. It is
+  the agent's reading, which the owner can overrule. An answer the owner
+  gives before the panel runs binds the panel. A reading the owner
+  confirms goes to the panel as the owner's decision, one the owner
+  refuses is taken out before the panel runs, and one left unanswered
+  goes as an open question.
+- 2026-11-10. Staging the agenda is the agent's call "Each architect
+  lists the decisions before seeing the agenda". Each architect first
+  writes their own list of the hardest decisions to reverse, from the
+  goal, the requirements, the setting and the owner's decisions, and
+  only then opens the six. It applies if the owner gives the blind round
+  the agenda, which is the owner's question "What the panel gets in its
+  blind round". How the panel runs is the agent's call ("The Decisions
+  page holds only your decisions"). The review had proposed the staging
+  as a third option of that question; it was kept as a call, and one
+  sentence in the question lets the owner give the decisions with no
+  agenda.
+- 2026-11-10. The panel waits for three things from the owner: the
+  answer to "What the panel gets in its blind round", the word
+  "reviewed" for the requirements, and approval of the panel's brief. No
+  other question holds it back.
+- 2026-11-10. The panel's brief was revised after the independent review
+  the owner asked for. It is not yet approved. The setting gains the
+  secure connection that phones and tablets need before a web page may
+  read a token or use the camera. The setting also holds the roles ALN's
+  devices have today, as facts (see "The role question starts from
+  settled roles"). The failures each architect answers include the kit's
+  whole network. Where a quality target or an extension case notes how
+  today's engine behaves, the note sits in a field of its own. The blind
+  round's folder leaves that field out, because today's engine is
+  withheld from that round, and the second round gets the notes back. Of
+  each promise the blind round's folder holds its title, who counts on
+  it and when, what they count on and the long-term goal. The targets
+  and cases that serve a promise name it themselves. The rest under a
+  promise (where today's engine falls short, the line "In a standalone
+  game", what the planned capabilities need from it, the test situations
+  from the shows) carries facts about today's engine and waits for the
+  second round. Each promise also names the questions it bears on, among
+  the nine the pass answers. That line waits with the test situations.
+  Each of the first five decisions ahead goes to the blind round with
+  what it decides, as Design gives it, and the last by its title until
+  the second round. Where a target's status or number names a promise's
+  test, the test itself waits for the second round. What the folder
+  holds of a promise and of each decision is a choice the agent made
+  within the brief after the check of version 11. It is not one of the
+  thirteen calls on the Decisions page. The owner approves or changes it
+  with the brief.
+
+---
+
+## The owner's site
+
+**The owner's site: five linked pages**
+
+The owner's page is five linked pages built from one set of data: the
+engine (the front page), decisions, promises, parts and design flaws.
+The history of earlier wordings and changes lives in a change log. The
+owner relied on nothing in the single page it replaced, so nothing from
+it had to stay. The site is to be reframed to the long-term frame, and
+its decisions, questions and design flaws are to go by title in place
+of numbers. Version 9, built 2026-11-01 and published 2026-11-02, did
+both: six linked pages
+(the engine, decisions, requirements, design, today's engine and the
+change log), titles in place of numbers, and the sequencing names.
+
+Made 2026-11-01.
+
+History:
+- 2026-11-01. Before this, the owner said of the single page: "the 17
+  part candidate shape is never diagrammed. this is still not showing
+  me how everything comes together." The page gained a drawing of the
+  whole engine, and the owner then asked for the page's structure to be
+  thought through before going on.
+- 2026-11-01. Made: five linked pages and a change log. The site went
+  live the same day.
+- 2026-11-01. "Design top-down, hardest-to-reverse choices first" asks
+  for the site to be reframed to the long-term frame; "Titles, not
+  numbers, and a topic record" asks for titles on its pages. Both wait
+  for the next version of the site.
+- 2026-11-02. Version 9 shipped both, with Requirements, Design and
+  Today's engine in place of Promises, Parts and Design flaws.
+- 2026-11-02. Version 10 went live the same day: the Decisions page
+  reworked under "The Decisions page holds only your decisions", and
+  the day's other five decisions folded into every page.
+- 2026-11-10. Version 11 went live (version id 1794281701-ac4d). It
+  applies the independent review the owner asked for before answering
+  version 10. The site keeps its six pages. The Decisions page gains
+  what the panel waits for, a mark on each question saying when to
+  answer it, and an answer sheet. Two rounds of independent reading
+  checked the agent's hand fixes before publishing
+  (`report/site/checks/v11-hand-verify-*.md`, `v11-final-verify.md`).
+
+**The Decisions page holds only your decisions**
+
+The Decisions page asks the owner only what the owner alone can decide,
+each question explained by what it means in practice. Choices that are
+the agent's to make are listed as the agent's calls, each with its
+reason, so the owner can overrule any: how the requirements are worded
+and grouped, how the panel runs, technical defaults, and readings that
+follow from the owner's earlier decisions. The requirements are offered
+for review, not as decisions. The questions come from the top-down
+frame: the product facts and priorities that the hardest-to-reverse
+choices depend on.
+
+Made 2026-11-02.
+
+History:
+- 2026-11-02. The owner asked whether all eighteen questions on version
+  9's Decisions page were really theirs to make, and whether they were
+  the questions the top-down frame needs. The agent's answer: four were,
+  plus part of a fifth, and most came from the bottom-up period. The
+  owner said to rework the page, after commenting on the seven open
+  questions the agent proposed instead.
+- 2026-11-02. Version 10 of the site applied it: ten questions in four
+  groups, three readings of the owner's words to confirm, fourteen calls
+  of the agent's with their reasons, and the requirements offered for
+  review.
+- 2026-11-10. The owner did not answer version 10. On 2026-11-09 the
+  owner asked first for an independent review, "to make sure the design
+  is optimal and what you need input from me about is clearly defined
+  before I give my input". Four reviewers, a check of each and a merge
+  reported on 2026-11-10 (`report/site/checks/v10-review.md`). Its
+  verdict: the approach is right, and what the owner was asked was not
+  yet clearly defined. Version 10 asked the owner to choose ways to
+  build before the panel had compared them. Three questions rested on a
+  wrong fact. Two were not the owner's by the page's own tests. The
+  agent running the pass accepted the review's rulings and reworked the
+  page as version 11: nine questions, five readings to confirm, thirteen
+  calls, an answer sheet and a block on what the panel waits for ("Still
+  open" lists them). Where a question's options are ways to build
+  something, the owner is now asked only for what must be true at a
+  show. The panel says what each way costs, and the owner chooses among
+  them in the design round. Five changes to the calls have no entry of
+  their own here. Who wins when two tablets claimed one token while
+  apart left version 10's question on the cut-off tablet and is a call:
+  first come, first served, as today. A new call says that in a
+  standalone game whoever holds the GM tablet holds the game's controls.
+  "The venue promise stays one", "Proof and release stay one promise"
+  and "The route for equipment state is named in neither promise" are
+  one call, "Three choices about how the promises are worded". The tap
+  promise is split after the panel's synthesis, not after the owner's
+  review, so the owner and the panel read the same ten. And "The panel's
+  three lenses" asks more of each architect, listed in the brief.
+- 2026-11-10. Version 11 published at the owner's address (version id
+  1794281701-ac4d). The owner answers there: the question on what the
+  panel gets, the word "reviewed" for the requirements and approval of
+  the panel's brief are what the panel waits for; every other answer can
+  come in any order.
+
+---
+
+## How the work runs
+
+**The new show machine's follow-ups ship when the definition session ends**
+
+The new show machine's three follow-ups (the boot check that logged a
+false "WirePlumber rule missing" warning on a correctly built new
+machine, the two lines
+missing from the environment template, and the pip instruction the new
+operating system refuses) ship as one small task as soon as the
+definition session ends, alongside the pass. Done: merged 2026-10-30 at
+`089dd527`, after a task review, a whole-branch review and one fix wave.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session. The owner leaned yes ("ok, I
+  think?").
+- 2026-10-30, the definition session, the round after. Made.
+- 2026-10-30. Merged.
+- 2026-11-02. Retitled from "Green's follow-ups ship when the definition
+  session ends": the owner's pages name the two show machines in plain
+  words, with no code names. The meaning is unchanged.
+
+**Decide in question rounds, never at sign-off**
+
+Every decision is made in a question round with the evidence in view,
+and written into its document at once. Documents record decisions; they
+are never where a decision is first made. Anything new found while
+writing comes back to the owner as a question first. The owner's
+sign-off is a skim with no new decisions. The rule stands for every
+unit of work, not only the pass. The flow of the design half's rounds
+is the top-down order.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session, the round that settled how
+  decisions are made. Made, with an approved flow: the owner confirms
+  the cause list; facts only from the rig; one page per rule with the
+  owner's pick; the review's findings that would change a decision come
+  back as questions; the owner decides the build order; at
+  ratification the state page names the build half's first area.
+- 2026-10-30, the definition session, the record check's round. The
+  flow's order corrected.
+- 2026-11-01. The flow became the top-down order ("Design top-down,
+  hardest-to-reverse choices first"). The rule itself is unchanged and
+  is written in the process guide.
+
+**The owner ratified the program document**
+
+The owner ratified the program document on 2026-10-30. The definition
+session closed, and the architecture pass became the current work,
+design half first.
+
+Made 2026-10-30.
+
+History:
+- 2026-10-30, the definition session's sign-off. Made. The definition
+  session's decisions moved into the program document's appendix word
+  for word.
+
+**No rule for documents: fix as we go**
+
+The pass has no rule for the project's written documents (guides,
+READMEs, contracts, code comments) that disagree with the code. They
+are fixed as we go, always: when work finds that a document disagrees
+with the code, the same piece of work fixes the document. Dated records
+stay as written.
+
+Made 2026-10-31.
+
+History:
+- 2026-10-30. Asked, in the question round of 2026-10-30 to 2026-11-01,
+  whether the pass needs a rule for such documents.
+- 2026-10-31. Made. The process guide carries it.
+
+**Titles, not numbers, and a topic record**
+
+Decisions, questions and design flaws go by short plain titles in
+conversation and on the owner's pages. Ids stay only inside records,
+for cross-reference. The decision record is reorganized by topic: what
+stands now, each written as current truth with a dated history beneath;
+superseded decisions move into that history. This record is that
+reorganization, and it replaces the numbered list on the state page.
+The owner: "I've been using them because you've been using them, but
+they're not necessarily clear or the best approach."
+
+Made 2026-11-01.
+
+History:
+- 2026-11-01. "Name each step by what it does" got the owner's OK
+  except for decision numbers, which the owner put under discussion.
+- 2026-11-01. Made.
+
+---
+
+## Superseded and withdrawn
+
+Dated by the day each was replaced or withdrawn. Each says what it
+said, when it was made, and what replaced it.
+
+- **2026-10-30. Two of the original questions' wordings.** "Can a test
+  touch the live show?" and "who re-checks after a reset?", from the
+  definition session's opening, were replaced the same day by "can
+  anything other than the live engine touch the live show?" and "what
+  does each fact and each copy do at a boundary?" (see "The nine
+  questions the pass answers").
+- **2026-10-30. The design half's first order.** Cause analysis, test
+  rig, design rule by rule, hostile review, grill rounds, ratification,
+  from the definition session's round that settled the method. Replaced
+  the same day, in the record check's round, by an order with the build
+  order drafted before the review and one question round ("Corrections
+  to the readers and the hardening pieces", its correction to the
+  order).
+- **2026-11-01. The approved flow of the rounds.** The owner confirms
+  the cause list; facts only; one page per rule with the owner's pick;
+  review findings as questions; the owner decides the build order;
+  ratification. Made 2026-10-30. Replaced by the top-down order
+  ("Design top-down, hardest-to-reverse choices first"). The rule that
+  every decision is made in a round stands.
+- **2026-11-01. "Job" and "installer".** The engine's requirements were
+  ten "jobs" (from 2026-10-31), and the person who fits a kit to a
+  venue was the "installer" (in the roadmap as "venue installer" since
+  2026-09-04). Replaced by "promise" and "venue technician"
+  ("Promises, qualities, moments, venue technician").
+- **2026-11-01. The design half's corrected order.** Cause analysis,
+  test rig, design, a proposed build order, its review, one question
+  round, ratification. Made 2026-10-30 in the record check's round.
+  Replaced by "Build the test rig when building starts" and "Design
+  top-down, hardest-to-reverse choices first".
+- **2026-11-01. "How much the rig proves before design" (withdrawn).**
+  It asked how many of the findings marked for live proof the test rig
+  should reproduce before design starts. Asked 2026-10-30. Withdrawn by
+  "Build the test rig when building starts".
+- **2026-11-01. The part "Joins and proofs".** In the candidate shape,
+  one part held the shapes two parts share, written once, and the tests
+  on their own copy of the engine. Replaced by "One published protocol
+  and an outside test bench".
+- **2026-11-01. "Phase 1" and "phase 2", and bare step, block and
+  round numbers.** In use since 2026-10-30. Replaced by the design half
+  and the build half, steps named by what they do, blocks by name,
+  rounds by date and test levels by name ("Name each step by what it
+  does").
+- **2026-11-01. Decision and question numbers on the owner's pages, and
+  the numbered decision list on the state page.** Replaced by titles
+  and by this record ("Titles, not numbers, and a topic record").
+
+Read as overtaken, confirmed as the agent's call. The record does not
+say these in so many words; a later decision contradicts part of an
+earlier one without naming it. Each is flagged in its entry. On
+2026-11-02 the agent confirmed all four as its call "Four readings of
+earlier decisions are confirmed" (version 10 of the Decisions page),
+because readings that follow from the owner's earlier decisions are the
+agent's calls ("The Decisions page holds only your decisions"); the
+owner can overrule it. On 2026-11-10 the second was corrected, after
+the independent review the owner asked for: the four questions on the
+game's live facts are still designed together, in the first decision.
+
+- Each build area starting with its proof test failing on today's
+  engine ("One program: design half, then build half"), overtaken by
+  "Build the test rig when building starts" unless the move from
+  today's engine changes it in place.
+- One rule per question ("The nine questions the pass answers", "Five
+  documents the design half hands over", "When the design half is
+  finished"), overtaken by the design rounds going by hard-to-reverse
+  decision. The four questions on the game's live facts are not
+  overtaken: they all bear on the first decision, "How the engine holds
+  the game's state", and are designed together there. Until 2026-11-10
+  this line also read "designed together" as overtaken.
+- Contract proposals as the third handover document ("Five documents
+  the design half hands over"), overtaken by the one published
+  protocol.
+- The rig reproducing each finding marked for live proof as an end
+  condition ("When the design half is finished"), overtaken by the rig
+  being built when building starts.
+
+---
+
+## Still open
+
+The open questions live on the owner site's Decisions page ("What the
+Engine Promises", https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL),
+each explained by what it means at a show, with its options, what each
+costs, and a recommendation or a line on what is needed from the owner.
+The owner did not answer version 10's ten questions. On 2026-11-09 the
+owner asked first for an independent review, and the agent running the
+pass reworked the page from it on 2026-11-10 (see the history of "The
+Decisions page holds only your decisions"). The list below is version
+11's: nine questions, lettered A to I, by title. On the page each
+carries one of three marks, given here: "Best answered now", "Can wait
+for the panel" or "Needed before the panel". The page ends its questions
+with an answer sheet that gives the exact form of each answer.
+
+Where the qualities pull against each other:
+- A. A GM tablet cut off from the engine: for a short gap, whether a GM
+  may tell a team its result before the engine has confirmed it, knowing
+  that a few results may be taken back. Best answered now.
+- B. The show machine fails mid-game: whether the engine must offer only
+  "The game finishes on the tablets", or "The game comes back on a
+  second machine" as well; if the second, how long the players may wait
+  before shared scores are back; and whether the players must never lose
+  anything beyond their scans being counted once. Pausing until the
+  machine returns is out. Which of the two is best answered now; how
+  long the players may wait can wait for the panel.
+- C. Release day: what must update together, and how long older devices
+  work. The owner leans toward everything updating together ("Generally
+  speaking, yes") and asked what it means in practice. Asked now:
+  whether a hardware scanner that missed its last update must still work
+  at tonight's show, with a warning; for how many months a scanner may
+  go without its update, and whether the engine then refuses it or
+  warns; and whether a pack built for an older engine must always open
+  on a newer one. The first and the last are best answered now; the
+  length of the window can wait for the panel.
+- D. What a game's maker may build inside the pack: how far the pack's
+  rules of the form "when this happens, do that" may reach, in four
+  steps (rules for the room, as today; rules for the room that can read
+  more of the game; rules that also change the game; scripts in the
+  pack), and whether a designer's rule may ever change points, claims or
+  the phase with no GM acting. Best answered now.
+- E. How an extension for all games reaches a production: in the main
+  release only, or also as an add-on a production installs beside its
+  engine. Asked: whether a production may ever run an extension the
+  engine did not ship, beside its engine, with the engine's help. Can
+  wait for the panel.
+- F. Where the trial copy runs while a show runs: on the show machine
+  during the show; on the show machine only between games; only on a
+  laptop or the test bench; or on a second machine in the kit. The
+  sources disagree here (see the question). Best answered now.
+- G. A player who sends a scan without the token, new on version 11:
+  whether the engine must be able to tell that a player holds the token
+  they scan. The options are to trust the players, as today, or to give
+  each token a code that cannot be guessed. Can wait for the panel.
+
+Standalone games:
+- H. Which standalone games the engine must run: whether one standalone
+  game may use more than one GM tablet; whether its devices must be able
+  to play one shared game during play with nothing but themselves; and
+  whether its record must also hold what each player found on their own
+  phone or scanner. The record and the tablets are best answered now; a
+  shared game during play can wait for the panel.
+
+Hardware: no question now. The agent's call "The design allows other
+hardware; what the first release requires comes with the build plan"
+stands in its place (see "The engine is hardware-flexible; the roadmap
+sets the bounds").
+
+The panel:
+- I. What the panel gets in its blind round: whether it also gets the
+  owner's decisions that bind any design and the six decisions ahead as
+  its agenda; and whether a seventh decision, "How the engine drives the
+  room", joins that agenda. The question also says that "The role
+  question starts from settled roles" goes to the panel in the setting,
+  as ALN's facts, unless the owner says it binds every design. Needed
+  before the panel.
+
+What the panel waits for. Three things from the owner, said in the chat:
+the answer to "What the panel gets in its blind round"; the word
+"reviewed" for the requirements; and approval of the panel's brief.
+Everything else can follow in any order. An answer the owner gives
+before the panel runs binds the panel. A question the owner leaves goes
+to the panel as its "What it decides" paragraph only, and comes back to
+the owner in the panel's report with the costs (see "What the
+architects' panel sees, and when").
+
+To confirm, five readings by the agent, listed on the same page, each
+answered with yes or no. A yes makes a reading the owner's decision. A
+no takes it out of the requirements and the panel's brief before the
+panel runs. One left unanswered goes to the panel as an open question.
+In the page's order, which the answer sheet uses:
+1. a standalone game may have no GM tablet at all (read from "Standalone
+   games: declared, never mixed");
+2. "a device goes down mid-game" includes the show machine itself (read
+   from "No technical failure stops a game"). This one is already inside
+   the quality target "The GMs know their fallbacks at a failure", and
+   goes to the panel marked as the agent's reading until the owner
+   answers;
+3. one pack can be played networked on one night and standalone on
+   another, as the GM picks on the tablet today ("Standalone games:
+   declared, never mixed");
+4. a networked game that loses its show machine and carries on from its
+   devices stays the networked game it was declared as ("No technical
+   failure stops a game");
+5. the engine may not make a second machine a requirement, and a game
+   that needs the show machine by its nature may end in an orderly way
+   instead ("No technical failure stops a game").
+
+Three small facts that only the owner has are asked on the answer sheet:
+whether the GMs keep a token once it is sold or exposed; whether the
+show machine has ever failed for good during a show; and any device the
+owner expects to use soon that is not in ALN's kit.
+
+Offered for review on the same page: the ten promises; the quality
+targets (47: 22 settled and 25 proposed or partly settled; 17 carry a
+number, each sorted as an engine requirement or limit, a production's
+setting or a technical default); the extension cases (28, each marked as
+one of the two kinds of extension or neither); the standing rules. Four
+targets are new on version 11 and proposed: "A published pack can be
+taken back", "An extension that fails leaves the game running", "A fault
+can be studied without having been there" and "The kit's data survives
+the loss of a machine". The three proposals for standalone games are in
+the status of the target "A standalone game is normal, never a fault".
+The panel does not run before the owner says "reviewed".
+
+Settled as the agent's calls on the same page, each with its reason, for
+the owner to overrule. The owner need not answer them, and each stands
+if the owner says nothing. Thirteen, by title:
+- "Four readings of earlier decisions are confirmed", changed on
+  2026-11-10 (see "The nine questions the pass answers");
+- "The quality targets' numbers are sorted, not asked";
+- "The missing standalone declaration is a design flaw of its own";
+- "A standalone game follows the rule you ratified for missing
+  equipment" (new);
+- "In a standalone game, whoever holds the GM tablet holds the game's
+  controls" (new): nothing checks a login there;
+- "Who wins when two tablets claimed one token while apart" (new): first
+  come, first served, as today, and which of two kept scans counts as
+  first is for the design round;
+- "Every refused GM scan attempt is recorded";
+- "The design allows other hardware; what the first release requires
+  comes with the build plan" (new);
+- "The tap promise is to be split in two", after the panel's synthesis;
+- "Three choices about how the promises are worded", merged from "The
+  venue promise stays one", "Proof and release stay one promise" and
+  "The route for equipment state is named in neither promise";
+- "The panel's three lenses", with more asked of each architect;
+- "Each architect lists the decisions before seeing the agenda" (new);
+- "The second round reads today's code".
+
+Four of version 10's fourteen calls left the list. "The program
+watcher's retries", "How long before a screen says the engine is silent"
+and "The show machine's limits" stand, each with its reason, in the
+numbers list of the quality targets' review. "Exposed evidence and video
+with no engine" is deleted; its content is two of the three proposals
+for standalone games. Where each of version 10's ten questions went is
+in the change log's table "Where version 10's ten questions went". Where
+each of version 9's eighteen went is in its table "Where version 9's
+eighteen questions went".
+
+Kept for the design rounds, not questions now: the Decisions page's
+fifteen later choices, each naming the round or the step that decides
+it. They run from where the night's set-up holds "this game is
+standalone" (the venue profile, the game's record or each device;
+whether the pack may say it too waits on the reading above) to how the
+owner's answers on the two kinds of extension are built. Between them:
+how facts reach screens, the life of a game, the game rules as shared
+code, the equipment's interface, the standalone tablet, how a networked
+game carries on without the show machine and comes back together
+afterwards (the owner chooses among the panel's designs), the
+scoreboard, the config tool, how a changed pack is taken up between
+games with no restart, where the start-or-adopt setting lives, where a
+production's own settings live (the hardware the roadmap requires and
+supports at each of its stages comes to the owner with the build plan),
+the order of the work, and whether paper documents join the pack, with
+"unlocked" recorded during play, which is the owner's to answer when its
+round comes.
+
+No longer open: "How much the rig proves before design" was withdrawn
+(see "Superseded and withdrawn"); the page shows it under "Build the
+test rig when building starts".
+
+---
+
+## For older records: number to title
+
+Dated records still use the numbers. This table maps every old number
+to its title and the section where it now lives. "Decisions" numbers are
+the state page's and the program document's appendix; "Q" numbers are
+the program document's nine questions; letters are the owner site's
+questions; "AG" numbers are the after-game survey's six questions.
+
+### Decisions 1 to 36
+
+| Old number | Title | Where in this record |
+|---|---|---|
+| 1 | The architecture pass is the work now | The goal and the frame |
+| 2 | Run the pass like the re-charter | How the design is made, and in what order |
+| 3 | Four words for the game's live facts | The words |
+| 4 | The new show machine's follow-ups ship when the definition session ends (was "Green's follow-ups ...") | How the work runs |
+| 5 | Two questions reworded, one role question added | In the history of "The nine questions the pass answers" (What the engine must do) |
+| 6 | The truth sweep's charter is retired | How the design is made, and in what order |
+| 7 | One program: design half, then build half | How the design is made, and in what order |
+| 8 | Fixes to today's engine are evidence of design causes (was "Blue's fixes ...") | The goal and the frame |
+| 9 | The role question starts from settled roles | What the engine must do |
+| 10 | Five documents the design half hands over | How the design is made, and in what order |
+| 11 | Two questions on copies and reconnects | In the history of "The nine questions the pass answers" (What the engine must do) |
+| 12 | The design half's method and tools | How the design is made, and in what order |
+| 13 | When the design half is finished | How the design is made, and in what order |
+| 14 | Decide in question rounds, never at sign-off | How the work runs |
+| 15 | Corrections to the readers and the hardening pieces | How the design is made, and in what order (its correction to the order: Superseded and withdrawn) |
+| 16 | The owner ratified the program document | How the work runs |
+| 17 | Is the list of design flaws right? | Folded into "Are these the right ten promises?", now the promise review (in "Still open") |
+| 18 | Flaws none of the pass's questions covers | Folded into "Proof and release in one promise?", then the agent's call "Proof and release stay one promise", now inside the agent's call "Three choices about how the promises are worded" (in "Still open") |
+| 19 | Record every refused GM scan attempt? | The agent's call "Every refused GM scan attempt is recorded" (in "Still open") |
+| 20 | No rule for documents: fix as we go | How the work runs |
+| 21 | How much the rig proves before design | Superseded and withdrawn (withdrawn) |
+| 22 | Standalone games: declared, never mixed | What the engine must do (its ESP32 reading answered 2026-11-02) |
+| 23 | Is the missing standalone declaration a flaw? | The agent's call "The missing standalone declaration is a design flaw of its own" (in "Still open") |
+| 24 | One GM tablet per standalone game? | The owner's question "Which standalone games the engine must run", lettered H on version 11 (in "Still open") |
+| 25 | Exposed evidence and video with no engine | Was the agent's call of the same title on version 10, deleted 2026-11-10. Its content is two of the three proposals in the introduction to the Decisions page's standalone group and in the status of the target "A standalone game is normal, never a fault". The rule above it, version 10's question "What a standalone game gives up, and what it keeps", is the agent's call "A standalone game follows the rule you ratified for missing equipment" (see "Standalone games: declared, never mixed" and "Still open") |
+| 26 | Design for the long term, beyond ALN | The goal and the frame |
+| 27 | Promises, qualities, moments, venue technician | The words |
+| 28 | The night's record and the after-game article | What the engine must do |
+| 29 | The owner's site: five linked pages | The owner's site |
+| 30 | Build the test rig when building starts | How the design is made, and in what order |
+| 31 | Design top-down, hardest-to-reverse choices first | How the design is made, and in what order |
+| 32 | Independent architects propose the top-level design | How the design is made, and in what order |
+| 33 | One published protocol and an outside test bench | What the engine must do |
+| 34 | Name each step by what it does | The words |
+| 35 | What the architects' panel sees, and when | How the design is made, and in what order |
+| 36 | Titles, not numbers, and a topic record | How the work runs |
+
+### The program document's nine questions
+
+| Old number | Title | Where in this record |
+|---|---|---|
+| Q1 | Who decides each fact | The nine questions the pass answers (What the engine must do) |
+| Q2 | Service state travels with its health | The nine questions the pass answers |
+| Q3 | How the engine reads its programs | The nine questions the pass answers |
+| Q4 | Only the live engine touches the show | The nine questions the pass answers |
+| Q5 | One question gets one answer | The nine questions the pass answers |
+| Q6 | Each fact at a game boundary | The nine questions the pass answers |
+| Q7 | Each component gets what its role needs | The nine questions the pass answers; The role question starts from settled roles |
+| Q8 | How copies update and show their age | The nine questions the pass answers |
+| Q9 | Reconnect snapshot built like live update | The nine questions the pass answers |
+
+### The owner site's questions
+
+| Old key | Title | Where in this record |
+|---|---|---|
+| Promises | Are these the right ten promises? | The promise review (in "Still open") |
+| A | Two clauses added to the pack promise | The promise review (in "Still open") |
+| B | The roles promise covers who may act | The promise review (in "Still open") |
+| C | The venue promise names declared standalone | Answered by "Standalone games: declared, never mixed"; its second point, the agent's call "The missing standalone declaration is a design flaw of its own" |
+| D | Split the tap promise in two? | The agent's call "The tap promise is to be split in two" (in "Still open") |
+| E | Keep the venue promise whole? | Was the agent's call "The venue promise stays one"; now inside the agent's call "Three choices about how the promises are worded" (in "Still open") |
+| F | Proof and release in one promise? | Was the agent's call "Proof and release stay one promise"; now inside the agent's call "Three choices about how the promises are worded" (in "Still open") |
+| G | Which promise carries equipment state on screens? | Was the agent's call "The route for equipment state is named in neither promise"; now inside the agent's call "Three choices about how the promises are worded" (in "Still open") |
+
+Version 9 of the site lettered its eighteen questions A to R; the site
+change log's table "Where version 9's eighteen questions went" maps
+each to where it is now.
+
+Version 10 lettered its ten questions A to J; the change log's table
+"Where version 10's ten questions went" maps each. Version 11 letters
+its nine A to I. A to F keep version 10's letters and titles. G is new,
+"A player who sends a scan without the token". H was version 10's G,
+"Which standalone games the engine must run". I was version 10's J,
+"What the panel gets in its blind round". Version 10's H, "What a
+standalone game gives up, and what it keeps", and its I, "Which hardware
+the first new engine requires, and what it must allow replacing", are no
+longer questions; the 2026-11-10 lines under "Standalone games:
+declared, never mixed" and "The engine is hardware-flexible; the roadmap
+sets the bounds" say where each went. A dated record that names a letter
+means the letters of its own version.
+
+### The after-game survey's six questions
+
+Asked on 2026-11-01. The owner answered five of them, and the first
+half of the third, the same day; the second half of the third (paper
+documents) waits for the design rounds. The answers are the entry "The
+night's record and the after-game article" (What the engine must do).
+
+| Old number | What it asked | Where in this record |
+|---|---|---|
+| AG1 | Does the night's-record promise name the director and the players? | The night's record and the after-game article (yes) |
+| AG2 | Do the players after the show get a promise of their own? | The night's record and the after-game article (no: the game's business) |
+| AG3 | Does the night's record carry the pack and the texts; do paper documents join the pack? | The night's record and the after-game article (first half yes; paper documents: Still open, kept for the design rounds) |
+| AG4 | Does the engine ever hold players' emails and consent? | The night's record and the after-game article (no) |
+| AG5 | What does "integrate" the Director Console mean? | The night's record and the after-game article (separate, reads the record; shaped for the Review stage later) |
+| AG6 | Do the two clocks join an existing flaw or become a new one? | The night's record and the after-game article (they join "Tablets and phones decide facts the engine owns") |

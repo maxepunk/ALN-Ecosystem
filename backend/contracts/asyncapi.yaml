@@ -328,7 +328,24 @@ components:
               - sound
               - displayStatus
               - pack
+              - profile
             properties:
+              profile:
+                description: |
+                  The installation profile frozen at boot (Block 2 T1a) —
+                  which venue this orchestrator believes it is standing in.
+                  `null` when no profile is loaded.
+                oneOf:
+                  - type: "null"
+                  - type: object
+                    required: [profileId]
+                    properties:
+                      profileId:
+                        type: string
+                        example: "aln-full-kit"
+                      forPack:
+                        type: [string, "null"]
+                        example: "about-last-night"
               pack:
                 description: |
                   The server's ACTIVE game pack identity (Phase 3 A2
@@ -438,6 +455,63 @@ components:
                                   contentHash:
                                     type: string
                                     pattern: '^sha256:[0-9a-f]{64}$'
+                          preflight:
+                            description: |
+                              The preflight stamp every session carries
+                              (Block 2 T1a, plan pin P8): the compact
+                              projection of the evaluation made at session
+                              create, re-made at session start, and re-made
+                              with `restoredAt` when a non-ended session is
+                              restored at boot. Null on legacy sessions.
+                            oneOf:
+                              - type: "null"
+                              - type: object
+                                required: [status, computedAt, profileId, packHash, blocking, dormantNeeds]
+                                properties:
+                                  status:
+                                    type: string
+                                    enum: [go, go-degraded, no-go]
+                                  computedAt:
+                                    type: string
+                                    format: date-time
+                                  profileId:
+                                    type: [string, "null"]
+                                  packHash:
+                                    type: [string, "null"]
+                                  blocking:
+                                    type: array
+                                    items: { type: string }
+                                  dormantNeeds:
+                                    type: array
+                                    items: { type: string }
+                                  restoredAt:
+                                    type: string
+                                    format: date-time
+                                    description: Present only on a stamp re-made during boot restore.
+                          preflightOverride:
+                            description: |
+                              The typed "start anyway" stamp (Block 2 T1a,
+                              plan pin P7). Present only when a GM started
+                              the game over a preflight NO-GO; null
+                              otherwise.
+                            oneOf:
+                              - type: "null"
+                              - type: object
+                                required: [reason, at, blocking, byDeviceId, byTier]
+                                properties:
+                                  reason:
+                                    type: string
+                                    maxLength: 350
+                                  at:
+                                    type: string
+                                    format: date-time
+                                  blocking:
+                                    type: array
+                                    items: { type: string }
+                                  byDeviceId:
+                                    type: [string, "null"]
+                                  byTier:
+                                    type: [string, "null"]
                   - type: "null"
               scores:
                 type: array
@@ -652,7 +726,14 @@ components:
                       example: "10.0.0.81"
               serviceHealth:
                 type: object
-                description: Health snapshot for all registered services from serviceHealthRegistry
+                description: |
+                  Health snapshot for all registered services from
+                  serviceHealthRegistry. The vocabulary is exactly three
+                  words (Block 2 T1a, plan pin P5): `healthy`, `down`, and
+                  `dormant` — equipment whose family this venue did not
+                  install tonight, or that the operator latched out of
+                  service. A dormant entry carries `door`, naming which of
+                  the two doors latched it; no other status carries it.
                 additionalProperties:
                   type: object
                   required:
@@ -661,9 +742,14 @@ components:
                   properties:
                     status:
                       type: string
-                      enum: [healthy, down]
+                      enum: [healthy, down, dormant]
                     message:
                       type: string
+                      maxLength: 300
+                    door:
+                      type: string
+                      enum: [profile, operator]
+                      description: Present only while status is `dormant`.
                     lastChecked:
                       type: string
                       format: date-time
@@ -1737,7 +1823,20 @@ components:
                 example: "video:skip"
               payload:
                 type: object
-                description: Action-specific parameters
+                description: |
+                  Action-specific parameters.
+
+                  **`session:start`** (Block 2 T1a, plan pin P7) takes
+                  `{ startAnyway?: boolean, reason?: string }`. Sent empty
+                  (`{}`), the command is REFUSED while any `onAbsent:
+                  require` need is unresolved: the `gm:command:ack` comes
+                  back `success: false` with `message` = `NO-GO: ` followed
+                  by the blocking reasons joined by `; `. Clients key on
+                  that `NO-GO: ` prefix, collect a typed reason from the
+                  operator, and re-send with
+                  `{ startAnyway: true, reason: "<why>" }`. `startAnyway`
+                  without a non-empty reason acks `success: false` with
+                  `startAnyway requires a reason`.
                 example: {}
           timestamp:
             type: string
@@ -2353,7 +2452,7 @@ components:
                   contract test). Summary:
                   - **music**: `{connected, state, volume, track, playlist, pausedByGameClock}` (playlist CATALOG rides sync:full only)
                   - **video**: `{status, currentVideo, queue[], queueLength, connected}`
-                  - **health**: `{vlc: {status, message, lastChecked}, music: {...}, ...}` (all 8 services)
+                  - **health**: `{vlc: {status, message, lastChecked}, music: {...}, ...}` (all 9 services)
                   - **bluetooth**: `{scanning, pairedDevices[], connectedDevices[]}`
                   - **audio**: `{routes, defaultSink, ducking, availableSinks, volumes}`
                   - **lighting**: `{connected, activeScene, scenes[]}`
@@ -2588,14 +2687,22 @@ components:
         connected: { type: boolean }
     DomainStateHealth:
       type: object
-      description: One entry per registered service (8 services)
-      required: [vlc, music, sound, bluetooth, audio, lighting, gameclock, cueengine]
+      description: |
+        One entry per registered service (9 services). `display` is the
+        ninth (Block 2 T1a, plan pin P16 — the kiosk owned by
+        displayDriver). Status is the three-word vocabulary
+        `healthy | down | dormant`; `degraded` was deleted.
+      required: [vlc, music, sound, bluetooth, audio, lighting, gameclock, cueengine, display]
       additionalProperties:
         type: object
         required: [status, message, lastChecked]
         properties:
-          status: { type: string, enum: [healthy, degraded, down] }
-          message: { type: [string, "null"] }
+          status: { type: string, enum: [healthy, down, dormant] }
+          message: { type: [string, "null"], maxLength: 300 }
+          door:
+            type: string
+            enum: [profile, operator]
+            description: Present only while status is `dormant`.
           lastChecked: { type: [string, "null"] }
     DomainStateBluetooth:
       type: object

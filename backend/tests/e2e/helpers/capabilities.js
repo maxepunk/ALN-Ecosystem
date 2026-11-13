@@ -29,13 +29,19 @@ const manifestCache = new Map();
 
 /** The harness capability vocabulary (subset of the shared vocabulary
  *  that a test machine can meaningfully vary). */
-const CAPABILITY_KEYS = ['vlc', 'sound', 'music', 'bluetooth', 'audio', 'lighting'];
+const CAPABILITY_KEYS = ['vlc', 'sound', 'music', 'bluetooth', 'audio', 'lighting', 'display'];
 
 /**
  * Probe the running orchestrator for this environment's capabilities.
  * @param {string} orchestratorUrl - e.g. https://localhost:43667
+ * Each key is a BOOLEAN meaning "healthy" (unchanged), plus two parallel
+ * maps the three-word vocabulary needs (Block 2 T1a D12): `_status[key]`
+ * carries the actual word ('healthy' | 'down' | 'dormant') and `_door[key]`
+ * which door latched a dormant one.
+ *
  * @returns {Promise<Object>} e.g. { vlc:false, sound:false, music:false,
- *   bluetooth:false, audio:false, lighting:false, _health: <raw snapshot> }
+ *   bluetooth:false, audio:false, lighting:false, display:false,
+ *   _status: {...}, _door: {...}, _health: <raw snapshot> }
  */
 async function getCapabilities(orchestratorUrl) {
   if (manifestCache.has(orchestratorUrl)) return manifestCache.get(orchestratorUrl);
@@ -56,9 +62,11 @@ async function getCapabilities(orchestratorUrl) {
     req.on('timeout', () => { req.destroy(); reject(new Error('capability probe timeout')); });
   });
 
-  const caps = { _health: health };
+  const caps = { _health: health, _status: {}, _door: {} };
   for (const key of CAPABILITY_KEYS) {
     caps[key] = health[key]?.status === 'healthy';
+    caps._status[key] = health[key]?.status;
+    caps._door[key] = health[key]?.door;
   }
   manifestCache.set(orchestratorUrl, caps);
   return caps;
@@ -74,8 +82,24 @@ async function getCapabilities(orchestratorUrl) {
  */
 function requireCapabilities(test, caps, required) {
   const missing = required.filter((k) => !caps[k]);
+  // T1a D12: a capability that is DORMANT is absent BY DESIGN — this
+  // profile does not install that equipment. Skipping is right; skipping
+  // with "missing on this environment" is not: it reads as a broken test
+  // machine and sends whoever reads the CI log hunting a fault that does
+  // not exist. Only when EVERY missing key is dormant is that the story.
+  const allDormant = missing.length > 0
+    && missing.every((k) => isDormant(caps, k));
+  if (allDormant) {
+    test.skip(true, `dormant (not installed in this profile): [${missing.join(', ')}]`);
+    return;
+  }
   test.skip(missing.length > 0,
     `requires capabilities [${required.join(', ')}] — missing: [${missing.join(', ')}] on this environment`);
+}
+
+/** @private */
+function isDormant(caps, key) {
+  return (caps._status && caps._status[key]) === 'dormant';
 }
 
 /**
@@ -88,9 +112,34 @@ function requireCapabilities(test, caps, required) {
  * @param {string[]} anyAbsent - capability keys, at least one must be absent
  */
 function requireDegraded(test, caps, anyAbsent) {
-  const allPresent = anyAbsent.every((k) => caps[k]);
-  test.skip(allPresent,
-    `degradation test — requires at least one of [${anyAbsent.join(', ')}] to be down (all healthy here)`);
+  // T1a D12: a DORMANT key does NOT satisfy this gate. These tests exist to
+  // exercise the DOWN path — the held item, the red row, the retry — and a
+  // venue that never installed the equipment cannot exercise any of it.
+  const anyDown = anyAbsent.some((k) => !caps[k] && !isDormant(caps, k));
+  const dormantOnly = !anyDown && anyAbsent.some((k) => isDormant(caps, k));
+  test.skip(!anyDown,
+    dormantOnly
+      ? `degradation test — [${anyAbsent.filter((k) => isDormant(caps, k)).join(', ')}] `
+        + 'is dormant here, not down; dormancy is not degradation'
+      : `degradation test — requires at least one of [${anyAbsent.join(', ')}] to be down (all healthy here)`);
+}
+
+/**
+ * Gate a DORMANCY test: it runs only when every named capability is
+ * dormant. The mirror of requireDegraded — one gate per posture, so a flow
+ * that means "prove the grey path" cannot accidentally pass on a machine
+ * where the service merely fell over.
+ *
+ * @param {import('@playwright/test').TestType} test
+ * @param {Object} caps
+ * @param {string[]} keys - capability keys, ALL must be dormant
+ */
+function requireDormant(test, caps, keys) {
+  const notDormant = keys.filter((k) => !isDormant(caps, k));
+  test.skip(notDormant.length > 0,
+    'dormancy test — requires ['
+    + `${keys.join(', ')}] to be dormant; found `
+    + notDormant.map((k) => `${k}:${(caps._status || {})[k] || 'unknown'}`).join(', '));
 }
 
 /** One-line manifest for logs/reports. */
@@ -134,6 +183,7 @@ module.exports = {
   refreshCapabilities,
   requireCapabilities,
   requireDegraded,
+  requireDormant,
   formatManifest,
   waitForCapability,
 };

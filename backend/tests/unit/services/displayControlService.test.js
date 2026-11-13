@@ -625,3 +625,56 @@ describe('DisplayControlService - State Machine', () => {
     });
   });
 });
+
+// ══════════════════════════════════════════════════════════════════════
+// Block 2 T1a D9 (ruling R13) — the host-config posture. When video
+// playback is off there is no video pipeline to drive the HDMI output, so
+// `display` says so rather than sitting at "Not yet checked" all night.
+// ══════════════════════════════════════════════════════════════════════
+describe('DisplayControlService - display health under host config (T1a D9)', () => {
+  let service, registry, config;
+
+  const deps = () => ({
+    vlcService: { isConnected: () => false, returnToIdleLoop: async () => true,
+      stop: async () => true, playVideo: async () => true },
+    videoQueueService: { on: jest.fn(), registerPrePlayHook: jest.fn() },
+  });
+
+  beforeEach(() => {
+    // A fresh registry with the fresh service: resetModules gives the
+    // service a new singleton, and a stale handle here would watch the
+    // wrong one.
+    jest.resetModules();
+    service = require('../../../src/services/displayControlService');
+    registry = require('../../../src/services/serviceHealthRegistry');
+    config = require('../../../src/config');
+    service.reset();
+  });
+
+  afterEach(() => {
+    config.features.videoPlayback = true;
+    jest.restoreAllMocks();
+  });
+
+  it('reports display down with the host-config reason when playback is off', async () => {
+    config.features.videoPlayback = false;
+    const spy = jest.spyOn(registry, 'report');
+
+    await service.init(deps());
+
+    expect(spy).toHaveBeenCalledWith(
+      'display', 'down', 'video playback disabled (host config)'
+    );
+  });
+
+  it('says nothing about host config when playback is on', async () => {
+    config.features.videoPlayback = true;
+    const spy = jest.spyOn(registry, 'report');
+
+    await service.init(deps());
+
+    expect(spy).not.toHaveBeenCalledWith(
+      'display', 'down', 'video playback disabled (host config)'
+    );
+  });
+});

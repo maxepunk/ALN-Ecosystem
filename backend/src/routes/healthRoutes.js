@@ -38,7 +38,11 @@ router.get('/health', async (req, res) => {
       timezone: getPosixTimezone(),
       // A2 staleness visibility: the server's ACTIVE pack identity (null on
       // pre-pack checkouts). Clients and C1 preflight compare contentHash.
-      pack: require('../services/packService').getActivePackInfo()
+      pack: require('../services/packService').getActivePackInfo(),
+      // Block 2 T1a D10: the installation profile frozen at boot. Paired
+      // with `pack` — rules identity and equipment identity, both visible
+      // to anything that can reach /health.
+      profile: require('../services/profileService').getProfileInfo()
     };
 
     // Optional device tracking via query params

@@ -1,0 +1,240 @@
+{
+  "cards": [
+    {
+      "id": "C2",
+      "title": "Service health and service state travel on separate paths",
+      "atAShow": "If Home Assistant or MPD is down when the engine starts, the lighting and music panels stay disabled all night. If MPD dies mid-show, the health row turns red alone while the music card keeps its playing look and the progress bar keeps moving. A volume change on one tablet's audio panel never reaches the other tablets' sliders.",
+      "whyItHappens": "Each venue service keeps two facts: its health in a central registry and its own state in its own record. The engine pushes the health row when health changes, and pushes a service's state only on a hand-written list of that service's events. An outage is on no list.",
+      "designTerms": "Each service module should own one record carrying health and state. Today the seam leaks: the broadcast module re-implements each service's change set as a per-domain event list, so the interface callers must know is the full event list, and locality is lost.",
+      "modules": [
+        "backend/src/websocket/broadcasts.js",
+        "backend/src/services/serviceHealthRegistry.js",
+        "backend/src/services/musicService.js",
+        "backend/src/services/lightingService.js",
+        "backend/src/services/audioRoutingService.js",
+        "ALNScanner/src/admin/MonitoringDisplay.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  mpd[\"MPD<br/>dies mid-show\"]\n  mus[\"Music service<br/>own state record\"]\n  reg[\"Health registry<br/>one row per service\"]\n  healthPush[\"Health row push<br/>on health change\"]\n  lists[\"Push lists<br/>hand-written per service\"]\n  statePush[\"Music state push<br/>on music events only\"]\n  panel[\"GM panel<br/>music card plus health row\"]\n  mpd -->|\"exit\"| mus\n  mus -->|\"reports down\"| reg\n  reg -->|\"health changed\"| healthPush\n  healthPush -->|\"red row\"| panel\n  mus -.->|\"no music event\"| lists\n  lists -.->|\"no push\"| statePush\n  statePush -.->|\"card keeps playing look\"| panel\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class lists,statePush fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  mpd[\"MPD<br/>dies mid-show\"]\n  mus[\"Music service<br/>one record: health and state\"]\n  push[\"One push<br/>whole record on any change\"]\n  panel[\"GM panel<br/>card and row change together\"]\n  mpd -->|\"exit\"| mus\n  mus -->|\"health or state changed\"| push\n  push -->|\"same update\"| panel\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class mus owner;",
+        "note": "Candidate (a): one record per service carrying health and state, pushed whole when either changes. Competing: (b) derive the push table from the registry; (c) the tablet joins the two records on read."
+      },
+      "examples": [
+        {
+          "ids": "A-11",
+          "text": "Lighting panel stays unavailable all night if Home Assistant was down at engine start; nothing re-sends its state."
+        },
+        {
+          "ids": "A-12 / B-33 / C-43",
+          "text": "Music panel stays disabled if MPD was down at connect; the progress bar keeps moving after MPD dies."
+        },
+        {
+          "ids": "A-17",
+          "text": "A per-stream volume change on one tablet never reaches other tablets' sliders; the audio push list names no volume event."
+        },
+        {
+          "ids": "A-102",
+          "text": "Audio and lighting pushes rest on hand-listed events, so a missing event means a stale panel."
+        }
+      ],
+      "blueFixes": [
+        "W4",
+        "W6"
+      ],
+      "questions": [
+        2,
+        9
+      ],
+      "findings": 6,
+      "seenLive": "The owner reported the music panel not keeping up with live music; blue's review recorded the frozen lighting panel."
+    },
+    {
+      "id": "C3",
+      "title": "Engine trusts its stale picture of outside programs",
+      "atAShow": "A video stayed stopped for about 28 seconds because the parser held each player message until the next one arrived. A false video finished can fire two seconds in, flipping the display back and restoring music. When MPD dies the engine still says playing and the controls stay dead until the next 15-second sweep. A cue with a 2-second video never completes.",
+      "whyItHappens": "The engine learns what VLC, MPD and the other programs are doing by parsing their text or event streams into a cached copy that starts from a default and carries no age. Re-reads are partial, and the video queue, cue timelines and health rows treat the copy as the program.",
+      "designTerms": "A reader module per outside program should own the engine's picture of it, behind one interface: read, stream, resync, last-read time. Today the parser, the player service and the queue are shallow: each exposes raw stream handling, so locality is spread across all three.",
+      "modules": [
+        "backend/src/utils/dbusSignalParser.js",
+        "backend/src/services/mprisPlayerBase.js",
+        "backend/src/services/videoQueueService.js",
+        "backend/src/services/musicService.js",
+        "backend/src/services/serviceHealthRegistry.js",
+        "backend/src/services/cue/timelineRuntime.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>plays the video\"]\n  mon[\"Signal monitor<br/>text stream\"]\n  parser[\"Parser<br/>holds message until next header\"]\n  pic[\"Cached picture<br/>state, no age\"]\n  probe[\"15-second probe<br/>re-reads play state only\"]\n  queue[\"Video queue<br/>two stopped polls end video\"]\n  cue[\"Cue timeline<br/>waits for a progress tick\"]\n  panel[\"GM panel<br/>video stays stopped\"]\n  vlc -->|\"Playing signal\"| mon\n  mon -->|\"lines\"| parser\n  parser -.->|\"late by one message\"| pic\n  probe -.->|\"fix announced, nobody hears\"| pic\n  pic -->|\"stale stopped\"| queue\n  queue -->|\"false finished\"| cue\n  pic -->|\"stale\"| panel\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class parser,pic,queue fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>plays the video\"]\n  reader[\"VLC reader<br/>stream plus periodic re-read\"]\n  pic[\"Cached picture<br/>carries last-read time\"]\n  queue[\"Video queue<br/>reads picture with age\"]\n  cue[\"Cue timeline<br/>reads picture with age\"]\n  panel[\"GM panel<br/>hears every correction\"]\n  vlc -->|\"signals\"| reader\n  reader -->|\"re-read on timer\"| vlc\n  reader -->|\"one path, every change\"| pic\n  pic -->|\"fresh state\"| queue\n  pic -->|\"fresh state\"| cue\n  pic -->|\"fresh state\"| panel\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class reader owner;",
+        "note": "Candidate (a): one reader per program behind a common interface, with a periodic re-read the stream cannot switch off. Competing: (b) client libraries, (c) read time on every copy, (d) cue timeline from player position."
+      },
+      "examples": [
+        {
+          "ids": "A-68",
+          "text": "Video stayed stopped about 28 seconds: the parser holds each message until the next header arrives."
+        },
+        {
+          "ids": "A-61",
+          "text": "A false video finished can fire two seconds in; display flips back, ducking restores, cues told video ended."
+        },
+        {
+          "ids": "A-72",
+          "text": "When MPD dies the engine's picture still says playing with the last track; only the health row goes out."
+        },
+        {
+          "ids": "A-73",
+          "text": "After an MPD crash the controls stay dead up to 20 seconds; the supervisor's restart is ignored."
+        },
+        {
+          "ids": "A-48",
+          "text": "A cue whose video ends before its first progress tick never completes and stays on screen."
+        },
+        {
+          "ids": "X-01",
+          "text": "The 15-second probe corrects the VLC picture but announces it on an event nothing hears for VLC."
+        }
+      ],
+      "blueFixes": [
+        "W9 P0.1",
+        "W10 P1",
+        "W10 FB",
+        "W10 F3"
+      ],
+      "questions": [
+        3,
+        5
+      ],
+      "findings": 25,
+      "seenLive": "Blue's worst live incident, the video that stayed stopped about 28 seconds, happened on the show machine."
+    },
+    {
+      "id": "C8",
+      "title": "Engine and tests both assume they own the machine",
+      "atAShow": "On 2026-09-15 a unit test killed the live show's video player on blue's tree. In this tree the same run kills the live engine's VLC signal monitor and overwrites its process files. A killed engine leaves a full-screen player behind. Twenty-one test suites open a browser on the show TV. The operator's health script says VLC not found while the player runs.",
+      "whyItHappens": "The engine names and ends its helper programs by fixed file names and by command-line patterns over the whole machine, written as the only engine on the box. The test layers adopt whatever display, sound server and Bluetooth exist; that a layer is safe is claimed in comments, never checked.",
+      "designTerms": "A runtime-identity module should own which processes, files and windows belong to this engine instance. Today that seam does not exist: every service module and test harness names machine resources directly; the process supervisor is a shallow kill-by-pattern pass-through, so identity has no locality.",
+      "modules": [
+        "backend/src/utils/processMonitor.js",
+        "backend/src/services/vlcMprisService.js",
+        "backend/src/services/musicService.js",
+        "backend/src/utils/displayDriver.js",
+        "backend/src/services/audioRoutingService.js",
+        "backend/tests/unit/services/vlcMprisService.test.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  live[\"Live engine<br/>runs the show\"]\n  pids[\"Fixed process files<br/>shared by every engine\"]\n  vlc[\"Live VLC<br/>on the show TV\"]\n  mon[\"Live signal monitor\"]\n  test[\"Unit test run<br/>builds a real supervisor\"]\n  reaper[\"Leftover reaper<br/>kills by name and pattern\"]\n  suites[\"Integration suites<br/>real display, real sound\"]\n  kiosk[\"Show TV browser\"]\n  live -->|\"writes pids\"| pids\n  live -->|\"starts\"| vlc\n  live -->|\"starts\"| mon\n  test -->|\"reads and overwrites\"| pids\n  test -->|\"runs\"| reaper\n  reaper -->|\"kills\"| mon\n  reaper -.->|\"kills after the name fix\"| vlc\n  suites -->|\"open browser on\"| kiosk\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class pids,reaper,suites fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  ident[\"Runtime identity<br/>one run directory and prefix\"]\n  live[\"Live engine<br/>live prefix\"]\n  test[\"Unit test run<br/>test prefix\"]\n  livePids[\"Live process files<br/>under the live prefix\"]\n  testPids[\"Test process files<br/>under the test prefix\"]\n  vlc[\"Live VLC<br/>on the show TV\"]\n  mon[\"Live signal monitor\"]\n  reaper[\"Reaper<br/>kills only own children\"]\n  ident -->|\"names\"| live\n  ident -->|\"names\"| test\n  live -->|\"writes pids\"| livePids\n  test -->|\"writes pids\"| testPids\n  live -->|\"starts\"| vlc\n  live -->|\"starts\"| mon\n  test -->|\"runs\"| reaper\n  reaper -.->|\"never reaches\"| mon\n  reaper -.->|\"never reaches\"| vlc\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class ident owner;",
+        "note": "Candidate (a): every engine instance takes a run directory and name prefix from one place; machine-wide kill patterns go. Competing: (b) outside supervisor, (c) throwaway container for tests, (d) per-layer capability lists, (e) singleton lock."
+      },
+      "examples": [
+        {
+          "ids": "A-75 / D-64 / B-63 / D-52",
+          "text": "A unit test killed the live video player on blue's tree; here it kills the signal monitor and overwrites process files."
+        },
+        {
+          "ids": "A-64 / D-70",
+          "text": "Leftover cleanup looks for cvlc but the process is vlc, so a killed engine leaves a full-screen player."
+        },
+        {
+          "ids": "A-79 / D-54 / D-69",
+          "text": "Twenty-one suites start a real full-screen browser on the show TV pointed at the live port."
+        },
+        {
+          "ids": "D-72",
+          "text": "Starting any engine kills every pactl subscribe process of the user, including the live engine's sink monitor."
+        },
+        {
+          "ids": "X-05",
+          "text": "The health script says VLC not found while the player runs, because it looks for cvlc."
+        },
+        {
+          "ids": "X-07",
+          "text": "Fixing the reaper's name alone brings blue's unit-test kill back; the per-run process folder must land first."
+        }
+      ],
+      "blueFixes": [
+        "W9 P0.3",
+        "W10 P2",
+        "W10 P3",
+        "W10 P4",
+        "W10 C1"
+      ],
+      "questions": [
+        4
+      ],
+      "findings": 41,
+      "seenLive": "A unit test killed the live video player on 2026-09-15; a kill guard logged the show box out on 2026-09-18."
+    },
+    {
+      "id": "C11",
+      "title": "Several places answer the same question, each differently",
+      "atAShow": "Is a video playing has seven answers. A paused video counts as free, so a player is told their video was triggered while it waits, and releasing a held video plays over the paused one. Release All can stop at the first refused video. Music stays ducked after the queue is cleared. The downloaded report's two totals disagree.",
+      "whyItHappens": "Questions such as is a video playing, which teams exist and may the GM scan now are answered by several functions or stored values, each with its own rule and write path, so they disagree at the edges. No rule says which answerer every reader must use.",
+      "designTerms": "One resolver module per question should own the verdict. Today each reader, the queue, the command gate, the ducking engine, carries its own implementation of the same question, so the interface to the fact is as wide as its readers: shallow, no locality.",
+      "modules": [
+        "backend/src/services/videoQueueService.js",
+        "backend/src/services/commandExecutor.js",
+        "backend/src/services/cueEngineService.js",
+        "backend/src/websocket/broadcasts.js",
+        "backend/src/services/musicService.js",
+        "ALNScanner/src/app/domains/gameOps.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>video paused\"]\n  cur[\"Queue current item<br/>paused is not playing\"]\n  accept[\"Can accept a video<br/>reads paused as free\"]\n  run[\"Queue run<br/>plays next over paused\"]\n  duck[\"Ducking<br/>own count of playing videos\"]\n  clear[\"Clear queue<br/>sends no completed\"]\n  player[\"Player scanner<br/>told video triggered\"]\n  music[\"Music<br/>stays ducked\"]\n  vlc -->|\"paused\"| cur\n  cur -->|\"not playing\"| accept\n  accept -->|\"available\"| player\n  cur -->|\"not playing\"| run\n  run -->|\"next video over paused\"| vlc\n  clear -.->|\"no event\"| duck\n  duck -->|\"still counts one\"| music\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class cur,accept,run,duck fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  vlc[\"VLC<br/>video paused\"]\n  res[\"Video playing resolver<br/>one verdict with reason\"]\n  accept[\"Can accept a video\"]\n  run[\"Queue run\"]\n  duck[\"Ducking\"]\n  clear[\"Clear queue\"]\n  player[\"Player scanner<br/>told to wait\"]\n  music[\"Music<br/>restored\"]\n  vlc -->|\"paused\"| res\n  res -->|\"busy, paused\"| accept\n  accept -->|\"wait\"| player\n  res -->|\"busy, paused\"| run\n  clear -->|\"asks\"| res\n  res -->|\"nothing playing\"| duck\n  duck -->|\"restore\"| music\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class res owner;",
+        "note": "Candidate (a): one resolver per question returns a verdict with reason and door; every reader calls it. Competing: (b) one status record per service, (c) counts derived on read, (d) one phase-words module."
+      },
+      "examples": [
+        {
+          "ids": "B-39",
+          "text": "Is a video playing has seven answers; a paused video counts as not playing for four of them."
+        },
+        {
+          "ids": "B-40",
+          "text": "Held cues and held videos live in two stores; Release All can stop at the first refused video."
+        },
+        {
+          "ids": "B-45",
+          "text": "Ducking keeps its own count of playing videos; music stays ducked after the queue is cleared."
+        },
+        {
+          "ids": "C-25",
+          "text": "The GM's permission to scan is read from a local copy; after a reload it blocks scans in an active game."
+        },
+        {
+          "ids": "C-24",
+          "text": "Which teams exist has several answers; a second GM adding the same name gets an error though the team exists."
+        },
+        {
+          "ids": "A-08",
+          "text": "The downloaded report has two different final totals per team: the timeline leaves out group bonuses, the standings include them."
+        }
+      ],
+      "blueFixes": [
+        "W3",
+        "W5",
+        "W6"
+      ],
+      "questions": [
+        5
+      ],
+      "findings": 29,
+      "seenLive": "The display's false healthy Check Now was reproduced in-process by the recovered review."
+    }
+  ]
+}

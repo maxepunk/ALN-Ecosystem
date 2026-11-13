@@ -97,6 +97,12 @@ const sessionSchema = Joi.object({
       version: Joi.string().required(),
       contentHash: Joi.string().required(),
     }).allow(null).optional(),
+    // T1a D8: the preflight stamp and the typed "start anyway" record.
+    // Shapes are pinned in the contracts (asyncapi session metadata); the
+    // interiors stay open here so a stamp can gain a field without a model
+    // migration.
+    preflight: Joi.object().unknown(true).allow(null).optional(),
+    preflightOverride: Joi.object().unknown(true).allow(null).optional(),
   }).required(),
 });
 

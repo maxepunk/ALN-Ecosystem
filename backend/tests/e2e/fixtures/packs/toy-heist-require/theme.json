@@ -1,0 +1,18 @@
+{
+  "kind": "theme",
+  "schemaVersion": 1,
+  "colors": {
+    "modeScoring": "#d4af37",
+    "modeEvidence": "#38bdf8"
+  },
+  "rating": {
+    "display": "stars",
+    "glyph": {
+      "filled": "💎"
+    }
+  },
+  "scoreboard": {
+    "accent": "#0e7490",
+    "accentDark": "#164e63"
+  }
+}

@@ -1,0 +1,396 @@
+{
+ "cards": [
+  {
+   "id": "C9",
+   "shapeChange": "Before, the card left the phone alone and had the standalone tablet load shared rules. Now one Game record judges every tap, even with no engine, and every other device only draws the reply, so a rule change lands once.",
+   "atAShow": "A GM scans a token; the result screen says Transaction Complete with points the tablet worked out itself, before the engine has answered. The engine may refuse, and the correction arrives as a small pop-up message. In a standalone game the tablet is the only judge, and its rules have gaps: a scan into a paused game shows complete and records nothing. A phone says revisited for last week's token.",
+   "whyItHappens": "The engine decides scoring, claims and whether a scan is allowed now, but the tablet carries its own copy of those rules, kept matching by hand, with a note in the code as the only reminder. The phone and the hardware scanner each choose a team on their own and decide on their own whether a token is new or already seen. Each device shows its own answer first.",
+   "designTerms": "The Game record should own every outcome a tap gets, running Game rules as one body the engine and the tablet both load. Answering's interface is the seam a tap crosses; Screens draws the reply. Today the tablet keeps its own copy of the rules, so a rule change lands in two places: no locality.",
+   "after": {
+    "note": "The Game record decides what a tap gets. The tablet shows pending, then Answering's reply. Game rules is one body the engine and a standalone tablet both run; player devices get data tables and judge nothing. Or: two rule copies kept equal by tests.",
+    "mermaid": "flowchart LR\n  gm[\"GM scans token\"]\n  tab[\"Tablet Screens<br/>shows pending, judges nothing\"]\n  ans[\"Answering<br/>one reply per tap\"]\n  rec[\"Game record on the engine<br/>decides claim and points,<br/>and whether a scan is allowed\"]\n  rules[\"Game rules<br/>one body of code<br/>that only calculates\"]\n  res[\"Result screen<br/>draws the reply with its points\"]\n  sans[\"Answering on the tablet<br/>standalone, local reply\"]\n  srec[\"Game record on the tablet<br/>standalone, the same rules\"]\n  phone[\"Player phone and hardware scanner<br/>Screens, rules as data tables\"]\n  gm -->|\"networked\"| tab\n  tab -->|\"request\"| ans\n  ans -->|\"apply, outcome back\"| rec\n  ans -->|\"reply with points\"| res\n  rules -->|\"loaded by\"| rec\n  gm -->|\"standalone\"| sans\n  sans -->|\"apply, outcome back\"| srec\n  sans -->|\"reply with points\"| res\n  rules -->|\"loaded by\"| srec\n  rules -->|\"tables generated\"| phone\n  phone -->|\"scan, the reply<br/>says new or seen\"| ans\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rec owner;"
+   },
+   "standaloneLine": "In a standalone game: the GM tablet judges claims, scores and scan permission from hand-kept rules; each player device decides whether a token is known. In the candidate shape the tablet hosts the engine's Game record, or an engine kept equal by tests; player devices share one rule as data.",
+   "log": [
+    {
+     "field": "shapeChange",
+     "replaced": "'a standalone store merely load the shared rules'; 'the map's alternative: two rule bodies kept equal by tests'; 'the standalone line now says what the tablet hosts under each candidate'",
+     "why": "'store' is a code word; the alternative repeats the note; the last sentence describes the line below it. Cut to the before, the now and the why in 40 words."
+    },
+    {
+     "field": "atAShow",
+     "replaced": "'toast'; 'In standalone mode'",
+     "why": "'toast' is a programmer's word for a pop-up message; the page says 'standalone game', not 'mode'."
+    },
+    {
+     "field": "whyItHappens",
+     "replaced": "'the authority for'; 'the scan gate'; 'kept in step by hand and by comment'; 'pick their own team and their own new-or-seen'; 'its own verdict'",
+     "why": "'scan gate' and 'by comment' are code talk; 'new-or-seen' is a compressed chain; 'verdict' is the name of a part on this page, so a tap's outcome is called an answer."
+    },
+    {
+     "field": "designTerms",
+     "replaced": "'both hosts load'; 'a second implementation kept in step by comment, so the seam leaks judgements'",
+     "why": "'hosts' and 'implementation' unexplained; said as the engine and the tablet both loading one body, and the tablet keeping its own copy. Trimmed to 55 words."
+    },
+    {
+     "field": "after.note",
+     "replaced": "'both hosts'; 'the same functions'; 'The card's first and third designs, joined'; 'two rule implementations under one contract'",
+     "why": "The owner cannot see the card's numbered designs any more; 'functions' and 'implementations' are code words. 'decide nothing while the engine is there' shortened to 'judge nothing'; the standalone line says what they decide without one."
+    },
+    {
+     "field": "after.mermaid",
+     "replaced": "'decides claim, points and gate'; 'one body of pure functions'; 'the same functions'; edge 'scan, the reply says new or seen' (7 words)",
+     "why": "'gate' and 'pure functions' are code words; the long edge label is broken at six words."
+    },
+    {
+     "field": "standaloneLine",
+     "replaced": "'the scan gate'; 'hand-kept copies of every rule'; 'by two different matching rules'; 'Under candidate A ... under B ...'",
+     "why": "A and B named in words. 'two different matching rules' cut to fit 50 words; whyItHappens carries that the devices decide on their own."
+    }
+   ]
+  },
+  {
+   "id": "C10",
+   "shapeChange": "Before, the health list alone said whether a fact was known, unknown or stale. Now every fact Delivery sends carries that label, so the TV clock and music card show old or down as the health panel does.",
+   "atAShow": "The venue profile fails to load; six services show as not installed, no video plays, no light cue fires, and the health panel reads a calm green 3 of 9. The GM presses Check Now on a down service and nothing visibly happens. The engine dies; the TV keeps counting down. The music card goes grey with no word that the engine is gone, and nobody at the venue notices.",
+   "whyItHappens": "No fact sent to a screen says whether it is known, unknown, stale or partial. The code that builds a tablet's catch-up swallows errors and sends a plausible normal value, a missing profile reads as no equipment, healthy only means a program answered, and the times of the last checks are never shown. The screen draws a normal value.",
+   "designTerms": "Delivery should own the label every fact carries: what it is, how old, how sure. Equipment's dated state feeds it, and Lifecycle passes the Verdict's words. Screens draws the label at Delivery's seam. Today the interface of a sent fact carries neither status nor age, so an error crosses the seam as a normal value.",
+   "after": {
+    "note": "Every delivered fact carries a label: what, how old, how sure, and Screens draw unknown, old and down as such. The Verdict, asked by Lifecycle at start, calls a failed profile no-go, not no equipment. Or: each part sends its own facts in one shape.",
+    "mermaid": "flowchart LR\n  prof[\"Venue fit<br/>profile fails to load\"]\n  life[\"Lifecycle<br/>asks the Verdict at start\"]\n  ver[\"Verdict<br/>profile failed, no-go<br/>(on paper, not a live check)\"]\n  eq[\"Equipment<br/>state with health and age\"]\n  con[\"Connections and roles<br/>one rule for whether<br/>a device is still there\"]\n  del[\"Delivery<br/>every fact labelled:<br/>what, how old, how sure\"]\n  panel[\"Health panel<br/>red profile row,<br/>with the time it was checked\"]\n  tv[\"TV clock<br/>drawn as old past its limit\"]\n  music[\"Music card<br/>down, not a calm grey\"]\n  prof -->|\"missing or invalid\"| life\n  life -->|\"profile and inventory\"| ver\n  ver -->|\"a failed check, never no equipment\"| life\n  life -->|\"verdicts\"| del\n  eq -->|\"dated picture\"| del\n  con -->|\"connection state\"| del\n  del -->|\"label drawn\"| panel\n  del -->|\"label drawn\"| tv\n  del -->|\"label drawn\"| music\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class del owner;"
+   },
+   "standaloneLine": "In a standalone game: every device shows the missing engine as broken: the phone says Offline, the hardware scanner red Disconnected with a growing queue, a video token Rescan later. Nothing says standalone by choice. The candidate declares that fact to every device and gives the tablet its own Verdict.",
+   "log": [
+    {
+     "field": "shapeChange",
+     "replaced": "'the health registry the owner of'; 'Equipment dates its picture. The Verdict, asked by Lifecycle, reports a failed profile as a no-go. Connections and roles gives one liveness rule'; 'the map's alternative for delivery'; 'The standalone line now names ...'",
+     "why": "'registry' is a code word; the middle sentences repeat the note and diagram; the last describes the line below. Kept the before, the now and the why in 37 words."
+    },
+    {
+     "field": "atAShow",
+     "replaced": "'turn not installed'; 'the panel'; 'with no offline line'",
+     "why": "Said as 'show as not installed', 'the health panel', and 'with no word that the engine is gone'."
+    },
+    {
+     "field": "whyItHappens",
+     "replaced": "'on the wire'; 'Snapshot builders catch errors and send plausible defaults'; 'the check times that exist'",
+     "why": "'wire', 'snapshot builders' and 'defaults' are engineering words; said as the code that builds a tablet's catch-up sending a plausible normal value."
+    },
+    {
+     "field": "designTerms",
+     "replaced": "'paper-or-live words'; 'the pushed facts' interface'; 'snapshot builders turn errors into defaults and the seam leaks: a failure crosses as a normal value'",
+     "why": "Compressed chains and code words; said as the interface of a sent fact and an error crossing the seam. Trimmed to 55 words."
+    },
+    {
+     "field": "after.note",
+     "replaced": "'Equipment's state arrives dated'; 'One liveness rule says the engine is gone'; 'The card's first design, in Delivery'; 'each job delivers its own facts under a shared envelope'",
+     "why": "The first two repeat diagram nodes; the owner cannot see the card's numbered designs; 'envelope' said as 'one shared shape'. Fits 45 words."
+    },
+    {
+     "field": "after.mermaid",
+     "replaced": "'profile failed, no-go, paper'; 'one liveness rule for every device'; 'every fact labelled, what, how old, how sure' (8 words); 'red profile row, checked at a time' (7 words)",
+     "why": "'paper' and 'liveness' explained in plain words; long labels broken at six words."
+    },
+    {
+     "field": "standaloneLine",
+     "replaced": "'draws the missing engine as an outage'; 'Offline all night'; 'no tablet readiness verdict exists'; 'under candidate A'",
+     "why": "'outage' said as 'broken'; 'all night' and the missing tablet verdict cut to fit 50 words (the last sentence gives the tablet its own Verdict); A named in words."
+    }
+   ]
+  },
+  {
+   "id": "C11",
+   "shapeChange": "Before, the card wanted one answerer per question, as a part of its own. Now each answer lives inside the part that owns the fact, so Equipment says whether a video plays and the Game record says which teams exist.",
+   "atAShow": "Is a video playing has eight answers. A paused video counts as free, so a player is told their video was started while it waits, and releasing a held video plays over the paused one. Release All can stop at the first refused video. Music stays turned down after the queue is cleared. The downloaded report's two totals disagree.",
+   "whyItHappens": "Questions such as is a video playing, which teams exist and may the GM scan now are answered by several pieces of code or saved values, each with its own rule and its own way of being updated, so they disagree at the edges. No rule says which answerer every reader must use.",
+   "designTerms": "Each question should have one answerer inside the part that owns it, behind one interface every reader uses: the Game record for teams and whether the GM may scan, Equipment for whether a video plays. Today the video queue, the command check and the music volume rule each answer it alone: no seam, no locality.",
+   "after": {
+    "note": "One answerer per question, inside its owning part: Equipment for whether a video plays, the Show runner for held items, the Game record for teams and scan permission, the night's record for totals. Or: an interface per program, leaving questions across programs spread.",
+    "mermaid": "flowchart LR\n  vlc[\"VLC<br/>video paused\"]\n  eq[\"Equipment<br/>one dated answer, busy and paused\"]\n  run[\"Show runner<br/>queue, held items and music volume<br/>all read that answer\"]\n  ans[\"Answering<br/>one door for scans and commands\"]\n  player[\"Player scanner<br/>told to wait\"]\n  music[\"Music<br/>restored when nothing plays\"]\n  rec[\"Game record<br/>one answer for teams<br/>and whether the GM may scan\"]\n  tab[\"Tablet Screens<br/>draws the reply\"]\n  night[\"The night's record<br/>one total per team\"]\n  vlc -->|\"paused\"| eq\n  eq -->|\"busy, paused\"| run\n  run -->|\"video busy\"| ans\n  ans -->|\"wait\"| player\n  run -->|\"queue cleared, nothing playing\"| music\n  rec -->|\"outcome\"| ans\n  ans -->|\"reply\"| tab\n  rec -->|\"at the end\"| night\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eq owner;"
+   },
+   "standaloneLine": "In a standalone game: the tablet answers group completion in two disagreeing places, teams in three, and scan permission by one ignored check; the phone decides it is standalone by one test written three times. The candidate puts the engine's Game record on the tablet and declares standalone a fact.",
+   "log": [
+    {
+     "field": "shapeChange",
+     "replaced": "'one resolver per question as its own module'; the list of five parts; 'a player's wait comes back through Answering'; 'the map's alternative, an interface per program'; 'The standalone line now says ...'",
+     "why": "'resolver' and 'module' are code words; the part list, the wait and the alternative are in the note and diagram; the last sentence describes the line below. 40 words."
+    },
+    {
+     "field": "atAShow",
+     "replaced": "'triggered'; 'ducked'",
+     "why": "Said as 'started' and 'turned down'."
+    },
+    {
+     "field": "whyItHappens",
+     "replaced": "'several functions or stored values, each with its own rule and write path'",
+     "why": "'functions' and 'write path' are code words; said as pieces of code or saved values with their own way of being updated."
+    },
+    {
+     "field": "designTerms",
+     "replaced": "'a one-call interface'; 'the queue, the command gate and the ducking count each implement \"is a video playing\"'; 'that knowledge has no locality'",
+     "why": "'one-call', 'gate', 'ducking' and 'implement' are code words; named as the video queue, the command check and the music volume rule. Trimmed to 55 words."
+    },
+    {
+     "field": "after.note",
+     "replaced": "'and every reader asks it'; 'The card's first design, placed by part'; 'cross-program questions'",
+     "why": "The reader rule is in the design-terms line; the owner cannot see the card's numbered designs; the compressed chain said in words. Fits 45 words."
+    },
+    {
+     "field": "after.mermaid",
+     "replaced": "'queue, held items and ducking read that answer' (8 words); 'one dispatch for scans and commands'; 'one answer for teams and may I scan' (8 words)",
+     "why": "'ducking' said as music volume, 'dispatch' as door; long labels broken at six words."
+    },
+    {
+     "field": "standaloneLine",
+     "replaced": "'may-I-scan by one ignored check'; 'am-I-standalone by one URL test'; 'Under candidate A ... under B ...'; 'Deployment mode would become a declared fact'",
+     "why": "Hyphen chains and 'URL' said in words; the other way (an engine of its own kept equal by tests) is cut as a repeat of the page's standalone section and the C9 note, to fit 50 words; 'deployment mode' said as standalone."
+    }
+   ]
+  },
+  {
+   "id": "C12",
+   "shapeChange": "Before, the design tool wrote the engine's files and the TV got its own notice. Now the Design studio applies a pack by message, Lifecycle says when, and Delivery tells every screen the version, so no screen runs another pack.",
+   "atAShow": "A designer publishes a pack change and does not restart. The TV shows evidence by the new rules while the engine scores by the old. The file the engine hands out no longer matches the fingerprint in the engine's own pack list, so a scanner that checks rejects it. A tablet running a different pack is only noted in the engine's log; nothing tells the GM. The publish tells the running engine nothing.",
+   "whyItHappens": "The engine freezes one pack at start, yet the files it hands out are whatever is on disk now, and it re-reads the token list from disk at every request. The TV, tablet and hardware scanner each load the pack at their own moment and keep it; the phone reads its own copy. No message says it changed.",
+   "designTerms": "The Pack channel should own one adopted pack behind one interface: adopt, say which is current, fetch a file, announce a change. Each source is an adapter at its seam, and the Design studio reaches the engine's copy by message. Today the engine's frozen list and the live disk both cross the seam: no locality.",
+   "after": {
+    "note": "One adopted version, one notice, one stamp. The Design studio publishes and applies by message, never by writing the engine's files. Lifecycle allows the change only between games. Delivery sends the pack version to every screen, and the engine compares stamps when a device connects.",
+    "mermaid": "flowchart LR\n  studio[\"Design studio<br/>publishes, then asks<br/>to apply, by message\"]\n  ans[\"Answering<br/>one door, one reply\"]\n  life[\"Lifecycle<br/>allows adopt in setup<br/>or ended, else refuses\"]\n  pack[\"Pack channel<br/>adopts once, one version, one stamp\"]\n  files[\"File fetch<br/>from the adopted copy, fingerprint checked\"]\n  del[\"Delivery<br/>pack stamp on every<br/>catch-up and live change\"]\n  tv[\"TV<br/>draws the facts as delivered,<br/>shows the stamp\"]\n  tab[\"Tablet<br/>stamp compared at connect,<br/>warns when it is behind\"]\n  dev[\"Phone and hardware scanner<br/>stamp shown\"]\n  studio -->|\"apply this version\"| ans\n  ans -->|\"asks if now is allowed\"| life\n  life -->|\"adopt when allowed\"| pack\n  pack -->|\"adopted files\"| files\n  pack -->|\"changed\"| del\n  del -->|\"pack stamp and facts\"| tv\n  del -->|\"pack stamp\"| tab\n  files -->|\"fetch and check\"| dev\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class pack owner;"
+   },
+   "standaloneLine": "In a standalone game: each device loads whatever pack its source holds; a mid-game reload can hand the tablet a newer pack; no stamp marks the game or any device. In the candidate each device shows its stamp, the Game record carries the game's, and Lifecycle refuses a swap mid-game.",
+   "log": [
+    {
+     "field": "shapeChange",
+     "replaced": "'the pack view push its own changed event'; 'carries the pack identity with the other facts, so a tablet behind the engine is told, not logged'; the list of other designs leaving the note; 'The design-terms line now names ... the standalone line adds ...'",
+     "why": "'pack view' and 'changed event' are code words; the asides describe other strings on the card. Kept the before, the now and the why in 40 words."
+    },
+    {
+     "field": "atAShow",
+     "replaced": "'the file the engine serves'; 'the hash in its own manifest'; 'written to the log'",
+     "why": "'serves', 'hash' and 'manifest' are engineering words; said as the file it hands out, the fingerprint in its pack list, noted in its log."
+    },
+    {
+     "field": "whyItHappens",
+     "replaced": "'its file endpoints serve whatever is on disk and its token endpoint re-reads every call'",
+     "why": "'endpoints' and 'call' are code words; said as the files it hands out and re-reading the token list at every request."
+    },
+    {
+     "field": "designTerms",
+     "replaced": "'(adopt, current, fetch, changed)'; '(a folder, the designer's drafts, the test packs)'; 'through Answering'; 'the pack service's interface leaks the disk: it checks a path against the frozen inventory, then serves live bytes, and the token service re-reads the file around it'",
+     "why": "The bracketed signature said as what a caller can do; 'pack service', 'token service', 'path' and 'bytes' are code names; the source list and the token re-read are in the whyItHappens line. Trimmed to 55 words."
+    },
+    {
+     "field": "after.note",
+     "replaced": "'The shape takes the card's first design'; 'the adopt'; 'pack identity to the tablets and the TV with the other facts'",
+     "why": "The owner cannot see the card's numbered designs; 'adopt' as a noun said as 'the change'; 'with the other facts' cut as an aside. Fits 45 words."
+    },
+    {
+     "field": "after.mermaid",
+     "replaced": "'publishes, then asks to apply, by message' (7 words); 'allows adopt in setup or ended, else refuses' (8); 'pack identity on every snapshot and change' (7); 'draws the facts as delivered, shows the stamp' (8); 'shows behind'; 'asks the window'; 'adopt at the window'; 'adopted bytes'",
+     "why": "Long labels broken at six words; 'snapshot' said as catch-up, 'identity' as stamp, 'bytes' as files, 'the window' as whether now is allowed, 'shows behind' as warns when it is behind."
+    },
+    {
+     "field": "standaloneLine",
+     "replaced": "'the tablet can adopt a newer pack on a mid-game reload'; 'the game carries no stamp, and no player device shows one'; 'as the engine's modules (candidate A) or the tablet's own (B)'",
+     "why": "Reworded shorter; the A or B clause is cut as a repeat of the page's standalone section, to fit 50 words."
+    }
+   ]
+  },
+  {
+   "id": "C13",
+   "shapeChange": "Before, the card's role table both knew who was connected and sent facts. Now Connections and roles knows who each connection is, Delivery and Answering ask it, and every device, phones included, shows a pass, so three checks become one.",
+   "atAShow": "A tablet loses Wi-Fi and reloads; the engine still holds the old connection under the same station name and refuses the new one for up to about 85 seconds. Two tablets started together pick the same station name from an open list. The TV connects as if it were a GM tablet, receives every transaction and all ten kinds of service state, and discards what it does not need on its own side.",
+   "whyItHappens": "Whether a pass is asked for, and what a station is called, comes from a word the device sends, or from what the engine assumes when nothing is sent. Every kind of request checks separately, and none says who its audience is, so every live connection gets everything and reading the game's state needs no pass.",
+   "designTerms": "Connections and roles should own one interface that admits a connection by its pass and says its kind, name, rights and whether it is there; both ways of connecting are adapters at that seam. Answering checks rights once, Delivery filters by role. Today it trusts a self-declared word and each request checks alone: no locality.",
+   "after": {
+    "note": "Every connection shows a verified pass. Connections and roles admits it by that pass, so a typed name or default decides nothing; Delivery filters each fact by role; Answering checks rights once. Or: two doors, one public for scoreboards and players, one for the GM.",
+    "mermaid": "flowchart LR\n  tab[\"GM tablet<br/>operator pass\"]\n  tv[\"TV page<br/>display pass\"]\n  dev[\"Phone and hardware scanner<br/>device pass\"]\n  any[\"Stranger on the wifi<br/>no pass\"]\n  con[\"Connections and roles<br/>admits every connection by its pass<br/>kind, name, rights,<br/>whether it is still there\"]\n  ans[\"Answering<br/>rights checked once per request\"]\n  del[\"Delivery<br/>each fact filtered by role\"]\n  gm[\"GM screens<br/>transactions, equipment, devices\"]\n  disp[\"Display screens<br/>scores, evidence, clock\"]\n  tab -->|\"pass\"| con\n  tv -->|\"pass\"| con\n  dev -->|\"pass\"| con\n  con -.->|\"refused\"| any\n  con -->|\"who may do what\"| ans\n  con -->|\"who may see what\"| del\n  del -->|\"GM facts\"| gm\n  del -->|\"display facts\"| disp\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class con owner;"
+   },
+   "standaloneLine": "In a standalone game: no engine, pass or connection exists, so no fault today; a tablet never set up for networked play keeps the station name 001, known to nobody (C1). In the candidate the tablet hosts Connections and roles with one connection, itself; with its own engine, nothing changes.",
+   "log": [
+    {
+     "field": "shapeChange",
+     "replaced": "'The role table no longer sends'; 'check the GM's grants once'; 'The other option changed: two separate surfaces ...'",
+     "why": "The first sentence assumed the reader knew the old design; 'grants' said as the checks; the other option is in the note. 40 words."
+    },
+    {
+     "field": "atAShow",
+     "replaced": "'its old socket'; 'joins the GM room'; 'all ten service domains'; 'filters on its own side'",
+     "why": "'socket', 'room' and 'domains' are code words; said as the old connection, connecting as if a GM tablet, ten kinds of service state, discarding what it does not need."
+    },
+    {
+     "field": "whyItHappens",
+     "replaced": "'credential'; 'a route's default'; 'Every socket event and route'; 'every socket gets everything and reads need no login'",
+     "why": "'credential' is the page's 'pass'; 'route', 'socket event' and 'login' are code words; said as what the engine assumes, every kind of request, every live connection, reading the game's state."
+    },
+    {
+     "field": "designTerms",
+     "replaced": "'class, name and grants, plus one liveness rule, at the seam where socket and HTTP are adapters'; 'the handshake seam leaks'; 'each route and socket event checks on its own'",
+     "why": "'class', 'grants', 'liveness', 'socket', 'HTTP' and 'handshake' are code words; said as kind, name, rights, whether it is there, and both ways of connecting as adapters. Trimmed to 55 words."
+    },
+    {
+     "field": "after.note",
+     "replaced": "'is the shape's choice'; 'a route default'; 'checks grants once'; 'two separate surfaces, a public one for scoreboards and players and an operator one for the GM, closed by default for everything else'",
+     "why": "'route' and 'grants' are code words; 'surfaces' said as doors; shortened to fit 45 words."
+    },
+    {
+     "field": "after.mermaid",
+     "replaced": "'class, name, grants, one liveness rule'; 'grants checked once per request'",
+     "why": "Code words said as kind, name, rights and whether it is still there."
+    },
+    {
+     "field": "standaloneLine",
+     "replaced": "'credential'; 'device id 001'; '(candidate A)'; 'with its own engine nothing changes (B)'",
+     "why": "'credential' is the page's 'pass'; 'device id' is the card's 'station name'; A and B named in words. 49 words."
+    }
+   ]
+  },
+  {
+   "id": "C14",
+   "shapeChange": "Before, the card checked on the tablet that every name had one definition. Now each shared shape is written once, by Delivery or Answering, and Joins and proofs checks both sides, so a mismatch fails a test before the show.",
+   "atAShow": "A GM opens Team Details: the score box is wrong, GM adjustments never appear, completed groups read In Progress with a $0 bonus, while the scoreboard screen on the same tablet shows the real total. Game Activity shows Unknown, no stars, $0 for a token no player scanned first. The video Playing badge never appears, because the page never had a place to draw it.",
+   "whyItHappens": "A screen reads a field the fact never carries; a screen looks for a spot the page never had; a part waits for a message nothing sends; the written contract lists messages nobody sends. Each name is written on both sides, and a wrong side yields nothing instead of an error.",
+   "designTerms": "Joins and proofs should own the check that both sides of every shared name agree; Delivery and Answering own the shapes, written once, and Screens read them, so a missing side fails the proof before the show. Today the tablet's inner seam leaks: Team Details silently reads a field the outer layer never passes on.",
+   "after": {
+    "note": "Every shape is written once, facts by Delivery, replies by Answering, and Joins and proofs checks both sides against them. Screens keep no copy; Team Details draws only delivered facts. Unsent messages fail the proof. Or: each part delivers its own facts in one shape.",
+    "mermaid": "flowchart LR\n  del[\"Delivery<br/>one builder per fact,<br/>the shape written once\"]\n  ans[\"Answering<br/>reply words, a closed list\"]\n  joins[\"Joins and proofs<br/>contracts built from those shapes,<br/>both sides checked\"]\n  eng[\"Engine<br/>sends only the generated shapes\"]\n  scr[\"Screens on the tablet<br/>draw the delivered shape,<br/>keep no copy\"]\n  td[\"Team Details and Game Activity<br/>draw the facts as delivered\"]\n  badge[\"Video badge<br/>drawn from the video fact,<br/>or the check fails\"]\n  dead[\"A message with no sender<br/>or no reader<br/>fails the proof, not the show\"]\n  del -->|\"fact shapes\"| joins\n  ans -->|\"reply words\"| joins\n  joins -->|\"checks\"| eng\n  joins -->|\"checks\"| scr\n  del -->|\"delivered facts\"| scr\n  scr -->|\"draws\"| td\n  scr -->|\"draws\"| badge\n  joins -->|\"lists\"| dead\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;"
+   },
+   "standaloneLine": "In a standalone game: names disagree on one device: Team Details reads a score box standalone never fills, the hardware scanner wants a wrapped token file the pack lacks, the phone ignores its processing picture. Joins and proofs would check each device against the pack and give transactions one shape.",
+   "log": [
+    {
+     "field": "shapeChange",
+     "replaced": "'every id and event has one definition'; 'generates the contracts from them'; 'Game Activity included, draw what they are delivered and keep no copy'; 'fails the proof, not the start-up'; the list of other designs; 'The design-terms line now names ... the standalone line adds ...'",
+     "why": "'id', 'event' and 'start-up' are code words; the screen detail and alternative are in the note; the last sentences describe other strings. 39 words."
+    },
+    {
+     "field": "atAShow",
+     "replaced": "'its element was never in the page'",
+     "why": "'element' is a code word; said as the page never having a place to draw it."
+    },
+    {
+     "field": "whyItHappens",
+     "replaced": "'a property the object lacks'; 'a renderer looks up an element'; 'a module listens for an event'; 'the contract lists events nobody emits'",
+     "why": "Code words said as a field the fact never carries, a spot the page never had, a part waiting for a message, messages nobody sends."
+    },
+    {
+     "field": "designTerms",
+     "replaced": "'as their interfaces, and each device's Screens adapter reads them'; 'the facade-strategy seam leaks: Team Details reads a field only the strategy adapter holds, the facade never exposes it, and the miss is silent'",
+     "why": "'facade', 'strategy' and 'exposes' are code names; said as the tablet's inner seam and an outer layer that never passes the field on. Trimmed to 55 words."
+    },
+    {
+     "field": "after.note",
+     "replaced": "'The shape takes the card's third design'; 'generates the contracts from them and checks both sides'; 'Team Details and Game Activity'; 'An unsent event'; 'each job keeps its own delivery under one envelope'",
+     "why": "The owner cannot see the card's numbered designs; 'event' said as message, 'envelope' as shape; Game Activity stays in the diagram. Fits 45 words."
+    },
+    {
+     "field": "after.mermaid",
+     "replaced": "'one builder per fact, the shape written once' (8 words); 'contracts generated from those shapes, both sides checked' (8); 'renderers read the delivered shape, keep no copy' (8); 'drawn from the video fact, or the check fails' (9); 'An event with no sender or no reader' (8); edges 'renders'",
+     "why": "Long labels broken at six words; 'renderers' and 'event' said as draw and message."
+    },
+    {
+     "field": "standaloneLine",
+     "replaced": "'joins still disagree, even with both sides on one device'; 'reads scores standalone never fills'; 'the engine's Game record (candidate A) or one checked against it (B)'",
+     "why": "Shortened; 'one shape' covers both candidates, so the A or B clause is cut to fit 50 words."
+    }
+   ]
+  },
+  {
+   "id": "C15",
+   "shapeChange": "Before, the card's design was one install command for every piece. Now Release owns the installed set and swaps it whole between the blue and green machines, so a mismatch reads as a no-go before the show.",
+   "atAShow": "Between shows, a rollback moves the engine's code back but none of the four shared code pieces beneath it, and a restart keeps serving the tablet app built before the rollback, so a bad rollback reaches the next show. A machine set up from the project's own instructions pairs a speaker that connects but is never set up for sound, because the instructions name the wrong Bluetooth setting.",
+   "whyItHappens": "The show machine holds the engine's code, four shared code pieces each at their own version, a built tablet app, hand-copied media, machine settings, start-up scripts and program names tied to one operating system release. Each moves by its own hand-run step, and nothing compares them afterwards, so a half-applied change goes unnoticed.",
+   "designTerms": "Release should own what is installed: one list, one interface to describe and check it, with the two machines' swap at its seam; Pack channel checks media by fingerprint, Venue fit names each machine's programs. Today no module owns it, so each piece moves by hand and the seam to the running machine goes unchecked.",
+   "after": {
+    "note": "Release lists the installed set and compares it at start, in the Verdict's words, so a rollback moves everything or says what it did not. Pack channel checks media by fingerprint; Venue fit names each machine's programs. Or: Release folds into Venue fit's Deploy stage.",
+    "mermaid": "flowchart TD\n  rel[\"Release<br/>one described set:<br/>engine, tablet and phone apps,<br/>pack, media, profile\"]\n  cut[\"Cutover<br/>swap the whole set,<br/>blue to green and back\"]\n  pack[\"Pack channel<br/>every named media file<br/>checked by fingerprint\"]\n  fit[\"Venue fit<br/>this machine's program names,<br/>install commands and settings\"]\n  inst[\"Engine instance<br/>this engine's own names\"]\n  verd[\"Verdict<br/>go, no-go, dormant\"]\n  gate[\"Start gate<br/>a mismatch is reported<br/>before the show\"]\n  rel -->|\"installs or rolls back\"| cut\n  rel -->|\"compares at start\"| pack\n  rel -->|\"compares at start\"| fit\n  rel -->|\"compares at start\"| inst\n  rel -->|\"says it in\"| verd\n  verd -->|\"go or no-go\"| gate\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class rel owner;"
+   },
+   "standaloneLine": "In a standalone game: installing is mostly hand work: a fixed pack and a web publish for tablets and phones, a memory card per hardware scanner, no version on screen, no check the app works offline. Release's set would cover these; every device would show its pack stamp and version.",
+   "log": [
+    {
+     "field": "shapeChange",
+     "replaced": "'The card's one design stands, spread over parts'; 'Pack channel checks the media, Venue fit holds the machine's program names, install commands and host rules, and the check speaks in Verdict's three words'; 'the one deploy command'; the note's gains and drops; 'The design-terms line now names ... the standalone line adds ...'",
+     "why": "The part list repeats the note and diagram; 'deploy' and 'host rules' are engineering words; the last sentences describe other strings. Kept the before, the now and the why in 38 words."
+    },
+    {
+     "field": "atAShow",
+     "replaced": "'moves the parent checkout but no submodule backwards'; 'pm2 restart keeps serving the pre-rollback scanner build'; 'built from the tree's own documents'; 'connects with no audio profile'; 'the wrong Bluetooth role'",
+     "why": "Source-control and system words said in show terms: the engine's code and the four shared pieces beneath it, a restart serving the tablet app built before the rollback, a speaker never set up for sound, the wrong Bluetooth setting."
+    },
+    {
+     "field": "whyItHappens",
+     "replaced": "'a parent checkout, four submodules on main, a scanner build folder'; 'host rules, hooks and program names fixed to one OS release'",
+     "why": "Said as the engine's code, four shared code pieces at their own version, a built tablet app, machine settings, start-up scripts, one operating system release."
+    },
+    {
+     "field": "designTerms",
+     "replaced": "'as one manifest behind one interface (describe, check), with the blue and green machines as the cutover at its seam'; 'Venue fit names programs per machine'; 'each part is moved by its own hand-run step, so the seam between source and running machine leaks unchecked'",
+     "why": "The bracketed signature said as what the interface does; 'manifest' said as list; shortened to 55 words."
+    },
+    {
+     "field": "after.note",
+     "replaced": "'The card's one design is the shape's choice'; 'describes what is installed as one set'; 'holds the machine's program names and host rules'",
+     "why": "The owner cannot see the card's designs; 'host rules' is a system word; shortened to 45 words."
+    },
+    {
+     "field": "after.mermaid",
+     "replaced": "'one described set: engine, client builds, pack, media, profile' (9 words); 'swap the whole set, blue to green and back' (8); 'every named media file checked by fingerprint' (7); 'this machine's program names, install commands and host rules' (9); 'a mismatch is reported before the show' (7)",
+     "why": "'client builds' said as tablet and phone apps, 'host rules' as settings; long labels broken at six words."
+    },
+    {
+     "field": "standaloneLine",
+     "replaced": "'the supply chain is mostly hand work'; 'a pinned pack and a Pages publish'; 'a card copy per hardware scanner'; 'no build id on screen'; 'cached offline'; 'those bundles'; 'Pack channel stamp and build id'",
+     "why": "'supply chain', 'pinned', 'Pages', 'build id', 'cached' and 'bundles' are engineering words; said as installing, a fixed pack, a web publish, a memory card, a version on screen, working offline. 50 words."
+    }
+   ]
+  },
+  {
+   "id": "C16",
+   "shapeChange": "Before, the card fixed only the fakes and the skipped tests. Now each fact also gets one test from where it is decided to a screen, on an engine of its own, so no test touches the show.",
+   "atAShow": "Nothing shows at the show; this is why the other fifteen reached one. The small tests stayed green while Team Details showed the wrong score, because their stand-in had a field the real part lacks. A delete step in a full run-through test had been silently skipped, because it looked for a button under a name the page never used. Blue's last full run skipped 62 tests, and group completion has no test on real content.",
+   "whyItHappens": "Fakes are written by hand, and nothing compares them to the real parts they stand for. A test step that finds nothing on the page, or checks only that no error appeared, passes. Every test engine runs with a switch that changes what Reset System does, so no test runs the reset the show runs.",
+   "designTerms": "Joins and proofs should own every proof: each part's interface is its test surface, a fake is an adapter checked against the real part at the same seam, and one proof per fact runs from authority to screen on its own Engine instance. Today fakes are checked against nothing and no test crosses that path.",
+   "after": {
+    "note": "Joins and proofs checks every fake against the real part, prints every skip, and runs one proof per fact from authority to screen, under its own Engine instance, with Equipment stand-ins and the show's own reset path. Or: an interface per program, leaving stand-ins unbuilt.",
+    "mermaid": "flowchart LR\n  joins[\"Joins and proofs<br/>every interface is its test surface\"]\n  real[\"Real part<br/>declares its surface\"]\n  fake[\"Fake<br/>an adapter at the same seam,<br/>checked against the real part\"]\n  path[\"One proof per fact<br/>from its authority to a screen,<br/>on the test rig\"]\n  inst[\"Engine instance<br/>each run under its own names\"]\n  stand[\"Equipment stand-ins<br/>real second adapters\"]\n  life[\"Lifecycle<br/>one reset path,<br/>tested as the show runs it\"]\n  packs[\"Two packs<br/>the same suite on each\"]\n  skips[\"Skips<br/>listed loudly, never counted green\"]\n  joins -->|\"checks\"| fake\n  real -->|\"surface\"| fake\n  joins -->|\"runs\"| path\n  path -->|\"on\"| inst\n  path -->|\"with\"| stand\n  path -->|\"through\"| life\n  joins -->|\"runs on\"| packs\n  joins -->|\"prints\"| skips\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class joins owner;"
+   },
+   "standaloneLine": "In a standalone game: tests alone check the tablet's rules, and the one test comparing tablet and engine scores skips its group case on the real pack. The phone's pack test passes on a missing file; the hardware scanner's start-up has none. In the candidate one proof covers both.",
+   "log": [
+    {
+     "field": "shapeChange",
+     "replaced": "'The card's candidate fixed the fakes and the skips'; 'the card's second design'; 'run on a rig'; 'a reset is tested as the show runs it. The same suite runs on two packs. The test flag the card names goes with Lifecycle's one reset path'; the third design leaving the note; 'The design-terms line now names ... the standalone line adds ...'",
+     "why": "'rig', 'suite' and 'flag' are engineering words; the reset, the two packs and the alternative are in the note and diagram; the last sentences describe other strings. 39 words."
+    },
+    {
+     "field": "atAShow",
+     "replaced": "'Unit tests'; 'their fake facade had the field the real one lacks'; 'an end-to-end flow'; 'silently skipping on a selector that never matched'",
+     "why": "'unit', 'facade', 'end-to-end' and 'selector' are code words; said as the small tests, a stand-in with a field the real part lacks, a full run-through test, a button under a name the page never used."
+    },
+    {
+     "field": "whyItHappens",
+     "replaced": "'the real classes'; 'Steps that find no element'; 'runs under a flag'; 'no layer runs the reset'",
+     "why": "'classes', 'element', 'flag' and 'layer' are code words; said as the real parts, finding nothing on the page, a switch, no test."
+    },
+    {
+     "field": "designTerms",
+     "replaced": "'checked against the class'; 'on an Engine instance of its own with Equipment stand-ins'; 'each fake is hand-written and checked against nothing; the seam leaks, and no test crosses one path from authority to screen'",
+     "why": "'class' said as the real part; the stand-ins stay in the note and diagram; shortened to 55 words."
+    },
+    {
+     "field": "after.note",
+     "replaced": "'The shape takes the card's first and second designs'; 'the class it stands for'; 'the reset path the show runs'; 'Equipment per program, leaving the rig's stand-ins hypothetical'",
+     "why": "The owner cannot see the card's numbered designs; 'class', 'rig' and 'hypothetical' said as the real part and stand-ins left unbuilt. Fits 45 words."
+    },
+    {
+     "field": "after.mermaid",
+     "replaced": "'Real class'; 'an adapter at the same seam, checked against the class' (10 words); 'from its authority to a screen, on the rig' (9); 'one reset path, tested as the show runs it' (8)",
+     "why": "'class' said as the real part, 'rig' as the test rig; long labels broken at six words."
+    },
+    {
+     "field": "standaloneLine",
+     "replaced": "'the one tablet-to-engine score test'; 'the hardware scanner's boot'; 'Under candidate A ... under B a proof feeds both the same inputs'",
+     "why": "The hyphen chain and 'boot' said in words; the other way (a test feeding both the same inputs) is cut as a repeat of the page's rules table, to fit 50 words."
+    }
+   ]
+  }
+ ]
+}

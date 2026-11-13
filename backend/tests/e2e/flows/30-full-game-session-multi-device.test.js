@@ -107,11 +107,19 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     // asserts on ALN cue ids/behavior, which live in the ALN pack since the
     // cutover. An explicit pin wins over E2E_PACK_PATH by design, so the
     // flow tests identical ALN cue behavior on BOTH Tier L legs.
+    //
+    // ALN-PROFILE-pinned too (slice 4 S5, Rm7: "an unpinned profile silently
+    // mixes with an injected pack"). Block 2 T1a made that hazard bite: the
+    // toy-dormant leg sets E2E_PROFILE_PATH to a venue with no lighting rig,
+    // so `e2e-compound-test` — an ALN cue that needs lighting — was silenced
+    // and its fire refused. A flow that pins the ALN pack must pin the ALN
+    // VENUE with it, or it is testing a room the pack was not written for.
     orchestratorInfo = await startOrchestrator({
       https: true,
       // Dynamic port assignment (port=0) prevents conflicts when running parallel workers
       timeout: 30000,
       packPath: require('path').resolve(__dirname, '../../../../ALN-TokenData'),
+      profilePath: require('path').resolve(__dirname, '../../../config/profiles/aln-full-kit.json'),
     });
 
     // Select test tokens dynamically from production database
