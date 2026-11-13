@@ -1,7 +1,8 @@
 # Which device decides what (design topic, opened 2026-11-13)
 
-Status: with the owner. Three decisions asked on 2026-11-13. The topic
-is settled when the owner has made them.
+Status: settled on 2026-11-13. The owner made all three decisions as
+put ("yes to all 3"). Decision notes: `docs/adr/0007` and `0008`, and
+an amendment to `0003`.
 
 This is the third design topic in the order the owner confirmed, and it
 is the proposal's change 2 ("a standalone game runs the same game code
@@ -185,6 +186,26 @@ Put as following from the rulings, with no decision asked:
   players' scans in a standalone record, that is new work: a way for a
   player scanner to pass its scans to a GM scanner.
 
-## The owner's answers
+## The owner's answers (2026-11-13)
 
-(none yet)
+Word for word:
+
+> yes to all 3
+
+All three decisions are made as put, with every part of each. The four
+statements (a to d) drew no objection.
+
+What this confirms from the older record: the three readings of "No
+technical failure stops a game" (a device going down includes the
+backend's computer; the game stays the networked game it was declared
+as and the devices' records are joined afterwards; no second computer
+is required, and a game that needs the backend ends in an orderly way),
+and both readings of "Standalone games: declared, never mixed" as
+reworded here (the installation says whether there is a backend and the
+pack says whether its game can do without one; the GM no longer picks).
+
+## Status: settled (2026-11-13)
+
+Nothing more is needed from the owner on this topic. What is left is
+the engineering under "For the agent's own engineering" above, and the
+decision notes `docs/adr/0007` and `0008`.

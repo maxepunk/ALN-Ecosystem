@@ -434,6 +434,85 @@ rest is engineering detail. The working note is
 
 Made 2026-11-13.
 
+**A GM scanner with no connection shows the result at once, not confirmed**
+
+When a GM scanner cannot reach the backend, it works out the result
+itself and shows it at once, marked "not confirmed". It stores the scan
+and sends it when the connection returns. If the backend then refuses a
+scan, the GM scanner shows the GM which one and why. A result the
+backend has confirmed is never taken back. If two GMs take the same
+token, the scan that reached the backend first counts. Decision note:
+`docs/adr/0007`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Put as decision 1 of the topic "which device decides
+  what", against the other way (show nothing until the connection
+  returns). The owner: "yes to all 3". This answers the old site's
+  question "A GM tablet cut off from the engine".
+
+**When the backend's computer dies, the session goes on at the GM scanners**
+
+If the backend's computer dies during a session and does not come back,
+the session goes on at the GM scanners, each taking scans and showing
+its own part. Video, music, lights and the TV scoreboard stop. When a
+backend runs again (the same computer restarted, a spare, or the same
+computer after the session) each GM scanner hands over what it stored,
+and the scores and the session's record are completed. The engine never
+requires a spare computer, and a kit that brings one can move the
+session onto it. A game that cannot be played without the backend says
+so in its pack, and every GM scanner then tells its GM that the session
+cannot go on. Decision note: `docs/adr/0007`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Put as decision 2 of the same topic. The owner: "yes to
+  all 3". It confirms the three readings of "No technical failure stops
+  a game" and answers the old site's question "The show machine fails
+  mid-game".
+
+**A game with no backend: the installation says so, and every device works alone**
+
+The installation's settings say whether there is a backend, and every
+device gets that when it is added to the kit. The GM no longer chooses
+networked or standalone when the GM scanner starts. The pack says
+whether its game can be played without a backend. Every device works
+alone while the session runs. A GM scanner keeps its own part with the
+same rules as the backend; several GM scanners each show only their own
+part, and the parts are put together afterwards. A production that
+wants shared scores during play brings a backend. The GM scanner keeps
+the session's record and the GM can save it off the device at the end.
+It holds what the GMs scanned and not what players looked at. Decision
+note: `docs/adr/0008`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Put as decision 3 of the same topic. The owner: "yes to
+  all 3". It settles where the fact "this game is standalone" is held,
+  which "Standalone games: declared, never mixed" had left to the
+  design, and answers the old site's question "Which standalone games
+  the engine must run".
+
+**Which device decides what is settled**
+
+The three decisions above were all the agent needed from the owner on
+this topic. Four things were stated beside them and drew no objection:
+the GM scanner runs all of the game's rules, the same code as the
+backend (this settles the choice the proposal showed under change 2);
+in a standalone game the GM scanner runs the game clock and can show
+the scoreboard, exposed evidence included, and a video token on a
+player scanner shows its picture and a line saying the video cannot be
+played here; scans a GM scanner stored during a session count for that
+session even when they arrive after it ended (`docs/adr/0003`,
+amended); in a networked game a GM scanner with no connection cannot
+pause or end the session or run the room. The working note is
+`design/2026-11-13-which-device-decides-what.md`.
+
+Made 2026-11-13.
+
 **What keeps the backend's programs running is already ruled**
 
 The backend starts and supervises its own programs, through one
@@ -844,6 +923,14 @@ History:
   game-independent software, the GM scanner and the player scanners
   included. The summary now says "no show machine". The owner's words
   are unchanged.
+- 2026-11-13. The owner decided where the fact is held and who decides
+  ("yes to all 3"; see "A game with no backend: the installation says
+  so, and every device works alone" under "Since the proposal"). The
+  installation's settings say whether there is a backend, the pack says
+  whether its game can be played without one, and the GM no longer
+  picks on the GM scanner. The reading below, which kept the GM's pick,
+  is replaced. That a standalone game may have no GM scanner at all was
+  already settled by the kit model of 2026-06-11.
 - 2026-11-10. The reading on who decides which way tonight's game runs
   was added, to be confirmed. Version 10 carried it only as a detail of
   where the fact is held. A third reading that bears on this decision is
@@ -957,6 +1044,11 @@ History:
   confirmed: that a GM tablet which loses the engine keeps taking scans,
   and that the design must say how a networked game carries on if the
   show machine itself fails.
+- 2026-11-13. The owner made the decisions these readings waited for
+  ("yes to all 3"; see "A GM scanner with no connection shows the
+  result at once, not confirmed" and "When the backend's computer dies,
+  the session goes on at the GM scanners" under "Since the proposal").
+  All three readings are confirmed.
 - 2026-11-10. The independent review the owner asked for changed the
   readings. The first reading of 2026-11-02, that a GM tablet which
   loses the engine keeps taking scans, left the list. It is one of the

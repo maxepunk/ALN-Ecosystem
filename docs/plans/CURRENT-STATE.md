@@ -66,8 +66,8 @@ before acting.
   the record, built with the GM scanner's redesign (ROADMAP row 8.17).
   Stated to the owner and not objected to: corrections stay visible in
   the record. The owner also confirmed how ALN runs while this work is
-  done and the order of work. The page is version 23 (version id
-  1794552211-8823; source
+  done and the order of work. The page is version 24 (version id
+  1794553239-8c75; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
   and its last box lists what is decided and what is next. **Two rules
   from the owner on 2026-11-13.** (1) Never ask the owner whether a
@@ -76,29 +76,34 @@ before acting.
   settled when those are made. (2) No bare step or round numbers: name
   each piece of work by what it does, and question rounds go by date
   (the owner's rule of 2026-11-01, "Name each step by what it does").
-  **With the owner now: the design of which device decides what**
-  (the proposal's change 2: a GM scanner that loses its connection, a
-  backend computer that dies during a session, a game with no backend
-  at all). Three decisions were put on 2026-11-13, each with a
-  recommendation, and the topic is settled when they are made: (1) a
-  GM scanner with no connection works out the result itself and shows
-  it at once, marked "not confirmed", and sends the scan when the
-  connection returns; (2) if the backend's computer dies and does not
-  come back, the session goes on at the GM scanners, the room's video,
-  music, lights and TV stop, and scores and the record are completed
-  when a backend runs again, with no spare computer required; (3) for a
+  **The design of which device decides what is settled too
+  (2026-11-13; the owner: "yes to all 3").** (1) A GM scanner with no
+  connection works out the result itself and shows it at once, marked
+  "not confirmed", and sends the scan when the connection returns; a
+  result the backend has confirmed is never taken back; of two scans of
+  one token, the first to reach the backend counts. (2) If the
+  backend's computer dies and does not come back, the session goes on
+  at the GM scanners, the room's video, music, lights and TV stop, and
+  the scores and the record are completed when a backend runs again;
+  no spare computer is required (`docs/adr/0007` for both). (3) For a
   game with no backend, the installation's settings say so and the GM
   no longer picks at start-up, every device works alone during play,
-  and the GM scanner keeps the record and can save it. Four statements
-  went with them (the GM scanner runs all of the game's rules; clock,
-  scoreboard and video tokens in a standalone game; GM scans stored
-  during a session count even when they arrive after its end; grey
-  controls with no connection). The working note has the rulings
-  already made (never ask them again), what happens today, the
-  decisions as put and where each of the old site's questions went:
+  and the GM scanner keeps the record and can save it (`docs/adr/0008`).
+  Stated and not objected to: the GM scanner runs all of the game's
+  rules, the same code as the backend; scans a GM scanner stored during
+  a session count even when they arrive after its end (`docs/adr/0003`,
+  amended). The working note:
   `docs/plans/architecture-pass/design/2026-11-13-which-device-decides-what.md`.
-  When the owner answers, record the answers there word for word and
-  follow the list below. After this topic: how the engine is extended.
+  **Next: how the engine is extended** (the proposal's changes 6, 4 and
+  7: a known place for a new kind of rule, equipment or screen; one
+  pattern for video, music, sound and lights; the backend assembled in
+  one place). Before asking anything, look up what is ruled: the
+  rulings table at the top of
+  `docs/plans/2026-09-12-block2-hardening-plan.md`, the decisions of
+  2026-06-10 (`docs/decisions/2026-06-10-tier-e-wave2-semantics.md`),
+  `requirements/2026-11-01-extension-cases.json`, and the notes in
+  `rework/2026-11-12-owner-comments-on-proposal.md` on changes 4, 6 and
+  7. After that topic: how today's code moves to the new design.
   The questions as asked, the
   recommendations, the owner's answers word for word and the facts
   looked up for the first topic are in

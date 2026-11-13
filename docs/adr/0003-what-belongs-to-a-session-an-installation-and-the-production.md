@@ -22,10 +22,11 @@ session, so nothing prevents more later (`docs/plans/ROADMAP.md`
 section 2.2).
 
 After a session ends, notes, photos and the accusation can be added to
-it until the next session is created. Player scans that a scanner
-stored and uploads late go into the session they were made in, marked
-late, and never into the next group's. Nothing else is accepted after
-the end.
+it until the next session is created. Scans that a scanner stored and
+hands over late go into the session they were made in, marked late, and
+never into the next group's. That holds for player scans and, since
+`0007` (owner, 2026-11-13), for scans a GM scanner stored while it
+could not reach the backend. Nothing else is accepted after the end.
 
 Why. Before this, the devices did not agree on where one session ended
 and the next began, a scanner's stored scans could land in the next

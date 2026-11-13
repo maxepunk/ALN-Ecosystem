@@ -98,6 +98,10 @@ you intend.
      work alone, and no game mixes the two modes (owner, 2026-10-31;
      the architecture pass's decision "Standalone games: declared,
      never mixed", `docs/plans/architecture-pass/DECISIONS.md`).
+     Since 2026-11-13 (owner, `docs/adr/0008`): the installation's
+     settings say whether there is a backend, every device gets that
+     when it is added to the kit, and the GM no longer chooses when
+     the GM scanner starts.
   3. *Display mode.* Which picture the venue display shows: the idle
      loop, the scoreboard, or a video. The orchestrator owns this
      state machine (`displayControlService`) and announces changes
@@ -415,6 +419,11 @@ architecture pass's question.
   engine's cached picture of what VLC is doing. Avoid "mirror".
 - **Delivery path.** The route a runtime fact takes from its authority
   to a screen.
+- **Not confirmed.** A result a GM scanner worked out itself while it
+  could not reach the backend, shown to the GM at once with that mark.
+  The backend decides it when the scanner hands the scan over. A
+  result the backend has confirmed is never taken back (owner,
+  2026-11-13; `docs/adr/0007`). (Added 2026-11-13.)
 - **Session record.** The ordered list of everything that happened in
   one game session. It only grows: a correction is a new line, never a
   change to an old one (owner, 2026-11-13; `docs/adr/0001`). It holds

@@ -319,7 +319,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
       <div><dt>Later work it allows</dt><dd>Games for places where a network is not feasible, or where it is simpler to bring only scanners. A new rule is written once and works in both.</dd></div>
       <div><dt>What it costs</dt><dd>That code has to run in two places from the start: in the backend, and inside the GM scanner's web page. The two are in separate repositories today, so the shared code needs one place both can load it from.</dd></div>
     </dl>
-    <p class="choice"><b>A choice inside this one.</b> The GM scanner can run all of that code, which I recommend. Or it can share only the scoring calculations and keep its own code for the rest. Or it can keep its own copy, with more tests comparing the two. Sharing only the calculations would leave most of the duplication, because most of the sixteen duplicated rules are not calculations. They cover things like when a scan is allowed and where one session ends.</p>
+    <p class="choice"><b>Decided on 13 November.</b> The GM scanner runs all of the game's rules, as the same code the backend runs. It follows from three decisions you made that day. A GM scanner with no connection works out a result itself and shows it marked "not confirmed". If the backend's computer dies, the session goes on at the GM scanners. And in a game with no backend, the GM scanner keeps the session's record. The alternatives were to share only the scoring calculations, or to keep a separate copy with more tests comparing the two.</p>
     <details class="files"><summary>Where this is in the code</summary><ul>
       <li>ALNScanner/src/core/storage/LocalStorage.js (the GM scanner's own copy; :302 accepts scans unless paused), core/scoring.js, core/modeSemantics.js</li>
       <li>backend/src/services/transactionService.js (:157 refuses scans unless the session is active), backend/src/gameRules/ (the backend's copy)</li>
@@ -621,12 +621,14 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <li>After the cutover an iPhone and an Android phone scan a token the same way. The player holds the phone to the token, and the phone opens the token's web link. So the link is written first on the tag and the token's id second. The tags are rewritten once, after the cutover.</li>
   </ul>
   <p>Nothing more is needed from you on this.</p>
-  <p><b>Now: which device decides what.</b> This covers a GM scanner that loses its connection, a backend computer that dies during a session, and a game with no backend at all. You have already ruled that a technical failure must never stop a game, and that a game can be standalone but never a mix of the two. I need three decisions from you. Each is in the chat of 13 November with my recommendation, which is what the lines below say:</p>
+  <p><b>Which device decides what: settled.</b> This covered a GM scanner that loses its connection, a backend computer that dies during a session, and a game with no backend at all. You made these three decisions on 13 November:</p>
   <ul class="plain">
     <li><b>A GM scanner loses its connection.</b> It works out the result itself and shows it at once, marked "not confirmed". It sends the scan when the connection returns, and shows the GM any scan the backend then refuses.</li>
     <li><b>The backend's computer dies during a session and does not come back.</b> The session goes on at the GM scanners. Video, music, lights and the TV scoreboard stop. The scores and the session's record are completed when a backend runs again. The engine never requires a spare computer.</li>
     <li><b>A game with no backend at all.</b> The installation's settings say there is no backend, and the GM no longer chooses when the GM scanner starts. Every device works alone while the session runs. The GM scanner keeps the session's record, and the GM can save it at the end.</li>
   </ul>
+  <p>Nothing more is needed from you on this. Scans a GM scanner stored during a session count for that session even when they arrive after it ended.</p>
+  <p><b>Now: how the engine is extended.</b> This is changes 6, 4 and 7: a known place in the code for a new kind of rule, equipment or screen, one pattern for video, music, sound and lights, and one place where the backend is put together. I am reading what you have already ruled on these before I ask you anything.</p>
 </section>
 
 <footer class="prose">
