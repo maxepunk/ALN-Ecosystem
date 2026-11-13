@@ -561,3 +561,101 @@ rewrite is not a cost of either side.
   opens the page by touching a token, on iPhone and Android alike)
   stays true on iPhone only for ALN. On Android the player opens the
   page first.
+
+## The owner's answers on the last three decisions (2026-11-13)
+
+Word for word:
+
+> 1 - no, let's stick with the decision that AFTER the cutover, iphone
+> and android paths to scan a token should be the same. That seems like
+> the better long-term choice, does it not?
+> 2 - yes to credentials
+> 3 - yes to OTA updates for hardware scanner
+
+**The tag: the link is written first, after the cutover.** The owner
+kept the rule of 11 June as written. The agent's recommendation (ALN
+keeps the id first, Android players open the page before scanning,
+each production chooses the order) is withdrawn. Asked "does it not?",
+the agent answered yes, for four reasons: one instruction for every
+player (hold your phone to a token); one way in to design, build and
+test, where today there are two; it rests on what every phone does
+with a tag, while reading tags from inside a page works in Chrome only
+and is a draft, not a standard; and both costs can be designed away.
+The agent had weighed the hardware scanner's firmware change too
+heavily.
+
+What follows, all of it the agent's engineering unless marked:
+
+- One layout: the web link first, the token's id as text second. The
+  tag-writing tool writes that and checks it.
+- The link names the production and has no port number. It must be
+  short enough that the hardware scanner still gets the id in one
+  read. Arithmetic from the captured tag's layout, not yet measured on
+  a scanner: one read returns at most 60 bytes of the tag (pages 3 to
+  17); reading the id from the text record needs 18 bytes plus the
+  link plus the id, so the link after `https://` may be 36 characters
+  with a 6-character id (`play.aboutlastnightgame.com/t/mar004` is
+  exactly 36). Reading the id from the end of the link instead needs
+  11 bytes plus the link, which allows 49 characters. Decide which at
+  build time; the tag-writing tool refuses a tag that breaks the limit.
+- The new hardware-scanner firmware reads a tag written either way.
+  Then green works with today's tags, the scanners are flashed first,
+  and the tags are rewritten after the cutover with no day on which
+  everything must change at once. Today's firmware reads only a tag
+  with the id first, so no tag is rewritten while blue runs ALN.
+- The GM scanner keeps reading tags whenever it is on screen, so a
+  token that touches a GM's device goes to the GM scanner and the
+  phone does not open the link. The player scanner page, opened on a
+  device that holds a staff credential, records no player scan. (Both
+  pages are served under the same name, so the page can tell.)
+- The player scanner page is built for a fresh page load at every scan,
+  on both phones. Reading tags from inside the page is no longer the
+  way in on Android. Stated to the owner; if each tap opens a new tab
+  on Android (the helper's reading of Chrome's code) and that proves a
+  nuisance, reading inside the page can come back as an extra, never as
+  the way in.
+- The check on real phones: one spare tag written link first with the
+  real name, one iPhone, one Android phone. It belongs at the start of
+  the work on the kit's DNS and certificate (roadmap row 8.19), before
+  any tag is rewritten.
+- To raise with the owner when the kit's DNS work is designed, not
+  before: what a player sees who taps a token before joining the kit's
+  Wi-Fi. With the public name pointing at the kit's own address (the
+  9 July decision) the browser shows an error. The public name could
+  instead answer with a page that says to join the Wi-Fi.
+
+**Credentials: yes.** Every device shows the backend a credential
+before it can read or send anything. Staff log in. The kit's own
+scanners and screens get theirs when they are added to the kit (this
+answers roadmap row 8.11: yes). A player's own phone gets one on its
+first visit, with nothing for the player to do, and it lasts for one
+session. A device with none can read nothing and send nothing.
+
+**Firmware over the air for the hardware scanner: yes.** The cutover's
+USB flash gives each scanner the layout with room for two copies. After
+that a scanner fetches new firmware from the backend when it starts up,
+never during a session.
+
+The four statements put beside the tag decision (a to d) drew no
+objection. Statement a's last sentence (ALN's order can still change up
+to the rewrite) no longer applies. Statement c stands: no code that
+cannot be guessed for ALN; the place for one is in the definition.
+
+## Status: settled (2026-11-13)
+
+Every decision the agent needed from the owner on the messages between
+the backend and the devices, and on the files, is made:
+
+1. What a player sees after a scan, the same on the player scanner
+   page and the hardware scanner.
+2. What a device that is out of date does.
+3. The pack says what each kind of device is sent.
+4. Every device shows a credential, in three kinds.
+5. The hardware scanner takes its firmware over the air.
+6. After the cutover both phones scan a token the same way, and the
+   link is written first on the tag.
+
+Decision notes: `docs/adr/0004`, `0005`, `0006`. What is left is
+engineering detail: the exact list of messages and their fields, the
+form of the link, how a credential is stored on each device, the
+firmware's update steps.

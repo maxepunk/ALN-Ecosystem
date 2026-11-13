@@ -26,38 +26,30 @@ before acting.
   (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
 - **Now: the design of the messages between the backend and the
-  devices, and the files, is with the owner.** Made on 2026-11-13: what
-  a player sees after a scan, the same on the phone page and the
-  hardware scanner; what a device that is out of date does; the pack
-  says what each kind of device is sent (for ALN a player scanner gets
-  the picture, sound and video name only); a GM sees the result of a
-  scan when the backend replies; a tag keeps what it holds, though its
-  layout may change for iPhones; token ids are lowercase letters,
-  digits and underscores. **Waiting for the owner on one decision,**
-  put again in full on 2026-11-13: every device presents a credential,
-  in three kinds (staff log in; the kit's own scanners and screens are
-  enrolled by the venue technician; a player's own phone gets one
-  silently on its first visit, with no login, lasting one session). The
-  first time, the agent had waved players' own phones off as "later
-  work". The owner: design the architecture to enable them now. What
-  the owner had already decided about phones is gathered in the note
-  below, under "Players' own phones". **Both pieces of research are in**
-  and committed, with the claims the agent checked named in each:
-  `docs/plans/2026-11-13-hardware-scanner-ota-research.md` (updates over
-  the air are possible after one more USB flash per scanner, to a layout
-  with room for two copies of the firmware) and
-  `docs/plans/2026-11-13-phone-tap-to-web-tag-research.md` (an iPhone
-  opens the address on a tag wherever it is; an Android phone looks
-  only at the first record, which is our token id, so a tap alone opens
-  nothing; the owner added that an Android phone opens the phone page
-  first and scans inside it, so today's layout serves both). **Open
-  with the owner, three decisions:** credentials in three kinds (above);
-  whether the new engine's hardware scanner takes its updates over the
-  air (recommended: yes; the cutover's USB flash installs the two-copy
-  layout); and the tag (recommended: every reader accepts the id and
-  the address in either order; ALN keeps id first; the address gets the
-  real name with the kit's DNS work). All of it, with the rulings already made, what happens
-  today and the lines checked, is in
+  devices, and the files, is settled (2026-11-13).** All by the owner:
+  what a player sees after a scan, the same on the player scanner page
+  and the hardware scanner; what a device that is out of date does; the
+  pack says what each kind of device is sent (for ALN a player scanner
+  gets the picture, sound and video name only); a GM sees the result of
+  a scan when the backend replies; token ids are lowercase letters,
+  digits and underscores; every device shows a credential, in three
+  kinds (`docs/adr/0004`; this answers roadmap row 8.11: yes); the
+  hardware scanner takes its firmware over the air after the cutover
+  (`docs/adr/0006`); and after the cutover an iPhone and an Android
+  phone scan a token the same way, so a tag holds the web link first
+  and the token's id second (`docs/adr/0005`). On the tag the agent had
+  recommended keeping the id first for ALN. The owner ruled the other
+  way ("let's stick with the decision that AFTER the cutover, iphone
+  and android paths to scan a token should be the same") and the agent
+  agreed. What follows for the engineering is at the end of the working
+  note: a short link, firmware that reads a tag written either way so
+  that the tags are rewritten after the cutover, the GM scanner reading
+  tags whenever it is on screen, a fresh page load at every scan, and
+  the check on real phones at the start of the kit's DNS work. Earlier
+  in this topic the agent had waved players' own phones off as "later
+  work"; the owner: design the architecture to enable them now. The
+  working note, with the owner's answers word for word, the two
+  research files and what the owner had already decided about phones:
   `docs/plans/architecture-pass/design/2026-11-13-the-messages-and-files.md`.
   The design of how the backend keeps a session's data is settled. Decided on 2026-11-13,
   all by the owner: the session record only grows (`docs/adr/0001`); it

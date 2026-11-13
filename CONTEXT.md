@@ -264,6 +264,13 @@ you intend.
   the video queue also invents token-like ids from video file names
   when a video has no owning token, so ids seen in `video:*` events
   may not exist in `tokens.json` (slice-4 census §2.1).
+- **Tag.** The NFC tag inside a token. After the cutover it holds a
+  web link first and the token's id as text second (owner, 2026-11-13,
+  `docs/adr/0005`). The link names the production and opens that token
+  in the player scanner page. A phone, iPhone or Android, opens the
+  link by itself when the player holds it to the token. The hardware
+  scanner and the GM scanner read the id. Today's tags hold the id
+  first.
 - **Strings sidecar.** `strings.json`: the pack's display wording,
   covering award messages, screen labels, and terminology. The schema
   fixes its file name.
@@ -597,7 +604,11 @@ the GM scanner, and a game's own post-show tooling)
   credentials. *Device*: machines, with credentials auto-issued and
   invisible, never a login. *Session*: player phones, pseudonymous.
   Players and scanners never get user-facing logins. This is a
-  standing constraint (ROADMAP §2.1).
+  standing constraint (ROADMAP §2.1). Since 2026-11-13
+  (owner, `docs/adr/0004`): every device must show a credential before
+  it can read or send anything; a kit machine gets its credential when
+  it is added to the kit; a player's phone gets one on its first visit
+  and it lasts for one session.
 - **The floor.** Three functions are always operator-only: session
   lifecycle, show control, and score intervention. A pack may assign
   any other function to lower tiers (owner-fixed, 2026-07-09). Since

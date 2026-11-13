@@ -331,19 +331,38 @@ History:
 
 **What a tag holds, and token ids**
 
-A tag keeps what it holds today: the token id as text, then a web
-address. Its layout may need adjusting so that players' own phones work
-on iPhone. A token id is lowercase letters, digits and underscores, and
-every device matches it the same way.
+After the cutover a tag holds a web link first and the token's id as
+text second. The link opens that token in the player scanner page. An
+iPhone and an Android phone scan a token the same way: the player holds
+the phone to the token and the phone itself opens the link. The
+hardware scanner and the GM scanner read the id. The new engine's
+scanners also read a tag with the id first, so today's tags work until
+they are rewritten after the cutover. A token id is lowercase letters,
+digits and underscores, and every device matches it the same way.
+Decision note: `docs/adr/0005`.
 
-Confirmed 2026-11-13.
+Made 2026-11-13.
 
 History:
-- 2026-11-13. Stated by the agent; the owner: "yes, keep in mind this
-  may need to be adjusted to make phone scanners iphone compatible" and
-  "yes". Research on what iPhones and Android phones need from a tag:
-  `docs/plans/2026-11-13-phone-tap-to-web-tag-research.md`. The tag's
-  layout comes back to the owner as one decision when that is in.
+- 2026-11-13. Stated by the agent as "a tag keeps what it holds
+  today"; the owner: "yes, keep in mind this may need to be adjusted to
+  make phone scanners iphone compatible" and "yes". Research on what
+  iPhones and Android phones need from a tag:
+  `docs/plans/2026-11-13-phone-tap-to-web-tag-research.md`.
+- 2026-11-13. The research said the layout already works for an iPhone
+  and that an Android phone opens nothing on a tap. The owner: "an
+  android phone using the phone scanner currently first accesses the
+  player scanner being served by the backend before scanning a tag."
+- 2026-11-13. The agent recommended that ALN keep the id first, with
+  Android players opening the page before scanning, and that each
+  production choose the order. The owner asked for it "in clear, plain
+  english", then ruled: "no, let's stick with the decision that AFTER
+  the cutover, iphone and android paths to scan a token should be the
+  same. That seems like the better long-term choice, does it not?" The
+  agent agreed and withdrew the recommendation: one instruction for
+  every player, one way in to build and test, it rests on what every
+  phone does with a tag, and both costs (the hardware scanner's read, a
+  token touching a GM's device) can be designed away.
 
 **Players' own phones are designed in, not left for later**
 
@@ -366,6 +385,54 @@ History:
   owner: "We need to make sure we design the architecture to enable
   this and can't handwave it as a vague 'later' consideration." The
   question about credentials was put again in full.
+
+**Every device shows a credential**
+
+Every device shows the backend a credential before it can read or send
+anything. Staff log in. The kit's own scanners and screens get theirs
+when they are added to the kit. A player's own phone gets one on its
+first visit, with nothing for the player to do, and it lasts for one
+session. A device with none can read nothing and send nothing.
+Decision note: `docs/adr/0004`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Put in full after the owner's "design the architecture
+  to enable this", and again beside the other two open decisions. The
+  owner: "2 - yes to credentials". This answers roadmap row 8.11
+  (whether the kit's own machines get a credential nobody sees): yes.
+
+**The hardware scanner takes its firmware over the air**
+
+After the cutover a hardware scanner fetches new firmware from the
+backend when it starts up, never during a session. The cutover's flash
+by USB gives each scanner a layout with room for two copies of the
+firmware, and it is the last flash that needs a cable. Decision note:
+`docs/adr/0006`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The owner: "we should also investigate whether it's
+  possible enable OTA firmware updates for the hardware scanner". The
+  research (`docs/plans/2026-11-13-hardware-scanner-ota-research.md`)
+  found it possible after one more flash by USB. Put with a
+  recommendation; the owner: "3 - yes to OTA updates for hardware
+  scanner".
+
+**The messages and the files are settled**
+
+Every decision the agent needed from the owner on the messages between
+the backend and the devices, and on the files, is made: what a player
+sees after a scan; what a device that is out of date does; the pack
+says what each kind of device is sent; every device shows a
+credential; the hardware scanner takes its firmware over the air; both
+phones scan a token the same way, with the link first on the tag. The
+rest is engineering detail. The working note is
+`design/2026-11-13-the-messages-and-files.md`.
+
+Made 2026-11-13.
 
 **What keeps the backend's programs running is already ruled**
 
