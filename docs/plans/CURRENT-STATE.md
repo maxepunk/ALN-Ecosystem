@@ -74,8 +74,8 @@ before acting.
   the record, built with the GM scanner's redesign (ROADMAP row 8.17).
   Stated to the owner and not objected to: corrections stay visible in
   the record. The owner also confirmed how ALN runs while this work is
-  done and the order of work. The page is version 21 (version id
-  1794542038-dacb; source
+  done and the order of work. The page is version 22 (version id
+  1794544757-16c5; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
   and its last box lists what is decided and what is next. **Two rules
   from the owner on 2026-11-13.** (1) Never ask the owner whether a

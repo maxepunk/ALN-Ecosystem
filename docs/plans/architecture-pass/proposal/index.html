@@ -618,7 +618,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
   <ul class="plain">
     <li><b>Credentials.</b> Every device shows the backend a credential before it can read or send anything. Staff log in. The kit's own scanners and screens get theirs when they are added to the kit. A player's own phone gets one on its first visit, with nothing for the player to do, and it lasts for one session.</li>
     <li><b>Firmware updates over the air for the hardware scanner.</b> They are possible. Each scanner needs one more flash by USB first, and the cutover does that flash anyway. After it, a scanner fetches new firmware from the backend when it starts up, and never during a session.</li>
-    <li><b>What a tag holds.</b> The token's id, and the web address of the phone page for that token. An iPhone opens the address when it touches a tag. An Android phone opens the phone page first and scans inside it, as it does today. Every reader in the engine finds the id wherever it sits on the tag, so each production chooses the order. ALN keeps the order it has.</li>
+    <li><b>What is written first on a tag.</b> A tag holds the token's id, and a web link that opens that token in the player scanner page on a phone. An iPhone uses the link. An Android phone uses the id, after the player has opened the page. I recommend that ALN's tags stay as they are, with the id first, and that the new engine reads a tag written either way, so another game can put the link first.</li>
   </ul>
   <p>With these three made, the messages and the files are settled. The next topic is which device decides what: networked, standalone, and a GM scanner that has lost its connection.</p>
 </section>
