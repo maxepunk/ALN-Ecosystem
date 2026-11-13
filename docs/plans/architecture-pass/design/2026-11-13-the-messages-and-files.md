@@ -436,16 +436,92 @@ Two findings for the agent's own engineering:
 - With credentials, a scan must come from a device the backend knows.
   That does not prove a tap either.
 
-Put to the owner on 2026-11-13, as one decision:
+Checked by the agent on 2026-11-13 before putting the decision:
 
-1. The definition says a tag holds the token's id as a text record and
-   a web address record, and every reader of the engine accepts them in
-   either order. Which order a production writes is its own choice.
-2. ALN keeps today's order, id first. An Android phone opens the page
-   first and scans inside it, as today. An iPhone taps. This amends P7
-   for Android.
-3. The address on a tag gets the production's real name when the kit's
-   DNS work is done. That is the one rewrite of the tags. The
-   definition leaves room for the address to carry a code that cannot
-   be guessed; no game needs it yet.
+- The principle of 11 June, word for word: "For personal devices, the
+  token to device channel is the OS handling NDEF URL records
+  (background tag reading), opening the web client with token context:
+  cross-platform (iOS+Android), zero-install. In-page NFC APIs (WebNFC)
+  are Android-only and rejected as the basis."
+  (`docs/decisions/2026-06-11-engine-design-notes-b4-b10.md:77-85`.)
+  With the id first on the tag this holds for an iPhone only.
+- The decision of 9 July: the kit brings its own network, and one
+  public name (the example was `play.aboutlastnightgame.com`) is set
+  once and answered on the kit's network by DNS on the backend's
+  computer (`docs/decisions/2026-07-09-kit-network-posture.md`). So the
+  name inside a tag's address belongs to the production, and any kit of
+  that production answers it.
+- The hardware scanner's own comment on why it reads once: one
+  exchange removes "the inter-exchange window where card RF-coupling
+  wobble can drop the card out of ACTIVE state (the dominant historical
+  failure mode)"
+  (`arduino-cyd-player-scanner/ALNScanner_v5/hal/RFIDReader.h:612-619`).
+- The GM scanner reads tags only between choosing an account and
+  finishing or cancelling it (`ALNScanner/src/app/domains/gameOps.js:118-145`
+  starts it, `:386-407` stop it). On the screen where the account is chosen no reading
+  runs, so the Android device handles a tag by itself there.
 
+What the order on the tag changes, and what it does not:
+
+- On an iPhone, nothing. Every scan is the phone opening the address.
+- On Android, only how the player first reaches the phone page: by
+  tapping a token (address first), or by a QR code or an address given
+  at the door (id first). After that the page reads the tags in both
+  cases, because a tap that the phone handles by itself opens a new
+  browser tab each time (the helper's reading of Chrome's code; not
+  tried on a phone).
+- Address first costs: new reading in the hardware scanner (a second
+  exchange unless the address is 36 characters or fewer after
+  `https://`, such as `play.aboutlastnightgame.com/t/mar004`); a token
+  held to a GM's Android device while no reading runs opens the phone
+  page and sends a player scan; a rewrite of every tag.
+
+Put to the owner on 2026-11-13, as one decision with three parts:
+
+1. A tag holds two things: the token's id, and the web address of the
+   phone page for that token. Every reader of the engine finds the id
+   wherever it sits on the tag. (The GM scanner, the phone page and the
+   check-in tool already do. The hardware scanner and the tag-writing
+   tool have to learn to.)
+2. Which of the two comes first is each production's choice, made when
+   its tags are written.
+3. ALN keeps the id first. An iPhone taps. An Android phone opens the
+   page first, as today. The principle of 11 June gets one sentence
+   added: on Android the page reads the tags once it is open, and the
+   order on the tag decides only how the player first gets there.
+
+Stated to the owner as following from this, with no decision asked:
+
+- The address inside a tag names the production, never one kit. Every
+  ALN tag is rewritten once, when the real name exists. ALN's order can
+  still be changed up to that rewrite.
+- The address is inside physical objects, so no update can change it.
+  It is made as short as it can be, and the backend keeps answering it
+  for as long as the tags exist.
+- A player's own phone is sent a memory when it scans that token, on
+  the kit's Wi-Fi with this session's credential. A scan from a phone
+  shows that the phone had the token's address. It does not show that
+  it touched the token: the address can be passed on, and ids such as
+  `mar004` can be guessed. The definition has a place for a code per
+  token that cannot be guessed, written into the address and checked by
+  the backend. It stops guessing and not passing on. It is not turned
+  on for ALN unless the owner says so; if it is wanted for ALN it goes
+  into the same rewrite.
+- Limits of the phones that a designer should know: on an iPhone every
+  scan is a notification to touch and a page loaded afresh; on any
+  phone, sound starts only after the player has touched the page once.
+
+For the agent's own engineering (the owner was told in one line):
+
+- Every scan from an iPhone is a fresh page load. The phone page must
+  start fast and keep what it needs in the phone's storage for that
+  site and on the backend, never only in the page's memory.
+- The address should have no port number, because a phone keeps what a
+  site stored under the name and the port together.
+- A kit's backend must not send the Strict-Transport-Security header,
+  and the preflight must show how many days the certificate has left.
+- The hardware scanner's new reading must leave an id-first tag on its
+  single exchange.
+- The checks on a phone (the research note's U1 to U3) belong with the
+  kit's DNS and certificate work, before the tags are rewritten. The
+  decision above does not wait for them.
