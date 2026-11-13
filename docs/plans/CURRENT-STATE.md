@@ -66,8 +66,8 @@ before acting.
   the record, built with the GM scanner's redesign (ROADMAP row 8.17).
   Stated to the owner and not objected to: corrections stay visible in
   the record. The owner also confirmed how ALN runs while this work is
-  done and the order of work. The page is version 25 (version id
-  1794553647-5f13; source
+  done and the order of work. The page is version 26 (version id
+  1794554524-0c17; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
   and its last box lists what is decided and what is next. **Two rules
   from the owner on 2026-11-13.** (1) Never ask the owner whether a
@@ -112,9 +112,18 @@ before acting.
   verbs included. Say "designer", never "maker". Do not treat today's
   code (one scoring formula, cues that only run the room) or the floor
   of 2026-07-09 (who may do staff actions) as limits on the game's own
-  rules. Before answering, the agent reads the owner's records on
-  rules, scoring and verbs itself, in full; the list is at the end of
-  the working note
+  rules. The agent then read the owner's records itself (the
+  roadmap's final outcome: "A game designer builds a complete game as a
+  pack: mechanics, economy, text, theme, show cues, content") and put
+  the decision again, corrected, on 2026-11-13: in the pack a designer
+  sets what a token carries, what an account is and holds, the verbs,
+  what each verb does (points by a formula, the token used up or not,
+  what is shown, what the room does) and what the game does by itself;
+  a developer adds a capability only when a rule needs one the engine
+  lacks; ALN's own rules move from the engine's code into ALN's pack;
+  the three staff-only actions stay, and a pack holds formulas, never
+  program code. **Waiting for the owner to confirm it.** The note, with
+  what the records say and what the correction changes in the design:
   `docs/plans/architecture-pass/design/2026-11-13-how-the-engine-is-extended.md`.
   **After that: how today's code moves to the new design.** A helper
   was started on 2026-11-13 to gather facts for it into

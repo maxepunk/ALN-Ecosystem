@@ -218,3 +218,121 @@ in full (design principles P1 to P6 and open questions O1 to O5 of
 contract; the second game's scoping; cases EX3, EX4, EX20, EX22; what
 `game.json` already declares). Then state back what a designer designs
 and where a developer comes in, and put only what is still open.
+
+## What the owner's records say about rules, scoring and verbs
+
+Read by the agent on 2026-11-13, after the correction.
+
+- The roadmap's final outcome (owner, 2026-08-29,
+  `docs/plans/ROADMAP.md` section 1): "A game designer builds a
+  complete game as a pack: mechanics, economy, text, theme, show cues,
+  content, inside the design tool. They never touch code or
+  configuration files." (The original has a dash where this has the
+  first colon.) "Tuning ALN's economy and tuning a contagion game's
+  spread rate are the same action, because both are just pack values."
+- The roadmap's section 7.2: the second game's new parts (two-tap
+  actions, hidden state that spreads, graph state and graph scoring,
+  the constellation screen) are "generic, pack-parameterized modules,
+  tunable in the mechanics editor like any other pack values", so the
+  owner "finishes its design at his own pace with no further software
+  engineering".
+- The phase 3 program, section 1 (ratified 2026-06-12): for games that
+  fit the engine's implemented model, a new game is a pack with no
+  engine change; a game in a new mechanical class ships a small set of
+  generic modules, and code written for one game trends toward zero.
+- The decision of 2026-11-02, "Two kinds of game extension": the
+  designer combines "existing in-engine capabilities to create
+  different gameplay verbs for the players to engage with or different
+  ways the game might actually respond to existing game triggers"; a
+  developer is for "a response that the game engine is not currently
+  capable of".
+- Cases EX3 (a third way to turn in a token: designer), EX10 (the
+  designer declares the two-tap action's rules), EX22 (the pack says
+  what a scan causes: designer). Case EX4 ("a new scoring model added
+  once: developer, then designer") says in its own status line that
+  placing a new way of scoring with the developer is "as the agent
+  running the pass reads it". The owner never said it.
+- Design principles P1 and P4 (2026-06-11): the scoring entity is a
+  ledger whose meaning the game defines; what each kind of device may
+  do, transacting included, is the pack's assignment.
+
+What the code does today, which the agent wrongly took as the model:
+
+- A pack's mode has a verb and picks named policies
+  (`ALN-TokenData/game.json`: `scoringPolicy: "standard"` or `"none"`,
+  `countsTowardGroups`, `displayBehavior`). The pack holds the scoring
+  tables. The formulas are in the engine's code and the pack names
+  them: `requires: ["scoring.tabular", "groupRules.all", ...]`,
+  `groupRules.completion.bonusFormula:
+  "multiplier-minus-one-times-base"`,
+  `backend/src/gameRules/scoring.js:51` (checked).
+- So a designer today can tune ALN's numbers and add a mode from ALN's
+  choices. A game scored another way needs a developer. That is the
+  limit the owner rejects.
+
+## Decision 1, corrected, as put again (2026-11-13)
+
+A designer designs the game's rules in the pack, in the config tool,
+with no developer:
+
+- what a token carries: the values on each token that the rules use,
+  under the designer's own names;
+- what an account is (a team, a player, a faction) and what it holds
+  (money, points, or more than one thing);
+- the verbs: each thing a player or a GM can do with a token, with its
+  name, who may do it and on which kind of device, and when it is
+  allowed;
+- what each verb does: how many points it gives or takes and from which
+  account, written as a formula over the token's values, tables and
+  what the account has done so far; whether the token is used up; what
+  is shown, and where; what the room does;
+- what the game does by itself: a bonus when a set is complete, a
+  change when a phase starts.
+
+Examples given to the owner, none of them ALN's: deposit (a player
+holds a token to a station, their faction gets its value, doubled in
+the last ten minutes); steal (a GM scans a token another faction has
+deposited, it moves, and the first faction loses half its value); a
+faction with one token of every colour gets 100 more.
+
+A developer comes in only when a rule needs something the engine has no
+capability for yet (the second game's graph score, state that spreads,
+a new kind of screen, audio in several rooms). The capability is added
+once, in the engine (`docs/adr/0009`), and every designer can use it.
+
+ALN's own rules (selling, exposing, value times type, the group bonus)
+stop being the engine's built-in model and become rules written in
+ALN's pack.
+
+Two things stay: the three staff-only actions (start and end a session,
+run the show by hand, change a score by hand); and a pack holds rules
+and formulas built in the config tool, never program code.
+
+## What the correction changes in the design (the agent's engineering)
+
+- The pack's rules become: the values a token carries, the accounts
+  and what they hold, verbs, what each verb does, and what the game
+  does by itself. Today's modes, scoring tables, group rules and
+  duplicate policy are ALN's instance of these.
+- A formula is data: a fixed set of operations (arithmetic, a table
+  look-up, a count or a sum over what the account has done, a
+  comparison). It always finishes, it is checked when the pack is
+  published, and the same code works it out in the backend and inside
+  the GM scanner (`docs/adr/0007`). It is not a script.
+- The engine's code holds the capabilities rules are built from: the
+  kinds of thing that can happen, the facts a rule can read, the
+  operations of a formula, the effects. A developer's addition is one
+  of these, in one file (`docs/adr/0009`).
+- An effect is either a change to the game, written as a line in the
+  session's record with the rule that caused it, or a request to the
+  room, handed to show control. In a game with no backend the requests
+  to the room are skipped.
+- Show control keeps its own "when this, do that" for the room (cues
+  on a video ending, on the clock). It never writes game lines.
+- The proposal's change 6 has to be redrawn: its "Today" says there is
+  one way of scoring, and its "Proposed" has a new way of scoring as a
+  file a developer writes.
+- Tests: ALN's rules written the new way must give the same scores as
+  today's code on recorded sessions, and the toy game must be scored a
+  different way, to prove the rules are not ALN's.
+
