@@ -171,7 +171,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
   <div class="words">
     <p class="words-title">Words used on this page</p>
     <p><b>Game.</b> A designed game, such as ALN. <b>Session.</b> One group of players playing it once.</p>
-    <p><b>Pack.</b> The data files that define one game: token data, rules, text and cues. A token is a physical object with an NFC tag. The tag holds only an id, which points to that token's entry in the pack.</p>
+    <p><b>Pack.</b> The data files that define one game: token data, rules, text and cues. A token is a physical object with an NFC tag. The tag holds a web link and the token's id. The id points to that token's entry in the pack.</p>
     <p><b>Kit.</b> The physical gear a production owns: token objects, scanners, GMs' phones or tablets, a router, and optionally a computer for the backend, a TV, speakers and lights.</p>
     <p><b>Installation.</b> A kit set up at one venue, for one night or for months. Many sessions are played on it. The installation profile is the file that describes it.</p>
     <p><b>Production.</b> One game being run by its makers, at one venue for a long stay or on tour.</p>
@@ -279,7 +279,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <dl class="gives">
       <div><dt>At a session</dt><dd>What a GM does on one GM scanner appears on every other GM scanner and on the scoreboard, including after a reconnect. Every tap gets a clear reply. Scans taken without a connection are added in the right order when it returns.</dd></div>
       <div><dt>Later work it allows</dt><dd>Staff notes and photos during a session. A full record of each session for the report. Players tapping tokens with their own phones. Actions made of several taps in a row, which the second game needs. Games that show different players different things.</dd></div>
-      <div><dt>What it costs</dt><dd>It is the biggest of the seven, because every scan and command passes through this code. And for the backend to check what a player scanner may do, each one would need a credential, issued automatically with no login. None has one today, and the roadmap leaves that decision to you.</dd></div>
+      <div><dt>What it costs</dt><dd>It is the biggest of the seven, because every scan and command passes through this code. And for the backend to check what a player scanner may do, each one needs a credential, issued automatically with no login. None has one today. You decided on 13 November that every device gets one.</dd></div>
     </dl>
     <p class="choice"><b>Decided on 13 November.</b> The record only grows. A delete is a new line saying "this transaction was deleted", and nothing changes or removes a line once it is written. The alternative was to keep editing the session's data in place, as today.</p>
     <details class="files"><summary>Where this is in the code</summary><ul>
@@ -354,7 +354,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <dl class="gives">
       <div><dt>At a session</dt><dd>After a software update, a scanner that does not match the backend is caught when it connects, before the session starts.</dd></div>
       <div><dt>Later work it allows</dt><dd>New kinds of device and screen. Software that other people write for the engine. Updating a pack at any time, while the engine's own software is updated only between events.</dd></div>
-      <div><dt>What it costs</dt><dd>The definition has to be written before the programs that use it, and each program's tests rewritten against it. The hardware scanners' firmware changes too, so they are re-flashed at the cutover. Nothing has to stay compatible with blue or its scanners, because the switch happens all at once.</dd></div>
+      <div><dt>What it costs</dt><dd>The definition has to be written before the programs that use it, and each program's tests rewritten against it. The hardware scanners' firmware changes too, so they are re-flashed at the cutover. After that flash they take their updates over the air. Nothing has to stay compatible with blue or its scanners, because the switch happens all at once.</dd></div>
     </dl>
     <details class="files"><summary>Where this is in the code</summary><ul>
       <li>backend/contracts/openapi.yaml, asyncapi.yaml (the two files)</li>
@@ -608,19 +608,25 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <li>Moving money between accounts becomes one action for the GM and one line in the record. It is built with the GM scanner's redesign.</li>
   </ul>
   <p>Nothing more is needed from you on this. What is left of it is engineering detail, such as how the record is stored on disk, and that is mine to work out.</p>
-  <p><b>Now: the messages between the backend and the devices, and the files.</b> Decided on 13 November:</p>
+  <p><b>The messages between the backend and the devices, and the files: settled.</b> You made these six decisions on 13 November:</p>
   <ul class="plain">
     <li>A player sees the same thing after a scan on the phone page and on the hardware scanner. The memory appears at once, and it still shows when there is no session, with a notice.</li>
     <li>A device says which pack and which version it has when it connects. A wrong pack fixes itself. A hardware scanner whose firmware is too old says so and shows red on the GM scanner.</li>
     <li>The pack says what each kind of device is sent. For ALN, a player scanner gets each token's picture, sound and video name.</li>
   </ul>
-  <p><b>Still needed from you on this: three decisions.</b> Each is in the chat of 13 November, with what I found and what I recommend. The two pieces of research are finished.</p>
+  <p>And these three, after the research on phones and on the hardware scanner's firmware:</p>
   <ul class="plain">
-    <li><b>Credentials.</b> Every device shows the backend a credential before it can read or send anything. Staff log in. The kit's own scanners and screens get theirs when they are added to the kit. A player's own phone gets one on its first visit, with nothing for the player to do, and it lasts for one session.</li>
-    <li><b>Firmware updates over the air for the hardware scanner.</b> They are possible. Each scanner needs one more flash by USB first, and the cutover does that flash anyway. After it, a scanner fetches new firmware from the backend when it starts up, and never during a session.</li>
-    <li><b>What is written first on a tag.</b> A tag holds the token's id, and a web link that opens that token in the player scanner page on a phone. An iPhone uses the link. An Android phone uses the id, after the player has opened the page. I recommend that ALN's tags stay as they are, with the id first, and that the new engine reads a tag written either way, so another game can put the link first.</li>
+    <li>Every device shows the backend a credential before it can read or send anything. Staff log in. The kit's own scanners and screens get theirs when they are added to the kit. A player's own phone gets one on its first visit, with nothing for the player to do, and it lasts for one session.</li>
+    <li>After the cutover a hardware scanner fetches new firmware from the backend when it starts up, and never during a session. The cutover's flash by USB is the last one that needs a cable.</li>
+    <li>After the cutover an iPhone and an Android phone scan a token the same way. The player holds the phone to the token, and the phone opens the token's web link. So the link is written first on the tag and the token's id second. The tags are rewritten once, after the cutover.</li>
   </ul>
-  <p>With these three made, the messages and the files are settled. The next topic is which device decides what: networked, standalone, and a GM scanner that has lost its connection.</p>
+  <p>Nothing more is needed from you on this.</p>
+  <p><b>Now: which device decides what.</b> This covers a GM scanner that loses its connection, a backend computer that dies during a session, and a game with no backend at all. You have already ruled that a technical failure must never stop a game, and that a game can be standalone but never a mix of the two. I need three decisions from you. Each is in the chat of 13 November with my recommendation, which is what the lines below say:</p>
+  <ul class="plain">
+    <li><b>A GM scanner loses its connection.</b> It works out the result itself and shows it at once, marked "not confirmed". It sends the scan when the connection returns, and shows the GM any scan the backend then refuses.</li>
+    <li><b>The backend's computer dies during a session and does not come back.</b> The session goes on at the GM scanners. Video, music, lights and the TV scoreboard stop. The scores and the session's record are completed when a backend runs again. The engine never requires a spare computer.</li>
+    <li><b>A game with no backend at all.</b> The installation's settings say there is no backend, and the GM no longer chooses when the GM scanner starts. Every device works alone while the session runs. The GM scanner keeps the session's record, and the GM can save it at the end.</li>
+  </ul>
 </section>
 
 <footer class="prose">
