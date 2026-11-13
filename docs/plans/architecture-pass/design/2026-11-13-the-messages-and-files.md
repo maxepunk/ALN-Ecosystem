@@ -203,6 +203,122 @@ invitation to object:
 - The config tool sends its changes as messages (the page's smaller
   change).
 
-## Answers
+## The owner's answers (2026-11-13)
 
-(None yet.)
+Word for word:
+
+> 1 - yes
+> 2 - What does it mean 'players' own phones are decided with that
+> later work'? We need to make sure we design the architecture to
+> enable this and can't handwave it as a vague 'later' consideration.
+> 3 - yes, and we should also investigate whether it's possible enable
+> OTA firmware updates for the hardware scanner.
+>
+> Comments on things that follow from my prior rulings:
+> 1 - ALN players are not intended to see those (except what gets baked
+> into the BMP files associated with each token--like for example, the
+> owner is baked into the token BMP that's displayed for each token),
+> but another game may want player scanners to get more information, so
+> we need to make sure we're determining what each device may show
+> based on the game the device is running.
+> 2 - yes
+> 3 - yes, keep in mind this may need to be adjusted to make phone
+> scanners iphone compatible.
+> 4 - yes
+
+So:
+
+- Decision 1 is made: what a player sees after a scan, the same on the
+  phone page and the hardware scanner, as recommended above.
+- Decision 3 is made: a device that is out of date, as recommended
+  above. The owner added: find out whether the hardware scanner can
+  take firmware updates over the air. Research started 2026-11-13:
+  `docs/plans/2026-11-13-hardware-scanner-ota-research.md` (written by
+  a helper; not there until it finishes).
+- Decision 2 (credentials) is NOT made. The agent had written "players'
+  own phones are decided with that later work". The owner: the
+  architecture must be designed to enable players' own phones now. See
+  the next section. The decision was put again in full the same day.
+- What each kind of device is sent is decided by the game it is
+  running, in the pack. For ALN, a player scanner gets each token's
+  picture (with what is baked into the picture, such as the owner's
+  name), its sound and its video name, and not the value, type, group,
+  owner or summary fields. Another game's pack may give a player
+  scanner more.
+- A GM sees the result of a scan when the backend replies: yes.
+- A tag keeps what it holds today: yes, and its layout may need
+  adjusting so that players' own phones work on iPhone. Research
+  started 2026-11-13 on what iPhones and Android phones need from a
+  tag: `docs/plans/2026-11-13-phone-tap-to-web-tag-research.md` (same
+  caveat). The tag layout comes back to the owner as one decision when
+  that is in.
+- A token id is lowercase letters, digits and underscores: yes.
+
+## Players' own phones: what the owner has already decided
+
+The agent should have carried this into the design and did not. None
+of it is new. Checked on 2026-11-13.
+
+- Players' phones join the kit's own Wi-Fi, never the venue's. The
+  backend answers a real name there (the example given was
+  `play.aboutlastnightgame.com`), through DNS that runs on the
+  backend's computer, with a real certificate. It works with no
+  internet. (`docs/decisions/2026-07-09-kit-network-posture.md`. The
+  DNS and certificate work is deferred to the players'-phones work:
+  `docs/plans/ROADMAP.md` row 8.19.)
+- A player's phone reaches the game by tapping a token: the phone's
+  own tag reader opens the web address on the tag. Nothing is
+  installed. Reading tags from inside a web page works only on Android
+  and is rejected as the basis. (Design principle P7,
+  `docs/decisions/2026-06-11-engine-design-notes-b4-b10.md`. The iPhone
+  test passed on a production token on 2026-07-17:
+  `docs/plans/PHASE3-STATUS.md`, "Spike results".)
+- Three kinds of device: personal (a player's own phone), shared
+  station (kit hardware), staffed (staff devices). The pack says which
+  kinds a game uses and what each may do. (P3 and P4.) The functions a
+  pack assigns: view content, transact (by mode), bind to an entity,
+  and the three that always stay with staff. ALN's pack already
+  declares them: `ALN-TokenData/game.json`, the `functions` block
+  (personal devices may view content and nothing else).
+- Every device holds one kind of credential, in three strengths: staff
+  log in; kit hardware is enrolled; a player's phone gets a
+  pseudonymous one from the backend on its first visit, with no login.
+  What a credential allows is worked out when it is issued: what the
+  pack gives that kind of device, capped by its strength, never the
+  three staff-only functions. (`docs/plans/2026-07-09-phase3-1-one-auth.md`;
+  built for staff and the scoreboard in `backend/src/gameRules/grants.js`,
+  which still uses its own table and not the pack's block.)
+- A phone that keeps a session is not thereby identified. Whether a
+  person is ever named is the game's choice. (P8; `docs/plans/ROADMAP.md`
+  section 2.1.)
+- Each device is sent only what it may show, worked out on the backend
+  (the one-auth addendum of 2026-07-17). And an action can be allowed
+  for the person acting, shown by something they scan, with the device
+  only carrying it (same addendum).
+- The phone page and the hardware scanner stay equal in what they can
+  do (`docs/plans/ROADMAP.md` section 2.5).
+
+What the proposal's changes must carry so that this works:
+
+- Change 1: one entry point that checks what the sender's credential
+  allows, not which program sent the message. A phone, a hardware
+  scanner and a GM scanner all come in the same way.
+- Change 3: the credential is part of what every device sends; the
+  reply says what to show; each device is sent only its part; the
+  tag's layout and its web address are in the definition.
+- Change 5: a kit device's credential belongs to the installation. A
+  player's phone's belongs to one session (put to the owner
+  2026-11-13: it follows from "what a group's play produced is wiped").
+- Nothing may assume a `.local` name or a self-signed certificate. The
+  backend's public name is a setting of the installation.
+
+Still open here, and whose it is:
+
+- Whether the kit's own scanners and screens get an enrolled credential
+  (roadmap row 8.11): the owner's. Put again 2026-11-13, in full.
+- The tag's layout for phones (record order; a real name; whether the
+  address should carry a code that cannot be guessed, since a token's
+  id can be): the owner's, after the research is in.
+- How a phone that may do more than view gets tied to an account: each
+  game's design, through the pack's "bind to an entity" function. Not
+  an engine decision.

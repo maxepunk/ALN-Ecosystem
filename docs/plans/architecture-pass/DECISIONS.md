@@ -260,6 +260,113 @@ History:
   labels that we haven't explicitly agreed upon (like your current
   definition of 'steps')".
 
+**What a player sees after a scan, the same on both player scanners**
+
+The phone page and the hardware scanner show a player the same thing
+after a scan. The memory appears at once; the scanner does not wait for
+the backend's reply (for ALN; another game's pack may make a scanner
+wait). With no session, or after the session has ended, the memory
+still shows, with a notice that the scan was not recorded (decision A5
+of 2026-06-09: "Local content display is unaffected in all cases"). A
+video token shows the token's picture with a line that the video is
+starting on the TV, or "Video unavailable, rescan later" when it cannot
+play now (decision A4). With no connection, an ordinary token shows the
+memory and nothing else, and a video token shows "Video unavailable,
+rescan later". The wording comes from the pack's text.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The owner's "1 - yes" on the messages and files. Before
+  this the two scanners differed: the hardware scanner waited for the
+  reply and showed "NO SESSION" with no memory; the phone page added
+  "Scan queued" when it had no connection.
+
+**A device that is out of date**
+
+When a device connects it says which pack it holds and which version of
+the messages it speaks. A wrong pack: the device fetches the right one
+by itself (ruling R-C2-1 of 2026-09-04, extended from the GM scanner to
+every device). Old software on a GM scanner, a phone page or the
+scoreboard: the page reloads itself from the backend. Old firmware on a
+hardware scanner: it cannot fix itself, so it says "UPDATE NEEDED" on
+its own screen, shows red on the GM scanner with what to do, and the
+preflight reports it before a session. The backend keeps working with
+older firmware until a change to the messages truly breaks it.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The owner's "3 - yes", with a request to find out whether
+  the hardware scanner can take firmware updates over the air. The
+  research is `docs/plans/2026-11-13-hardware-scanner-ota-research.md`.
+
+**The pack says what each kind of device is sent**
+
+Each device is sent only what it may show, and what that is depends on
+the game it is running: the pack declares it for each kind of device.
+For ALN, a player scanner gets each token's picture (with what is baked
+into the picture, such as the owner's name), its sound and its video
+name, and not the value, type, group, owner or summary fields. Another
+game's pack may give a player scanner more. The scoreboard no longer
+receives every transaction. This applies "server-side per-surface
+projection" (adopted 2026-07-17).
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The agent stated the rule; the owner confirmed ALN's
+  split and added that it must be decided per game.
+
+**A GM sees the result of a scan when the backend replies**
+
+No "Transaction Complete!" before the backend has replied (decision A7
+of 2026-06-09). What a GM sees with no connection belongs to the design
+of which device decides what.
+
+Confirmed 2026-11-13.
+
+History:
+- 2026-11-13. Stated by the agent; the owner: "yes".
+
+**What a tag holds, and token ids**
+
+A tag keeps what it holds today: the token id as text, then a web
+address. Its layout may need adjusting so that players' own phones work
+on iPhone. A token id is lowercase letters, digits and underscores, and
+every device matches it the same way.
+
+Confirmed 2026-11-13.
+
+History:
+- 2026-11-13. Stated by the agent; the owner: "yes, keep in mind this
+  may need to be adjusted to make phone scanners iphone compatible" and
+  "yes". Research on what iPhones and Android phones need from a tag:
+  `docs/plans/2026-11-13-phone-tap-to-web-tag-research.md`. The tag's
+  layout comes back to the owner as one decision when that is in.
+
+**Players' own phones are designed in, not left for later**
+
+The architecture is designed now so that a player's own phone can take
+part. The agent must not push it off as later work. What the owner has
+already decided about it is gathered in
+`design/2026-11-13-the-messages-and-files.md` ("Players' own phones"):
+the kit's own Wi-Fi with a real name and certificate; tap-to-web
+through the phone's own tag reader; three kinds of device, with the
+pack saying what each may do; one kind of credential in three
+strengths, with a phone's issued silently and no login; no person
+identified unless the game chooses; each device sent only what it may
+show.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. The agent had written "players' own phones are decided
+  with that later work" beside the question about credentials. The
+  owner: "We need to make sure we design the architecture to enable
+  this and can't handwave it as a vague 'later' consideration." The
+  question about credentials was put again in full.
+
 **What keeps the backend's programs running is already ruled**
 
 The backend starts and supervises its own programs, through one

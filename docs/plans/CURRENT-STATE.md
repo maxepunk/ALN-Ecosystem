@@ -26,15 +26,35 @@ before acting.
   (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
 - **Now: the design of the messages between the backend and the
-  devices, and the files, is with the owner.** Three decisions were
-  put to the owner on 2026-11-13, each with a recommendation: what a
-  player sees after a scan, the same on the phone page and the hardware
-  scanner; whether every scanner and screen of the kit has a credential
-  (roadmap row 8.11); and what a device that is out of date may do. The
-  topic is settled, from the owner's side, when those three are made.
-  Four things were stated as following from earlier rulings, with an
-  invitation to object. All of it, with the rulings already made, what
-  happens today and the lines checked, is in
+  devices, and the files, is with the owner.** Made on 2026-11-13: what
+  a player sees after a scan, the same on the phone page and the
+  hardware scanner; what a device that is out of date does; the pack
+  says what each kind of device is sent (for ALN a player scanner gets
+  the picture, sound and video name only); a GM sees the result of a
+  scan when the backend replies; a tag keeps what it holds, though its
+  layout may change for iPhones; token ids are lowercase letters,
+  digits and underscores. **Waiting for the owner on one decision,**
+  put again in full on 2026-11-13: every device presents a credential,
+  in three kinds (staff log in; the kit's own scanners and screens are
+  enrolled by the venue technician; a player's own phone gets one
+  silently on its first visit, with no login, lasting one session). The
+  first time, the agent had waved players' own phones off as "later
+  work". The owner: design the architecture to enable them now. What
+  the owner had already decided about phones is gathered in the note
+  below, under "Players' own phones". **Two pieces of research are
+  running** (helpers, started 2026-11-13; each writes one file, which
+  is not there until it finishes):
+  `docs/plans/2026-11-13-hardware-scanner-ota-research.md` (the owner
+  asked whether the hardware scanner can take firmware updates over the
+  air) and `docs/plans/2026-11-13-phone-tap-to-web-tag-research.md`
+  (what iPhones and Android phones need from a tag). When each returns:
+  read the file, check its main claims against its sources, commit it,
+  tell the owner what it found, and bring the tag's layout to the owner
+  as one decision (record order; the real name; whether the address
+  carries a code that cannot be guessed). If a file is missing in a new
+  session, the research was lost: start it again from the two questions
+  in the note. All of it, with the rulings already made, what happens
+  today and the lines checked, is in
   `docs/plans/architecture-pass/design/2026-11-13-the-messages-and-files.md`.
   The design of how the backend keeps a session's data is settled. Decided on 2026-11-13,
   all by the owner: the session record only grows (`docs/adr/0001`); it
