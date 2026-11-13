@@ -513,6 +513,66 @@ pause or end the session or run the room. The working note is
 
 Made 2026-11-13.
 
+**A designer designs a game's rules, scoring and verbs included**
+
+The engine must let a designer design the rules of a new game, and
+that includes how things are scored and the verbs a designer lets
+players use with tokens. In the owner's words: "designing an engine
+that allows NEW games to be designed which MUST INCLUDE how things are
+scored / the verbs a designer can allow players to engage in using
+tokens." The person is a "designer", not a "maker".
+
+Made 2026-11-13. What exactly a designer builds from, and where a
+developer comes in, is being worked out with the owner
+(`design/2026-11-13-how-the-engine-is-extended.md`).
+
+History:
+- 2026-11-13. The agent had recommended that a designer's rule of the
+  form "when this happens, do that" may run the room only and never
+  change points, and that a new way of scoring is a developer's work.
+  The owner: "I think you're getting confused here. Why would you
+  recommend no to a game designer (what you're calling a maker) being
+  able to design the rules of a game? This seems like you're somehow
+  getting caught up in a bias towards maintaining the existing ALN
+  ruleset". The recommendation is withdrawn. It had read the floor of
+  2026-07-09 (which people and devices may do staff actions) as a limit
+  on the game's own rules, and had taken today's code, where the
+  scoring formula is fixed and only its numbers are in the pack, as the
+  model.
+
+**A new capability is part of the engine and arrives with an engine update**
+
+When a developer adds something the engine could not do, it becomes
+part of the engine and reaches a production with an engine update. The
+engine loads no add-ons installed beside it. Decision note:
+`docs/adr/0009`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Put as decision 2 of the topic "how the engine is
+  extended", against add-ons. The owner: "the first." This answers the
+  question the owner named on 2026-11-02, "How an extension for all
+  games reaches a production".
+
+**What comes back by itself after a restart**
+
+After the backend restarts in the middle of a session, or a video or
+music player crashes and is restarted, these come back by themselves:
+the session, the clock, the GMs' logins, the music where it stopped,
+what the TV was showing, the lights and the volumes. A video that was
+cut off, a cue that was part-way through and a cue that came due while
+the backend was down do not replay by themselves: they are listed on
+the GM scanner, and the GM runs or drops each. Decision note:
+`docs/adr/0010`.
+
+Made 2026-11-13.
+
+History:
+- 2026-11-13. Put as decision 3 of the same topic. The owner: "agreed
+  with the recommendation." It keeps decision E1 of 2026-06-10 and adds
+  the list.
+
 **What keeps the backend's programs running is already ruled**
 
 The backend starts and supervises its own programs, through one

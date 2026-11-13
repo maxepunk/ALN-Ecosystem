@@ -169,6 +169,52 @@ the real TV, speakers and lights.
   what came due while the backend was down, each with run and drop.
   The list is the held items the GM already knows.
 
-## The owner's answers
+## The owner's answers (2026-11-13)
 
-(none yet)
+Word for word:
+
+> 1 - I think you're getting confused here. Why would you recommend no
+> to a game designer (what you're calling a maker) being able to design
+> the rules of a game? This seems like you're somehow getting caught up
+> in a bias towards maintaining the existing ALN ruleset instead of
+> designing an engine that allows NEW games to be designed which MUST
+> INCLUDE how things are scored / the verbs a designer can allow players
+> to engage in using tokens.
+> 2 - the first.
+> 3 - agreed with the recommendation.
+
+**Decision 2 is made:** a new capability becomes part of the engine and
+arrives with an engine update; no add-ons (`docs/adr/0009`).
+
+**Decision 3 is made:** what comes back by itself after a restart, as
+recommended (`docs/adr/0010`).
+
+**Decision 1 was put wrongly and goes back to the agent.** What the
+owner ruled in sending it back: the engine must let a designer design
+the rules of a NEW game in the pack, and that MUST INCLUDE how things
+are scored and the verbs a designer lets players use with tokens. The
+word is "designer", not "maker".
+
+What the agent got wrong, to be checked against the records before
+answering:
+
+- It recommended that a designer's rule may never change the game
+  (points, used tokens) and that "a pack never holds calculations". It
+  gave the floor of 2026-07-09 as the reason. The floor says which
+  people and devices may do staff actions (start and end a session, run
+  the show, change a score by hand). It does not say the game's own
+  rules belong to developers.
+- It took today's code as the model: one scoring formula in code, with
+  only its numbers in the pack, and cues that may run the room only.
+  That is ALN's ruleset, which is the bias the owner named.
+- It leaned on case EX4 ("a new scoring model added once: developer,
+  then designer") without reading what the owner's own design records
+  say a designer builds.
+
+Before answering: read the owner's records on rules, scoring and verbs
+in full (design principles P1 to P6 and open questions O1 to O5 of
+2026-06-11; the phase 3 program; the roadmap's final outcome, section
+2.6 and the mechanics editor row; the glossary's engine and pack
+contract; the second game's scoping; cases EX3, EX4, EX20, EX22; what
+`game.json` already declares). Then state back what a designer designs
+and where a developer comes in, and put only what is still open.

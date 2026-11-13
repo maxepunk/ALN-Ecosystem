@@ -124,6 +124,7 @@ The rule from here on, for anything the owner reads:
 | team (when talking about ALN) | account. The owner, 2026-11-13: "what's identified as teams in the backend are really framed as accounts in ALN". The engine's own word is entity |
 | the night's record, tonight | the session's record; this session, this installation |
 | core, door, pass, interface, stated life, plug in, the room's side | say what the code does, in a sentence |
+| maker, a game's maker | designer. The owner, 2026-11-13: "a game designer (what you're calling a maker)" |
 | record, text record, address record, record order | the token's id; the web link; which of the two is written first on the tag |
 | exchange, reader, the definition | say what happens: the hardware scanner has to read further into the tag; everything that scans a tag; name the thing |
 

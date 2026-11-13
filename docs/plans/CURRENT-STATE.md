@@ -94,22 +94,27 @@ before acting.
   a session count even when they arrive after its end (`docs/adr/0003`,
   amended). The working note:
   `docs/plans/architecture-pass/design/2026-11-13-which-device-decides-what.md`.
-  **With the owner now: how the engine is extended** (the proposal's
-  changes 6, 4 and 7). Three decisions were put on 2026-11-13, each
-  with a recommendation, and the topic is settled when they are made.
-  (1) What a game's maker can build in the pack with no developer:
-  values and texts, ways to turn in a token from the engine's choices,
-  and rules "when this happens, do that" that run the room and never
-  change the game; no calculations or code in a pack. (2) How a new
-  capability reaches a production: as part of the engine, with an
-  engine update; no add-ons. (3) What comes back by itself after a
-  restart: the session, clock, logins, music, TV, lights and volumes
-  do; a video or cue that was cut off or missed is listed for the GM.
-  The first two are questions the owner named as open on 2026-11-02.
-  One statement went with them (a test or rehearsal copy uses
-  stand-ins, and only one copy holds the real gear). The working note
-  has the rulings already made, what happens today and the decisions
-  as put:
+  **In progress: how the engine is extended** (the proposal's changes
+  6, 4 and 7). Two of its three decisions are made (2026-11-13): a new
+  capability becomes part of the engine and arrives with an engine
+  update, with no add-ons (`docs/adr/0009`); and after a restart the
+  session, clock, logins, music, TV, lights and volumes come back by
+  themselves, while a video or cue that was cut off or missed is listed
+  for the GM (`docs/adr/0010`). **The first decision went back to the
+  agent, with a correction that binds everything after it.** The agent
+  had recommended that a designer's rules may only run the room and
+  that scoring is a developer's work. The owner: "This seems like
+  you're somehow getting caught up in a bias towards maintaining the
+  existing ALN ruleset instead of designing an engine that allows NEW
+  games to be designed which MUST INCLUDE how things are scored / the
+  verbs a designer can allow players to engage in using tokens." So: a
+  designer designs a game's rules in the pack, scoring and the players'
+  verbs included. Say "designer", never "maker". Do not treat today's
+  code (one scoring formula, cues that only run the room) or the floor
+  of 2026-07-09 (who may do staff actions) as limits on the game's own
+  rules. Before answering, the agent reads the owner's records on
+  rules, scoring and verbs itself, in full; the list is at the end of
+  the working note
   `docs/plans/architecture-pass/design/2026-11-13-how-the-engine-is-extended.md`.
   **After that: how today's code moves to the new design.** A helper
   was started on 2026-11-13 to gather facts for it into
