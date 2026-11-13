@@ -66,8 +66,8 @@ before acting.
   the record, built with the GM scanner's redesign (ROADMAP row 8.17).
   Stated to the owner and not objected to: corrections stay visible in
   the record. The owner also confirmed how ALN runs while this work is
-  done and the order of work. The page is version 27 (version id
-  1794555687-4cdb; source
+  done and the order of work. The page is version 28 (version id
+  1794555902-b4af; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
   and its last box lists what is decided and what is next. **Two rules
   from the owner on 2026-11-13.** (1) Never ask the owner whether a
@@ -121,13 +121,27 @@ before acting.
   a limit on what a designer may design. Say "designer", never "maker".
   The working note, with what the owner's records say:
   `docs/plans/architecture-pass/design/2026-11-13-how-the-engine-is-extended.md`.
-  **Next, and the last design topic: how today's code moves to the new
-  design.** A helper's facts for it are committed at
-  `docs/plans/architecture-pass/design/2026-11-13-how-todays-code-moves-facts.md`
-  (no recommendation in it; written before the owner's correction;
-  check its claims before relying on them). The decision is the lead's
-  to work out and put to the owner. Also settle there how the config
-  tool applies a change.
+  **With the owner now, and the last design topic: how today's code
+  moves to the new design.** Two decisions were put on 2026-11-13, each
+  with a recommendation: (1) build the new engine beside today's code,
+  in new folders, moving across the parts that already fit, with
+  today's code kept untouched as the reference until the new engine
+  passes the same end-to-end checks (against reshaping today's code
+  step by step); (2) one repository for the whole engine, with ALN's
+  pack in its own, and the separate scanner and firmware repositories
+  archived at the cutover. Stated with them: the config tool sends its
+  changes to the backend and stops writing the backend's files; the
+  firmware is changed where it stands. The working note:
+  `docs/plans/architecture-pass/design/2026-11-13-how-todays-code-moves.md`.
+  The facts, gathered by a helper and spot-checked by the agent:
+  `docs/plans/architecture-pass/design/2026-11-13-how-todays-code-moves-facts.md`.
+  **After these two the design is done.** The owner decided on
+  2026-10-30 that the design half ends with the decision notes (they
+  exist: `docs/adr/0001` to `0011`) and the new roadmap, and that the
+  build starts with a thin first version end to end on a new test
+  bench. So the next piece of work is the build plan: the thin first
+  version, then the areas in order, with the paused September work
+  placed inside them. Bring it to the owner for confirmation.
   The questions as asked, the
   recommendations, the owner's answers word for word and the facts
   looked up for the first topic are in
