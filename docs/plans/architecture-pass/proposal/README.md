@@ -94,12 +94,27 @@ Left out on purpose, and why:
   game as one installable thing with its media, are named under
   changes 1 and 5 and not designed here.
 
-Three owner questions the proposal does not decide: what a GM may tell
-a team while their GM scanner has no connection; what a device that
-missed a software update may do; where a rehearsal may run while a
-session is live.
+What the owner's eight comments changed (version 14, 2026-11-12). The
+comments, the earlier decisions they rest on, a trace of what a backend
+restart does today, and the list of changes are in
+`../rework/2026-11-12-owner-comments-on-proposal.md`. In short: blue
+runs every ALN session until the new engine is finished, and then there
+is one cutover; the work is ordered design first, hardest to reverse
+first, then build; "what keeps the programs running" was already ruled
+by the owner (the backend does) and is no longer shown as a choice;
+changing packs without restarting the backend is not required by this
+plan; change 6 is designed from the 28 extension cases, not from the
+second game; change 7 is about a test or rehearsal copy leaving the
+installed backend as it was, between sessions.
 
-Next, once the owner replies: work through the change the owner picks,
-in conversation (the skill's third step), keeping the glossary and
-short decision notes current; start changes 4 and 7 if the owner
-agrees.
+Two owner questions the proposal does not decide: what a GM may tell a
+team while their GM scanner has no connection; what a device that
+missed a software update may do. (A third, where a rehearsal may run
+while a session is live, was answered by the owner: no real situation
+needs it.)
+
+Next, once the owner replies: confirm the picture of how ALN runs
+during the work and the order; then step 1 of the order, in
+conversation (the skill's third step), starting with the choice inside
+change 1, keeping the glossary and short decision notes current. No
+building starts before the design it depends on is settled.

@@ -130,3 +130,103 @@ about order and about blue. Those decisions were never retired.
   (2026-06-10): the config tool is pre-show only. The need is that a
   test or rehearsal copy leaves the installed backend and the real gear
   as they were. It was never about running beside a live session.
+
+## What a backend restart in the middle of a session does today
+
+Read from the code on 2026-11-12 for comment 2 (a helper traced it; the
+agent then checked the lines marked "checked" itself). Nothing was run.
+
+Comes back:
+
+- The session: status, teams, transactions, scores, player scans
+  (`backend/src/services/sessionService.js:108`, checked).
+- The game clock. The time the backend was down counts as game time
+  (`services/gameClockService.js:218`, checked).
+- Which cues already fired. A clock cue that came due while the backend
+  was down is marked fired and never runs (decision E1;
+  `services/cueEngineService.js:1107`).
+- The Bluetooth speaker stays connected. Audio routes and volumes
+  reload from disk.
+
+Does not come back:
+
+- Every GM is logged out: valid logins live in a memory-only set
+  (`middleware/auth.js:13`, checked). The login box then calls
+  `selectGameMode`, whose `setMode` throws "Cannot change session mode
+  after it is locked" (`ALNScanner/src/app/app.js:188` and `:422`,
+  `ui/connectionWizard.js:407`, `app/sessionModeManager.js:30`,
+  checked by reading). Reloading the page gets back in. A reload can
+  wipe scans the GM scanner had queued
+  (`network/networkedSession.js:250`, not checked).
+- Blue's own code has the same path (`production-2026-07`, GM scanner
+  tip `56fbff8`, read only, checked). The owner was told in chat.
+- Music: the player is stopped with the backend and nothing starts it
+  again (`services/musicService.js:95`, checked: no restore call).
+- The TV's mode goes back to the idle loop
+  (`services/displayControlService.js:31`, checked).
+- A compound cue part-way through its timeline stops there
+  (`services/cue/timelineRuntime.js:63`, checked). Held items are gone
+  (`services/heldItemsStore.js:40`, checked). The video queue is gone.
+- Hardware scanners believe they are still connected for 30 to 70
+  seconds (`OrchestratorService.h`, not checked).
+
+Also found:
+
+- A restart re-reads the pack. A session restored under a different
+  pack only logs a warning (`sessionService.js:113`, checked).
+- A session that had ended comes back as the current one (not checked).
+- The "out of service" mark is kept only in memory on purpose
+  (`services/dormancyService.js:8-16`: "a process restart is a fresh
+  look at the room"), and no command sets it today (only
+  `service:check` has a case in `commandExecutor.js`, checked). Version
+  13 listed its loss as a weakness. That was wrong and is removed.
+
+## What changed on the page (version 14, version id 1794528649-c01e)
+
+1. A box near the top says how ALN runs while this work is done: blue
+   runs every session; nothing reaches a live session until all of the
+   new engine is finished; one cutover, with green replacing blue and
+   the hardware scanners re-flashed.
+2. Change 3's cost no longer assumes the scanners work with both
+   backends.
+3. Change 4 no longer shows "what keeps the programs running" as a
+   choice, and the "one day of testing" is gone. It states the owner's
+   ruling, says what a restart does today, and proposes one way back: a
+   restart follows the same steps as a normal start, then the show is
+   put back from the session's record.
+4. Change 5 no longer requires changing packs without restarting the
+   backend. It says what that was for (the designer's loop), keeps
+   "every device is told when a new pack is applied", and adds "a
+   session keeps the pack it started with".
+5. Change 6 is designed from the 28 extension cases, each place checked
+   against at least two cases and against what an addition must not
+   need to touch. Today's parts are the first of each kind. Its
+   recommendation is now "Recommended".
+6. Change 7 is about a test or rehearsal copy leaving the installed
+   backend as it was, between sessions. Sharing the TV and the players
+   with a live session is dropped. Its third proposed line: only one
+   copy at a time uses the real gear.
+7. The order follows the owner's decisions: design how the backend
+   keeps a session's data (changes 1 and 5); the messages and files
+   (3); which device decides what (2); how the engine is extended (6,
+   with 4 and 7); how today's code moves to the new design; then build
+   a thin first version end to end; then one area at a time; then one
+   cutover.
+8. The questions for the owner: is the picture of how ALN runs now
+   right; is the order what they meant; then start step 1 with the
+   choice inside change 1.
+9. The third product question (where a rehearsal may run during a live
+   session) is gone: the owner's comment 5 answers it. Two remain.
+
+## For the next agent
+
+- Before showing the owner a "choice", look for a ruling: the table at
+  the top of `docs/plans/2026-09-12-block2-hardening-plan.md`,
+  `DECISIONS.md`, and `CONTEXT.md`. Two of these comments exist because
+  a ruled matter was reopened.
+- The owner's decisions about order and about blue stand. Only the
+  heavy process around them was retired on 2026-11-10 (the site, the
+  panel, competing designs for every round).
+- Never order work by what needs no decision from the owner.
+- A claim that something is a weakness needs a check that it is not on
+  purpose. Read the comment at the top of the file.

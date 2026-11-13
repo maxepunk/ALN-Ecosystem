@@ -162,11 +162,11 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <li><a href="#imp-7"><b>7</b><span>The backend is assembled in one place, and a copy started for a test or a rehearsal leaves the installed backend as it was.</span></a></li>
   </ol>
   <p>The game itself happens in a room, with players, token objects and GMs. The engine is the software around it. Its game rules and its pack format are in good shape. The weak spots are in how its programs work together, and that is what the seven changes are about.</p>
-  <p>I judged each change by what the engine is meant to become: open-source software that runs other people's games as well as ALN, on a kit as small as player scanners and tokens or as large as ALN's, at one venue for months or on tour. Three separate reviewers checked my first draft against the code. This version includes their corrections, and your eight comments of 12 November. What your comments changed is listed at the end.</p>
+  <p>I judged each change by what the engine is meant to become: open-source software that runs other people's games as well as ALN, on a kit as small as player scanners and tokens or as large as ALN's, at one venue for months or on tour. Three separate reviewers checked my first draft against the code. This version includes their corrections and your eight comments of 12 November.</p>
   <div class="meanwhile">
     <p class="words-title">How ALN runs while this work is done</p>
-    <p>Every ALN session runs on blue: the backend computer in use today, with its scanners and its production branch. This work never touches them. Nothing from the new engine reaches a live session until all of it is finished, the backend and the scanners together. Then there is one cutover. Green, the second backend computer, replaces blue, and the hardware scanners get their new firmware.</p>
-    <p>So no part of the new engine has to work with an old part, and no date governs the work. The order of work is set by engineering reasons alone.</p>
+    <p>Every ALN session runs on blue: the backend computer in use today, with its scanners and its production branch. This work never touches them. Nothing from the new engine reaches a live session until all of it is finished. Then there is one cutover: green, the second backend computer, replaces blue, and the hardware scanners get their new firmware.</p>
+    <p>So no part of the new engine has to work with an old part, and the order of work is set by engineering reasons alone.</p>
   </div>
   <div class="words">
     <p class="words-title">Words used on this page</p>
@@ -374,27 +374,32 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
           <div class="row"><span class="bx">Video player</span><span class="bx">Music player</span><span class="bx">Sound effects</span><span class="bx">Audio routing</span><span class="bx">Bluetooth</span><span class="bx">Lights</span><span class="bx">Scoreboard browser</span></div>
           <div class="via">the backend has seven pieces of code, one for each. They are alike, but each has its own differences</div>
         </div>
-        <p>What a program is doing and whether it is working are reported to the GM scanner as two separate things, so the admin panel can still show a program's last known state after that program has stopped. When the backend restarts, it stops the video player and the music player too. And a player scanner that checks in before a session exists is not recorded, so nothing can count the scanners before a session.</p>
+        <p>What a program is doing and whether it is working are reported to the GM scanner as two separate things, so the admin panel can still show a program's last known state after that program has stopped. And a player scanner that checks in before a session exists is not recorded, so nothing can count the scanners before a session.</p>
+        <p>If the backend itself restarts in the middle of a session, the session's data, the clock and the list of cues already fired come back. Much else does not. Every GM is logged out. Music stops and stays stopped. The TV goes back to the idle loop. A cue part-way through its timeline stops there. Held items are gone.</p>
       </div>
       <div class="side next">
         <p class="side-label">Proposed</p>
         <div class="flow">
           <div class="row"><span class="bx">All seven follow one written pattern. Each accepts commands, including "check this now", and gives one report: what it is doing, whether it is working, and when that was last checked</span></div>
-          <div class="row"><span class="bx">One part of the software keeps all seven programs running and restarts any that crash</span></div>
+          <div class="row"><span class="bx">One part of the backend starts all seven programs, restarts any that crash, and stops them when the backend stops</span></div>
+          <div class="row"><span class="bx">A backend restart follows the same steps as a normal start, then puts the show back from the session's record. The GMs stay logged in. The TV and the music return to where they were. Anything that was cut off is offered to the GM, not replayed by itself</span></div>
           <div class="row"><span class="bx">The backend knows which GM scanners, player scanners and displays are connected, whether or not a session exists</span></div>
         </div>
         <p>For a rehearsal with no real gear, the same seven programs run, connected to software that stands in for the speakers and lights. You already ruled that a rehearsal works this way, through an ordinary installation profile that points at stand-ins.</p>
       </div>
     </div>
     <dl class="gives">
-      <div><dt>At a session</dt><dd>A crashed program restarts by itself. If it cannot, the GM scanner shows it in red with what to do. Gear that is not part of this installation shows grey. With the option I recommend below, restarting the backend no longer stops the video and music.</dd></div>
+      <div><dt>At a session</dt><dd>A crashed program restarts by itself. If it cannot, the GM scanner shows it in red with what to do. Gear that is not part of this installation shows grey. If the backend itself restarts, the show comes back to where it was, with nobody logging in again or setting things up again.</dd></div>
       <div><dt>Later work it allows</dt><dd>The paused work on automatic restarts and the preflight is built once for all seven, not seven times.</dd></div>
-      <div><dt>What it costs</dt><dd>Seven pieces of code rewritten to the one pattern, one at a time. It needs no decision from you before it starts.</dd></div>
+      <div><dt>What it costs</dt><dd>Seven pieces of code rewritten to the one pattern, one at a time. Putting the show back after a restart also needs the session's record (change 1) to hold what the show was doing.</dd></div>
     </dl>
-    <p class="choice"><b>A choice inside this one.</b> What should keep the seven programs running? The operating system on the backend's computer can do it, which I recommend, because video and music then keep playing while the backend restarts. Or the backend can do it itself, which is easier to test and works on any computer. One day of testing on the new backend computer would settle it.</p>
+    <p class="choice"><b>Already decided, not a choice.</b> You ruled on 12 September that the backend starts and supervises these programs itself, through one supervision path. That stands, and it is the sound choice: the backend is the only part that knows which programs this game and this installation need, and a restart then has one way back. My earlier version reopened it so that video and music could keep playing through a backend restart. That is not what goes wrong in a restart, and it is not worth a second way of recovering.</p>
     <details class="files"><summary>Where this is in the code</summary><ul>
       <li>backend/src/services/vlcMprisService.js, musicService.js, soundService.js, audioRoutingService.js, bluetoothService.js, lightingService.js; backend/src/utils/displayDriver.js (the seven)</li>
       <li>backend/src/utils/processMonitor.js:92 (stops the programs when the backend exits)</li>
+      <li>backend/src/middleware/auth.js:13 (GM logins kept only in memory); services/displayControlService.js:31; services/cue/timelineRuntime.js:63; services/heldItemsStore.js:40 (lost in a restart)</li>
+      <li>backend/src/services/sessionService.js:108; services/gameClockService.js:218 (what comes back after a restart)</li>
+      <li>docs/plans/2026-09-12-block2-hardening-plan.md, rulings R6, R13, R18, R20 (the backend supervises its programs)</li>
       <li>backend/src/services/musicService.js:73 ("working" kept separately)</li>
       <li>backend/src/routes/healthRoutes.js:86 (a scanner checking in with no session is not recorded)</li>
     </ul></details>
@@ -410,28 +415,30 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
           <div class="via">GM scanners and the scoreboard work out that a new session has begun from a changed session id. Player scanners are never told</div>
         </div>
         <p>So the devices do not agree on where one session ends and the next begins. Scans that a player scanner stored while it had no connection can be added to the next group's session.</p>
-        <p>Facts about the installation are spread over several files, and some are kept only in memory. Restarting the backend forgets that a GM marked a piece of gear out of service, and logs every GM scanner out. Each device loads its copy of the pack when it starts, and is not told when the pack changes.</p>
+        <p>Facts about the installation are spread over several files, and the GMs' logins are kept only in memory, so restarting the backend logs every GM scanner out. Each device loads its copy of the pack when it starts, and is not told when the pack changes. A backend that restarts in the middle of a session picks up any pack edit made since the session began, with only a line in the log.</p>
       </div>
       <div class="side next">
         <p class="side-label">Proposed</p>
         <div class="flow">
           <div class="row"><span class="bx"><b>One session.</b> It is set up, started, paused and ended. Its record only grows. Notes can still be added after it ends</span></div>
-          <div class="row"><span class="bx"><b>One installation.</b> One place holds which gear is installed, which devices belong to it, what is out of service, and the records of the sessions played on it. It survives restarts</span></div>
+          <div class="row"><span class="bx"><b>One installation.</b> One place holds which gear is installed, which devices belong to it and are logged in, and the records of the sessions played on it. It survives restarts</span></div>
           <div class="row"><span class="bx"><b>The production.</b> The pack, its versions and its media files are kept together, so one backend can hold more than one game</span></div>
-          <div class="via">one table says what happens to each piece of data when a session starts, pauses, ends or is reset, and when the backend starts or stops. One piece of code carries it out and tells every device</div>
+          <div class="via">one table says what happens to each piece of data when a session starts, pauses, ends or is reset, when the backend starts or stops, and when a new pack is applied. One piece of code carries it out and tells every device. A session keeps the pack it started with</div>
         </div>
       </div>
     </div>
     <dl class="gives">
       <div><dt>At a session</dt><dd>In a long run, "end this session, reset, start the next group" leaves every screen and every scanner clean each time. A restart in the middle of a session loses nothing. A touring game arrives at a new venue with one installation profile to fill in.</dd></div>
-      <div><dt>Later work it allows</dt><dd>Staff notes and photos. The venue technician's screens. More than one game on one backend. Updating a pack without restarting.</dd></div>
-      <div><dt>What it costs</dt><dd>Updating a pack without a restart is a large job by itself, because today every device loads the pack only when it starts.</dd></div>
+      <div><dt>Later work it allows</dt><dd>Staff notes and photos. The venue technician's screens. More than one game on one backend. The designer's loop from the roadmap: change a value in the config tool, apply it, and playtest.</dd></div>
+      <div><dt>What it costs</dt><dd>Every device has to be told when a new pack is applied, and reload it. Today each loads its copy once, when it starts. This plan does not require the backend to change packs without restarting. The roadmap asks for that only to make the designer's loop fast, and whether a restart is fast enough can be settled when the config tool's editor is built.</dd></div>
     </dl>
     <details class="files"><summary>Where this is in the code</summary><ul>
       <li>backend/src/app.js:178, services/systemReset.js, server.js:163, services/sessionService.js:284 (the lists of steps)</li>
       <li>ALNScanner/src/network/networkedSession.js:246 (working out that a new session began)</li>
       <li>backend/src/routes/scanRoutes.js:317 (stored scans added to the current session)</li>
-      <li>backend/src/services/dormancyService.js:41; backend/src/middleware/auth.js:13 (kept only in memory)</li>
+      <li>backend/src/middleware/auth.js:13 (GM logins kept only in memory)</li>
+      <li>backend/src/services/sessionService.js:113 (a restart under a different pack only logs a warning)</li>
+      <li>docs/plans/ROADMAP.md, section 2.4 (the designer's loop, and applying a pack without a restart)</li>
       <li>backend/src/services/packService.js:96 (the pack fixed at start-up)</li>
     </ul></details>
   </article>
@@ -460,7 +467,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <dl class="gives">
       <div><dt>For a developer</dt><dd>Someone adding a capability knows where the code goes and what it has to look like. A game that uses the capability proves it works.</dd></div>
       <div><dt>Later work it allows</dt><dd>The ways the engine is meant to grow. The project's notes already list 28 of them, from a third way to turn in a token, to a different lighting system, to audio in several rooms. Two are your own examples.</dd></div>
-      <div><dt>How the places are designed</dt><dd>From the kinds of addition the engine is meant to allow, not from one game. Each place is checked against at least two different cases from that list, and against one test: what an addition must not need to touch. Today's parts become the first of each kind. Today's scoring is the first rule, the seven programs are the first equipment, and the scoreboard is the first screen. So no place is built on a guess. The second game is one case among the 28, not the measure.</dd></div>
+      <div><dt>How the places are designed</dt><dd>From the kinds of addition the engine is meant to allow, not from one game. Each place is checked against at least two different cases from that list, and against one test: what an addition must not need to touch. Today's scoring, the seven programs and the scoreboard become the first rule, the first equipment and the first screen, so no place is built on a guess. The second game is one case among the 28.</dd></div>
     </dl>
     <details class="files"><summary>Where this is in the code</summary><ul>
       <li>backend/src/services/packService.js:52 (the list of capabilities, and the start-up check)</li>
@@ -573,15 +580,15 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
 
 <section class="prose">
   <h2>The order of work</h2>
-  <p>You decided the order on 30 October and 1 November: design first and then build, and design the hardest things to reverse first. My last version went against both, by starting to build whatever needed no decision from you. The engineering reason for your order is that each step below is built on the ones before it, so nothing is built twice.</p>
+  <p>You decided the order on 30 October and 1 November: design first and then build, and design the hardest things to reverse first. Each step below is built on the ones before it, so nothing is built twice.</p>
   <ol class="steps">
-    <li><b>Design how the backend keeps a session's data</b> (change 1), with what belongs to a session, an installation and a production (change 5). Everything else reads or writes this data: the rules, every screen, a standalone game, a restart, the report. It is the hardest thing to change later.</li>
-    <li><b>Design the messages and files</b> (change 3). They follow from step 1, and every program is then built and tested against them.</li>
-    <li><b>Design which device decides what</b> (change 2): in a networked game, in a standalone game, and on a GM scanner that has lost its connection. This says where the game code has to be able to run, which has to be known before it is written.</li>
+    <li><b>Design how the backend keeps a session's data</b> (change 1), with what belongs to a session, an installation and a production (change 5). Everything else reads or writes this data, so it is the hardest thing to change later.</li>
+    <li><b>Design the messages and files</b> (change 3). They follow from step 1, and every program is built and tested against them.</li>
+    <li><b>Design which device decides what</b> (change 2): in a networked game, in a standalone game, and on a GM scanner that has lost its connection. This says where the game code must be able to run.</li>
     <li><b>Design how the engine is extended</b> (change 6), with the pattern for equipment (change 4) and how copies of the backend stay apart (change 7). These join the first three at a few points and are easier to change later.</li>
-    <li><b>Decide how today's code moves to the new design:</b> changed in place, or moved piece by piece into a new structure. That is the build plan.</li>
-    <li><b>Build a thin first version that works end to end:</b> one scan, from the tap, into the session's record, and out to a GM scanner and the scoreboard. It has to work in the backend and inside a standalone GM scanner, across a lost connection and a restart. It proves the design before more is built on it.</li>
-    <li><b>Build the rest one area at a time,</b> each with its detailed design just before it is built. The paused work on automatic restarts and the preflight is rebuilt here, on the new structure.</li>
+    <li><b>Decide how today's code moves to the new design:</b> changed in place, or moved piece by piece into a new structure.</li>
+    <li><b>Build a thin first version that works end to end:</b> one scan, from the tap, into the session's record, and out to a GM scanner and the scoreboard, in the backend and inside a standalone GM scanner, across a lost connection and a restart.</li>
+    <li><b>Build the rest one area at a time,</b> each with its detailed design just before it is built. The paused work on automatic restarts and the preflight is rebuilt here.</li>
     <li><b>Cut over once, when you decide the new engine is ready.</b> Green is set up and rehearsed at the venue before that.</li>
   </ol>
   <p>Steps 1 to 5 are conversations with you, one question at a time, each with my recommendation. They end in short decision notes, not in more pages.</p>
@@ -595,20 +602,6 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
   <p><b>Is the order above what you meant?</b></p>
   <p><b>If both are right, we start with step 1.</b> Its first question is the choice inside change 1: a record that only grows, or data edited in place.</p>
   <p class="muted">Two product questions come up inside steps 1 to 3, and I will bring each one when we reach it. What may a GM tell a team while their GM scanner has no connection? What may a device do if it missed a software update?</p>
-</section>
-
-<section class="changed prose">
-  <h2>What your comments changed</h2>
-  <ol>
-    <li><b>Change 3.</b> The cost line assumed the scanners would have to work with both blue and the new backend. That was wrong, and it is gone. Everything switches at once.</li>
-    <li><b>Change 4.</b> What keeps the programs running is no longer shown as an open choice, and the "one day of testing" is gone. You ruled on 12 September that the backend starts and supervises them itself. The card now says what a backend restart in the middle of a session does today, and what it should do.</li>
-    <li><b>Change 5.</b> "Updating a pack without restarting" is no longer listed as something this plan has to deliver. The card says what it was for, the designer's loop of change, apply and playtest, and what this plan does provide: every device follows a pack change by itself.</li>
-    <li><b>Change 6.</b> The places are designed from the kinds of addition the engine is meant to allow. The second game is one case among many.</li>
-    <li><b>Change 7.</b> It is about a test or a rehearsal leaving the installed backend as it was, between sessions. Running beside a live session was never a real need, and that part is dropped.</li>
-    <li><b>The order.</b> It follows your decisions: design first, hardest to reverse first, then build. Nothing is started because it happens to need no decision.</li>
-    <li><b>Blue.</b> Blue runs every ALN session until the new engine is finished. One line of the page had said the opposite.</li>
-    <li><b>What I need from you.</b> The questions are now about whether I have this right, not about what to start building.</li>
-  </ol>
 </section>
 
 <footer class="prose">
