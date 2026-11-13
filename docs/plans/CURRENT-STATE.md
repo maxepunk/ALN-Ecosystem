@@ -30,7 +30,7 @@ before acting.
   how ALN runs while this work is done ("1 - yes"), confirmed the order
   of work ("2 - yes"), made the first decision of step 1 ("3 -
   session's record grows"), and resolved the eight comments on the
-  page. The page is version 15 (version id 1794529336-8982; source
+  page. The page is version 16 (version id 1794529435-4bdd; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
   and its last box says where we are. **Waiting for the owner on round
   1 of step 1**, asked in the conversation on 2026-11-13. Three
