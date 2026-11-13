@@ -141,6 +141,7 @@ td.nums { white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* the ask */
 .ask { background: var(--surface); border: 2px solid var(--accent); border-radius: 12px; padding: 1.1rem 1.2rem; margin-top: 1rem; }
 .ask h2 { margin: 0 0 .3rem; }
+#move h3 { margin: 2rem 0 .45rem; }
 footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: .88rem; color: var(--muted); }
 code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere; }
 </style>
@@ -602,6 +603,142 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
   <p class="muted">One smaller change is also worth exploring. The config tool should send its changes to the backend as messages, the way the scanners do. Today it writes the engine's files and uses the engine's code directly. I would settle that when the messages are designed.</p>
 </section>
 
+<section id="move">
+  <h2>How today's code moves to the new design</h2>
+  <div class="prose">
+  <p>This is the last topic of the design. On 13 November you sent my first two decisions on it back as not fully considered. This is the considered version. I waited for the research to finish and read all of it. One independent reader then challenged my answer and found fourteen things wrong or missing. They are fixed here, and two of my recommendations changed because of them.</p>
+
+  <h3>1. What the "thin first version" is</h3>
+  <p>It is the smallest engine in which one token goes through every part of the new design. It is thin in what it does. It is not small in work, because it holds the first form of every new central part.</p>
+  <p>What a person can do with it:</p>
+  <ol class="steps">
+    <li>Start the backend on a laptop with a pack of three tokens.</li>
+    <li>Open the GM scanner's page on a phone, log in, choose an account and enter a token, typed or read from a tag.</li>
+    <li>See the result on the GM scanner, and see the scoreboard page change on another screen.</li>
+    <li>Open the player scanner page from a link like the one on a tag, with no login, and see the token's picture.</li>
+    <li>Turn the phone's Wi-Fi off and enter another token. The result shows as "not confirmed". Turn Wi-Fi on. It becomes confirmed.</li>
+    <li>Two GM scanners, one with no connection, take the same token. The scan that reaches the backend first counts. The other GM is told which scan was refused and why.</li>
+    <li>Stop the backend and start it again. The session, the scores and the login are back.</li>
+    <li>End the session. A scan stored on a GM scanner arrives afterwards and lands in that session, marked late. Create the next session: every screen is cleared, and the record of the last one is kept.</li>
+    <li>Open the GM scanner with no backend at all. The same verbs give the same scores, and the session's record can be saved.</li>
+    <li>A rule asks the room for a sound. A stand-in for the sound player gets the command. Stop the stand-in: the backend starts it again, the crash is a line in the record, and what was cut off is on the GM's list.</li>
+    <li>The firmware's two small files that build and read messages are brought to the new definition and tested on a computer. The hardware scanner itself joins later, in its own area.</li>
+  </ol>
+  <p>Between them the eleven steps use every decision you made on 13 November once.</p>
+  <p><b>What it runs on.</b> Two packs. A new toy game scored its own way, because today's toy game is scored by ALN's formulas. And three of ALN's tokens, with ALN's two verbs written as rules in the pack, which must give ALN's numbers.</p>
+  <p><b>How it is checked.</b> By tests that use it only from outside, as a device would. They run with stand-ins for the gear, and on the test rig with the real video and music players. You decided on 1 November that the rig is rebuilt when building starts.</p>
+  <p><b>What it leaves out.</b> ALN's 81 tokens and their media, video, music, lights, Bluetooth, cues, held items, the session and admin screens, the look of every page, the config tool, the preflight, the report, the hardware scanner as a device, and updates over the air. Each is an area built after it.</p>
+  <p><b>What it needs first.</b> Four detailed designs. Three are mine: the form of a line in the record, how a rule and its formula are written in a pack, and the language the messages are defined in. I will show you ALN's rules and the toy game's written the new way before anything is built. One is yours: how a device is added to a kit, with a backend and without one. Two of your decisions rest on it.</p>
+
+  <h3>2. Change today's code in place, or build beside it</h3>
+  <p><b>In place.</b> Today's code is changed where it stands, in stages, and every stage leaves a whole working engine. Its strength is real: nothing is forgotten by default. Its costs here are four. Every central change needs in-between states that serve nobody, because blue runs ALN. Most of today's tests reach inside the code being replaced, and would have to be kept passing or rewritten at each stage. Your decision of 1 November brings back "pin down today's behaviour first" if this way is chosen. And it starts from ALN's shape and widens it, which is the bias you named.</p>
+  <p><b>Beside.</b> A new structure is started with the first version, and parts of today's code are moved into it. It is not a rewrite of everything. It is decided program by program:</p>
+  </div>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Program</th><th>Way</th><th>Rewritten</th><th>Moved and fitted</th></tr></thead>
+    <tbody>
+      <tr><td>Backend</td><td>Beside</td><td>The session store, how a scan is handled, the messages, the commands, credentials, how it is put together. About four lines in ten.</td><td>The code for the video player, music, sound, audio, Bluetooth, lights and the TV browser. The part that restarts a crashed program. September's "not installed" work. The check that refuses a broken pack. Cues, the video queue, the game clock and held items, each fitted to the record when its area is built.</td></tr>
+      <tr><td>GM scanner</td><td>Beside</td><td>Its two stores, its copy of the rules, its network code, and its game screens, which are built around ALN's fields and ALN's two modes.</td><td>Tag reading, pack loading, the show-control screens and the styles. The GM scanner's redesign is designed with you before this area is built.</td></tr>
+      <tr><td>Player scanner page</td><td>Beside</td><td>How it talks to the backend, and its start from a link.</td><td>How it shows a memory.</td></tr>
+      <tr><td>Scoreboard</td><td>Beside</td><td>Its script. It becomes a screen that is told what to show.</td><td>Its look.</td></tr>
+      <tr><td>Config tool</td><td>Decided at its area</td><td>Its link to the engine. Today it signs its own logins with the backend's secret, writes the backend's settings files and loads the backend's code. Screens for verbs and formulas are new.</td><td>Its cue screens, and its draft and publish.</td></tr>
+      <tr><td>Hardware scanner firmware</td><td>In place</td><td></td><td>Changed where it stands, file by file.</td></tr>
+      <tr><td>Tag tools, post-session checks</td><td>Rewritten</td><td>The tag tools write the id first today. The checks read today's session file and score with ALN's formulas.</td><td></td></tr>
+      <tr><td>ALN's pack</td><td>Rewritten in part</td><td>Its rules, as a designer's rules.</td><td>Its tokens, texts, cues and look.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="prose">
+  <p>The risks of building beside, and what answers each:</p>
+  <ul class="plain">
+    <li><b>A fix nobody wrote down is lost.</b> The equipment code is moved, not rewritten. Before each area a list is made from the end-to-end tests, the audit against the real players, the warnings in the guides, the cause analysis and the list of blue's fixes.</li>
+    <li><b>ALN's scores change without anyone noticing.</b> Real sessions, turned into the new record, must give the same final scores. No recorded session is in the repository, so I need some from you.</li>
+    <li><b>A long time with no working whole.</b> The first version, then one area at a time into it.</li>
+    <li><b>A fault fixed on blue never reaches the new engine.</b> Each area keeps a list of cases still to cover. A fix on blue adds a case, and the case becomes a test when that area is built.</li>
+  </ul>
+  <p class="choice"><b>Recommended.</b> Beside for the backend, the GM scanner, the player scanner page and the scoreboard. In place for the firmware. The config tool is decided when its area is built.</p>
+
+  <h3>3. The repositories</h3>
+  <p>This is three questions.</p>
+  <p><b>(a) One repository for the engine's web programs and the code they share, or one for each program as today.</b> That means the backend, the GM scanner, the player scanner page, the scoreboard, the config tool, the rules code, the definitions and the tag tools.</p>
+  </div>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th></th><th>One repository</th><th>One for each program, joined by pins</th></tr></thead>
+    <tbody>
+      <tr><td><b>Running kits</b></td><td>A release is one commit. Updating a kit is installing one release, and going back is installing the one before. A release becomes a built bundle that is installed, where today the Pi holds the code and builds the GM scanner when the backend starts.</td><td>A release is a set of pins. Today three copies of the pack data sit at two different commits, and the guide has a section on copies that have come loose. A wrong mix would be caught when devices connect, but it can be built.</td></tr>
+      <tr><td><b>Upkeep</b></td><td>A change to a message is one commit and one review, and one run of the checks sees every program. The rules code has one source that the backend and the GM scanner both load. Cost: the checks must run only what a change touches, and one mistake can break every program at once.</td><td>The same change is a commit in each repository and then the pins, in a set order. Between merges the programs disagree. Each repository's own checks cannot see the others. The shared rules code must be published as a package on every change, nested in each program, or copied, as today.</td></tr>
+      <tr><td><b>Extending</b></td><td>A developer adding a capability may touch the rules code, a backend module, a GM scanner screen and the definition. It is one repository to copy and one change to offer back. The edge of the repository is the line between the engine and any game.</td><td>The same addition is several repositories and their pins. What this side gives: a person can be given one program without the rest, and each program can have its own release rhythm. The programs cannot run across versions, so neither is wanted here.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="prose">
+  <p class="choice"><b>Recommended.</b> One. The shared code has to be proved with one real build in the first version. My first answer claimed it would work without checking, and the review showed the claim was wrong for code written the backend's way.</p>
+  <p><b>(b) The firmware in that repository, or in its own.</b> I first leaned to putting it in. The review's facts turn that.</p>
+  <ul class="plain">
+    <li>It is built with different tools, with parts of no fixed version, and no automatic check compiles it today.</li>
+    <li>Its repository holds 86 MB of copied libraries. One, 30 MB, is used by nothing. The display library is changed by hand for this board.</li>
+    <li>Two libraries inside it are under the GPL licence. So the firmware must be released under the GPL when the engine goes public, wherever it lives. That bears on the licence you choose for the rest.</li>
+    <li>Its tie to the engine is narrow, a handful of messages. And it is for one kind of hardware. Another production may use another, or none.</li>
+  </ul>
+  <p>The cost of keeping it apart: a change to a message the scanner uses is two repositories and a pin, and each engine release names the firmware version it carries.</p>
+  <p class="choice"><b>Recommended.</b> Its own repository, checked against the definition that the engine publishes with each release.</p>
+  <p><b>(c) Where the engine's repository starts: a new one created now, or a folder in today's repository, lifted out at release.</b></p>
+  <ul class="plain">
+    <li><b>A folder in today's repository</b> keeps everything in one place during the build. But the file with a live secret is tracked there today. The repository's checks run every old end-to-end test on every push. Two backends, two GM scanners and two player pages would sit side by side for months. And lifting the folder out later rewrites its history and breaks every link to it.</li>
+    <li><b>A new repository</b> starts clean, with no secret, nothing of ALN's and no old program beside the new one. It can be made public when you choose. Its costs: two repositories during the build, with today's code and this design's records in the old one. A file that moves loses its line-by-line history unless it is brought with it, so each move names where it came from.</li>
+  </ul>
+  <p class="choice"><b>Recommended.</b> A new repository, created now. Today's repository stays as it is, with blue's branch and the code to refer to. What it becomes after the cutover is part of the cutover plan. A change is then one pull request, where your rule of 12 September had one for each repository touched.</p>
+
+  <h3>4. ALN's report pipeline</h3>
+  <ul class="plain">
+    <li>The Director Console and the emailer stay ALN's own programs, outside the kit and outside the engine, as you decided on 1 November.</li>
+    <li>The report the GM downloads stays what you ruled on 29 August: its structure is fixed in the engine, its wording comes from the pack, and the ★ stays where the console's parser expects it. My first answer put the report's layout in ALN's pack. That went against your ruling and is withdrawn.</li>
+    <li>The report is made from the session's record. It then also works in a game with no backend, where today it does not.</li>
+    <li>The record keeps what a formula read, and not only its result, so the report can still print how a sale's value was worked out.</li>
+    <li>The check is the report's format on made-up records, and the same final scores on real sessions. It cannot be "byte for byte against old downloads": old reports print times in the timezone of the device that made them, and print adjustments nine hours off on some sessions. That fault goes away, because every line in the record is stamped by one clock.</li>
+    <li>The roster, the notes, the photos and the accusation join the record in the capture work, which the roadmap places after this build. So at the cutover the director still types them into the console, as today.</li>
+    <li>Moving the console to read the record directly stays at your pace.</li>
+  </ul>
+
+  <h3>5. What in these repositories is ALN's</h3>
+  </div>
+  <div class="tbl-wrap">
+  <table>
+    <thead><tr><th>Today</th><th>What it is</th><th>Where it goes</th></tr></thead>
+    <tbody>
+      <tr><td>The tokens, rules, cues, texts and look in the pack data</td><td>ALN's pack</td><td>ALN's pack, in its own repository</td></tr>
+      <tr><td>The six files that say what a pack must look like</td><td>The engine's</td><td>The engine</td></tr>
+      <tr><td>The tag-writing and check-in tools</td><td>Engine tools</td><td>The engine, rewritten</td></tr>
+      <tr><td>131 pictures and sounds in the player scanner's repository, and the sounds, fonts and loop pictures in the backend's</td><td>ALN's media</td><td>ALN's media, outside the engine and outside any pack</td></tr>
+      <tr><td>The Notion sync and the picture generator</td><td>ALN's content tools</td><td>With ALN's pack</td></tr>
+      <tr><td>The phone auto-reply script</td><td>ALN's</td><td>ALN's. Its guide holds a real phone number</td></tr>
+      <tr><td>ALN's installation profile, playlists and audio routes</td><td>ALN's installation settings</td><td>The installation's data</td></tr>
+      <tr><td>The QR codes and the sync script in the player scanner's repository</td><td>ALN's</td><td>With ALN's pack</td></tr>
+      <tr><td>The post-session checks</td><td>An engine tool</td><td>The engine, rewritten to read the record</td></tr>
+      <tr><td>The Notion skill, the report command and the ALN helpers used by agents</td><td>ALN's working tools</td><td>ALN's</td></tr>
+      <tr><td>The component guides and the scoring guide</td><td>Half engine, half ALN</td><td>Rewritten for the engine. ALN's part goes to ALN</td></tr>
+      <tr><td>The report pipeline</td><td>ALN's</td><td>Stays where it is</td></tr>
+      <tr><td>The toy games</td><td>The engine's test games</td><td>The engine. One is scored its own way</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="prose">
+  <p>Before anything is made public, the documents need a sweep for private details.</p>
+
+  <h3>6. The cutover, and going back</h3>
+  <p>On 29 August you ratified that the cutover is a swap of computers, that the scanners never notice, and that going back is immediate: swap back to blue. Three of your decisions of 13 November change that, and I did not say so when you made them.</p>
+  <ul class="plain">
+    <li>The hardware scanners get new firmware. Blue cannot talk to them. Going back means flashing each one back by USB.</li>
+    <li>Tags are rewritten with the link first. Blue's firmware reads only a tag with the id first.</li>
+    <li>Every device gets a credential from the new backend.</li>
+  </ul>
+  <p>Rehearsals at the venue are touched the same way. The real hardware scanners cannot serve blue and green on the same day.</p>
+  <p>What keeps a way back, to be designed in the cutover plan and confirmed by you there: the new firmware reads tags written either way, so the tags are rewritten only when you call the new engine good. Some scanners stay on the old firmware until then. A venue rehearsal uses spare scanners.</p>
+  </div>
+</section>
+
 <section class="ask prose">
   <h2>Where we are</h2>
   <p><b>Confirmed on 13 November:</b> how ALN runs while this work is done, and the order of work.</p>
@@ -641,12 +778,14 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <li>After a restart, the session, the clock, the GMs' logins, the music, the TV, the lights and the volumes come back by themselves. A video or a cue that was cut off, or that came due while the backend was down, is listed for the GM to run or drop.</li>
   </ul>
   <p>Nothing more is needed from you on this.</p>
-  <p><b>Now, and the last of the design: how today's code moves to the new design.</b> On 13 November I put two decisions to you, and you sent them back as not fully considered. You were right. I had not waited for the research to finish, I had not said what a "thin first version" is, I had not set out the trade-off between one repository and several, and I had not said where ALN's report pipeline goes. Both are withdrawn while I do that work. For the record, this is what I had put:</p>
+  <p><b>Now, and the last of the design: how today's code moves to the new design.</b> You sent my first two decisions on this back as not fully considered. The considered version is the section above this box. It asks you for this:</p>
   <ul class="plain">
-    <li><b>Build the new engine beside today's code.</b> It is built in new folders, starting with the thin first version. The parts of today's code that already fit move across with their tests. Today's code stays untouched as the reference, and is deleted when the new engine passes the same end-to-end checks. The other way is to reshape today's code step by step with its tests kept passing, which buys nothing while blue runs ALN.</li>
-    <li><b>One repository for the whole engine.</b> The backend, the GM scanner, the player scanner page, the scoreboard, the config tool, the firmware, the shared game code and the definition of the messages live together, so one commit is one version of the engine on every device. ALN's pack keeps its own repository. The separate GM scanner, player scanner and firmware repositories are archived at the cutover and not touched before it.</li>
+    <li><b>Decision 1.</b> Build beside today's code for the backend, the GM scanner, the player scanner page and the scoreboard, and change the firmware in place. Or change everything in place.</li>
+    <li><b>Decision 2.</b> The repositories, in three parts: one repository for the engine's web programs and the code they share; the firmware in its own; and a new repository created now.</li>
+    <li><b>A need.</b> A few session files from real ALN sessions on blue, the report the GM downloaded for each, and which pack and which of blue's versions each ran.</li>
+    <li><b>To know.</b> Going back to blue after the cutover is no longer only a swap of computers. And one decision of yours comes before the first version: how a device is added to a kit.</li>
   </ul>
-  <p>Neither is decided. I will bring this back when the five things above are done properly.</p>
+  <p>After these the design is done, and I write the build plan.</p>
 </section>
 
 <footer class="prose">

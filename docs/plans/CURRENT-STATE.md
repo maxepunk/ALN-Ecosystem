@@ -66,8 +66,8 @@ before acting.
   the record, built with the GM scanner's redesign (ROADMAP row 8.17).
   Stated to the owner and not objected to: corrections stay visible in
   the record. The owner also confirmed how ALN runs while this work is
-  done and the order of work. The page is version 29 (version id
-  1794556963-a96a; source
+  done and the order of work. The page is version 30 (version id
+  1794588207-3df3; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
   and its last box lists what is decided and what is next. **Two rules
   from the owner on 2026-11-13.** (1) Never ask the owner whether a
@@ -121,39 +121,43 @@ before acting.
   a limit on what a designer may design. Say "designer", never "maker".
   The working note, with what the owner's records say:
   `docs/plans/architecture-pass/design/2026-11-13-how-the-engine-is-extended.md`.
-  **In rework, and the last design topic: how today's code moves to
-  the new design.** The agent put two decisions on 2026-11-13 (build
-  the new engine beside today's code; one repository for the whole
-  engine) and the owner sent both back: "These decisions don't yet feel
-  like they're fully considered. for example, what does a 'thin first
-  version' even mean? What are the architectural tradeoff of one repo
-  vs multiple for long term operation, maintenance, and extensions? How
-  would the ALN report pipeline fit into all this? etc. not to mention,
-  I've noticed you haven't waitedfor the agent researching how today's
-  code moves". Both are withdrawn. The worst fault: the agent read the
-  helper's facts file while the helper was still writing it, took it
-  for finished and committed it as such. **A file in the tree is not a
-  finished report: wait for the helper's completion notice, then read
-  the whole file and check its claims.** What a considered answer
-  needs is listed at the end of the working note,
-  `docs/plans/architecture-pass/design/2026-11-13-how-todays-code-moves.md`:
-  the finished facts; "thin first version" defined in plain words; one
-  repository against several, set out for operation, maintenance and
-  extension, with costs and what cannot be undone; where ALN's report
-  pipeline lives and what it reads; and where everything that is ALN's
-  and not the engine's goes. Do not put the decisions again until all
-  five are done. On 2026-11-13 the helper finished (its final file is
-  committed at `e9d77bf9`), the agent read all of it, and wrote the
-  considered version into the working note under "The rework". Next:
-  one independent reader challenges that rework; the agent fixes what
-  holds; then it goes to the owner. The first reader was cut off by the
-  usage limit on 2026-11-13 before it reported. A second was started
-  when the limit reset, on a strong model one step below the session's
-  own, at high effort. The facts file:
+  **With the owner again, and the last design topic: how today's code
+  moves to the new design.** History, because it carries three rules.
+  The agent first put two decisions on 2026-11-13 and the owner sent
+  them back: "These decisions don't yet feel like they're fully
+  considered. for example, what does a 'thin first version' even mean?
+  What are the architectural tradeoff of one repo vs multiple for long
+  term operation, maintenance, and extensions? How would the ALN report
+  pipeline fit into all this? etc. not to mention, I've noticed you
+  haven't waitedfor the agent researching how today's code moves". The
+  agent had read the helper's facts file while the helper was still
+  writing it. The agent then waited for the helper, read all of its
+  final file, wrote a considered version, and had one independent
+  reader challenge it. The reader returned fourteen findings; the main
+  ones were checked and held; two of them were the agent contradicting
+  owner rulings again (the report's layout, ruled on 2026-08-29; the
+  test rig, ruled on 2026-11-01). The second writing is in the working
+  note,
+  `docs/plans/architecture-pass/design/2026-11-13-how-todays-code-moves.md`,
+  and on the proposal page as its own section. **What is asked of the
+  owner now:** (1) build beside today's code for the backend, the GM
+  scanner, the player scanner page and the scoreboard, and change the
+  firmware in place, against changing everything in place; (2) the
+  repositories in three parts: one for the engine's web programs and
+  the code they share, the firmware in its own, and a new repository
+  created now; (3) a need: session files from blue, the report
+  downloaded for each, and which pack and commit each ran; (4) to know:
+  going back to blue after the cutover is no longer a swap of
+  computers, which the roadmap's section 6 still says, and one decision
+  of the owner's comes before the first version (how a device is added
+  to a kit). The facts file:
   `docs/plans/architecture-pass/design/2026-11-13-how-todays-code-moves-facts.md`.
   After this topic the design is done and the next work is the build
   plan (the owner's decision of 2026-10-30: the design half ends with
   the decision notes, `docs/adr/0001` to `0011`, and the new roadmap).
+  The build plan must hold: the four detailed designs the first version
+  needs, the rig, the cutover plan with its way back, and the lists of
+  pending cases for each area.
   The questions as asked, the
   recommendations, the owner's answers word for word and the facts
   looked up for the first topic are in
