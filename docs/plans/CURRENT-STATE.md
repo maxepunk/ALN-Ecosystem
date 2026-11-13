@@ -66,8 +66,8 @@ before acting.
   the record, built with the GM scanner's redesign (ROADMAP row 8.17).
   Stated to the owner and not objected to: corrections stay visible in
   the record. The owner also confirmed how ALN runs while this work is
-  done and the order of work. The page is version 28 (version id
-  1794555902-b4af; source
+  done and the order of work. The page is version 29 (version id
+  1794556963-a96a; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
   and its last box lists what is decided and what is next. **Two rules
   from the owner on 2026-11-13.** (1) Never ask the owner whether a
@@ -142,7 +142,11 @@ before acting.
   extension, with costs and what cannot be undone; where ALN's report
   pipeline lives and what it reads; and where everything that is ALN's
   and not the engine's goes. Do not put the decisions again until all
-  five are done. The facts file:
+  five are done. On 2026-11-13 the helper finished (its final file is
+  committed at `e9d77bf9`), the agent read all of it, and wrote the
+  considered version into the working note under "The rework". Next:
+  one independent reader challenges that rework; the agent fixes what
+  holds; then it goes to the owner. The facts file:
   `docs/plans/architecture-pass/design/2026-11-13-how-todays-code-moves-facts.md`.
   After this topic the design is done and the next work is the build
   plan (the owner's decision of 2026-10-30: the design half ends with

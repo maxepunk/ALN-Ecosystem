@@ -641,12 +641,12 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <li>After a restart, the session, the clock, the GMs' logins, the music, the TV, the lights and the volumes come back by themselves. A video or a cue that was cut off, or that came due while the backend was down, is listed for the GM to run or drop.</li>
   </ul>
   <p>Nothing more is needed from you on this.</p>
-  <p><b>Now, and the last of the design: how today's code moves to the new design.</b> I need two decisions from you. Each is in the chat of 13 November with my recommendation, which is what the lines below say:</p>
+  <p><b>Now, and the last of the design: how today's code moves to the new design.</b> On 13 November I put two decisions to you, and you sent them back as not fully considered. You were right. I had not waited for the research to finish, I had not said what a "thin first version" is, I had not set out the trade-off between one repository and several, and I had not said where ALN's report pipeline goes. Both are withdrawn while I do that work. For the record, this is what I had put:</p>
   <ul class="plain">
     <li><b>Build the new engine beside today's code.</b> It is built in new folders, starting with the thin first version. The parts of today's code that already fit move across with their tests. Today's code stays untouched as the reference, and is deleted when the new engine passes the same end-to-end checks. The other way is to reshape today's code step by step with its tests kept passing, which buys nothing while blue runs ALN.</li>
     <li><b>One repository for the whole engine.</b> The backend, the GM scanner, the player scanner page, the scoreboard, the config tool, the firmware, the shared game code and the definition of the messages live together, so one commit is one version of the engine on every device. ALN's pack keeps its own repository. The separate GM scanner, player scanner and firmware repositories are archived at the cutover and not touched before it.</li>
   </ul>
-  <p>After these two the design is done. I then write the build plan: the thin first version, and the areas in order.</p>
+  <p>Neither is decided. I will bring this back when the five things above are done properly.</p>
 </section>
 
 <footer class="prose">
