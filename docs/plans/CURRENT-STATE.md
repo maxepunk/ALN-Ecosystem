@@ -25,10 +25,18 @@ before acting.
   `docs/plans/architecture-pass/DECISIONS.md`. Working log
   (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
-- **Now: the design of how the backend keeps a session's data is
-  settled; the next design topic is the messages and files.** Nothing
-  is waiting on the owner at this moment: the agent owes the owner the
-  list of decisions it needs for the next topic. Decided on 2026-11-13,
+- **Now: the design of the messages between the backend and the
+  devices, and the files, is with the owner.** Three decisions were
+  put to the owner on 2026-11-13, each with a recommendation: what a
+  player sees after a scan, the same on the phone page and the hardware
+  scanner; whether every scanner and screen of the kit has a credential
+  (roadmap row 8.11); and what a device that is out of date may do. The
+  topic is settled, from the owner's side, when those three are made.
+  Four things were stated as following from earlier rulings, with an
+  invitation to object. All of it, with the rulings already made, what
+  happens today and the lines checked, is in
+  `docs/plans/architecture-pass/design/2026-11-13-the-messages-and-files.md`.
+  The design of how the backend keeps a session's data is settled. Decided on 2026-11-13,
   all by the owner: the session record only grows (`docs/adr/0001`); it
   holds the game, the capture, what the room did and what went wrong,
   one line for each event a person at the session would recognise
@@ -53,21 +61,14 @@ before acting.
   settled when those are made. (2) No bare step or round numbers: name
   each piece of work by what it does, and question rounds go by date
   (the owner's rule of 2026-11-01, "Name each step by what it does").
-  **The next topic: the messages between the backend and the devices,
-  and the files.** A helper was asked on 2026-11-13 for a fact sheet:
-  what each device shows for each scan outcome today, which behaviours
-  the owner already ruled (decisions A1 to A7 of 2026-06-09, the
-  hardening plan's R5 and R19), where the phone and the hardware
-  scanner differ, what a tag holds, who can read what, and the version
-  checks at connect. Its report arrives as a message in the session and
-  is NOT in the repository until written down: check its key lines in
-  the code, then write a note for this topic in
-  `docs/plans/architecture-pass/design/` with what is settled and what
-  is open, and tell the owner which decisions are theirs. If the report
-  is lost (a new session), redo that reading from
-  `docs/plans/architecture-pass/2026-10-30-map-inbound.md` and
-  `relationships/2026-11-01-today-client-modules.md` section 6. Never
-  ask the owner something already ruled. The questions as asked, the
+  **After this topic comes the design of which device decides what**
+  (a networked game, a standalone game, a GM scanner with no
+  connection). Before asking anything there, look up what is already
+  ruled: `DECISIONS.md` ("Standalone games: declared, never mixed" and
+  the entries near it), `2026-10-31-standalone-pass.md`,
+  `relationships/2026-11-01-today-client-modules.md` sections 6.2 and
+  6.4, and decisions A2 and A7 of 2026-06-09. Never ask the owner
+  something already ruled. The questions as asked, the
   recommendations, the owner's answers word for word and the facts
   looked up for the first topic are in
   `docs/plans/architecture-pass/design/2026-11-13-how-the-backend-keeps-a-sessions-data.md`.

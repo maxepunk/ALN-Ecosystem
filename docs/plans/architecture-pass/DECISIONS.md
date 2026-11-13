@@ -144,7 +144,10 @@ History:
 **Corrections stay visible in the session record**
 
 A deleted transaction stays in the record, marked as undone, and the
-token can be scanned again, as today. A score adjustment is a line with
+token can be scanned again. (Today the backend frees the token, but the
+GM scanner that scanned it keeps refusing it:
+`ALNScanner/src/network/messageRouters.js:47-54`. The new design
+removes that, because a scanner no longer blocks a scan by itself.) A score adjustment is a line with
 the amount, the entity (in ALN, the account), the GM scanner it came
 from and the reason if one was typed. "Reset All Scores" keeps its meaning (a fresh start,
 decision A3 of 2026-06-09) as a line; everything before it stays in the
