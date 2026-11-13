@@ -121,27 +121,32 @@ before acting.
   a limit on what a designer may design. Say "designer", never "maker".
   The working note, with what the owner's records say:
   `docs/plans/architecture-pass/design/2026-11-13-how-the-engine-is-extended.md`.
-  **With the owner now, and the last design topic: how today's code
-  moves to the new design.** Two decisions were put on 2026-11-13, each
-  with a recommendation: (1) build the new engine beside today's code,
-  in new folders, moving across the parts that already fit, with
-  today's code kept untouched as the reference until the new engine
-  passes the same end-to-end checks (against reshaping today's code
-  step by step); (2) one repository for the whole engine, with ALN's
-  pack in its own, and the separate scanner and firmware repositories
-  archived at the cutover. Stated with them: the config tool sends its
-  changes to the backend and stops writing the backend's files; the
-  firmware is changed where it stands. The working note:
-  `docs/plans/architecture-pass/design/2026-11-13-how-todays-code-moves.md`.
-  The facts, gathered by a helper and spot-checked by the agent:
+  **In rework, and the last design topic: how today's code moves to
+  the new design.** The agent put two decisions on 2026-11-13 (build
+  the new engine beside today's code; one repository for the whole
+  engine) and the owner sent both back: "These decisions don't yet feel
+  like they're fully considered. for example, what does a 'thin first
+  version' even mean? What are the architectural tradeoff of one repo
+  vs multiple for long term operation, maintenance, and extensions? How
+  would the ALN report pipeline fit into all this? etc. not to mention,
+  I've noticed you haven't waitedfor the agent researching how today's
+  code moves". Both are withdrawn. The worst fault: the agent read the
+  helper's facts file while the helper was still writing it, took it
+  for finished and committed it as such. **A file in the tree is not a
+  finished report: wait for the helper's completion notice, then read
+  the whole file and check its claims.** What a considered answer
+  needs is listed at the end of the working note,
+  `docs/plans/architecture-pass/design/2026-11-13-how-todays-code-moves.md`:
+  the finished facts; "thin first version" defined in plain words; one
+  repository against several, set out for operation, maintenance and
+  extension, with costs and what cannot be undone; where ALN's report
+  pipeline lives and what it reads; and where everything that is ALN's
+  and not the engine's goes. Do not put the decisions again until all
+  five are done. The facts file:
   `docs/plans/architecture-pass/design/2026-11-13-how-todays-code-moves-facts.md`.
-  **After these two the design is done.** The owner decided on
-  2026-10-30 that the design half ends with the decision notes (they
-  exist: `docs/adr/0001` to `0011`) and the new roadmap, and that the
-  build starts with a thin first version end to end on a new test
-  bench. So the next piece of work is the build plan: the thin first
-  version, then the areas in order, with the paused September work
-  placed inside them. Bring it to the owner for confirmation.
+  After this topic the design is done and the next work is the build
+  plan (the owner's decision of 2026-10-30: the design half ends with
+  the decision notes, `docs/adr/0001` to `0011`, and the new roadmap).
   The questions as asked, the
   recommendations, the owner's answers word for word and the facts
   looked up for the first topic are in

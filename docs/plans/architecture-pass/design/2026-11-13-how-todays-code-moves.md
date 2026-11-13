@@ -1,8 +1,10 @@
 # How today's code moves to the new design (design topic, opened 2026-11-13)
 
-Status: with the owner. Two decisions asked on 2026-11-13. The topic is
-settled when the owner has made them. It is the last topic of the
-design.
+Status: WITHDRAWN for rework (2026-11-13). The agent put two decisions
+to the owner and the owner sent them back as not fully considered. Read
+"The owner's answers" at the end first. Everything between here and
+there is the first attempt, kept as the record of what was put. Do not
+put it again as it stands. It is the last topic of the design.
 
 The facts are in `2026-11-13-how-todays-code-moves-facts.md`, gathered
 by a helper. The agent checked these of its claims itself on
@@ -127,6 +129,56 @@ Put with them, no decision asked:
   (`ALNScanner/tests/contract/sessionReport.contract.test.js`). The new
   record must feed it or replace it with the owner's agreement.
 
-## The owner's answers
+## The owner's answers (2026-11-13)
 
-(none yet)
+Word for word:
+
+> These decisions don't yet feel like they're fully considered. for
+> example, what does a 'thin first version' even mean? What are the
+> architectural tradeoff of one repo vs multiple for long term
+> operation, maintenance, and extensions? How would the ALN report
+> pipeline fit into all this? etc. not to mention, I've noticed you
+> haven't waitedfor the agent researching how today's code moves
+
+Both decisions are withdrawn. What the agent did wrong:
+
+- It did not wait for the helper. The helper's file appeared in the
+  tree, the agent took it for finished, committed it as "as the helper
+  left them" (`d1b441a7`), read its summary and four of its eight
+  sections, and built the recommendation on that. The helper was still
+  running and still changing the file: by 08:01 it had changed 164
+  lines. No completion notice had arrived. A file in the tree is not a
+  finished report.
+- It used "thin first version" without saying what it contains, what
+  it proves and what it leaves out. The phrase comes from the owner's
+  decision of 2026-10-30 and was never defined for the owner.
+- It recommended one repository on three sentences of reasons, with no
+  account of the trade-off for running kits, for keeping the engine
+  maintained, and for people who extend it or adopt it.
+- It did not say where ALN's own report pipeline goes, although the
+  facts file itself notes that the owner's tooling reads the session
+  report's exact text.
+- "etc." in the owner's message: the same is true of everything else
+  that is ALN's and not the engine's and lives in these repositories
+  today (the Notion sync, the tag tools, the post-session checks), of
+  the documents, and of what the cutover does to the repositories.
+
+What a considered answer needs before anything is put again:
+
+1. The helper's finished file, read in full, with its main claims
+   checked. Wait for the completion notice.
+2. "Thin first version" defined in plain words: what a person can do
+   with it, what it proves, what it leaves out, how it is checked.
+   Start from the owner's decision and the program document
+   (`docs/plans/2026-10-30-architecture-pass.md`).
+3. One repository against several, set out for three things the owner
+   named: operation (versions on a kit, updates, the standalone pages,
+   the cutover), maintenance (tests, drift between copies, review),
+   and extension (a developer adding a capability, another production
+   adopting the engine, a second game's pack), with the costs of each
+   side and what cannot be undone.
+4. Where ALN's report pipeline lives and what it reads, from the
+   records (`../2026-11-01-after-game-report.md`; `../DECISIONS.md`,
+   "The night's record and the after-game article").
+5. A list of everything in these repositories that is ALN's and not
+   the engine's, and where each goes.
