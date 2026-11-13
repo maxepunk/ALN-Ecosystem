@@ -146,7 +146,10 @@ before acting.
   committed at `e9d77bf9`), the agent read all of it, and wrote the
   considered version into the working note under "The rework". Next:
   one independent reader challenges that rework; the agent fixes what
-  holds; then it goes to the owner. The facts file:
+  holds; then it goes to the owner. The first reader was cut off by the
+  usage limit on 2026-11-13 before it reported. A second was started
+  when the limit reset, on a strong model one step below the session's
+  own, at high effort. The facts file:
   `docs/plans/architecture-pass/design/2026-11-13-how-todays-code-moves-facts.md`.
   After this topic the design is done and the next work is the build
   plan (the owner's decision of 2026-10-30: the design half ends with
@@ -196,6 +199,18 @@ before acting.
   retired site's files and cut `DECISIONS.md` down (keep what the
   proposal cites: the extension cases, the relationship maps, the cause
   analysis), and sharpen three glossary entries (Token, Kit, "tonight").
+- **Helpers (the owner, 2026-11-13).** "when calling sub-agents please
+  use the most appropriate model and effort level for each job". The
+  session had run into the weekly limit of its own model that day, and
+  a review helper died of it mid-run. So choose both for every helper
+  and say which in the record: reading, counting and gathering facts go
+  to a smaller model at low or medium effort; a review or a judgement
+  goes to a strong model at high effort; never the session's own model
+  at its own effort by default. Two more rules from the same day: a
+  helper's file in the tree is not a finished report, so wait for its
+  completion notice and then read all of it; and do not put a decision
+  to the owner while a helper whose result it rests on is still
+  running.
 - **Words for anything the owner reads.** After version 12 the owner
   said the descriptions had drifted into jargon and were ambiguous
   ("what does 'the same core runs wherever a game is decided' even
