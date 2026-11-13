@@ -52,14 +52,14 @@ Decided: the record only grows. Hanging off it:
 
 1. What gets a line. Settled for the game, the pack and the capture.
    Open: the show and the problems. ROUND 1, question 1.
-2. How a correction appears. Follows from "grows" and decision A3; put
-   to the owner as a confirmation. ROUND 1, question 2. With it, one
-   fact only the owner has: what the three hand adjustments of 27 March
-   were. ROUND 1, question 3.
+2. How a correction appears. Follows from "grows" and decision A3;
+   stated to the owner, not asked. With it, one fact only the owner
+   has: what the three hand adjustments of 27 March were. ROUND 1,
+   question 4.
 3. Where a record starts and ends: what can be added after the end,
-   and late scans. ROUND 1, question 4.
+   and late scans. ROUND 1, question 2.
 4. What belongs to a session, an installation and a production.
-   ROUND 1, question 5.
+   ROUND 1, question 3.
 5. Who keeps the record in a standalone game, and the order of scans
    taken without a connection. Waits for step 3 (which device decides
    what).
@@ -83,30 +83,36 @@ device's own time as extra information; the format has a version number
 
 ## Round 1, as asked on 2026-11-13
 
+Stated to the owner as following from decisions already made, with an
+invitation to object (not asked as questions):
+
+- Corrections stay visible. A deleted transaction stays in the record
+  marked as undone, and the token can be scanned again, as today. A
+  score adjustment is a line with the amount, the team, the GM scanner
+  it came from and the reason if one was typed. "Reset All Scores"
+  keeps its meaning (a fresh start, decision A3) as a line; everything
+  before it stays in the record and no longer counts.
+- The record already holds every scan (accepted or refused), the pack
+  the session ran, the texts the players saw, and the capture planned
+  in the roadmap.
+
+Asked, each with a recommendation worded so "yes" accepts it:
+
 1. Does the session record also hold what the room did and what went
    wrong? Recommended: yes, one line for each thing a person at the
    session would call an event (a video started and finished, a GM
    paused the music, a scanner lost its connection, a program crashed
-   and was restarted), never continuous readings. A restart can then
-   put the TV, the music and a running cue back from the record, and
-   the report and the session validation read one place. Scores never
-   depend on those lines.
-2. Corrections stay visible. Recommended: yes. A deleted transaction
-   stays in the record marked as undone, and the token can be scanned
-   again, as today. A score adjustment is a line with the amount, the
-   team, the GM scanner it came from and the reason if one was typed.
-   "Reset All Scores" keeps its meaning (a fresh start) as a line;
-   everything before it stays in the record and no longer counts.
-3. What were the three hand adjustments on 27 March? If GMs move money
-   between teams by hand as part of play, the record could carry a
-   transfer as one line, so its two sides cannot drift apart.
-4. After a session ends. Recommended: notes, photos and the accusation
+   and was restarted), never things that change all the time. A restart
+   can then put the TV, the music and a running cue back from the
+   record, and the report and the session validation read one place.
+   Scores never depend on those lines.
+2. After a session ends. Recommended: notes, photos and the accusation
    can be added to an ended session until the next session is created;
    stored player scans that arrive late go into the session they were
    made in, marked late, never into the next group's; nothing else is
    accepted after the end. (Sales and exposures a GM scanner stored
    while it had no connection wait for step 3.)
-5. What is wiped between groups and what stays. Recommended rule:
+3. What is wiped between groups and what stays. Recommended rule:
    everything a group's play produced is wiped from every screen and
    scanner when the next session is created and lives on only in that
    session's record (teams, transactions, scores, the clock, cues
@@ -116,6 +122,10 @@ device's own time as extra information; the format has a version number
    Bluetooth speaker, the scanners that belong to the kit). The pack
    and its media belong to the production and change only when a new
    pack is applied, never in the middle of a session.
+4. A question of fact only the owner can answer: what were the three
+   hand adjustments on 27 March? If GMs move money between teams by
+   hand as part of play, the record could carry a transfer as one line,
+   so its two sides cannot drift apart.
 
 ## Answers
 

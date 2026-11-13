@@ -33,12 +33,12 @@ before acting.
   page. The page is version 15 (version id 1794529336-8982; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
   and its last box says where we are. **Waiting for the owner on round
-  1 of step 1**, five questions asked in the conversation on
-  2026-11-13: whether the session record also holds what the room did
-  and what went wrong; that corrections stay visible in it; what the
-  three hand adjustments of the 27 March session were; what can be
-  added after a session ends; what is wiped between groups and what
-  stays. The questions as asked, the recommendations, what is already
+  1 of step 1**, asked in the conversation on 2026-11-13. Three
+  questions: whether the session record also holds what the room did
+  and what went wrong; what can be added after a session ends; what is
+  wiped between groups and what stays. One question of fact: what the
+  three hand adjustments of the 27 March session were. And one thing
+  stated, not asked: corrections stay visible in the record. The questions as asked, the recommendations, what is already
   settled and the facts looked up are in
   `docs/plans/architecture-pass/design/2026-11-13-step-1-session-data.md`.
   When the owner answers: write each answer into that note's "Answers",
