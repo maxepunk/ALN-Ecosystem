@@ -525,3 +525,39 @@ For the agent's own engineering (the owner was told in one line):
 - The checks on a phone (the research note's U1 to U3) belong with the
   kit's DNS and certificate work, before the tags are rewritten. The
   decision above does not wait for them.
+
+
+## The tag decision again, in plain words (2026-11-13)
+
+The owner, on the decision as first put: "can you rewrite decision 1
+in clear, plain english for me please?" Sent again as below. One point
+of substance changed: the first wording counted "every tag is
+rewritten" as a cost of putting the link first. The tags need one
+rewrite either way before an iPhone opens the page without a security
+warning, because the link has to carry the kit's real web name. So the
+rewrite is not a cost of either side.
+
+- A tag has two things written on it: the token's id, and a web link
+  that opens that token in the player scanner page.
+- The hardware scanner and the GM scanner read the id. An iPhone reads
+  the link. An Android phone reads the id, after the player has opened
+  the player scanner page.
+- The question is which is written first. Only Android phones care:
+  an Android phone looks at whatever comes first and ignores the rest.
+- Id first (the tags as they are): an Android player opens the page,
+  then scans from inside it. An iPhone player holds the phone to a
+  token.
+- Link first: an Android player could hold the phone to a token with
+  nothing open and the page would open. Two things get worse. The
+  hardware scanners need new firmware that reads further into the tag,
+  and reading in two goes is what caused failed scans in the past
+  (only a very short link avoids it). A token that touches a GM's
+  Android device while the GM scanner is not waiting for a scan opens
+  the player page and records a player scan.
+- Recommended: ALN's tags stay as they are, id first. The new engine
+  reads a tag written either way, so another game can choose link
+  first with no change to the engine.
+- What a yes changes on paper: the rule of 11 June (a player's phone
+  opens the page by touching a token, on iPhone and Android alike)
+  stays true on iPhone only for ALN. On Android the player opens the
+  page first.

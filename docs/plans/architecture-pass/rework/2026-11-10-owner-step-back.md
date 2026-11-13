@@ -124,9 +124,18 @@ The rule from here on, for anything the owner reads:
 | team (when talking about ALN) | account. The owner, 2026-11-13: "what's identified as teams in the backend are really framed as accounts in ALN". The engine's own word is entity |
 | the night's record, tonight | the session's record; this session, this installation |
 | core, door, pass, interface, stated life, plug in, the room's side | say what the code does, in a sentence |
+| record, text record, address record, record order | the token's id; the web link; which of the two is written first on the tag |
+| exchange, reader, the definition | say what happens: the hardware scanner has to read further into the tag; everything that scans a tag; name the thing |
 
 A title is a plain sentence that says what would be true afterwards.
 A "today" line says what happens to a scan, a GM or a restart. Version
 13 of the page (commit `ae6209f5`, version id 1794295582-1d3a) follows
 this. `DECISIONS.md` still uses the made-up names; replace them when
 that record is cut down to the owner's decisions.
+
+On 2026-11-13 the tag decision went to the owner in the words of the
+left-hand column of the last two rows. The owner: "can you rewrite
+decision 1 in clear, plain english for me please?" Put a decision in
+the words a GM would use, say first what the choice is and what each
+side does to a player or a GM, and give the recommendation last. Keep
+the research's own terms in the research file.

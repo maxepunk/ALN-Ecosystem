@@ -150,7 +150,12 @@ before acting.
   A title is a plain sentence. A "today" line says what happens
   to a scan, a GM or a restart. The table of replacements is the last
   section of `rework/2026-11-10-owner-step-back.md`. `DECISIONS.md`
-  still uses the made-up names; replace them when it is cut down.
+  still uses the made-up names; replace them when it is cut down. On
+  2026-11-13 the owner asked for the tag decision to be rewritten "in
+  clear, plain english": put a decision in the words a GM would use
+  (the token's id, the web link, which is written first on the tag),
+  never record, exchange, reader or definition, and say what each side
+  of the choice does to a player or a GM before recommending.
 - **Done so far.** Green's three follow-ups merged on 2026-10-30 at
   `089dd527` (full backend suite, coverage check and lint passed). The
   review of today's engine
