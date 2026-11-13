@@ -66,8 +66,8 @@ before acting.
   the record, built with the GM scanner's redesign (ROADMAP row 8.17).
   Stated to the owner and not objected to: corrections stay visible in
   the record. The owner also confirmed how ALN runs while this work is
-  done and the order of work. The page is version 24 (version id
-  1794553239-8c75; source
+  done and the order of work. The page is version 25 (version id
+  1794553647-5f13; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
   and its last box lists what is decided and what is next. **Two rules
   from the owner on 2026-11-13.** (1) Never ask the owner whether a
@@ -94,16 +94,29 @@ before acting.
   a session count even when they arrive after its end (`docs/adr/0003`,
   amended). The working note:
   `docs/plans/architecture-pass/design/2026-11-13-which-device-decides-what.md`.
-  **Next: how the engine is extended** (the proposal's changes 6, 4 and
-  7: a known place for a new kind of rule, equipment or screen; one
-  pattern for video, music, sound and lights; the backend assembled in
-  one place). Before asking anything, look up what is ruled: the
-  rulings table at the top of
-  `docs/plans/2026-09-12-block2-hardening-plan.md`, the decisions of
-  2026-06-10 (`docs/decisions/2026-06-10-tier-e-wave2-semantics.md`),
-  `requirements/2026-11-01-extension-cases.json`, and the notes in
-  `rework/2026-11-12-owner-comments-on-proposal.md` on changes 4, 6 and
-  7. After that topic: how today's code moves to the new design.
+  **With the owner now: how the engine is extended** (the proposal's
+  changes 6, 4 and 7). Three decisions were put on 2026-11-13, each
+  with a recommendation, and the topic is settled when they are made.
+  (1) What a game's maker can build in the pack with no developer:
+  values and texts, ways to turn in a token from the engine's choices,
+  and rules "when this happens, do that" that run the room and never
+  change the game; no calculations or code in a pack. (2) How a new
+  capability reaches a production: as part of the engine, with an
+  engine update; no add-ons. (3) What comes back by itself after a
+  restart: the session, clock, logins, music, TV, lights and volumes
+  do; a video or cue that was cut off or missed is listed for the GM.
+  The first two are questions the owner named as open on 2026-11-02.
+  One statement went with them (a test or rehearsal copy uses
+  stand-ins, and only one copy holds the real gear). The working note
+  has the rulings already made, what happens today and the decisions
+  as put:
+  `docs/plans/architecture-pass/design/2026-11-13-how-the-engine-is-extended.md`.
+  **After that: how today's code moves to the new design.** A helper
+  was started on 2026-11-13 to gather facts for it into
+  `docs/plans/architecture-pass/design/2026-11-13-how-todays-code-moves-facts.md`
+  (no recommendation in it; check its claims before relying on them;
+  commit the file when it arrives). The decision itself is the lead's
+  to work out and put to the owner.
   The questions as asked, the
   recommendations, the owner's answers word for word and the facts
   looked up for the first topic are in
