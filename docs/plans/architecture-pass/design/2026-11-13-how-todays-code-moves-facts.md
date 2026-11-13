@@ -6,10 +6,21 @@ nothing.
 
 Read on 2026-11-13 at parent commit `f6b48866`, with the GM scanner at
 `b521774`, the pack data at `6f9bc30`, the web player scanner at
-`e0bf299` and the firmware at `f81aba5`. I ran no test, build, server or
-install, and I did not open `backend/.env`. I counted with `find`, `wc`
-and `grep`. "Inferred" marks a reading of something I did not see
-directly.
+`e0bf299` and the firmware at `f81aba5`. From there to `215001d2` only
+documents changed, no code. I ran no test, build, server or install, and
+I did not open `backend/.env`. I counted with `find`, `wc` and `grep`.
+"Inferred" marks a reading of something I did not see directly.
+
+This is the second version. The first is commit `d1b441a7`, written
+before the owner's correction of 2026-11-13 that a designer designs the
+game's rules in the pack (`docs/adr/0011`). This version rebuilds the
+table for change 6, adds the facts the correction makes relevant, and
+corrects seven claims. The last section lists every change. The seven
+changes carry the titles of the proposal page, version 28.
+
+The 15 lines below are a three-minute read. Sections A to H give each
+fact with its evidence, for checking. The whole file is longer than the
+ten minutes it was meant to take.
 
 ```
 files:  find <dir> -type f -name '*.js' | wc -l
@@ -27,18 +38,18 @@ my 2,989, and 1,726 GM scanner tests against my 1,669
 1. The backend is 90 source files and 26,916 lines. The GM scanner is 67 files and 16,497 lines. Their tests are 88,538 and 27,608 lines, with about 3,440 and 1,720 cases. (A)
 2. The backend stores a session as one object. Each change rewrites all of it, twice, through a key-value file store. No file in `backend/src` appends. A delete cuts a transaction out and a reset empties the list. (B, change 1)
 3. One function already works the scores out from a list, `computeTeamScores` at `gameRules/scoring.js:220`. Only the delete path calls it. Score adjustments sit on the score object. Refused and duplicate scans are stored nowhere. (B, change 1)
-4. `backend/src/gameRules/` is 11 CommonJS files and 1,877 lines. It uses no Node built-in and requires nothing outside its folder. Its tests are 10 files and 207 cases. (B, change 2)
-5. The code that the GM scanner's standalone store copies sits outside that folder. The session check and the score changes are in `transactionService.js`, 897 lines. A token's value is in `tokenService.js:50`. The models require Joi and uuid. (B, change 2)
-6. The GM scanner's own copy of the rules is 1,478 lines in six files. 30 of its 67 files carry a standalone game. The backend's rule functions take the game's config as an argument. The scanner's copies read it from module variables. (B, change 2, and C)
-7. The backend has 17 service singletons, 45 module-level `let` variables in 15 files, and 13 call sites that type the list of services by hand. 16 source files and 66 test files require `sessionService`. (C)
-8. No circular require exists at load time. Seven files form one cycle through requires placed inside functions. There are 96 such lines in 25 files. (C)
-9. Backend tests reach the inside directly. 59 of 110 unit files and 33 of 38 integration files require a service singleton. 34 unit files use `jest.mock`. Coverage floors are keyed by file path, 85 for the backend and 66 for the GM scanner. (C, E)
-10. Three groups of tests require no service singleton. 26 Playwright flows, 110 declarations, start `node src/server.js` and use HTTP, WebSocket and the pages. 5 file-format test files hold 116 cases. The rules tests hold 207. CI runs the flows on four combinations of pack and profile. (E)
-11. New message definitions alone touch all 34 HTTP, WebSocket and scanner contract test files, 259 cases. They also touch 30 of 38 integration files, at least 16 of 26 flows, 39 of the firmware's 125 cases and 101 of the web player scanner's 165. (E)
+4. `backend/src/gameRules/` is 11 CommonJS files and 1,877 lines. It uses no Node built-in and requires nothing outside its folder. Scoring, duplicates and modes are 679 of those lines, and 72 of the folder's 207 test cases. (B, change 2)
+5. ALN's formulas are code, once in the backend and again in the GM scanner. A token's value is at `tokenService.js:50` and `ALNScanner/src/core/scoring.js:218`. The group bonus is at `gameRules/scoring.js:184` and `LocalStorage.js:430`. The pack names the formulas and sets their numbers. No code evaluates a formula written in a pack. (B, change 6)
+6. The pack already sets, and the engine reads at run time, the modes and their flags, which kind of device may do what, the scoring tables, the groups, the clock's phases, and cues with conditions. The toy pack differs from ALN in names, numbers, a third mode and phases. It uses the same formulas. (B, change 6)
+7. The GM scanner's copy of the rules is 1,478 lines in six files, and 30 of its 67 files carry a standalone game. Part of what it copies sits outside the rules folder, in `transactionService.js` and `tokenService.js`. The backend's rule functions take the game's config as an argument. The scanner's copies read it from module variables. (B, change 2, and C)
+8. The backend has 17 service singletons, 45 module-level `let` variables and 13 call sites that type the list of services by hand. No circular require exists at load time. Seven files form one cycle through requires placed inside functions, 96 such lines in 25 files. (C)
+9. Backend tests reach the inside directly. 59 of 110 unit files and 33 of 38 integration files require a file under `src/services/`. 34 unit files use `jest.mock`. Coverage floors are keyed by file path, 85 for the backend and 66 for the GM scanner. (C, E)
+10. Three groups of tests require no service singleton. 26 Playwright flows, 110 declarations, start `node src/server.js` and use HTTP, WebSocket and the pages. 5 file-format test files hold 116 cases. The rules tests hold 207. CI runs the flows on four combinations of pack and profile. No recorded session is in the repository. (E)
+11. New message definitions alone touch 33 of the 34 HTTP, WebSocket and scanner contract test files, 257 of their 259 cases. They also touch 30 of 38 integration files, at least 16 of 26 flows, 39 of the firmware's 125 cases and 101 of the web player scanner's 165. (E)
 12. The backend is CommonJS with no build. The GM scanner is ES modules, bundled by Vite 7.2.2. There is no root package, no workspace and no dependency between the four packages. By default Vite's build converts CommonJS only under `node_modules`, and its dev server serves only files under `ALNScanner/`. (D)
 13. The GM scanner's own CI and its GitHub Pages deploy see its repository and its `data` submodule, the pack data, and nothing else. The pack data repository is the one place the backend and the GM scanner both load today. It already holds one ES module. Three checkouts of it sit at two commits. (D)
 14. Merged from the hardening work are the equipment families, the dormancy core and the harness minimum, 1,646 added lines in 24 backend source files. Not built are the profile check, credentials, the supervisor, the pack self-heal, and the preflight arms and panel. The dormancy-core fixes were lost. (F)
-15. The firmware is 9,606 lines in 28 files. Its tests cover seven pure headers, 686 lines. All its HTTP is in one untested file of 1,424 lines. The config tool requires three backend source files and one backend script, runs the backend's pack check as a child process, and writes `backend/.env`, `routing.json` and the pack. (G, H)
+15. The firmware is 9,606 lines in 28 files. Its tests cover seven pure headers, 686 lines. All its HTTP is in one untested file of 1,424 lines. The config tool requires two backend rule files and one backend script, runs the backend's pack check as a child process, and writes `backend/.env`, `routing.json` and the pack. It has screens for the scoring tables and the cues, and none for modes or formulas. (G, H)
 
 ## A. Size and shape
 
@@ -74,7 +85,7 @@ Backend tests, `backend/tests`:
 | e2e flows, Playwright | 26 | 9,376 | 110 |
 | e2e helpers, page objects, set-up | 28 | 9,765 | 52, never run |
 | `helpers`, `rung1`, `fixtures`, `visual`, one stray test | 24 | 5,020 | 1 |
-| total | 266 | 88,538 | 3,439 |
+| total | 266 | 88,538 | 3,439 that a runner runs |
 
 Three test files in `tests/e2e/setup` run under neither runner. Jest
 ignores `/tests/e2e/` and Playwright reads only `tests/e2e/flows`
@@ -105,7 +116,6 @@ The other components:
 | Web player scanner, `aln-memory-scanner` | `js/` 4 files, 1,489 lines. `index.html` 176, `config.html` 470, `sw.js` 306 | 4 files, 2,295 lines, 165 cases |
 | Firmware, `ALNScanner_v5` | 28 code files, 9,606 lines. `hal` 6 files 2,164. `models` 3 files 267. `services` 9 files 3,325. `ui` 7 files 2,003. Top level 3 files 1,847. The folder also holds 16 report documents, 8,056 lines | 8 files, 1,549 lines, 125 `RUN_TEST` lines |
 | Config tool | `server.js` and `lib/`, 10 files, 2,146 lines. Browser code 22 files, 4,364 lines | 16 files, 2,660 lines, 181 cases. One Playwright file, 2 cases |
-| Notion sync scripts, `scripts/` | 5 Python files, 2,010 lines | 6 files, 941 lines, 75 `def test_` |
 
 ## B. What already has the target shape
 
@@ -119,7 +129,7 @@ or lacks. Paths without a prefix are under `backend/src`.
 |---|---|---|
 | Matches | `computeTeamScores` returns the whole score table from a transaction list. Its one caller is the rebuild after a delete. | `gameRules/scoring.js:220-294`, `services/transactionService.js:817-829` |
 | Matches | `checkDuplicate` decides from the transaction list and a per-device list. | `gameRules/duplicatePolicy.js:83-117` |
-| Matches | One function builds the whole state for a screen, with 7 callers. One message, `service:state`, carries the state of all equipment. | `websocket/syncHelpers.js:36-159`, `websocket/broadcasts.js:491` |
+| Matches | One function builds the whole state for a screen. It has 6 callers in the source and one in a test helper. One message, `service:state`, carries the state of all equipment. | `websocket/syncHelpers.js:36-159`, `websocket/broadcasts.js:491`. The callers are listed in C |
 | Matches | Every session write passes through one ordered queue. | `services/sessionService.js:705-711` |
 | Matches | A schema for a finished session's file exists, with 21 test cases. Nothing writes that file. | `backend/contracts/session-bundle.schema.json`. `grep -rnE "session-bundle\|sessionBundle" backend/src backend/scripts` finds nothing |
 | Matches | The GM scanner saves a scan before it sends it, gives it an id built from the device id, the time and a random part, and resends after a reconnect. | `ALNScanner/src/network/networkedQueueManager.js:42-76`, `:161` |
@@ -135,10 +145,11 @@ or lacks. Paths without a prefix are under `backend/src`.
 | | Fact | Evidence |
 |---|---|---|
 | Matches | The rules folder is 11 CommonJS files. Its four `require` lines all point to its own files. It uses no Node built-in, only language features. One file keeps two variables for a one-time warning. | `grep -n "require(" backend/src/gameRules/*.js`, `gameRules/modeSemantics.js:134-135` |
-| Matches | Its scoring, duplicate and mode functions take plain data and the game's config as arguments. | `gameRules/scoring.js:51`, `duplicatePolicy.js:83`, `modeSemantics.js:173` |
+| Matches | Its scoring, duplicate and mode functions take plain data and the game's config as arguments. They are 3 files and 679 lines. The other 8 files, 1,198 lines, check cues, work out equipment needs and permissions, and hold wording. | `gameRules/scoring.js:51`, `duplicatePolicy.js:83`, `modeSemantics.js:173`. `wc -l backend/src/gameRules/*.js` |
 | Matches | The GM scanner loads the pack at run time and checks each file's sha1. 457 lines, 30 test cases. | `ALNScanner/src/core/packLoader.js:1-28` |
 | Matches | The installation profile can say there is no backend. One backend line reads that field. No scanner reads the profile. | `gameRules/resolution.js:53` |
 | Differs | The files use `require`, which a browser cannot run. See D, items 5 to 8. | |
+| Differs | What the scoring and duplicate functions work out is ALN's own formulas, which `docs/adr/0011` moves into the pack. The table for change 6 has them. | |
 | Differs | Rule code sits outside the folder. The session check, the unknown-token refusal and the score changes are in `transactionService.js`. A token's value is worked out in `tokenService.js`, which also requires `fs`, the config and the logger. | `services/transactionService.js:157`, `:179`, `:380-464`, `services/tokenService.js:1-4`, `:50-67` |
 | Differs | All six model files require Joi through `utils/validators.js`. Three require `uuid`. | `grep -n "require(" backend/src/models/*.js`, `utils/validators.js:6` |
 | Differs | The GM scanner has its own copy: `LocalStorage.js` 629 lines, `modeSemantics.js` 413, `scoring.js` 219, `gameActivityBuilder.js` 112, `formatCurrency.js` 73, `dormancyWording.js` 32. The copy reads module variables set when the pack loads. | `wc -l`. `ALNScanner/src/core/modeSemantics.js:71-93`, `scoring.js:38-64` |
@@ -150,8 +161,8 @@ or lacks. Paths without a prefix are under `backend/src`.
 | | Fact | Evidence |
 |---|---|---|
 | Matches | Two files define today's messages, `openapi.yaml` with 16 paths and `asyncapi.yaml` with 25 messages. | `backend/contracts/`, `asyncapi.yaml:92-126` |
-| Matches | 34 test files, 259 cases, check against them with `ajv`. One of them reads the GM scanner's own list of message names. | `backend/tests/helpers/contract-validator.js:6-25`, `tests/contract/scanner/client-contract-conformance.test.js:24` |
-| Matches | Schemas for files exist: six for the pack, one for the profile, one for the session file. | `find . -name '*.schema.json'` |
+| Matches | 34 test files, 259 cases, are the contract tests for HTTP, WebSocket and the scanners. 26 of the 34 use the `ajv` helper. One reads the GM scanner's own list of message names. | `backend/tests/helpers/contract-validator.js:6-25`. `grep -rlE "contract-validator\|require\(['\"]ajv"` over the four folders. `tests/contract/scanner/client-contract-conformance.test.js:24` |
+| Matches | Schemas for files exist: six for the pack, one for the profile, one for the session file. The six pack schemas sit in the pack data repository, beside ALN's own pack. The other two sit in `backend/`. | `find . -name '*.schema.json'`: `ALN-TokenData/*.schema.json`, `backend/config/profiles/installation-profile.schema.json`, `backend/contracts/session-bundle.schema.json` |
 | Matches | A pack has a content hash. The GM scanner sends its own when it connects. | `services/packService.js:1432`, `websocket/socketServer.js:50` |
 | Differs | The running backend never reads the two files. It checks with 14 Joi schemas typed by hand. | `grep -rnE "openapi\|asyncapi" backend/src` finds comments only. `utils/validators.js:32-213` |
 | Differs | A pack mismatch at connect writes one log line. | `websocket/socketServer.js:139-148` |
@@ -170,6 +181,8 @@ or lacks. Paths without a prefix are under `backend/src`.
 | Differs | The seven differ in size. Audio routing 1,163 lines, Bluetooth 886, music 636, video 532, lights 522, display 447, sound 163. | `wc -l` |
 | Differs | The check has two names, `checkConnection` on three and `checkHealth` on three. The display driver is no class and uses no `ProcessMonitor`. Sound starts one short process per sound. Music keeps its own `connected` field. | `utils/displayDriver.js:53`, `services/soundService.js:75`, `services/musicService.js:73`, `:231` |
 | Differs | The failure count resets when the child wrote any output. No `restart()` exists. Restart, out of service and back in service have table rows and no switch case. | `utils/processMonitor.js:136-138`, `services/commandExecutor.js:98-101` |
+| Matches | At start the backend restores the session, the clock, and which cues have fired or are switched off, from the saved session. | `services/sessionService.js:107-111`, `:154`, `:166` |
+| Differs | GM logins and held items live in memory only. `docs/adr/0010` lists what else a restart loses today. | `middleware/auth.js:13-14`. `grep -n persist services/heldItemsStore.js` finds nothing |
 
 ### Change 5. The engine keeps separate what belongs to one session, to one installation and to the whole production
 
@@ -180,19 +193,34 @@ or lacks. Paths without a prefix are under `backend/src`.
 | Matches | A session carries its pack's identity and its preflight result. | `services/sessionService.js:215-226` |
 | Matches | A running copy can have its own folders for session data and logs. | `config/index.js:52-53`, `backend/tests/e2e/setup/test-server.js:234-247` |
 | Differs | Session data and installation data share one store. Audio routes and volumes use it too. | `services/audioRoutingService.js:120`, `:288`, `:547` |
-| Differs | Installation facts sit in 47 environment names, `routing.json`, `music-playlists.json`, the profile and 13 fixed paths under `/tmp`. | `grep -oE "process\.env\.[A-Z_0-9]+" config/index.js`, sorted and counted. grep for `/tmp/` |
-| Differs | GM logins are two collections in memory. | `middleware/auth.js:13-14` |
+| Differs | Installation facts sit in 47 environment names, `routing.json`, `music-playlists.json`, the profile and 13 names under `/tmp`, one of them a pattern for PID files. | `grep -oE "process\.env\.[A-Z_0-9]+" config/index.js`, sorted and counted. `grep -rhoE '/tmp/[A-Za-z0-9._{}$-]+' backend/src`, sorted and counted. The pattern is at `services/mprisPlayerBase.js:209` |
 | Differs | Start-up, reset, shutdown, and session start, pause and end are each a typed list of steps. | `app.js:178-347`, `services/systemReset.js:38-301`, `server.js:163-217`, `services/sessionService.js:284-559` |
 
-### Change 6. The code has a known place for adding a new kind of rule, equipment or screen
+### Change 6. A designer writes a game's rules in the pack, and the code has a known place for each new capability
+
+This table is new in the second version. The proposal page says of
+today that the rules of the game are in the engine's code, and that a
+pack picks them by name and sets their numbers. The rows below give the
+places.
 
 | | Fact | Evidence |
 |---|---|---|
-| Matches | The engine's capabilities are a typed set of 8 ids and four sets of mode values. Start-up refuses a pack that asks for more. | `services/packService.js:52-61`, `:78-83` |
-| Matches | A pack sets what a mode does by flags. What a cue may do is one table of 24 actions. | `gameRules/modeSemantics.js:173-199`, `gameRules/cueValidation.js:91` |
+| Matches | The engine lists 8 capabilities. A pack lists the ones it needs, and the backend refuses at start a pack that needs another. Four more sets hold the mode values the engine can run. | `services/packService.js:52-61`, `:78-83` |
+| Matches | The pack's rules file already sets each mode with its verb, label and flags. ALN has 2 modes and the toy pack 3. It also sets which of three kinds of device may do each of seven functions, the entity's label, two scoring tables, the groups with their multipliers, and the clock's phases. The schema locks three functions to staff. | `ALN-TokenData/game.json`. `game.schema.json`, 19 top-level properties, `$defs/floorFunction` |
+| Matches | The backend and the GM scanner read what a mode does from its flags. Literal mode names remain on 5 backend lines and 7 GM scanner lines, as defaults and in the built-in fallback tables. | `gameRules/modeSemantics.js:173-199`, `ALNScanner/src/core/modeSemantics.js`. `grep -rnE "['\"](blackmarket\|detective)['\"]"` over each `src`, comment lines left out |
+| Matches | One kind of rule already runs from pack data, the cue. A cue names one of 16 events or a clock time, conditions with 7 operators over that event's fields, and commands from a table of 24. The backend refuses any other command from a cue. ALN's pack has 10 cues. | `services/cue/standingEvaluator.js:26-82`, `gameRules/cueVocabulary.js:23-56`, `gameRules/cueValidation.js:91`, `services/commandExecutor.js:136` |
+| Matches | The same code checks a pack twice, when the backend starts and when the config tool publishes. | `services/packService.js:718-1132`, `config-tool/lib/publish.js:79-93` |
+| Matches | The config tool has a screen for the two scoring tables, and screens for cues with a condition builder. | `config-tool/public/js/sections/economy.js`, 160 lines. `components/cueEditor.js` 350, `conditionBuilder.js` 130, `commandForm.js` 469 |
 | Matches | The GM scanner draws equipment state from one store through seven renderer files. | `ALNScanner/src/core/stateStore.js`, `src/admin/MonitoringDisplay.js:4-10` |
+| Differs | The formulas are code, written twice. A token's value is `floor(base * multiplier)` from the two tables. The group bonus is the sum of `value * (multiplier - 1)` over the group's tokens that the entity scored. A token used in a consuming mode is used up for the session. | `services/tokenService.js:50-67` and `ALNScanner/src/core/scoring.js:218`. `gameRules/scoring.js:184-197` and `ALNScanner/src/core/storage/LocalStorage.js:430`. `gameRules/duplicatePolicy.js:83-117` |
+| Differs | The pack picks each formula by name. A mode's `scoringPolicy` is `standard` or `none`. The schema allows one name for the bonus formula. The start-up check refuses any group rule but `all` and any duplicate rule but `once`. | `services/packService.js:78-83`, `:774-799`. `ALN-TokenData/game.schema.json` |
+| Differs | No code evaluates a formula written in a pack, and no package for that is installed. | `grep -rnE "\beval\(\|new Function\(\|jsonlogic\|mathjs\|expr-eval\|jexl" backend/src ALNScanner/src config-tool/lib` finds nothing. The `dependencies` of the four `package.json` files |
+| Differs | What a token carries is fixed at ten named fields, and the schema allows no other. What an account holds is fixed at one score with its parts. | `ALN-TokenData/tokens.schema.json`, `additionalProperties: false`. `models/teamScore.js:15-40`, `utils/validators.js:139-157` |
+| Differs | A cue's condition on a scan can read six facts: the token's id, the entity, the kind of device, the points, the score, and whether a bonus came. It cannot read the token's type, rating or group. | `gameRules/cueVocabulary.js:23-42` |
+| Differs | The toy pack uses the same formulas as ALN. It differs in names, numbers, one more type, a third mode that scores nothing, and three phases. | `backend/tests/e2e/fixtures/packs/toy-heist/game.json` |
+| Differs | The config tool has no screen for modes, functions, entities, group rules or the duplicate rule. | `grep -rnE "\.modes\b\|entityRole\|duplicatePolicy\|groupRules" config-tool/public/js config-tool/lib` finds two reads, `lib/configManager.js:79-80` and `sections/economy.js:18` |
 | Differs | All commands are one switch of 64 cases in one function of 876 lines. A command can need a row in five other lists. | `services/commandExecutor.js:120-996`, `:38`, `:86`. `gameRules/cueValidation.js:91`, `gameRules/grants.js:61`, `backend/contracts/asyncapi.yaml:1763` |
-| Differs | The scoreboard is one file with one script block. | `backend/public/scoreboard.html:739` |
+| Differs | The scoreboard is one file with one script block. | `backend/public/scoreboard.html:739-1858` |
 
 ### Change 7. The backend is assembled in one place, and a copy started for a test or a rehearsal leaves the installed backend as it was
 
@@ -202,7 +230,7 @@ or lacks. Paths without a prefix are under `backend/src`.
 | Matches | Five functions take their parts as arguments: `createMusicRouter`, `setupCueEngineForwarding`, `buildSyncFullPayload`, `performSystemReset`, `dormancyService.compute`. | `app.js:118`, `:252`, `websocket/syncHelpers.js:36`, `services/systemReset.js:38`, `services/dormancyService.js:90` |
 | Matches | The GM scanner is put together in one file, which builds the parts and passes them to `App`. | `ALNScanner/src/main.js:52-206` |
 | Matches | The flows start a separate backend process with its own port, data folder and log folder. | `backend/tests/e2e/setup/test-server.js:234-295` |
-| Differs | Names are fixed: 13 paths under `/tmp`, the video player's bus name, a kill by pattern in two places, display `:0`. | `services/vlcMprisService.js:16`, `services/audioRoutingService.js:603`, `utils/displayDriver.js:147`, `:56` |
+| Differs | Names are fixed: the 13 names under `/tmp`, the video player's bus name, a kill by pattern in two places, display `:0`. | `services/vlcMprisService.js:16`, `services/audioRoutingService.js:603`, `utils/displayDriver.js:147`, `:56` |
 | Differs | Static files resolve against the process's working folder. Integration tests run one at a time. | `app.js:143`, `backend/jest.integration.config.js:22` |
 
 ## C. Coupling that bears on "in place" against "new structure"
@@ -258,18 +286,17 @@ How the tests reach the singletons:
 |---|---|---|---|---|
 | Test files in the layer | 110 | 40 | 38 | |
 | Require a file under `src/services/` | 59 | 23 | 33 | `grep -rlE "require\(['\"][^'\"]*src/services/"` |
+| Name the path of one of the 17 singletons | 43 | 20 | 32 | `grep -rlE "src/services/(<the 17 names>)(\.js)?['\"]"` |
 | Use `jest.mock(` | 34 | 0 | 4 | `grep -rlE "jest\.mock\("` |
 | Call `resetAllServices` | 14 | 15 | 17 | `grep -rlE "resetAllServices\b"` |
 | Call `resetAllServicesForTesting` | 0 | 0 | 20 | It runs the real `performSystemReset`, `tests/helpers/service-reset.js:273-282` |
 | Use the shared mock factories | 2 | 0 | 0 | `grep -rl "helpers/mocks" backend/tests`. Eight factories exist |
 | Name an event that passes only between services | 24 | 1 | 9 | pattern in E |
 
-The logger is mocked in 21 files, `child_process` in 9, and
-`videoQueueService`, `serviceHealthRegistry` and `commandExecutor` in 7
-each. Jest never resets modules between tests
-(`jest.config.base.js:69`). Coverage floors are per file and keyed by
-path, 85 entries for the backend and 66 for the GM scanner, checked in
-CI (`.coverage-thresholds.json` in each).
+Jest never resets modules between tests (`jest.config.base.js:69`).
+Coverage floors are per file and keyed by path, 85 entries for the
+backend and 66 for the GM scanner, checked in CI
+(`.coverage-thresholds.json` in each).
 
 The GM scanner. `src/main.js` builds the data manager, `TeamRegistry`,
 the state store and the UI manager, then passes them to `new App({...})`
@@ -330,7 +357,7 @@ Tests that check behaviour through an outside edge:
 |---|---|---|---|---|---|
 | File formats | 5 | 116 | reads JSON files, checks with `ajv` | the pack, profile and session-file schemas | `contract/pack/pack-schemas.test.js`, `contract/profile/installation-profile-schema.test.js`, `contract/session-bundle.schema.test.js` |
 | Pure rules | 10 | 207 | calls the functions in `gameRules/` | function names and argument forms | `unit/gameRules/scoring.test.js`, `duplicatePolicy.test.js`, `resolution.test.js` |
-| HTTP, WebSocket and scanner contracts | 34 | 259 | 17 files drive the backend over HTTP or a socket. The other 17 check typed-in payloads, a scanner's own code or the two files' own text | today's messages. 21 of the 34 require a singleton for set-up | `contract/http/scan.test.js`, `contract/websocket/transaction-events.test.js`, `contract/scanner/client-contract-conformance.test.js` |
+| HTTP, WebSocket and scanner contracts | 34 | 259 | 17 files drive the backend over HTTP or a socket. The other 17 check typed-in payloads, a scanner's own code or the two files' own text | today's messages. 21 of the 34 require a file under `src/services/` for set-up | `contract/http/scan.test.js`, `contract/websocket/transaction-events.test.js`, `contract/scanner/client-contract-conformance.test.js` |
 | Backend flows, Playwright | 26 | 110 | start `node src/server.js` with environment variables, then drive the pages | the pages' DOM through 3,370 lines of page objects, today's messages and paths, the environment variable names | `e2e/flows/07c-gm-scanner-scoring-parity.test.js`, `30-full-game-session-multi-device.test.js`, `toy-pack-surfaces.test.js` |
 | The audit against real programs | 1 | 13 checks | a running backend with real video and music players and stand-in gear | today's messages | `tests/rung1/audit-flows.js` |
 | GM scanner in a browser, Playwright | 6 | 50 | the built page alone | the page's DOM | `ALNScanner/tests/e2e/specs/02-standalone-mode.spec.js`, `00-smoke.spec.js`, `phase2-validation.spec.js` |
@@ -359,12 +386,26 @@ beside `toy-heist-require` and `parity-pack`. 11 unit files, 4 contract
 files, 8 flow and set-up files and 3 config tool test files name it
 (`grep -rl "toy-heist"`).
 
+What pins ALN's scores today. Of the 207 rules cases, 72 are on the
+scoring, duplicate and mode files. The other 135 are on cue checks,
+equipment needs, permissions and wording. The GM scanner's copy has 128
+cases in six files under `ALNScanner/tests/unit/core`. The post-session
+checker scores a saved session again. It reuses the backend's mode
+resolver and group functions
+(`backend/scripts/lib/ScoringCalculator.js:22-23`, `:105`, `:257`), and
+has 15 check files of 3,227 lines. No recorded session is in the
+repository. The backend
+writes sessions to `backend/data/`, which git ignores (`.gitignore:29`)
+and this checkout does not have.
+`git ls-files '*.json' | xargs grep -lE '"transactions"\s*:\s*\['` finds
+nothing.
+
 Tests tied to today's inside:
 
 | Group | Files | Cases | Ties | Three examples |
 |---|---|---|---|---|
-| Backend unit, all but the rules | 100 | 2,405 | 58 require a singleton, 34 use `jest.mock`, 23 name an inner event | `unit/services/transactionService.test.js`, `unit/services/sessionService.test.js`, `unit/websocket/broadcasts.test.js` |
-| Backend integration | 38 | 340 | 33 require a singleton, 20 run the real reset, 9 name an inner event | `integration/transaction-flow.test.js`, `session-lifecycle.test.js`, `reconnection.test.js` |
+| Backend unit, all but the rules | 100 | 2,405 | 58 require a file under `src/services/`, 34 use `jest.mock`, 23 name an inner event | `unit/services/transactionService.test.js`, `unit/services/sessionService.test.js`, `unit/websocket/broadcasts.test.js` |
+| Backend integration | 38 | 340 | 33 require a file under `src/services/`, 20 run the real reset, 9 name an inner event | `integration/transaction-flow.test.js`, `session-lifecycle.test.js`, `reconnection.test.js` |
 | GM scanner `tests/unit`, `tests/app`, `tests/integration` | 90 | 1,641 | each imports source files by path, 19 use `jest.mock` | `unit/core/storage/LocalStorage.test.js`, `unit/network/networkedQueueManager.test.js`, `unit/ui/renderers/HealthRenderer.test.js` |
 | Web player scanner | 4 | 165 | each loads a source file by path | `tests/orchestratorIntegration.test.js`, `app.test.js`, `scannerCore.test.js` |
 | Config tool | 16 | 181 | 4 require backend files | `tests/publishDraft.test.js`, `draftRoutes.test.js`, `routes.test.js` |
@@ -376,7 +417,7 @@ a cue's trigger also matches, so these are upper bounds.
 
 | Group | Files that name one | Cases in those files |
 |---|---|---|
-| Backend contract: HTTP, WebSocket, scanner | 34 of 34 | 259 |
+| Backend contract: HTTP, WebSocket, scanner | 33 of 34. 29 name a message or path, and 4 more read `asyncapi.yaml` itself. The last pins one field of the lighting state | 257 of 259 |
 | Backend integration | 30 of 38 | 264 of 340 |
 | Backend unit | 27 of 110 | 865 of 2,612 |
 | Backend flows | 16 of 26 directly | 77 of 110. The other ten reach messages through helpers such as `helpers/gm-command.js` and `setup/websocket-client.js` |
@@ -464,7 +505,7 @@ The decided changes, and the files each touches:
 | Firmware over the air, `docs/adr/0006` | No update code. `grep -rnE "Update\.\|ArduinoOTA\|esp_ota"` finds nothing. Download, check and rename exist for pictures and sound, `OrchestratorService.h:692` and `AssetService.h:90`. The layout is chosen on the compile command |
 | A tag whose first record is a web link, `docs/adr/0005` | `hal/NDEFParser.h:105-122` and its 15 cases. `hal/RFIDReader.h:620-680`, one read of 32 bytes |
 | The new scan replies | `services/ScanResponse.h:51-75` and its 15 cases. `OrchestratorService.h:193`. `Application.h:484-600`, `:689-760`. The screens `ScanFailedScreen.h`, `TokenDisplayScreen.h`, `ProcessingScreen.h` |
-| Also decided: a setting for a game with no backend, `0008`. Late scans go into their own session, `0003`. A device gets only its part of the pack, `0004` | The settings are `models/Config.h` and `ConfigService.h`. The stored-scan queue is `OrchestratorService.h:256` and `:473`, and a stored scan carries no session id, `PayloadBuilder.h:25-36`. The token list and the media come from `TokenService.h:213` and `AssetService.h:103` |
+| Also decided: a setting for a game with no backend, `0008`. A stored scan handed over late goes into the session it was made in, `0003`. The backend sends a device only what its kind may show, `0004` | The settings are `models/Config.h` and `ConfigService.h`. The stored-scan queue is `OrchestratorService.h:256` and `:473`, and a stored scan carries no session id, `PayloadBuilder.h:25-36`. The token list and the media come from `TokenService.h:213` and `AssetService.h:103` |
 
 ## H. The config tool
 
@@ -502,9 +543,19 @@ and three music calls, `GET /api/music/tracks`,
 Assistant itself with the token from `backend/.env` and runs `ffprobe`
 (`routes.js:291-308`, `configManager.js:346`).
 
-It tells the backend nothing when a pack is published. The backend fixes
-its pack at start (`packService.js:1215`), so a publish takes effect at
-the next backend start. Inferred from those two facts.
+When a written file takes effect. The backend reads `backend/.env` once,
+when its config module loads (`backend/src/config/index.js:10`). It
+fixes its pack at start, in the one call of `activatePack`
+(`backend/src/app.js:192`). It reads `routing.json` at start and after a
+system reset, and takes only the `ducking` list (`app.js:265-271`,
+`services/systemReset.js:199-204`). It watches the playlists file and
+reloads it on a change (`services/musicService.js:150`), and the tool
+changes playlists through the backend's own route. The tool sends the
+backend no notice of a publish or of any other write. Its only calls to
+the backend are the four above. So a published pack and a changed
+`backend/.env` wait for the next backend start, and changed ducking
+rules wait for a start or a reset. Inferred from these lines. I did not
+run it.
 
 Four of its test files require backend files or use the toy pack
 (`tests/draftRoutes.test.js:20-26`, `draftStore.test.js:17`,
@@ -521,4 +572,35 @@ CI installs the backend's packages before it runs them.
 - The 30 files of a standalone game come from the map of 2026-11-01. I checked that list and its line total, not each file's role.
 - I did not compile the firmware. No file records its size today.
 - I looked at the scoreboard page and the web player scanner only for size and for how they load code.
-- The task named four working notes. Three existed when I started. The fourth, on how the engine is extended, was committed while I worked, and I read it.
+- I did not work out what a designer's formula would have to read or do. The table for change 6 gives only where today's formulas, tables and flags are.
+- I did not look for recorded sessions outside this repository.
+- The fourth working note, on how the engine is extended, and decision notes `0009` to `0011` were committed while I worked. I read them before this version.
+
+## What changed from the first version
+
+The first version is commit `d1b441a7`.
+
+New in this version:
+
+- The table for change 6, under the change's new title.
+- Summary lines 4 to 8. Lines 5 and 6 are new. The old lines 5 and 6 are now line 7, and the old lines 7 and 8 are now line 8. Lines 10 and 15 each gained a sentence.
+- The split of the rules folder and of its test cases, in B and E.
+- What the backend restores at start, in the table for change 4.
+- "What pins ALN's scores today", in E.
+- "When a written file takes effect", in H.
+- The count of test files that name a singleton, in C.
+- Where the eight schema files sit, in the table for change 3.
+
+Moved or removed. The row on GM logins moved from change 5 to change 4.
+Two facts nobody asked for are gone: the Notion sync scripts' sizes in
+A, and which modules the tests mock most in C.
+
+Corrected:
+
+- Change 1. `buildSyncFullPayload` has 6 callers in the source and one in a test helper. The first version said 7 callers.
+- Change 3. 26 of the 34 contract test files use the `ajv` helper. The first version said all 34 check with `ajv`.
+- Summary line 15. The config tool requires two backend rule files and one backend script. The first version said three source files.
+- G. A stored scan handed over late goes into the session it was made in. The first version said late scans go into their own session.
+- C and E. "Require a service singleton" became "require a file under `src/services/`", which is what the grep counts.
+- E and summary line 11. 33 of the 34 contract test files name a message or path or read `asyncapi.yaml`, 257 cases. The first version said all 34, 259 cases.
+- Changes 5 and 7. The backend source holds 13 names under `/tmp`, one of them a pattern. The first version said 13 fixed paths.
