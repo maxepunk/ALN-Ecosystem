@@ -322,3 +322,56 @@ Still open here, and whose it is:
 - How a phone that may do more than view gets tied to an account: each
   game's design, through the pack's "bind to an entity" function. Not
   an engine decision.
+
+## Firmware updates over the air: what the research found (2026-11-13)
+
+The note is `docs/plans/2026-11-13-hardware-scanner-ota-research.md`,
+written by a helper from the Arduino-ESP32 core's own files, Espressif's
+documentation and this repository. The agent checked these of its
+claims itself: the sizes of the firmware slots in the core's partition
+tables at tag 3.3.2 (read from `raw.githubusercontent.com`); the hook
+`verifyRollbackLater()` in the core; the last recorded firmware size in
+the scanner's commit `b58961e`; that the firmware has no update code;
+that it accepts any certificate; that it asks internet time servers for
+the time.
+
+- Possible, on one condition: each hardware scanner needs one more
+  flash over USB, to a layout with room for two copies of the firmware.
+  Today's layout (`no_ota`) holds one copy and the firmware has no code
+  that can replace itself.
+- Room: two copies of up to 1,966,080 bytes each (`min_spiffs`) or
+  2,031,616 (`no_fs`). The firmware's last recorded size is 1,214,487
+  bytes (2025-11-09). Today's size is not measured: one build on the Pi
+  is needed.
+- A power cut during an update leaves the old firmware working. To be
+  protected from a new firmware that starts and then fails, the
+  firmware must confirm itself only after its own checks (the core
+  confirms it too early by default).
+- The helper's reading: fetch the file to the SD card with the download
+  that already works, check it, then flash from the card. That also
+  allows an update from a card with no network.
+- An update belongs at start-up, never in a session.
+
+Three findings from that research that bear on this design:
+
+- The firmware does not check who it is talking to: every HTTPS request
+  accepts any certificate
+  (`arduino-cyd-player-scanner/ALNScanner_v5/services/OrchestratorService.h:714`,
+  `:945`, `:979`).
+- The firmware has no version number and never tells the backend which
+  build it runs (the research note's row 1.17). "A device says which
+  version it speaks" needs one.
+- The scanner asks internet time servers for the time
+  (`OrchestratorService.h:120`). The kit's network has no internet, so
+  a scanner there never learns the time, and its scans carry a 1970
+  placeholder. The backend has to give scanners the time.
+
+A correction: `../rework/owner-questions.md:334` (the retired site's
+questions) says the board's partition leaves no room for an update over
+the air. That is true of the layout chosen, not of the board.
+
+Put to the owner on 2026-11-13: the new engine's hardware scanner takes
+its updates over the air. Recommended: yes. The cutover already flashes
+every hardware scanner over USB, so that flash installs the two-copy
+layout, and it is the last one that needs a cable.
+
