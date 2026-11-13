@@ -183,303 +183,395 @@ What a considered answer needs before anything is put again:
 5. A list of everything in these repositories that is ALN's and not
    the engine's, and where each goes.
 
-# The rework (2026-11-13, after the owner sent the decisions back)
+# The considered version (2026-11-13, second writing, after an independent review)
 
-The helper finished at 08:05 and its final file is committed
-(`e9d77bf9`). The agent read all of it. Claims the agent checked itself:
-the line counts; no append anywhere in `backend/src` and a session saved
-whole, twice; the rules folder requires only its own files; no package
-file at the root and no workspace; 14 files export a single shared
-instance by the common spelling; `gameRules/scoring.js:51` and
-`ALN-TokenData/game.json` (a mode picks `standard` or `none`, and the
-bonus formula is a name); the folder sizes of the firmware's repository
-(`du`: `ALNScanner_v5` 736 KB, `libraries` 86 MB, `test-sketches`
-872 KB, `archive` 2 MB). The rest is the helper's.
+How this was made. The helper finished at 08:05 and its final facts
+file is committed (`e9d77bf9`); the agent read all of it. The agent
+wrote a first considered version (`5b2de5e6`). One independent reader
+then challenged it and returned fourteen findings. The agent checked
+the main ones against the code and the records, and they held. This
+second writing replaces the first. The findings and what each changed
+are listed at the end.
+
+Checked by the agent itself: the line counts; that nothing in
+`backend/src` appends and a session is saved whole, twice; that the
+rules folder requires only its own files; that no package file is at
+the root; `gameRules/scoring.js:51` and `ALN-TokenData/game.json`; the
+firmware repository's folder sizes; the owner's ruling on the report
+(`docs/plans/2026-09-03-phase3-a3-slice7-report-wording.md:9-19`); how
+the report prints times and the detail of a sale
+(`ALNScanner/src/core/sessionReportGenerator.js:285-293`, `:482-492`);
+that `backend/.env` is tracked; the licences of the firmware's
+libraries; the roadmap's section 6 on the cutover; the media tracked
+in the player scanner's repository (131 files, 37 MB).
 
 ## 1. What the "thin first version" is
 
-The phrase is from the owner's decision of 2026-10-30 ("a thin first
-version of the new design running end to end on a new test bench").
-The proposal page gives it one sentence. This is the full meaning.
-
-It is the smallest engine in which one token goes through every part of
-the new design. It is not ALN with features missing.
+The phrase is from the owner's decision of 2026-10-30. It is the
+smallest engine in which one token goes through every part of the new
+design. It is thin in what it does. It is not small in work: it holds
+the first form of every new central part.
 
 What a person can do with it:
 
 1. Start the backend on a laptop with a pack of three tokens.
-2. Open the GM scanner's page on a phone, log in, choose an account and
-   enter a token.
-3. See the result on the GM scanner, and see the scoreboard page change
-   on another screen.
-4. Open the player scanner page from a link like the one on a tag, with
-   no login, and see the token's picture.
-5. Turn the phone's Wi-Fi off and enter another token. The result shows
-   as "not confirmed". Turn Wi-Fi on. It becomes confirmed.
-6. Stop the backend and start it again. The session, the scores and the
-   login are back.
-7. Open the GM scanner with no backend at all. The same verbs give the
+2. Open the GM scanner's page on a phone, log in, choose an account
+   and enter a token, typed or read from a tag.
+3. See the result on the GM scanner, and see the scoreboard page
+   change on another screen.
+4. Open the player scanner page from a link like the one on a tag,
+   with no login, and see the token's picture.
+5. Turn the phone's Wi-Fi off and enter another token. The result
+   shows as "not confirmed". Turn Wi-Fi on. It becomes confirmed.
+6. Two GM scanners, one with no connection, take the same token. The
+   scan that reaches the backend first counts. The other GM is told
+   which scan was refused and why.
+7. Stop the backend and start it again. The session, the scores and
+   the login are back.
+8. End the session. A scan stored on a GM scanner arrives afterwards
+   and lands in that session, marked late. Create the next session:
+   every screen is cleared, and the record of the last one is kept.
+9. Open the GM scanner with no backend at all. The same verbs give the
    same scores, and the session's record can be saved.
-8. A rule asks the room for a sound. A stand-in for the sound player
-   gets the command. Stop the stand-in, and the backend starts it
-   again.
+10. A rule asks the room for a sound. A stand-in for the sound player
+    gets the command. Stop the stand-in: the backend starts it again,
+    the crash is a line in the record, and what was cut off is on the
+    GM's list.
+11. The firmware's two small files that build and read messages are
+    brought to the new definition and tested on a computer, so the
+    C++ side is checked too. The hardware scanner itself joins in its
+    own area.
 
-What each step proves:
+What the steps prove: 1 to 3, the record that only grows
+(`docs/adr/0001`), a designer's rules worked out from the pack
+(`0011`), the one definition of the messages, the backend put together
+in one place, and a kit screen with its own credential; 4, a phone's
+credential (`0004`) and a device sent only what its kind may show; 5
+and 6, the rules code inside the GM scanner and handing over
+(`0007`); 7, restart (`0010`); 8, where a session ends (`0003`); 9, a
+game with no backend (`0008`); 10, the one pattern for equipment, a
+crash in the record (`0002`) and the GM's list (`0010`); 11, the
+definition checked against C++.
 
-- 1 to 3: the record that only grows, with scores and screens worked
-  out from it (`docs/adr/0001`); a designer's rules with a formula,
-  worked out from the pack (`0011`); the one definition of the
-  messages, checked against every program; the backend put together in
-  one place.
-- 4: a credential for each of the three kinds of device (`0004`); a
-  device sent only what its kind may show.
-- 5: the same rules code inside the GM scanner; "not confirmed" and
-  handing over (`0007`).
-- 6: restart from the record (`0010`).
-- 7: a game with no backend (`0008`).
-- 8: the one pattern for equipment, and the part that restarts a
-  crashed program.
+It runs on two packs: a new toy pack scored its own way, and three of
+ALN's tokens with ALN's two verbs written as pack rules, which must
+give ALN's numbers. Today's toy pack is scored by ALN's formulas and
+will not do.
 
-It runs on two packs: a toy pack scored its own way, and three of ALN's
-tokens with ALN's two verbs written as pack rules. The second must give
-ALN's numbers. Today's toy pack will not do: it is scored by ALN's
-formulas (the facts file, section B, change 6).
+How it is checked. By tests that drive it only from outside, through
+the defined messages and the pages. They run with stand-ins, and on
+the rig with the real video and music players: the owner decided on
+2026-11-01 that the rig is rebuilt when building starts, as part of
+this test bench, and that the pass ends when every test passes on it.
 
 What it leaves out: ALN's 81 tokens and their media, video, music,
 lights, Bluetooth, audio routes, cues and timelines, held items, the
-session and admin screens, the look of every page, the config tool, the
-preflight, the report, the hardware scanner (its firmware joins in its
-own area; the first version only checks that the firmware's messages
-fit the definition), and updates over the air. Each is an area built
-after it.
+session and admin screens, the look of every page, the config tool,
+the preflight, the report, the hardware scanner as a device, updates
+over the air, joining several standalone GM scanners' records.
 
-How it is checked: tests that drive it only from outside, through the
-defined messages and the pages, doing the eight steps on both packs.
-That set of tests is the "new test bench". It is the first of the
-checks every later area adds to.
+Designs it needs before it starts. The owner decided that each area
+gets its detailed design just before it is built. For the first
+version that is four designs:
 
-Why it comes first: a wrong joint in the design shows up here, when
-changing it costs days. Every later area then adds one real thing to a
-whole that already works, and none is built against a part that does
-not exist yet.
+- the form of a line in the session's record (the agent's);
+- the operations a formula has and how a rule is written in a pack
+  (the agent's; ALN's rules and the toy's are shown to the owner
+  written that way before anything is built);
+- the language the messages are defined in, and how the C++ side is
+  checked against it (the agent's);
+- how a device is added to a kit, with a backend and without one
+  (**the owner's**: it is what a technician or a GM does with each new
+  device, and `docs/adr/0004` and `0008` both rest on it. Roadmap row
+  8.11 had left it to the players' phones work.)
 
-## 2. Beside today's code, or in place
+## 2. In place or beside, program by program
 
-In place, fairly put. Today's backend and GM scanner are changed where
-they stand, in stages: write the record beside the session object and
-then read from it; take the shared instances apart file by file;
-replace the messages one family at a time with every program changed
-together; put the new rules code behind today's function names. At
-every stage the branch holds a whole working engine, and every
-behaviour of today's code is kept unless a stage removes it. That is
-its real strength: nothing is forgotten by default, and the 26
-end-to-end flows pass throughout.
+In place, fairly put. Today's code is changed where it stands, in
+stages, and at every stage the branch holds a whole working engine.
+Nothing is forgotten by default, and the 26 end-to-end flows pass
+throughout. That is its real strength. Its costs here: every central
+change needs in-between states that serve nobody (two stores written
+at once, old and new messages side by side), because blue runs ALN;
+about 100 unit test files, 38 integration files and 33 of 34 message
+test files must be kept passing or rewritten at each stage; the
+owner's decision of 2026-11-01 brings back "pin down today's
+behaviour first" if in place is chosen; and it starts from ALN's shape
+(accounts, transactions, one score, modes, named formulas) and widens
+it, which is the bias the owner named.
 
-Its costs here:
+Beside means a new structure, started with the first version, into
+which parts of today's code are moved. It is decided program by
+program:
 
-- Every one of the four central changes needs in-between states (two
-  stores written at once, old and new messages side by side). Those
-  states serve nobody: blue runs ALN, and nothing has to stay
-  compatible.
-- About 100 unit test files, 38 integration files and 33 of the 34
-  message test files are tied to the inside or to today's messages.
-  They must be kept passing or rewritten at every stage.
-- The shared rules code needs a new home that both programs can load,
-  whichever way is chosen.
-- It starts from ALN's shape (accounts, transactions, one score, modes,
-  named formulas) and widens it. The owner named that bias on
-  2026-11-13. Starting from the general model (verbs, effects, the
-  record) and writing ALN as its first pack is the surer way to an
-  engine that is not ALN-shaped.
+| Program | Lines | Way | Rewritten | Moved and fitted |
+|---|---|---|---|---|
+| Backend | 26,916 | beside | The session store, how a scan is handled, the messages, the command switch, credentials, the assembly. About four lines in ten. | The seven equipment modules, the part that restarts a crashed program, the health words and September's "not installed" work, the pack check, the installation profile and the comparison of needs. Also the cue engine, the video queue, the game clock, held items, timelines, audio ducking and the TV's modes: each reads the session and the commands today, so each is fitted to the record when its area is built. |
+| GM scanner | 16,497 | beside | Its two stores, its copy of the rules, its network code, and its game screens, which are built around ALN's fields and ALN's two modes. | Tag reading, pack loading, the show-control screens (cues, health, music, video, the room), the styles. The GM scanner's redesign (roadmap row 8.17) is designed with the owner before this area is built. |
+| Player scanner page | 1,489 | beside | How it talks to the backend, and its start from a link. | How it shows a memory. |
+| Scoreboard | 1,860 in one file | beside | Its script: it becomes a screen that is told what to show. | Its look. |
+| Config tool | 6,510 | decided at its area | Its link to the engine: today it signs its own logins with the backend's secret, writes the backend's settings files and loads the backend's code. It will send its changes to the backend, or, with no backend, write the pack and the settings for the devices itself. Screens for verbs and formulas are new. | Its cue screens and its draft and publish. |
+| Firmware | 9,606 | in place | | Changed where it stands, file by file (the facts file, section G). |
+| Tag tools, the post-session checks | | rewritten | The tag tools write the id first and a `.local` link with a port, the opposite of `docs/adr/0005`. The checks read today's session file and the log, and score with ALN's formulas. | |
+| ALN's pack | | rewritten | Its rules, as a designer's rules (`0011`). | Its tokens, texts, cues and look. |
 
-Beside, exactly. A new structure is built in new folders, starting with
-the first version above. It is not a rewrite of everything.
+Not kept: the backend's own queue for GM scans made with no
+connection and its watch on player scanners' check-ins. The record and
+credentials take their place.
 
-- Written new: the session's record; the code that works a game's
-  rules out from its pack; the definition of the messages and files and
-  the checks against it; credentials; the one place of assembly; the GM
-  scanner's store.
-- Moved across and fitted, with their tests: the part that restarts a
-  crashed program; the health words and the "not installed" work from
-  September; the check that refuses a broken pack; the installation
-  profile and the comparison of needs with what is installed; the seven
-  equipment modules (their knowledge of the video player, the music
-  player, PipeWire, BlueZ, Home Assistant and Chromium is the code with
-  the most hard-won fixes); the stand-ins for gear; the GM scanner's
-  tag reading, pack loading and screens; the player scanner page's
-  display; the config tool's pages and its draft and publish.
-- Changed where it stands: the hardware scanner's firmware.
-- Replaced, not moved, although built since July: the mode flags and
-  named formulas (by a designer's rules), the session store, the
-  message contracts and their 259 test cases, the command switch of 64
-  cases.
-- Today's code stays in the repository unchanged, as the reference,
-  until the cutover. Blue's branch keeps it after that.
+Risks of beside, and what answers each:
 
-Its risks, and what answers each:
-
-- A fix nobody wrote down is lost. Answered by: moving the equipment
-  code and not rewriting it; a list made before each area from the
-  flows, the audit against real players, the "CRITICAL" notes in the
-  components' guides, the cause analysis and the triage of blue's fixes
-  (`docs/plans/2026-10-30-production-fixes-triage.md`); recorded ALN
-  sessions that must give the same scores and the same report text.
-- No recorded session is in the repository (the facts file, section E).
-  They are on blue, in `backend/data/`. **Needed from the owner:** a
-  few session files from real ALN sessions, copied off blue.
-- A long time with no whole. Answered by the first version and by
-  building one area at a time into it.
+- A fix nobody wrote down is lost. Answer: the equipment code is moved,
+  not rewritten. Before each area a list is made from the flows, the
+  audit against real players, the "CRITICAL" notes in the guides, the
+  cause analysis and the triage of blue's fixes.
+- ALN's scores change without anyone noticing. Answer: real sessions,
+  turned into the new record, must give the same final scores.
+  **Needed from the owner:** a few session files from blue, the report
+  the GM downloaded for each, and which pack and which of blue's
+  commits each ran. None is in the repository. A converter has to be
+  written, and it cannot bring back what today's file never kept
+  (deleted scans, refused scans).
+- A long time with no whole. Answer: the first version, then one area
+  at a time into it.
 - A fault fixed on blue during the build never reaches the new engine.
-  Answered by: each fix on blue adds one check to the new engine's
-  tests.
+  Answer: a list of pending cases kept for each area. A fix on blue
+  adds a case to the list of the area it belongs to, and the case
+  becomes a test when that area is built.
+- Two of every program in one checkout for months. Answer: section 3.
 
-Recommended: beside.
+Recommended: beside for the backend, the GM scanner, the player
+scanner page and the scoreboard; in place for the firmware; the config
+tool decided at its area.
 
-## 3. One repository or several
+## 3. The repositories
 
-What the design needs whatever the layout: one definition every
-program is checked against; one source for the rules code, built for
-the backend and for the GM scanner; one engine version that says what a
-kit can do, reported by each device when it connects; the backend
-holding the firmware file that matches it (`docs/adr/0006`); packs
-outside the engine; ALN's own tools reading the engine's public files.
+Three questions, not one.
 
-Three layouts:
+**(a) One repository for the engine's web programs and the code they
+share.** The backend, the GM scanner, the player scanner page, the
+scoreboard, the config tool, the rules code, the definitions and the
+tag tools. Against a repository for each, joined by pins, as today.
 
-- A. One repository for the whole engine: backend, GM scanner, player
-  scanner page, scoreboard, config tool, firmware, the rules code, the
-  definitions, the tag tools. Packs and ALN's tools outside.
-- B. As today: a repository for each program, joined by pinned links,
-  with the rules code and the definitions as one more repository or as
-  published packages.
-- C. A with the firmware left in its own repository.
+Operation. With one, a release is one commit: from it come the backend,
+the pages it serves and the standalone pages. Updating a kit is
+installing one release, and going back is installing the one before.
+With several, a release is a set of pins; today three checkouts of the
+pack data sit at two commits, and the guide has a section on detached
+checkouts. What a release is on a kit should also change: a built
+bundle that is installed, where today the Pi holds a git checkout and
+builds the GM scanner when the backend starts.
 
-Operation (running kits):
+Maintenance. A change to a message touches the definition, the
+backend, the GM scanner, the player scanner page and the tests. With
+one repository it is one commit, one review, and one run of the checks
+sees every program. With several it is a commit in each and then the
+pins, in a set order, and between merges the programs disagree; each
+repository's own checks cannot see the others. The rules code needs
+one source that the backend and the GM scanner both load; with
+several repositories that means publishing a package on every change,
+nesting a repository in each program (how the pack data came to sit
+at two commits), or copying (today). Costs of one: the checks must run
+only what a change touches; one place to break everything at once.
 
-- A: a release is one commit. From it come the backend, the pages it
-  serves, the firmware file it offers over the air and the standalone
-  pages. Updating a kit is installing one release; going back is
-  installing the one before. B: a release is a set of pins across five
-  repositories. Today three checkouts of the pack data sit at two
-  commits, and the guide has a section on detached checkouts. A wrong
-  mix would be caught when devices connect, but it can be built. C: one
-  version plus a pinned firmware version.
-- The standalone pages. Today each scanner's repository publishes its
-  own page on every push. A standalone page needs a pack, so its
-  publishing belongs to the production (an engine release plus a pack)
-  in every layout. A moves that publishing out of the scanner
-  repositories. That is work.
-- The cutover is the same in every layout. Blue uses today's
-  repositories and its own branch until then.
+Extension. A developer adding a capability may touch the rules code, a
+backend module, a GM scanner screen and the definition: one repository
+to copy and one change to offer back, against several and their pins.
+Another production needs an engine release, its own pack and its own
+settings; the line between the engine and a game is the repository's
+edge. What several give that one does not: a person can be given one
+program without the rest, and each can have its own release rhythm.
+The programs cannot run across versions, so neither is wanted here.
 
-Maintenance:
+A correction to the first writing: it said a workspace meets the build
+tool's two limits. For code written the backend's way it does not. The
+shared code is to be written as ES modules, which both sides can load,
+and proved with one real build in the first version. The backend
+allows Node 22.0 today and loading ES modules that way needs 22.12.
 
-- A change to a message touches the definition, the backend, the GM
-  scanner, the player scanner page, the firmware's message builder and
-  the tests. A: one commit, one review, and one run of the checks sees
-  every program. B: a commit in each repository and then the pins,
-  merged in a set order (the "PR train" of 2026-07-17); between merges
-  the programs disagree; each repository's own checks cannot see the
-  others (the GM scanner's cannot see the message files today).
-- The rules code. A: both programs load one folder (the build tool's
-  two limits, converting only installed packages and serving only its
-  own tree, are both met by a workspace). B: publish a package on every
-  change, or nest a repository in each program (which is how the pack
-  data came to sit at two commits), or copy (today).
-- Costs of A: a bigger repository; the checks must run only what a
-  change touches, or every change waits for everything; the firmware's
-  tools join the same checks.
-- The firmware. Its repository holds 86 MB of copied libraries and no
-  workflow compiles it. Moving it in means declaring those libraries
-  and compiling it in the checks. That work is owed in any layout, and
-  A or C only decides where it happens.
-- Agents do most of the work here. Five side-by-side repositories with
-  nested copies have already needed standing rules ("never read the
-  stale clones").
+Recommended: one.
 
-Extension:
+**(b) The firmware: in that repository, or in its own.** The first
+writing leaned to in. The review's facts turn it:
 
-- A developer adding a capability (`docs/adr/0009`) may touch the rules
-  code, a backend module, a GM scanner screen and the definition. A:
-  one repository to copy, one change to offer back. B: several
-  repositories and their pins.
-- Another production adopting the engine needs an engine release, its
-  own pack and its own installation settings. In A the line is clear:
-  the engine's repository holds nothing of any game.
-- Someone building other hardware against the engine needs only the
-  definition. In every layout it can be published as a file with each
-  release.
-- What B gives that A does not: a person can be given one program
-  without the rest, and each program can have its own release rhythm.
-  Neither is wanted here: the programs cannot run across versions.
+- Its real build uses `arduino-cli` with an ESP32 core of no fixed
+  version and a library installed by hand on the machine. PlatformIO
+  only runs its host tests. No workflow compiles it.
+- Its repository holds 86 MB of copied libraries. One, 30 MB, is
+  included by no source file. The display library is modified for this
+  board.
+- Two libraries linked into it (`ESP8266Audio`, `XPT2046_Bitbang`) are
+  under the GPL, version 3. So the firmware as a whole must be
+  released under the GPL when the engine goes public. That is true
+  wherever it lives, and it bears on the licence the roadmap's release
+  block has to choose.
+- Its tie to the engine is narrow: a handful of messages. And it is
+  for one kind of hardware; another production may use another, or
+  none.
 
-What can be undone. A repository can be split later with its history,
-and several can be joined later. Neither is cheap once the new code
-exists, so the time to choose is before it is written.
+Costs of keeping it apart: a change to a message the scanner uses is
+two repositories and a pin, and the backend's release has to name the
+firmware version it carries for updates over the air. A scanner that
+is out of step already says "UPDATE NEEDED" by the owner's decision.
 
-One thing to settle with it. The parent repository's history holds a
-live secret (`backend/.env`), which the roadmap already says must be
-swept before any public release. If the new engine lives in one folder
-that holds nothing of ALN's and no secrets, that folder can become the
-public repository at the release block with a clean history. So: build
-it inside today's parent repository now, in one folder, and lift it out
-at release.
+Recommended: its own repository, checked against the definition the
+engine publishes with each release.
 
-Recommended: A, built in one folder of today's parent repository. The
-firmware is the least certain part; C is a fair second choice.
+**(c) Where the engine's repository starts.** In a new repository
+created now, or in one folder of today's parent repository, lifted out
+when the engine is released.
+
+- A folder in the parent keeps everything in one place during the
+  build. But `backend/.env`, with a live secret, is a tracked file
+  there today, not only in the history; the parent's checks run every
+  old flow on all four combinations at every push, with no filter by
+  path; two backends, two GM scanners and two player pages would sit
+  side by side in one checkout for months; and lifting the folder out
+  later rewrites its history and breaks every link to it.
+- A new repository starts clean: no secret, nothing of ALN's, no old
+  program beside the new one, its own checks. It is ready to be made
+  public when the release block says so. Its costs: two repositories
+  during the build, with the reference code and this pass's records in
+  the old one (the decision notes and the glossary are copied into the
+  new one); a moved file loses its line-by-line history unless it is
+  imported with it, so each move names the commit it came from; issues
+  for the new engine live in the new repository.
+
+Recommended: a new repository, created now. Today's parent stays as it
+is, with blue's branch and the reference code. What it becomes after
+the cutover (ALN's own repository for its settings and tools, or an
+archive) is decided in the cutover plan. The pull request rule of
+2026-09-12 (one per touched repository) becomes one per change.
 
 ## 4. ALN's report pipeline
 
-From `../2026-11-01-after-game-report.md` and the owner's answers of
-2026-11-01.
+- It is two programs of ALN's on the director's computer, outside the
+  kit: the Director Console and the emailer, in the `aboutlastnight`
+  repository under `reports`. The owner decided on 2026-11-01 that
+  they stay separate and read the engine's record, and that becoming
+  ALN's own part of the engine's review stage stays open.
+- Today the console takes the report text the GM downloads from the GM
+  scanner. The owner ruled on 2026-08-29 (the phase 3 program, section
+  13.4) that the report's structure is fixed in the engine, its
+  wording comes from the pack, and there is no template language; the
+  ★ is a delimiter the console's parser depends on. **The first
+  writing put the report's layout in ALN's pack. That contradicted the
+  ruling and is withdrawn.**
+- In the new engine the report stays what the owner ruled: fixed
+  structure, the pack's wording. It is made from the session's record.
+  It then also works in a game with no backend, where today it is "not
+  supported".
+- For the detail of a sale ("5★ Technical, $150,000 × 5x") the record
+  has to keep what a formula read, not only its result. It will.
+- The check is not "byte for byte against old downloads". Old reports
+  print times in the timezone of the device that made them, and print
+  adjustments nine hours off on some sessions, a fault that goes away
+  when every line is stamped by one clock. The check is two things:
+  the report's format, pinned on made-up records as the golden master
+  does today; and the same final scores on real sessions.
+- The file the record is handed over in is the session bundle whose
+  schema the engine already has (decision B9), revised to the record's
+  shape. One format, not two.
+- The capture (roster, notes, photos, the accusation) is part of the
+  record by the owner's decisions (`docs/adr/0002`, `0003`). The
+  roadmap builds it in the capture block, after the build half. So at
+  the cutover the director still types those into the console.
+- Moving the console to read the record is at the owner's pace
+  (roadmap row 8.10).
+- Open, the owner's, and not needed for this decision: whether paper
+  documents join the pack.
 
-- It is two programs on the director's computer, outside the kit: the
-  Director Console and the emailer. Their code is in the
-  `aboutlastnight` repository, folder `reports`. They are ALN's, and
-  the owner decided they stay separate and read the engine's record,
-  with becoming ALN's own part of the engine's review stage kept open.
-- What it takes from the engine today: the report text the GM downloads
-  from the GM scanner when a session ends, pasted into the console and
-  parsed. The roadmap pins that text byte for byte (row 8.10) until the
-  owner moves the console to the structured file. Memory texts come
-  from Notion, not from the pack the session ran.
-- In the new design the engine's side is the session's record, which
-  carries the pack it ran and the texts players saw (the owner,
-  2026-11-01). The record is handed over as a file in the defined
-  format. That file is the console's future input.
-- At the cutover the console must keep working unchanged. So the new
-  engine still gives the GM the same report text, made from the record,
-  and "the same text, byte for byte, from a recorded session" is one of
-  the checks before the cutover. The layout of that text is ALN's and
-  belongs with ALN's pack, not in the engine's code.
-- Moving the console to read the record stays at the owner's pace.
-- Repositories: the pipeline stays where it is. It needs the definition
-  of the record's file, which each engine release publishes.
-- One fault it works around goes away: sales stamped by the GM
-  scanner's clock and adjustments by the backend's, nine hours apart on
-  two sessions. In the record every line is stamped the same way.
-
-## 5. What in these repositories is ALN's, and where it goes
+## 5. What in these repositories is ALN's
 
 | Today | What it is | Where it goes |
 |---|---|---|
-| `ALN-TokenData`: tokens, rules, cues, strings, theme | ALN's pack | stays ALN's pack, in its own repository |
-| `ALN-TokenData`: the five schema files | the engine's definition of a pack | the engine |
-| `ALN-TokenData`: the tag-writing and check-in tools | engine tools | the engine |
-| `scripts/`: the Notion sync and the picture generator | ALN's content tools | with ALN's pack |
-| `scripts/`: the asset list and pack list builders | engine tools | the engine |
-| `backend/config/profiles/aln-full-kit.json`, the playlists, the audio routes | ALN's installation settings | the installation's data, outside the engine's code |
+| `ALN-TokenData`: tokens, rules, cues, strings, theme | ALN's pack | ALN's pack, its own repository; its rules rewritten |
+| `ALN-TokenData`: the six schema files | the engine's definition of a pack | the engine |
+| `ALN-TokenData`: the tag-writing and check-in tools | engine tools | the engine, rewritten |
+| `aln-memory-scanner/assets`: 131 pictures and sounds, 37 MB | ALN's media | ALN's media, outside the engine and outside any pack (roadmap section 2.3) |
+| `backend/public`: tracked sounds, fonts, loop pictures | ALN's media and look | ALN's media |
+| `scripts/`: the Notion sync, the picture generator | ALN's content tools | with ALN's pack; today the sync loads the two list builders and writes to fixed paths in this tree |
+| `scripts/`: the two list builders | engine tools, one of them a second copy of a backend script | the engine, as one builder |
+| `scripts/gvoice-autoreply` | ALN's phone auto-reply for the game | ALN's; its guide holds a real phone number |
+| `backend/config`: ALN's installation profile, playlists, audio routes | ALN's installation settings | the installation's data |
 | `aln-memory-scanner`: the QR codes, `sync.py` | ALN's | with ALN's pack |
-| `backend/scripts`: the post-session checks | an engine tool that reads a session's record | the engine |
+| `backend/scripts`: the post-session checks | an engine tool | the engine, rewritten to read the record |
+| `.claude/`: the Notion skill, the session report command, the ALN agents | ALN's working tools | ALN's |
+| The six component guides, `docs/SCORING_LOGIC.md` | half engine, half ALN | rewritten for the engine; ALN's part to ALN |
+| The firmware's `sd-card-deploy`, `sample_config.txt` | set-up for a scanner | with the firmware |
 | `aboutlastnight/reports` | ALN's report pipeline | stays |
-| the toy packs | the engine's own test games | the engine |
-| `docs/`: the plans, decisions and glossary | about the engine | the engine; ALN's running notes go with ALN |
+| The toy packs | the engine's own test games | the engine; one scored its own way |
+| `docs/`: plans, decisions, glossary | about the engine | this pass's records stay; the decision notes and glossary go with the engine |
+
+Before anything is made public, the documents need a sweep for private
+details.
+
+## 6. The cutover and going back
+
+The roadmap's section 6 (owner, 2026-08-29) says the cutover is a swap
+of computers, "scanners, tablets, and hardware scanners never notice
+the machine changed", and going back is "physical and immediate: swap
+back to blue". Three decisions of 2026-11-13 change that, and the
+agent did not say so when they were made:
+
+- The hardware scanners are flashed with new firmware. Blue cannot
+  talk to them. Going back means flashing each one back by USB.
+- Tags are rewritten with the link first. Blue's firmware reads only a
+  tag with the id first.
+- Every device gets a credential from the new backend.
+
+Rehearsals at the venue (the roadmap's stage C: swap in green, test
+with the real kit, swap back) are touched the same way: the real
+hardware scanners cannot serve both.
+
+What keeps a way back, to be designed in the cutover plan and
+confirmed by the owner there: the new firmware reads tags written
+either way, so the tags are rewritten only once the owner calls the new
+engine good; some scanners stay on the old firmware until then; a
+venue rehearsal uses spare scanners.
 
 ## What is asked of the owner
 
-1. Beside, or in place (section 2). Recommended: beside.
-2. One repository, several, or one with the firmware apart (section
-   3). Recommended: one, in one folder of today's parent repository.
-3. Not a decision, a need: a few session files from real ALN sessions,
-   copied off blue.
+1. Beside or in place, program by program (section 2).
+2. The repositories: (a) one for the engine's web programs; (b) the
+   firmware in its own; (c) a new repository created now (section 3).
+3. A need: session files from blue, the report downloaded for each,
+   and which pack and commit each ran.
+4. To know, and to correct if wrong: going back to blue after the
+   cutover is no longer a swap of computers (section 6); and one
+   decision of the owner's comes before the first version: how a
+   device is added to a kit (section 1).
 
+## The review's fourteen findings, and what each changed
+
+By one independent reader (a strong model one step below the session's
+own, at high effort), 2026-11-13. All fourteen were accepted, in whole
+or in part.
+
+1. The report's layout was put in ALN's pack, against the owner's
+   ruling of 2026-08-29. Section 4 corrected.
+2. "Byte for byte from a recorded session" cannot be met. Section 4:
+   the check is split, and the need from the owner is widened.
+3. The first version depends on designs that do not exist. Section 1
+   lists four, one the owner's.
+4. "Moved across" held code that must be rewritten, and left modules
+   unclassified. Section 2's table.
+5. The table of ALN's things left out the media and several tools.
+   Section 5.
+6. Three things were given to the engine as if unchanged. Section 5
+   marks them rewritten.
+7. The first version skipped the hardest cases and its firmware check
+   could not pass. Section 1: steps 6, 8, 10 and 11.
+8. Nothing on going back after the cutover or on the repositories'
+   fate. Section 6, and section 3(c).
+9. The costs of "one folder, lifted out later" were missing. Section
+   3(c), and the recommendation changed to a new repository.
+10. The capture and the bundle schema were missing. Section 4.
+11. The test bench dropped the rig the owner decided on. Section 1.
+12. The claim about the build tool and a workspace was wrong. Section
+    3(a).
+13. The firmware reasoning understated the move. Section 3(b), and the
+    recommendation changed to its own repository.
+14. In place was not put evenly, with no middle option. Section 2:
+    program by program, the consequence of in place named, the pending
+    cases list.
