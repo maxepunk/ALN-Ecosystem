@@ -41,19 +41,22 @@ before acting.
   first time, the agent had waved players' own phones off as "later
   work". The owner: design the architecture to enable them now. What
   the owner had already decided about phones is gathered in the note
-  below, under "Players' own phones". **Two pieces of research are
-  running** (helpers, started 2026-11-13; each writes one file, which
-  is not there until it finishes):
-  `docs/plans/2026-11-13-hardware-scanner-ota-research.md` (the owner
-  asked whether the hardware scanner can take firmware updates over the
-  air) and `docs/plans/2026-11-13-phone-tap-to-web-tag-research.md`
-  (what iPhones and Android phones need from a tag). When each returns:
-  read the file, check its main claims against its sources, commit it,
-  tell the owner what it found, and bring the tag's layout to the owner
-  as one decision (record order; the real name; whether the address
-  carries a code that cannot be guessed). If a file is missing in a new
-  session, the research was lost: start it again from the two questions
-  in the note. All of it, with the rulings already made, what happens
+  below, under "Players' own phones". **Both pieces of research are in**
+  and committed, with the claims the agent checked named in each:
+  `docs/plans/2026-11-13-hardware-scanner-ota-research.md` (updates over
+  the air are possible after one more USB flash per scanner, to a layout
+  with room for two copies of the firmware) and
+  `docs/plans/2026-11-13-phone-tap-to-web-tag-research.md` (an iPhone
+  opens the address on a tag wherever it is; an Android phone looks
+  only at the first record, which is our token id, so a tap alone opens
+  nothing; the owner added that an Android phone opens the phone page
+  first and scans inside it, so today's layout serves both). **Open
+  with the owner, three decisions:** credentials in three kinds (above);
+  whether the new engine's hardware scanner takes its updates over the
+  air (recommended: yes; the cutover's USB flash installs the two-copy
+  layout); and the tag (recommended: every reader accepts the id and
+  the address in either order; ALN keeps id first; the address gets the
+  real name with the kit's DNS work). All of it, with the rulings already made, what happens
   today and the lines checked, is in
   `docs/plans/architecture-pass/design/2026-11-13-the-messages-and-files.md`.
   The design of how the backend keeps a session's data is settled. Decided on 2026-11-13,

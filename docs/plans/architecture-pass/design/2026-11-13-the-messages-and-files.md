@@ -375,3 +375,77 @@ its updates over the air. Recommended: yes. The cutover already flashes
 every hardware scanner over USB, so that flash installs the two-copy
 layout, and it is the last one that needs a cable.
 
+## The tag's layout: what the research found, and the owner's note (2026-11-13)
+
+The note is `docs/plans/2026-11-13-phone-tap-to-web-tag-research.md`.
+Its first lines say which claims the agent checked.
+
+- An iPhone looks through the whole tag for a web address and uses the
+  first one. It shows a notification, and the page opens in Safari when
+  the player touches it. iPhone XS and later. A web page on an iPhone
+  cannot read tags itself.
+- An Android phone looks only at the FIRST record on a tag. Ours is the
+  token id as text, so a tap alone opens nothing. Android 16 and 17
+  also change how a web-address tag opens (17 adds an "open link"
+  step).
+- The owner, 2026-11-13: "an android phone using the phone scanner
+  currently first accesses the player scanner being served by the
+  backend before scanning a tag." The phone page then reads tags
+  itself, in Chrome, and takes the token id record. So today's layout
+  serves both phones, each by its own path: Android opens the page
+  first and scans inside it; an iPhone taps and the tag's address opens
+  the page.
+- The design principle P7 of 2026-06-11 expected one path for both: the
+  phone's own tag reader opening the address, with reading inside the
+  page "rejected as the basis". On Android that needs the address to be
+  the first record. With the id first, Android's working path is the
+  one P7 set aside.
+- The hardware scanner reads 32 bytes in one exchange and accepts only
+  a first text record. With the address first it would have to read
+  further (two exchanges unless the address is 36 characters or fewer
+  after `https://`) and go through the records. Its code comments name
+  the gap between two reads as the main cause of failed scans in the
+  past.
+- The GM scanner, the phone page and the token check-in tool already
+  find the id record wherever it is. The tag-writing tool insists on id
+  first.
+- With the address first, a token held to a GM's Android device while
+  the GM scanner is not scanning would open the phone page and send a
+  player scan.
+- The one real tag whose bytes are in the repository points at
+  `raspberrypi.local`, not `aln-orchestrator.local`. No record says
+  what the other tags hold.
+- A fixed address proves nothing about a tap: it can be typed, copied
+  or, with ids like `mar004`, guessed. A long random code would stop
+  guessing and nothing else. A tag that makes a new address at every
+  tap exists (NTAG 424 DNA) and is a different kind of tag.
+- For a designer: on a phone, sound does not start until the player
+  touches the screen once. On an iPhone every scan is a notification to
+  touch and a fresh page. On Android with the address first, every tap
+  opens a new tab unless the page's own reading is running.
+- Nothing was tried on a phone. The note lists the five-minute tests.
+
+Two findings for the agent's own engineering:
+
+- The backend sends a header (Strict-Transport-Security) that, once a
+  real certificate is in use, makes every browser refuse the site with
+  no way through if the certificate has run out. On a kit with no
+  internet that would lock out every phone and tablet. The preflight
+  must report the certificate's remaining life, and that header should
+  not be sent by a kit's backend.
+- With credentials, a scan must come from a device the backend knows.
+  That does not prove a tap either.
+
+Put to the owner on 2026-11-13, as one decision:
+
+1. The definition says a tag holds the token's id as a text record and
+   a web address record, and every reader of the engine accepts them in
+   either order. Which order a production writes is its own choice.
+2. ALN keeps today's order, id first. An Android phone opens the page
+   first and scans inside it, as today. An iPhone taps. This amends P7
+   for Android.
+3. The address on a tag gets the production's real name when the kit's
+   DNS work is done. That is the one rewrite of the tags. The
+   definition leaves room for the address to carry a code that cannot
+   be guessed; no game needs it yet.
+
