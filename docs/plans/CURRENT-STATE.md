@@ -156,7 +156,21 @@ before acting.
   `ROADMAP.md` itself, read first. Have one independent reader check
   them against the owner's recorded rulings before they go to the
   owner: the agent has contradicted a ruling in each of its last three
-  attempts on this topic. Before answering, re-read the goal (section 1
+  attempts on this topic. Both drafts were written on 2026-11-20 and
+  committed (`395baa69`):
+  `docs/plans/architecture-pass/design/2026-11-20-each-decision-and-its-test.md`
+  and
+  `docs/plans/architecture-pass/design/2026-11-20-the-roadmap-revised.md`.
+  One independent reader (a strong model one step below the session's
+  own, high effort) was started on them the same day. **Wait for its
+  completion notice. Then check its findings, fix what holds, put both
+  documents on the proposal page in place of the section "How today's
+  code moves", and only then bring them to the owner.** The roadmap
+  draft's section 8 lists what is the owner's: the sign-off; whether
+  the GM scanner keeps today's layout at the cutover; when the kit gets
+  its real name and certificate; how a device is added to a kit; two
+  needs when the build starts. `ROADMAP.md` itself is not edited before
+  the sign-off. Before answering, re-read the goal (section 1
   below), `ROADMAP.md` sections 1, 3, 4 and 10 and the program
   document, and derive how the build runs from what it is for. The
   history of the two earlier attempts follows.
