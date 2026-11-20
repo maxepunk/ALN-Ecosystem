@@ -256,6 +256,21 @@ before acting.
   retired site's files and cut `DECISIONS.md` down (keep what the
   proposal cites: the extension cases, the relationship maps, the cause
   analysis), and sharpen three glossary entries (Token, Kit, "tonight").
+- **Titles and nicknames are not rules (the owner, 2026-11-20).** On
+  a first glance at the revised roadmap's draft: "language like
+  'growth without corners' doesn't MEAN anything and will create
+  potentially dangerous ambiguities for later readers." That phrase is
+  a section title of the current roadmap; the agent had listed titles
+  where the rules belonged, and had coined names for the build's areas.
+  In any document others rely on, write the rule or the thing itself
+  as a sentence a reader could check. Name work by what it does. Keep
+  an old name only after its meaning, so older records can be found.
+  Never write "as r4" or "unchanged". Before a sentence goes out, ask
+  whether two careful readers could take it differently. The full note
+  is the last part of `rework/2026-11-10-owner-step-back.md`. When
+  `ROADMAP.md` is amended, its own titles of this kind ("Growth without
+  corners", "The engine holds no opinion", "the depth-and-close
+  block") are put to the owner for plain replacements.
 - **Helpers (the owner, 2026-11-13).** "when calling sub-agents please
   use the most appropriate model and effort level for each job". The
   session had run into the weekly limit of its own model that day, and

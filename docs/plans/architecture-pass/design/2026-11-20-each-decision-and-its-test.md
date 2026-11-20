@@ -14,8 +14,9 @@ proven on the rig and belongs to the hardware pass on green or to the
 venue rehearsal. A test marked (later) belongs to work the roadmap
 places after the build.
 
-Every test runs with the gear's stand-ins and again with the real
-video and music players on the rig.
+Every test runs twice. Once with software standing in for the
+speakers, lights and TV. And once on the test rig, a computer set up
+with the real video and music players.
 
 ## 1. How a session's data is kept
 
@@ -25,7 +26,7 @@ video and music players on the rig.
 | | Reset the scores in the middle of a session. | The record still holds every line from before, and one more for the reset. Every screen shows zero. |
 | The record holds the game, what the room did and what went wrong, one line for each event a person would recognise. (`0002`) | Run a short session: a GM's scans, a player's scan, a video, a cue, a score changed by hand. Stop the music player by force. | From the record alone a person can say that each of those happened, in order, with its time. The record holds no stream of positions or volumes. |
 | Every screen is worked out from the record. (the proposal's change 1) | Connect a second GM scanner and a scoreboard in the middle of a session. | Both show what the first GM scanner shows, at once. After every further scan all three agree. |
-| | After a scripted session, capture every screen of the GM scanner and the scoreboard. | Each capture says what the record says: scores, used tokens, the session's state, each piece of gear. This is the truth sweep's purpose, for every screen. |
+| | After a scripted session, capture every screen of the GM scanner and the scoreboard. | Each capture says what the record says: scores, used tokens, the session's state, each piece of gear. The current roadmap had a separate piece of work for this, which it called the truth sweep. |
 | After a session ends, nothing is accepted but notes, photos and the accusation, until the next session is created. (`0003`) | End a session. Try a sale on a GM scanner. | Refused, and the GM scanner says why. |
 | A scan stored during a session goes into that session, marked late, whenever it arrives. (`0003`) | End a session. Then let a player scanner and a GM scanner hand over scans they stored during it. | Both land in that session's record, marked late. The scores change to include the GM's scan. The next session's record never holds them. |
 | Creating the next session wipes what the group's play produced. What is about the room stays. (`0003`) | Finish a session with scores, a used token, a set volume and a logged-in GM. Create the next session. | Scores, accounts and used tokens are gone from every screen and scanner. The volume and the login are as they were. The last session's record is whole. |
@@ -88,19 +89,19 @@ video and music players on the rig.
 | | As a drill, add a stand-in kind of gear. | One new file. It shows on the GM scanner's health panel and in the preflight with no change to the GM scanner's code. |
 | After a restart the background comes back by itself. What was cut off is listed for the GM. (`0010`) | Restart the backend with music playing, the scoreboard on the TV, a video half-way, a cue half-way, and a clock cue falling due while it is down. | The session, the clock and the logins are back. The music goes on from where it stopped. The TV shows the scoreboard. The video and both cues are on the GM's list, each with run and drop. Nothing replays by itself. |
 | | Stop only the music player by force. Then only the video player, in the middle of a video. | Each is started again. The music goes on. The video is on the GM's list. |
-| A copy started for a test or a rehearsal leaves the installed backend as it was. | With the installed backend running and no session, start a second copy on the same computer, use it, stop it. | The installed backend's programs, files and screen are exactly as before. The copy used stand-ins. |
+| A copy started for a test or a rehearsal leaves the installed backend as it was. | With the installed backend running and no session, start a second copy on the same computer, use it, stop it. | The installed backend's programs, files and screen are exactly as before. The copy used software standing in for the equipment, and never the real TV, speakers or lights. |
 
 ## 5. What the build must still do from before this pass
 
-These were ruled before the pass and are rebuilt inside it (the
-roadmap's hardening block; the hardening plan's rulings).
+These were ruled before the pass. The current roadmap grouped them as
+the hardening block. They are built inside the build.
 
 | Ruling | Do | Must happen |
 |---|---|---|
 | A crashed program is restarted a set number of times, then the backend stops and says so. | Stop the video player by force again and again. | After the set number the backend stops trying. The GM scanner shows it red, with why and a button to restart it. |
 | Gear that is not installed shows grey, never red. | Run the toy pack with lighting not installed. | Lighting shows grey with its reason. A cue that needs it is refused with that reason. |
 | A session cannot start when something the pack requires is missing, unless the GM types the override. | Start a session with a required piece of gear down. | Refused, naming the piece. With the typed override it starts, and the record holds the override. |
-| The preflight says what it checked and how deeply. | Run it with one video file missing. | It names the file. Every row says whether it was checked on paper or live. It states what only a person can check. |
+| The preflight says what it checked and how deeply. | Run it with one video file missing. | It names the file. Every row says whether it was checked from files alone or against the running equipment. It states what only a person can check. |
 | The backend's computer powers on into a running system. | (real devices) Switch green off and on. | The backend, the players and the TV come up by themselves. A GM scanner connects. The preflight is green. |
 | The phone page and the hardware scanner stay equal in what they can do. | Run every row of section 2 on both. | The same result on both. |
 

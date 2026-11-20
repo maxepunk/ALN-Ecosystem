@@ -140,3 +140,26 @@ decision 1 in clear, plain english for me please?" Put a decision in
 the words a GM would use, say first what the choice is and what each
 side does to a player or a GM, and give the recommendation last. Keep
 the research's own terms in the research file.
+
+On 2026-11-20 the owner glanced at the draft of the revised roadmap and
+stopped at its first list: "language like 'growth without corners'
+doesn't MEAN anything and will create potentially dangerous ambiguities
+for later readers." The phrase is the title of section 2.2 of the
+current roadmap. The agent had listed six such titles in place of the
+six rules under them, and had named the build's areas with labels of
+its own ("the centre", "the room", "the show on the record", "ALN's
+move", "the measures").
+
+The rule. In any document others will rely on, write the rule or the
+thing itself, as a sentence a reader could check against what was
+built. A title, a nickname or a coined name is never a stand-in for
+it. Name a piece of work by what it does. Where an existing name has
+to be kept so that older records can be found, say what it means
+first and give the name after ("recording a session as it is played
+(r4: the capture block)"). "As r4" or "unchanged" says nothing: say
+what it is.
+
+A test for every sentence before it goes to the owner or into a
+governing document: could two careful readers take it to mean
+different things? If so, it is not finished.
+
