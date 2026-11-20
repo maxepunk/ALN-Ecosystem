@@ -67,8 +67,77 @@
       "type": "boolean"
     },
     "endpoints": {
-      "description": "What equipment is installed tonight. An absent endpoint makes its features DORMANT by configuration, never an error (C2/C3 semantics). The interior shape stays open in v1; C2 pins it when resolution becomes the consumer.",
-      "type": "object"
+      "description": "What equipment is installed tonight. An absent endpoint makes its features DORMANT by configuration, never an error (C2/C3 semantics). Interior PINNED by C2 (Block 2 T1b) to the ratified C1 §1 shape verbatim — exactly five equipment families: display.main, audio.sinks, lighting.instruments, stations, personal. additionalProperties: false at every level catches authoring typos.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "display.main": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["installed"],
+          "properties": {
+            "installed": { "type": "boolean" },
+            "output": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "audio.sinks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "installed"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
+              },
+              "installed": { "type": "boolean" },
+              "btAddress": {
+                "type": "string",
+                "pattern": "^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "lighting.instruments": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["installed"],
+          "properties": {
+            "installed": { "type": "boolean" },
+            "provider": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "stations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count"],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "personal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["expected"],
+          "properties": {
+            "expected": { "type": "boolean" }
+          }
+        }
+      }
     },
     "bindings": {
       "description": "Pack abstract names → venue instruments/media. bindings.lighting (B8): lighting roles → HA scenes (v1 drives the ha provider only; WLED and friends are schema-evolution headroom). bindings.surfaces (slice 6): display-surface channels → media files. Keys must be declared in the matching pack block (game.json lightingRoles / surfaces.idleLoop) — a tooling/preflight check, not expressible here.",

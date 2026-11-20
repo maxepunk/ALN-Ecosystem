@@ -56,7 +56,10 @@ test.describe('GM Scanner - Show Control', () => {
     // asserts on ALN cue ids/behavior, which live in the ALN pack since the
     // cutover. An explicit pin wins over E2E_PACK_PATH by design, so the
     // flow tests identical ALN cue behavior on BOTH Tier L legs.
-    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000, packPath: require('path').resolve(__dirname, '../../../../ALN-TokenData') });
+    // ALN-PROFILE pinned beside the ALN pack (slice 4 S5, Rm7). Block 2 T1a
+    // made the unpinned case bite: a leg whose E2E_PROFILE_PATH is a venue
+    // without the rig silences the very cues this flow drives.
+    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000, packPath: require('path').resolve(__dirname, '../../../../ALN-TokenData'), profilePath: require('path').resolve(__dirname, '../../../config/profiles/aln-full-kit.json') });
     browser = await chromium.launch({
       headless: true,
       args: ['--disable-dev-shm-usage', '--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors']
@@ -76,7 +79,7 @@ test.describe('GM Scanner - Show Control', () => {
     await closeAllContexts();
     await stopOrchestrator();
     await clearSessionData();
-    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000, packPath: require('path').resolve(__dirname, '../../../../ALN-TokenData') });
+    orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000, packPath: require('path').resolve(__dirname, '../../../../ALN-TokenData'), profilePath: require('path').resolve(__dirname, '../../../config/profiles/aln-full-kit.json') });
 
     // Refresh capabilities after restart (services may change state)
     try {

@@ -46,10 +46,18 @@ describe('collectPackNeeds (pure aggregator, both real packs)', () => {
 
     it('collects hardware.endpoints with authored onAbsent (C1 §1 physical keys)', () => {
       const endpoints = needs.filter((n) => n.kind === 'endpoint');
-      // ALN authors exactly display.main (degrade) today
-      expect(endpoints).toHaveLength(1);
-      expect(endpoints[0].id).toBe('display.main');
-      expect(endpoints[0].onAbsent).toBe('degrade');
+      // ALN authors three families since Block 2 T1b (D3): display.main
+      // (pre-existing) plus audio.sinks and lighting.instruments — all
+      // degrade, in the order pack-manifest.json hardware.endpoints
+      // declares them.
+      expect(endpoints).toHaveLength(3);
+      expect(endpoints.map((n) => n.id)).toEqual(
+        ['display.main', 'audio.sinks', 'lighting.instruments']
+      );
+      for (const n of endpoints) {
+        expect(n.onAbsent).toBe('degrade');
+        expect(n.sources).toEqual([`pack-manifest.json hardware.endpoints.${n.id}`]);
+      }
     });
 
     it('collects device-class minimums (min > 0 only — a min of 0 asks nothing)', () => {

@@ -134,6 +134,22 @@ describe('installation-profile schema contract (C1 §1, slice 4 S1)', () => {
       expect(validateMutated(d => { d.network.mode = 'hotel-wifi'; })).toBe(false);
     });
 
+    it('an unknown equipment family key is refused (D1 — the endpoints interior is pinned to the five C1 §1 families)', () => {
+      expect(validateMutated(d => { d.endpoints['stage.fog'] = { installed: true }; })).toBe(false);
+    });
+
+    it('a non-boolean installed is refused', () => {
+      expect(validateMutated(d => { d.endpoints['display.main'].installed = 'yes'; })).toBe(false);
+    });
+
+    it('an audio sink without an id is refused', () => {
+      expect(validateMutated(d => { delete d.endpoints['audio.sinks'][0].id; })).toBe(false);
+    });
+
+    it('an audio sink btAddress that is not six hex pairs is refused', () => {
+      expect(validateMutated(d => { d.endpoints['audio.sinks'][1].btAddress = 'not-a-mac-address'; })).toBe(false);
+    });
+
     it('a non-integer version is refused (bumped on every save, F-TOOL-12)', () => {
       expect(validateMutated(d => { d.version = '3'; })).toBe(false);
     });
@@ -144,6 +160,27 @@ describe('installation-profile schema contract (C1 §1, slice 4 S1)', () => {
 
     it('unknown top-level keys are refused (typo catch; the root key set is the ratified C1 shape)', () => {
       expect(validateMutated(d => { d.binding = d.bindings; })).toBe(false);
+    });
+  });
+
+  describe('every profile in the repo validates against the pinned schema (D1)', () => {
+    const roots = [
+      path.resolve(__dirname, '../../../config/profiles'),
+      path.resolve(__dirname, '../../e2e/fixtures/profiles'),
+    ];
+    // Collected once via .map/.flatMap (not a loop-declared test
+    // function) so it.each names each file without tripping
+    // no-loop-func on the closured `validate`.
+    const files = roots.flatMap((dir) => {
+      const label = path.relative(path.resolve(__dirname, '../../..'), dir);
+      return fs.readdirSync(dir)
+        .filter((f) => f.endsWith('.json') && !f.endsWith('.schema.json'))
+        .map((f) => [`${label}/${f}`, path.join(dir, f)]);
+    });
+
+    it.each(files)('%s validates', (label, filePath) => {
+      const doc = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      if (!validate(doc)) throw new Error(`${label} violations:\n  ${explain()}`);
     });
   });
 });

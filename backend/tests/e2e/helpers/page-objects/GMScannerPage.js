@@ -1125,21 +1125,37 @@ class GMScannerPage {
       'gm'
     );
 
-    try {
-      // Send session:start command
+    const sendStart = async (payload) => {
       const ackPromise = waitForEvent(tempSocket, 'gm:command:ack', (ack) => {
         return ack?.data?.action === 'session:start';
       }, 5000);
-
       tempSocket.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'session:start', payload: {} },
+        data: { action: 'session:start', payload },
         timestamp: new Date().toISOString()
       });
+      return (await ackPromise).data;
+    };
 
-      const ack = await ackPromise;
-      if (!ack.data?.success) {
-        throw new Error(`session:start failed: ${ack.data?.message || 'Unknown error'}`);
+    try {
+      let ack = await sendStart({});
+
+      // Block 2 T1a D12 (ruling R15): the require leg. On the
+      // toy-heist-require pack the preflight legitimately refuses the start
+      // — the pack marks lighting.instruments `onAbsent: require` and the
+      // pinned profile does not install it — so this helper types a reason
+      // and starts anyway, exactly as a GM would. ANYWHERE ELSE a NO-GO is
+      // a real failure and must fail the test: a helper that silently
+      // overrode every gate would make the gate untestable.
+      if (!ack?.success
+          && typeof ack?.message === 'string'
+          && ack.message.startsWith('NO-GO: ')
+          && (process.env.E2E_PACK_PATH || '').endsWith('toy-heist-require')) {
+        ack = await sendStart({ startAnyway: true, reason: 'e2e: require leg' });
+      }
+
+      if (!ack?.success) {
+        throw new Error(`session:start failed: ${ack?.message || 'Unknown error'}`);
       }
     } finally {
       disconnectSocket(tempSocket);

@@ -25,11 +25,29 @@ const fs = require('fs');
 const os = require('os');
 const logger = require('./logger');
 const config = require('../config');
+// Block 2 T1a D9 (pin P16): the kiosk is the NINTH service. The driver owns
+// the report because the driver is the only thing that knows whether the
+// process is alive — nothing probes `display` on the revalidation timer.
+const registry = require('../services/serviceHealthRegistry');
 
 // Module-level state (persistent across calls within a process lifetime)
 let browserProcess = null;
 let visible = false;
 let launchPromise = null;  // Guard against concurrent spawns
+// Block 2 T1a follow-up 2 (ruling 27): lets the exit handler tell a crash
+// apart from a deliberate stop.
+//   launched     — true once THIS browserProcess's 1s alive-check has
+//                  passed; cleared the moment it exits. An exit that
+//                  happens before this ever flips is a launch that never
+//                  succeeded — its own exit must never be reported healthy.
+//   terminating  — true from the moment the driver itself calls kill() on
+//                  the process (cleanup()) until that kill sequence is
+//                  done. Distinguishes "I killed it on purpose" from
+//                  "something else killed it", even when both end in the
+//                  same signal name (e.g. an escalated SIGKILL after an
+//                  unresponsive SIGTERM).
+let launched = false;
+let terminating = false;
 
 // PID file for orphan recovery (matches ProcessMonitor pattern)
 const PID_FILE = '/tmp/aln-pm-scoreboard-chromium.pid';
@@ -173,8 +191,36 @@ async function _doLaunch() {
 
   browserProcess.on('exit', (code, signal) => {
     logger.warn('[DisplayDriver] Browser process exited', { code, signal });
+    // Block 2 T1a follow-up 2 (ruling 27, refines ruling 13/R13): an exit
+    // while VISIBLE is always a fault — the scoreboard vanished mid-show.
+    // An exit while HIDDEN is judged by HOW it exited and WHETHER this
+    // process ever launched successfully — nothing is being displayed and
+    // showScoreboard() relaunches, so a CLEAN close there is not a fault
+    // (alarm integrity, R13), but a CRASH is a fault regardless of
+    // visibility. A clean close is: this process's alive-check already
+    // passed (`launched`), AND it exited with code 0 OR the driver itself
+    // was the one terminating it (`terminating` — e.g. cleanup()'s
+    // SIGTERM, or its SIGKILL escalation). Anything else while hidden —
+    // a non-zero code, a foreign signal (SIGABRT, SIGSEGV, an
+    // externally-sent SIGKILL, …), or an exit before the alive-check ever
+    // passed — is down, same as a visible crash.
+    if (visible) {
+      registry.report('display', 'down', `kiosk exited while visible (code ${code}, signal ${signal})`);
+    } else if (launched && (code === 0 || terminating)) {
+      registry.report('display', 'healthy', 'kiosk closed while hidden; relaunches on show');
+    } else {
+      registry.report('display', 'down', `kiosk crashed while hidden (code ${code}, signal ${signal})`);
+    }
     browserProcess = null;
     visible = false;
+    launched = false;
+    // Fix round 1: this handler is the sole reader AND clearer of
+    // `terminating` — cleanup() sets it but deliberately never clears it,
+    // because the real exit can land on a later tick than cleanup()'s own
+    // synchronous kill sequence (see cleanup()'s comment). Clearing it here,
+    // only once it has actually been read above, is what makes it survive
+    // long enough for an escalated SIGKILL to still read as deliberate.
+    terminating = false;
   });
 
   // Write PID file for orphan recovery on next server start
@@ -191,12 +237,15 @@ async function _doLaunch() {
   await new Promise(r => setTimeout(r, 1000));
   if (!browserProcess) {
     logger.error('[DisplayDriver] Chromium process died during startup');
+    registry.report('display', 'down', 'kiosk launch failed');
     return false;
   }
 
   logger.info('[DisplayDriver] Chromium process started', {
     pid: browserProcess?.pid
   });
+  registry.report('display', 'healthy', 'kiosk launched');
+  launched = true;
   return true;
 }
 
@@ -255,6 +304,8 @@ async function showScoreboard() {
  * Looks up the window by title fresh each time — catches orphaned windows too.
  * Minimizing (not windowunmap) preserves fullscreen state for next windowactivate.
  * Non-fatal: VLC renders underneath even if minimize fails.
+ * (Ruling 27's `terminating` bookkeeping does not apply here — this function
+ * never calls kill(); only cleanup() does.)
  * @returns {Promise<boolean>} Always true (non-fatal hide)
  */
 async function hideScoreboard() {
@@ -285,6 +336,49 @@ function isScoreboardVisible() {
 }
 
 /**
+ * Re-report the kiosk's CURRENT state to the health registry, and say
+ * whether it is healthy (Block 2 T1a fix round 1, ruling 22).
+ *
+ * This is the read-only `display` arm of `service:check`. It LAUNCHES
+ * NOTHING: a pre-show health sweep must not seize the HDMI output while
+ * VLC is on it. Everything it answers is already known to this module —
+ * the process handle and the visible flag — so it needs no I/O either.
+ *
+ *   video playback off (host config)  down    the host is not doing video
+ *   process alive                     healthy 'kiosk running'
+ *   no process, hidden                healthy R13 — nothing is displayed
+ *                                             and showScoreboard() relaunches
+ *   no process, should be visible     down    'kiosk not running'
+ *
+ * The host-config arm wins over a live process for the same reason
+ * displayControlService.init() gives it the final word: a host with video
+ * playback disabled is not using this output, whatever happens to be open.
+ *
+ * @returns {boolean} true when the kiosk is healthy
+ */
+function probe() {
+  if (!config.features.videoPlayback) {
+    registry.report('display', 'down', 'video playback disabled (host config)');
+    return false;
+  }
+
+  if (browserProcess && !browserProcess.killed) {
+    registry.report('display', 'healthy', 'kiosk running');
+    return true;
+  }
+
+  // No process. Hidden is the idle posture, not a fault (R13) — red here
+  // would put a permanent alarm on a system working exactly as intended.
+  if (!visible) {
+    registry.report('display', 'healthy', 'kiosk closed while hidden; relaunches on show');
+    return true;
+  }
+
+  registry.report('display', 'down', 'kiosk not running');
+  return false;
+}
+
+/**
  * Get current display driver status.
  * @returns {Object} Status object
  */
@@ -306,6 +400,15 @@ async function cleanup() {
   if (browserProcess && !browserProcess.killed) {
     const pid = browserProcess.pid;
     logger.info('[DisplayDriver] Killing browser process on shutdown', { pid });
+    // Ruling 27 fix round 1: set `terminating` here and do NOT clear it in
+    // this function — the exit handler is the one that reads it and clears
+    // it, once it has actually observed the exit. The real OS kill is
+    // asynchronous, and doubly so after a SIGKILL escalation below (SIGKILL
+    // never fires 'exit' synchronously either): clearing the flag here,
+    // right after this synchronous kill sequence returns, would race the
+    // exit event, which may not land until a LATER event-loop tick — long
+    // after this function (and any await on it) has already resolved.
+    terminating = true;
     browserProcess.kill('SIGTERM');
     await new Promise(r => setTimeout(r, 1000));
     // .killed reflects kill() was CALLED, not that process died.
@@ -317,6 +420,10 @@ async function cleanup() {
     } catch {
       // Process is dead — SIGTERM worked
     }
+  } else {
+    // Nothing to kill — no 'exit' will ever arrive to read/clear the flag,
+    // so make sure a stale `true` from some earlier run isn't left set.
+    terminating = false;
   }
   browserProcess = null;
   visible = false;
@@ -334,6 +441,7 @@ module.exports = {
   showScoreboard,
   hideScoreboard,
   isScoreboardVisible,
+  probe,
   getStatus,
   cleanup
 };

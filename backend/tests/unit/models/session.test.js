@@ -269,4 +269,44 @@ describe('Session Model - pack stamp (Phase 3 A2)', () => {
     const restored = Session.fromJSON(session.toJSON());
     expect(restored.metadata.pack).toEqual(PACK);
   });
+  test('preflight and preflightOverride default to null on a NEW session (T1a D8)', () => {
+    const session = new Session({ name: 'Fresh' });
+    expect(session.metadata.preflight).toBeNull();
+    expect(session.metadata.preflightOverride).toBeNull();
+  });
+
+  test('an OLDER session file with neither field restores with both null (the A2 precedent)', () => {
+    const legacy = Session.fromJSON({
+      name: 'Pre-T1a Session',
+      startTime: new Date().toISOString(),
+      status: 'ended',
+      metadata: {
+        gmStations: 0, playerDevices: 0, totalScans: 0, uniqueTokensScanned: [],
+      },
+    });
+    expect(legacy.metadata.preflight).toBeNull();
+    expect(legacy.metadata.preflightOverride).toBeNull();
+  });
+
+  test('a stamped preflight and override survive the persistence round-trip', () => {
+    const session = new Session({ name: 'Stamped' });
+    session.metadata.preflight = {
+      status: 'no-go',
+      computedAt: '2026-09-12T10:00:00.000Z',
+      profileId: 'toy-dormant-lighting',
+      packHash: `sha256:${'a'.repeat(64)}`,
+      blocking: ["required endpoint 'lighting.instruments' not installed at this venue"],
+      dormantNeeds: ['lighting.instruments'],
+    };
+    session.metadata.preflightOverride = {
+      reason: 'the rig is in the van',
+      at: '2026-09-12T10:00:01.000Z',
+      blocking: ['x'],
+      byDeviceId: 'GM_STATION_1',
+      byTier: 'operator',
+    };
+    const restored = Session.fromJSON(session.toJSON());
+    expect(restored.metadata.preflight).toEqual(session.metadata.preflight);
+    expect(restored.metadata.preflightOverride).toEqual(session.metadata.preflightOverride);
+  });
 });

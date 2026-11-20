@@ -184,7 +184,9 @@ function assertSyncFullStructure(syncData) {
   // Validate service health (registry snapshot)
   expect(syncData.serviceHealth).toHaveProperty('vlc');
   expect(syncData.serviceHealth.vlc).toHaveProperty('status');
-  expect(['healthy', 'down']).toContain(syncData.serviceHealth.vlc.status);
+  // T1a D1: the vocabulary is exactly three words (a venue that installs no
+  // display makes `vlc` dormant, not down).
+  expect(['healthy', 'down', 'dormant']).toContain(syncData.serviceHealth.vlc.status);
 
   // Newly-required sync:full fields (AsyncAPI SyncFull required[] expansion).
   // Guards the recurring "silent state desync" regression class — a dropped

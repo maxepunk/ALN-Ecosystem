@@ -2607,35 +2607,107 @@ Sink Input #42
   });
 
   describe('_verifyWirePlumberRule', () => {
+    // The rule is present when EITHER file is readable. WirePlumber 0.5+ reads the
+    // .conf (the new machine, green). WirePlumber 0.4 reads the .lua (blue).
+    // WirePlumber runs as the login user, so the check asks for read access (R_OK).
+    const { R_OK } = require('fs').constants;
+    const CONF_PATH = '/etc/wireplumber/wireplumber.conf.d/51-aln-vlc-no-restore.conf';
+    const LUA_PATH = '/etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua';
+
     let warnSpy;
+    let accessSpy;
+
+    // Stub fs.promises.access so that only the listed paths exist.
+    function stubExistingFiles(...existingPaths) {
+      accessSpy = jest.spyOn(require('fs').promises, 'access')
+        .mockImplementation(async filePath => {
+          if (!existingPaths.includes(filePath)) {
+            throw Object.assign(new Error(`ENOENT: ${filePath}`), { code: 'ENOENT' });
+          }
+        });
+    }
+
+    // Stub fs.promises.access so that each path rejects with its own error code.
+    function stubRejectedFiles(codesByPath) {
+      accessSpy = jest.spyOn(require('fs').promises, 'access')
+        .mockImplementation(async filePath => {
+          const code = codesByPath[filePath];
+          throw Object.assign(new Error(`${code}: ${filePath}`), { code });
+        });
+    }
+
     beforeEach(() => {
       warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
     });
     afterEach(() => {
       warnSpy.mockRestore();
+      if (accessSpy) {
+        accessSpy.mockRestore();
+        accessSpy = undefined;
+      }
     });
 
-    test('logs a warning when the rule file is absent', async () => {
-      const accessSpy = jest.spyOn(require('fs').promises, 'access')
-        .mockRejectedValue(new Error('ENOENT'));
-
-      await audioRoutingService._verifyWirePlumberRule();
-
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('WirePlumber rule missing'),
-        expect.any(Object)
-      );
-      accessSpy.mockRestore();
-    });
-
-    test('does not warn when the rule file is present', async () => {
-      const accessSpy = jest.spyOn(require('fs').promises, 'access')
-        .mockResolvedValue(undefined);
+    test('does not warn when only the WirePlumber 0.5 .conf exists', async () => {
+      stubExistingFiles(CONF_PATH);
 
       await audioRoutingService._verifyWirePlumberRule();
 
       expect(warnSpy).not.toHaveBeenCalled();
-      accessSpy.mockRestore();
+    });
+
+    test('does not warn when only the WirePlumber 0.4 .lua exists', async () => {
+      stubExistingFiles(LUA_PATH);
+
+      await audioRoutingService._verifyWirePlumberRule();
+
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    test('does not warn when both files exist', async () => {
+      stubExistingFiles(CONF_PATH, LUA_PATH);
+
+      await audioRoutingService._verifyWirePlumberRule();
+
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    test('warns once, naming both paths, their error codes and the guide step, when neither file exists', async () => {
+      stubExistingFiles();
+
+      await audioRoutingService._verifyWirePlumberRule();
+
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      const [message, meta] = warnSpy.mock.calls[0];
+      expect(message).toContain('WirePlumber rule missing');
+      expect(message).toContain(CONF_PATH);
+      expect(message).toContain(LUA_PATH);
+      expect(message).toContain('present and readable');
+      expect(message).toContain('DEPLOYMENT_GUIDE.md, the WirePlumber step');
+      expect(message).not.toContain('Step 5');
+      // The codes line up with rulePaths, one per path, in the same order.
+      expect(meta).toEqual({ rulePaths: [CONF_PATH, LUA_PATH], codes: ['ENOENT', 'ENOENT'] });
+    });
+
+    test('warns, and names the code, when a path rejects with EACCES', async () => {
+      // The .conf is there, but the login user cannot read it (or a directory above it).
+      stubRejectedFiles({ [CONF_PATH]: 'EACCES', [LUA_PATH]: 'ENOENT' });
+
+      await audioRoutingService._verifyWirePlumberRule();
+
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      const [message, meta] = warnSpy.mock.calls[0];
+      expect(message).toContain('present and readable');
+      expect(meta).toEqual({ rulePaths: [CONF_PATH, LUA_PATH], codes: ['EACCES', 'ENOENT'] });
+    });
+
+    test('asks for read access (R_OK) on both paths', async () => {
+      stubExistingFiles(CONF_PATH, LUA_PATH);
+
+      await audioRoutingService._verifyWirePlumberRule();
+
+      expect(accessSpy).toHaveBeenCalledTimes(2);
+      expect(accessSpy).toHaveBeenCalledWith(CONF_PATH, R_OK);
+      expect(accessSpy).toHaveBeenCalledWith(LUA_PATH, R_OK);
     });
 
     test('is invoked from init()', async () => {

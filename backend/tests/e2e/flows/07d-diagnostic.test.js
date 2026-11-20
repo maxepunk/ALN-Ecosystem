@@ -33,6 +33,7 @@ const {
 } = require('../setup/test-server');
 
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
+const { startGameOnSocket } = require('../setup/session-helpers');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 
 const {
@@ -156,20 +157,22 @@ test.describe('DIAGNOSTIC: History Auto-Update', () => {
         10000
       );
 
-      // Transition setup → active (Phase 1 lifecycle)
+      // Transition setup → active (Phase 1 lifecycle).
+      // Uses the shared helper so this seam carries the R15 require-leg
+      // override too (Block 2 T1a D12) — see session-helpers.js.
       logger.backendInput('gm:command', { action: 'session:start' });
-      socket.emit('gm:command', {
-        event: 'gm:command',
-        data: { action: 'session:start', payload: {} },
-        timestamp: new Date().toISOString()
-      });
 
-      const sessionUpdate = await waitForEvent(
+      // Arm the broadcast listener BEFORE the command: the helper awaits the
+      // gm:command:ack, and the session:update broadcast can land inside that
+      // await — a listener registered afterwards would miss it.
+      const sessionUpdatePromise = waitForEvent(
         socket,
         'session:update',
         (event) => event.data.status === 'active',
         10000
       );
+      await startGameOnSocket(socket, 10000);
+      const sessionUpdate = await sessionUpdatePromise;
 
       logger.backend('session:update', { status: sessionUpdate.data.status });
       logger.log('TEST', 'PHASE', '✓ Session created and started successfully');

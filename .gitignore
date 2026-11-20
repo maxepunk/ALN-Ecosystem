@@ -54,6 +54,9 @@ test-results/
 # Environment variables
 .env
 
+# Python virtual environment (the venv route in scripts/requirements.txt)
+.venv/
+
 # Python cache files
 __pycache__/
 *.pyc
@@ -65,3 +68,6 @@ backend/test_output.log
 
 # Design-pane screenshots live in the DesignSync project, not git
 docs/design/pages/**/*.png
+
+# Agent working scratch (docs/agents/process.md): never committed
+.superpowers/

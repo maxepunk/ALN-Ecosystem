@@ -11,6 +11,69 @@ const { connectWithAuth } = require('./websocket-client');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 
 /**
+ * Send `session:start` on an already-authenticated admin socket and return the ack.
+ *
+ * Block 2 T1a D12 (ruling R15): the require leg. Both session-creation helpers
+ * below start the game, and so does `GMScannerPage.startGame()` — three seams,
+ * one rule. On the `toy-heist-require` pack the preflight legitimately REFUSES
+ * the start (the pack marks `lighting.instruments` `onAbsent: require` and the
+ * pinned profile does not install it), so on that leg — and only there — this
+ * helper types a reason and starts anyway, exactly as a GM would. ANYWHERE
+ * ELSE a NO-GO is a real failure and must fail the test: a helper that
+ * silently overrode every gate would make the gate untestable.
+ *
+ * @param {Object} adminSocket - Connected, authenticated admin socket
+ * @param {number} timeout - Per-attempt ack timeout in ms
+ * @returns {Promise<Object>} The final `gm:command:ack` envelope
+ */
+async function startGameOnSocket(adminSocket, timeout) {
+  const sendStart = (payload) => new Promise((resolve, reject) => {
+    const ackHandler = (ack) => {
+      if (ack.data?.action === 'session:start') {
+        clearTimeout(timeoutId);
+        adminSocket.off('gm:command:ack', ackHandler);
+
+        if (ack.data?.error) {
+          reject(new Error(`Session start failed: ${ack.data.error}`));
+        } else {
+          resolve(ack);
+        }
+      }
+    };
+    const timeoutId = setTimeout(() => {
+      adminSocket.off('gm:command:ack', ackHandler);
+      reject(new Error(`Session start timeout after ${timeout}ms`));
+    }, timeout);
+
+    adminSocket.on('gm:command:ack', ackHandler);
+
+    adminSocket.emit('gm:command', {
+      event: 'gm:command',
+      data: {
+        action: 'session:start',
+        payload
+      },
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  let startAck = await sendStart({});
+
+  if (!startAck.data?.success
+      && typeof startAck.data?.message === 'string'
+      && startAck.data.message.startsWith('NO-GO: ')
+      && (process.env.E2E_PACK_PATH || '').endsWith('toy-heist-require')) {
+    startAck = await sendStart({ startAnyway: true, reason: 'e2e: require leg' });
+  }
+
+  if (!startAck.data?.success) {
+    throw new Error(`Session start failed: ${startAck.data?.message || 'Unknown error'}`);
+  }
+
+  return startAck;
+}
+
+/**
  * Create a session via temporary WebSocket connection.
  * Useful for HTTP-only tests (like Player Scanner) that need active sessions.
  *
@@ -87,39 +150,8 @@ async function createSessionViaWebSocket(orchestratorUrl, options = {}) {
       throw new Error(`Session creation failed: ${sessionAck.data?.message || 'Unknown error'}`);
     }
 
-    // Start the game (transition session from setup to active)
-    const startAck = await new Promise((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject(new Error(`Session start timeout after ${timeout}ms`));
-      }, timeout);
-
-      const ackHandler = (ack) => {
-        if (ack.data?.action === 'session:start') {
-          clearTimeout(timeoutId);
-          adminSocket.off('gm:command:ack', ackHandler);
-
-          if (ack.data?.error) {
-            reject(new Error(`Session start failed: ${ack.data.error}`));
-          } else {
-            resolve(ack);
-          }
-        }
-      };
-      adminSocket.on('gm:command:ack', ackHandler);
-
-      adminSocket.emit('gm:command', {
-        event: 'gm:command',
-        data: {
-          action: 'session:start',
-          payload: {}
-        },
-        timestamp: new Date().toISOString()
-      });
-    });
-
-    if (!startAck.data?.success) {
-      throw new Error(`Session start failed: ${startAck.data?.message || 'Unknown error'}`);
-    }
+    // Start the game (transition session from setup to active); R15 override lives in the helper
+    await startGameOnSocket(adminSocket, timeout);
 
     // Session data is broadcast via session:update event, not in ack
     // For HTTP-only tests, we just need to know session exists (backend will accept scans)
@@ -209,39 +241,8 @@ async function createSessionWithSocket(orchestratorUrl, options = {}) {
       throw new Error(`Session creation failed: ${sessionAck.data?.message || 'Unknown error'}`);
     }
 
-    // Start the game (transition session from setup to active)
-    const startAck = await new Promise((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject(new Error(`Session start timeout after ${timeout}ms`));
-      }, timeout);
-
-      const ackHandler = (ack) => {
-        if (ack.data?.action === 'session:start') {
-          clearTimeout(timeoutId);
-          adminSocket.off('gm:command:ack', ackHandler);
-
-          if (ack.data?.error) {
-            reject(new Error(`Session start failed: ${ack.data.error}`));
-          } else {
-            resolve(ack);
-          }
-        }
-      };
-      adminSocket.on('gm:command:ack', ackHandler);
-
-      adminSocket.emit('gm:command', {
-        event: 'gm:command',
-        data: {
-          action: 'session:start',
-          payload: {}
-        },
-        timestamp: new Date().toISOString()
-      });
-    });
-
-    if (!startAck.data?.success) {
-      throw new Error(`Session start failed: ${startAck.data?.message || 'Unknown error'}`);
-    }
+    // Start the game (transition session from setup to active); R15 override lives in the helper
+    await startGameOnSocket(adminSocket, timeout);
 
     // Return minimal session object and keep socket open for caller
     return {
@@ -262,5 +263,6 @@ async function createSessionWithSocket(orchestratorUrl, options = {}) {
 
 module.exports = {
   createSessionViaWebSocket,
-  createSessionWithSocket
+  createSessionWithSocket,
+  startGameOnSocket
 };

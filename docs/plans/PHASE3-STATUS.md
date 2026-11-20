@@ -1108,7 +1108,7 @@ train PRs and every subsumed PR MERGED. **COHERENT ON MAIN is
 reached** (readiness ladder state 1, ROADMAP §3). Branch
 cleanup deliberately deferred (never `production-2026-07`; the
 `blue-2026-07` tags anchor the frozen system). Follow-on work:
-`docs/plans/2026-09-12-postwalk-handoff.md`.
+`docs/plans/2026-09-12-postwalk-handoff.md` (retired 2026-09-12 per process rule 3: its live content moved to `CURRENT-STATE.md` and the deployment guide; the file is in git history).
 
 Timing (superseded 2026-09-05, roadmap r4 supersession 9 — was
 "owner-driven, post-run"): the walk is the owner's call at the

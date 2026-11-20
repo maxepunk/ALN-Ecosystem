@@ -1,0 +1,220 @@
+{
+  "cards": [
+    {
+      "id": "C1",
+      "title": "Each tablet keeps its own list of claimed tokens",
+      "atAShow": "A GM deletes a transaction. The engine frees the token, but every tablet that stays connected keeps refusing it as already scanned until someone reloads. A tablet that drops its connection during Reset All Scores comes back still holding the old claims, and refuses tokens the engine has cleared.",
+      "whyItHappens": "The engine decides which tokens are claimed, but each tablet holds a copy that only grows: added on scan, merged on reconnect, removed only when a scan fails. The engine's own messages also skip facts changed by another path, such as a team created by a scan.",
+      "designTerms": "The engine's transaction module should own the claimed-token fact. The seam leaks: the tablet's storage module re-implements the claim rule in a separate handler per message, so one fact has two implementations and no locality.",
+      "modules": [
+        "backend/src/services/transactionService.js",
+        "backend/src/websocket/broadcasts.js",
+        "ALNScanner/src/network/messageRouters.js",
+        "ALNScanner/src/core/storage/NetworkedStorage.js",
+        "ALNScanner/src/core/unifiedDataManager.js",
+        "backend/public/scoreboard.html"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  eng[\"Engine<br/>decides claims\"]\n  del[\"Delete message<br/>transaction id, one team row\"]\n  snap[\"Reconnect snapshot<br/>this tablet's claims only\"]\n  tabA[\"Tablet A<br/>own claimed list\"]\n  tabB[\"Tablet B<br/>own claimed list\"]\n  gm[\"GM rescan<br/>refused as already scanned\"]\n  eng -->|\"frees the token\"| del\n  del -->|\"removes transaction, keeps claim\"| tabA\n  del -->|\"removes transaction, keeps claim\"| tabB\n  eng -->|\"on reconnect\"| snap\n  snap -->|\"union, never removes\"| tabB\n  tabB -->|\"stale claim\"| gm\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class del,snap,tabA,tabB fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  eng[\"Engine<br/>decides claims\"]\n  msg[\"Claim list message<br/>whole list on any change\"]\n  apply[\"One apply function<br/>replaces the copy\"]\n  tabA[\"Tablet A<br/>engine list plus own pending\"]\n  tabB[\"Tablet B<br/>engine list plus own pending\"]\n  gm[\"GM rescan<br/>accepted\"]\n  eng -->|\"delete, reset, reconnect\"| msg\n  msg -->|\"same path every time\"| apply\n  apply -->|\"replace\"| tabA\n  apply -->|\"replace\"| tabB\n  tabB -->|\"freed token\"| gm\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class eng owner;",
+        "note": "Candidate: tablets hold the engine's claim list plus their own unconfirmed scans, applied by one replace function. Competing: a version number per fact, or no tablet list at all."
+      },
+      "examples": [
+        {
+          "ids": "A-05 / C-04",
+          "text": "GM deletes a transaction; every connected tablet keeps refusing the token as already scanned until it reloads."
+        },
+        {
+          "ids": "A-06 / C-30",
+          "text": "A tablet that dropped its connection during Reset All Scores reconnects with its stale claims and refuses cleared tokens."
+        },
+        {
+          "ids": "A-24 / C-29",
+          "text": "After a reload a tablet knows only its own claims; a rescan of another station's token shows success, then rejection."
+        },
+        {
+          "ids": "B-13",
+          "text": "A delete recomputes every team's score but the message carries one team's row; latent today."
+        },
+        {
+          "ids": "B-19",
+          "text": "A scan for a team nobody added creates the team silently; no team message reaches any tablet."
+        },
+        {
+          "ids": "A-25 / C-01",
+          "text": "Session Details freezes Teams and GM Stations at the last full snapshot, because one message merges and one replaces."
+        }
+      ],
+      "blueFixes": ["W1"],
+      "questions": [1, 8],
+      "findings": 19,
+      "seenLive": ""
+    },
+    {
+      "id": "C4",
+      "title": "Nothing says what a game boundary clears or keeps",
+      "atAShow": "The GM ends the game and restarts the engine; the ended game comes back as the current one and player scans keep landing in it. When the game ends, a tablet that reconnects loses its history and the wall scoreboard goes blank. A once-only cue spent in game one stays spent in game two.",
+      "whyItHappens": "Game start, end, reset, engine restart, tablet reload and reconnect each have their own code in each component. No table says, per fact and copy, whether a boundary clears, keeps or re-fetches it, and no message announces a boundary; screens infer one from a changed session id.",
+      "designTerms": "The engine's session module should own each fact's lifetime at a game boundary. That interface does not exist: the game-boundary rule is spread across the session, cue-engine, reset and tablet modules, each a shallow implementation of one case, so a change has no locality.",
+      "modules": [
+        "backend/src/services/sessionService.js",
+        "backend/src/services/systemReset.js",
+        "backend/src/services/cueEngineService.js",
+        "backend/src/routes/scanRoutes.js",
+        "ALNScanner/src/network/networkedSession.js",
+        "backend/public/scoreboard.html"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  endg[\"Game end<br/>saves ended record, nulls session\"]\n  restart[\"Engine restart<br/>reloads last record\"]\n  cur[\"Current game<br/>the ended game again\"]\n  scans[\"Player scans<br/>accepted\"]\n  cues[\"Cue engine<br/>spent cues kept\"]\n  reset[\"System reset<br/>only clearer, no message\"]\n  tab[\"Tablet<br/>infers boundary from id\"]\n  endg -->|\"status not checked\"| restart\n  restart -->|\"makes current\"| cur\n  cur -->|\"session exists\"| scans\n  endg -.->|\"never touches\"| cues\n  reset -->|\"clears\"| cues\n  reset -.->|\"no snapshot sent\"| tab\n  endg -->|\"null session\"| tab\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class restart,cur,cues,tab fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  tbl[\"Boundary table<br/>per fact: clear, keep, re-fetch\"]\n  endg[\"Game end\"]\n  restart[\"Engine restart\"]\n  reset[\"System reset\"]\n  msg[\"Boundary message<br/>to every client\"]\n  tab[\"Tablet<br/>one boundary handler\"]\n  cues[\"Cue engine<br/>spent cues cleared at end\"]\n  scans[\"Player scans<br/>refused, no game\"]\n  endg -->|\"iterates\"| tbl\n  restart -->|\"iterates\"| tbl\n  reset -->|\"iterates\"| tbl\n  tbl -->|\"applies lifetime\"| cues\n  tbl -->|\"ended stays ended\"| scans\n  tbl -->|\"announces\"| msg\n  msg -->|\"applies\"| tab\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class tbl owner;",
+        "note": "Candidate: one table of each fact's authority and lifetime, iterated at every boundary, plus one boundary message. Competing: new game runs the reset path; full snapshot per boundary; a game epoch; keep the ended game."
+      },
+      "examples": [
+        {
+          "ids": "B-61 / D-31",
+          "text": "An ended game comes back after an engine restart as the current game, and player scans keep landing in it."
+        },
+        {
+          "ids": "A-01 / C-39",
+          "text": "After the GM ends the game, a reconnecting tablet loses history, scans and Download Report; the wall scoreboard goes blank."
+        },
+        {
+          "ids": "B-17 / C-38",
+          "text": "A once-only cue spent in one game stays spent in the next unless the GM ran a system reset between."
+        },
+        {
+          "ids": "C-05",
+          "text": "After a reload the tablet wipes the offline scans it just restored, reading the first message as a new game."
+        },
+        {
+          "ids": "B-55",
+          "text": "A system reset empties the engine's video queue to idle while VLC plays on, and the GM is told nothing."
+        },
+        {
+          "ids": "C-36",
+          "text": "A system reset sends no tablet a fresh snapshot; tablets keep the old game's data until a new session id arrives."
+        }
+      ],
+      "blueFixes": ["W8"],
+      "questions": [6],
+      "findings": 22,
+      "seenLive": ""
+    },
+    {
+      "id": "C6",
+      "title": "Reconnect snapshot and live update are built apart",
+      "atAShow": "A GM reloads a tablet mid-game. The History badge stays hidden until the next scan, and a rebuilt admin panel can show the clock as --:-- until the next change. The device list flips between everyone ever and connected only, depending on which message came last.",
+      "whyItHappens": "For each fact the engine has one builder for the connect snapshot and another for the live message, and six places send the snapshot with hand-picked arguments. The tablet applies each by a different rule, and the restore path fires none of the events screens listen for.",
+      "designTerms": "Each fact's engine module should own one description of itself, serving snapshot and live push alike. The snapshot builder is shallow: its interface is a hand-passed list of every module, and five tablet adapters reshape its output, so the seam leaks both ways.",
+      "modules": [
+        "backend/src/websocket/syncHelpers.js",
+        "backend/src/websocket/broadcasts.js",
+        "backend/src/websocket/gmAuth.js",
+        "ALNScanner/src/network/messageRouters.js",
+        "ALNScanner/src/core/stateStore.js",
+        "ALNScanner/src/admin/MonitoringDisplay.js"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  fact[\"Engine fact<br/>clock, session, devices\"]\n  snapB[\"Snapshot builder<br/>six hand-assembled senders\"]\n  liveB[\"Live message builder<br/>separate code per fact\"]\n  replace[\"Tablet: replace<br/>drops absent keys\"]\n  merge[\"Tablet: merge<br/>skips equal pushes\"]\n  adapter[\"Five adapters<br/>reshape before drawing\"]\n  screen[\"Screen<br/>no event on restore\"]\n  fact -->|\"on connect\"| snapB\n  fact -->|\"on change\"| liveB\n  snapB -->|\"one shape\"| replace\n  liveB -->|\"another shape\"| merge\n  replace -->|\"reshaped\"| adapter\n  merge -->|\"reshaped\"| adapter\n  adapter -->|\"stale or blank\"| screen\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class snapB,liveB,adapter,screen fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  fact[\"Engine fact<br/>clock, session, devices\"]\n  desc[\"One describe per fact<br/>serves snapshot and push\"]\n  snap[\"Snapshot<br/>list of descriptions\"]\n  live[\"Live message<br/>one description\"]\n  apply[\"Tablet: one apply<br/>same shape, fires events\"]\n  screen[\"Screen<br/>drawn from the fact\"]\n  fact -->|\"owns\"| desc\n  desc -->|\"on connect\"| snap\n  desc -->|\"on change\"| live\n  snap -->|\"same shape\"| apply\n  live -->|\"same shape\"| apply\n  apply -->|\"same event either way\"| screen\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class desc owner;",
+        "note": "Candidate: one description per fact serves snapshot and live push; the tablet applies both with one function. Competing: live updates become whole-value signals in the snapshot's shape; one unreshaped domain object per fact."
+      },
+      "examples": [
+        {
+          "ids": "A-22",
+          "text": "After a reload the History badge stays hidden until the next scan; the restore path fires no event."
+        },
+        {
+          "ids": "A-30 / C-46",
+          "text": "After a panel rebuild the first state push can be skipped and the clock shows --:--."
+        },
+        {
+          "ids": "C-23",
+          "text": "The device list alternates between everyone ever and connected only, depending on which message came last."
+        },
+        {
+          "ids": "B-31",
+          "text": "Six places send the full snapshot and disagree on which devices to include and which extra keys to add."
+        },
+        {
+          "ids": "A-32 / C-44",
+          "text": "Snapshot and live shapes differ for clock and cues; five adapters reshape them, and the clock adapter drops unnamed fields."
+        },
+        {
+          "ids": "D-01",
+          "text": "A TV reloaded during a video shows its last overlay state, because the snapshot's display status is never read."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [9, 8],
+      "findings": 11,
+      "seenLive": ""
+    },
+    {
+      "id": "C7",
+      "title": "A reply never says which request, final or stored",
+      "atAShow": "Player devices upload their queued scans while no game exists. The engine answers processed, stores nothing, and both devices delete the scans. A GM's scan that can never succeed comes back as a generic error, so the tablet replays it at every reconnect with a toast each time. A slow Reset System reports failure and the new game is skipped.",
+      "whyItHappens": "The engine answers before or without the write that makes the fact true, calls an unstored batch processed, returns some failures as a typed result and others as a generic error, and acknowledges commands by action name alone. Each device then decides for itself what a reply means.",
+      "designTerms": "The engine's reply module should own each request's outcome: which request, final or not, stored or not. That interface is split between a typed result and a generic error, so three client adapters each keep their own reply rule across the seam.",
+      "modules": [
+        "backend/src/websocket/adminEvents.js",
+        "backend/src/routes/scanRoutes.js",
+        "ALNScanner/src/network/networkedQueueManager.js",
+        "ALNScanner/src/admin/utils/CommandSender.js",
+        "aln-memory-scanner/js/orchestratorIntegration.js",
+        "arduino-cyd-player-scanner/ALNScanner_v5/services/ScanResponse.h"
+      ],
+      "before": {
+        "caption": "Today",
+        "mermaid": "flowchart LR\n  dev[\"Player device<br/>queued scans\"]\n  tab[\"Tablet<br/>GM scan or command\"]\n  eng[\"Engine<br/>replies before the write\"]\n  ok[\"200 processed<br/>batch stored nowhere\"]\n  err[\"Generic error<br/>no request id, not final\"]\n  ack[\"Command ack<br/>action name only\"]\n  devRule[\"Device rule<br/>200 means delete\"]\n  tabRule[\"Tablet rule<br/>error means try later\"]\n  dev -->|\"batch, no game\"| eng\n  tab -->|\"scan, command\"| eng\n  eng -->|\"no game\"| ok\n  ok -->|\"deletes the scans\"| devRule\n  eng -->|\"invalid scan\"| err\n  err -->|\"replays each reconnect\"| tabRule\n  eng -->|\"slow reset\"| ack\n  ack -->|\"after 5s, no listener\"| tabRule\n  classDef fault stroke:#dc2626,stroke-width:3px;\n  class ok,err,ack,devRule,tabRule fault;"
+      },
+      "after": {
+        "caption": "Candidate, not decided",
+        "mermaid": "flowchart LR\n  dev[\"Player device<br/>queued scans\"]\n  tab[\"Tablet<br/>GM scan or command\"]\n  eng[\"Engine\"]\n  commit[\"One commit<br/>save first, then reply\"]\n  reply[\"Typed reply<br/>request id, final, stored\"]\n  devRule[\"Device rule<br/>delete only if stored\"]\n  tabRule[\"Tablet rule<br/>final means stop\"]\n  dev -->|\"batch\"| eng\n  tab -->|\"scan, command\"| eng\n  eng -->|\"every write\"| commit\n  commit -->|\"after the save\"| reply\n  reply -->|\"stored or refused\"| devRule\n  reply -->|\"matched by request id\"| tabRule\n  classDef owner stroke:#0f766e,stroke-width:3px;\n  class commit owner;",
+        "note": "Candidate: every reply carries a request id and final flag, every scan outcome is typed, and one commit saves before replying. Competing: per-item results in each batch body; a status endpoint queried by client id."
+      },
+      "examples": [
+        {
+          "ids": "B-64 / C-32",
+          "text": "Scan failures like no session or queue full come back as a generic error; the tablet replays them on every snapshot."
+        },
+        {
+          "ids": "B-22 / D-13 / D-14",
+          "text": "A batch arriving with no game is answered processed but stored nowhere; both player devices delete it."
+        },
+        {
+          "ids": "B-21 / D-15",
+          "text": "A batch retried after an engine restart is stored twice; processed batches are remembered in memory for an hour."
+        },
+        {
+          "ids": "B-69 / C-35",
+          "text": "A system reset slower than the tablet's five-second wait reports failure, and the follow-on create session is skipped."
+        },
+        {
+          "ids": "B-65 / C-33",
+          "text": "A command ack carries only action, success and message, so two presses of one action resolve on the first reply."
+        },
+        {
+          "ids": "D-12",
+          "text": "One failed batch is dropped by the web scanner on any 4xx but kept forever by the ESP32."
+        }
+      ],
+      "blueFixes": [],
+      "questions": [1, 8],
+      "findings": 18,
+      "seenLive": ""
+    }
+  ]
+}

@@ -30,10 +30,14 @@ const {
 const BACKEND = path.resolve(__dirname, '../../..');
 
 describe('harnessProvides (the provisioning gate)', () => {
+  // Block 2 T1b (D1/D7): the pinned C1 §1 endpoints interior has no
+  // `provider` field on display.main — the harness declares itself
+  // via marker VALUES instead (display.main.output starting `rung1-`,
+  // an audio.sinks[] id starting `rung1_`).
   const simulationShape = {
     kind: 'installation-profile',
     profileId: 'rung1-simulation',
-    endpoints: { 'display.main': { provider: 'rung1-harness' } },
+    endpoints: { 'display.main': { installed: true, output: 'rung1-xvfb' } },
     bindings: { lighting: {}, surfaces: {} },
   };
 
@@ -75,6 +79,28 @@ describe('harnessProvides (the provisioning gate)', () => {
     expect(harnessProvides({ endpoints: null })).toBe(false);
     expect(harnessProvides({ endpoints: { a: { provider: 'real-vendor' } } }))
       .toBe(false);
+  });
+
+  it('is true for a display.main.output beginning "rung1-" ALONE (no bindings needed)', () => {
+    expect(harnessProvides({
+      endpoints: { 'display.main': { installed: true, output: 'rung1-xvfb' } },
+    })).toBe(true);
+  });
+
+  it('is true for a single audio.sinks[] id beginning "rung1_" ALONE', () => {
+    expect(harnessProvides({
+      endpoints: { 'audio.sinks': [{ id: 'rung1_hdmi', installed: true }] },
+    })).toBe(true);
+  });
+
+  it('is false for a real-venue profile using hdmi-0/hdmi sinks with no witness bindings', () => {
+    expect(harnessProvides({
+      endpoints: {
+        'display.main': { installed: true, output: 'hdmi-0' },
+        'audio.sinks': [{ id: 'hdmi', installed: true }],
+      },
+      bindings: { lighting: {}, surfaces: {} },
+    })).toBe(false);
   });
 });
 

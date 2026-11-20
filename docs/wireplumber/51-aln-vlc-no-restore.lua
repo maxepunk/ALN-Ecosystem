@@ -1,5 +1,11 @@
 -- ALN orchestrator: bypass WirePlumber's stream-restore for VLC streams.
 --
+-- SUPERSEDED ON WIREPLUMBER 0.5+ (Debian 13 / Raspberry Pi OS Trixie
+-- ships 0.5.8, which does not read Lua configuration at all). Use
+-- 51-aln-vlc-no-restore.conf beside this file instead. This file
+-- remains for machines still on WirePlumber 0.4 (Bookworm).
+-- Procedure: ../../DEPLOYMENT_GUIDE.md → "6. Install the WirePlumber rule".
+--
 -- Why: WirePlumber's restore-stream module persists per-application (and
 -- per-media.role) stream state — including mute/volume/sink. The orchestrator's
 -- audioRoutingService now owns video stream state (volume persisted in

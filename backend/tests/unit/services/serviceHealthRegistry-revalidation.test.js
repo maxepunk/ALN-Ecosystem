@@ -75,4 +75,27 @@ describe('ServiceHealthRegistry - Proactive Revalidation', () => {
     jest.advanceTimersByTime(30000);
     expect(mockServices.vlc.checkConnection).not.toHaveBeenCalled();
   });
+
+  // Block 2 T1a D1 (pin P5): probing equipment the venue did not install is
+  // pure noise — and a probe that answered would fight the latch. The sweep
+  // skips dormant ids entirely.
+  it('should SKIP a dormant service during the sweep', async () => {
+    registry.markDormant('lighting', 'profile', 'lighting is not installed tonight');
+    registry.startRevalidation(mockServices, 15000);
+    await jest.advanceTimersByTimeAsync(15000);
+
+    expect(mockServices.lighting.checkConnection).not.toHaveBeenCalled();
+    expect(mockServices.vlc.checkConnection).toHaveBeenCalled();
+  });
+
+  it('should resume probing a service once its latch is cleared', async () => {
+    registry.markDormant('lighting', 'operator', 'lighting is out of service');
+    registry.startRevalidation(mockServices, 15000);
+    await jest.advanceTimersByTimeAsync(15000);
+    expect(mockServices.lighting.checkConnection).not.toHaveBeenCalled();
+
+    registry.clearDormant('lighting');
+    await jest.advanceTimersByTimeAsync(15000);
+    expect(mockServices.lighting.checkConnection).toHaveBeenCalled();
+  });
 });

@@ -1,0 +1,42 @@
+{
+  "kind": "strings",
+  "schemaVersion": 2,
+  "scoreboard": {
+    "header": "JOB BOARD: MIDNIGHT HEIST",
+    "emptyTicker": "No takes recorded",
+    "emptyEvidence": "Awaiting tips...",
+    "unknownOwner": "Unattributed",
+    "statusConnecting": "DIALING IN",
+    "statusLive": "WIRED IN",
+    "statusOffline": "GONE DARK",
+    "recIndicator": "TAP",
+    "videoOverlay": "Feed Running...",
+    "initializing": "CRACKING"
+  },
+  "scanner": {
+    "appTitle": "Fence Terminal",
+    "scanPrompt": "Tap Loot Tag",
+    "statLabels": {
+      "score": "Take",
+      "totalValue": "Total Haul"
+    }
+  },
+  "scoring": {
+    "awardMessage": "Take fenced. {pointsFormatted} added to the haul."
+  },
+  "terminology": {
+    "tokenNoun": "Take"
+  },
+  "report": {
+    "classLabels": {
+      "evidence": "tipoffs",
+      "scoring": "fenced",
+      "other": "appraisals"
+    },
+    "empty": {
+      "evidence": "No tips phoned in.",
+      "scoring": "No goods moved.",
+      "playerScans": "No field scans logged."
+    }
+  }
+}
