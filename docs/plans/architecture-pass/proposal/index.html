@@ -644,7 +644,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
   <p>They replace the section that stood here, on how today's code moves to the new design. That was my engineering working-out. What still holds from it is in the roadmap's section 7, with a reason for each call.</p>
   <p><b>How they were checked.</b> Three independent readers read them against your recorded rulings and against the code, in two rounds. They found forty-two faults. I checked each one against the record it cites, and every one was right. In the first round, seven were rulings or decisions of yours that I had contradicted, dropped or written as settled. In the second round most were places where the plan did not hold together: a test placed before the part it needs, or work that sat in no area. Each finding, and what it changed, is in the repository at <code>docs/plans/architecture-pass/design/2026-11-20-the-check-of-the-two-drafts.md</code>.</p>
   <ul class="toc">
-    <li><a href="#roadmap-revised"><b>1</b><span>The roadmap, revised. The build in eleven areas, show-ready restated, the cutover and the way back, and what is yours.</span></a></li>
+    <li><a href="#roadmap-revised"><b>1</b><span>The roadmap, revised. The build in twelve pieces, show-ready restated, what waits until after it and why, the cutover and the way back, and what is yours.</span></a></li>
     <li><a href="#tests"><b>2</b><span>Each decision and its test. What to do and what must happen, for every decision you made, and which area of the build makes it pass.</span></a></li>
   </ul>
   </div>
@@ -693,20 +693,33 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <li>After a restart, the session, the clock, the GMs' logins, the music, the TV, the lights and the volumes come back by themselves. A video or a cue that was cut off, or that came due while the backend was down, is listed for the GM to run or drop.</li>
   </ul>
   <p>Nothing more is needed from you on this.</p>
-  <p><b>Now: the two documents above are drafted and checked. This is what is yours in them.</b></p>
+  <p><b>Now: the two documents above are reworked to your ruling of 20 November.</b> You asked whether each thing put off until after show-ready had an engineering reason. Eight did not, and you moved all eight into the build:</p>
+  <ul class="plain">
+    <li>The GM scanner's redesign. Its layout is designed with you before any area builds its screens, so each screen is built once.</li>
+    <li>Advancing a phase by hand, and cue times set from a phase.</li>
+    <li>A published pack is taken up when the next session is created, with no restart of the backend.</li>
+    <li>Three shortcuts about equipment names end when the room's equipment is rebuilt.</li>
+    <li>The roster, notes and the accusation.</li>
+    <li>The transfer between accounts.</li>
+    <li>The secrets are changed when green is set up for the new engine.</li>
+    <li>The production's web name is put into service before the cutover.</li>
+  </ul>
+  <p><b>This is what is yours in the two documents now.</b></p>
   <ol class="steps">
-    <li><b>Sign off the revised roadmap, or send it back.</b> Your roadmap's own text for its rules stays as it is. Where a rule has only a title, such as "Growth without corners", the amended roadmap puts the rule's first sentence before the title.</li>
+    <li><b>Sign off the revised roadmap, or send it back.</b> Your roadmap's own text for its rules stays as it is, except where a decision of yours changed it. Where a rule has only a title, such as "Growth without corners", the amended roadmap puts the rule's first sentence before the title.</li>
     <li><b>The way back to blue for the hardware scanners.</b> Three of your decisions of 13 November change what going back takes, and I did not tell you so when you made them. The backend's computer still swaps back at once. The devices that run the GM scanner open blue's page again. The tags are not touched until you call the new engine good. But a hardware scanner on the new firmware cannot talk to blue. There are two ways.
       <ul class="plain">
         <li>The new engine gets hardware scanners of its own, and blue's three stay as they are until blue is retired. Going back is then a swap again, and a rehearsal at the venue never touches a scanner blue needs. It costs three more scanners, built before the first venue rehearsal. Afterwards they are your spares.</li>
         <li>Or the venue's three are flashed by USB for each rehearsal and for the cutover, and flashed back to return. That needs no new hardware. Each return is three flashes with a laptop before blue can run a session.</li>
       </ul>
       I recommend the first. Your own rule for borrowing equipment forbids "a change that could affect a component's in-game function". Either way I need one fact: how many spare hardware scanners you have.</li>
-    <li><b>The production's web name, in two parts.</b>
+    <li><b>The production's web name itself.</b> I need it for the first version, because the length of a tag's link depends on it. A hardware scanner reads a tag in one read only if the link after <code>https://</code> is 36 characters or fewer, the token's id included. The example in your decision of 9 July, <code>play.aboutlastnightgame.com</code>, fits with a short path. Putting the name into service also needs access to its domain.</li>
+    <li><b>Today's config tool at the cutover.</b> You told me ALN is stable, that you have not used the tool in a while, and that you used it to set up ALN's lighting and audio cues. There are two ways.
       <ul class="plain">
-        <li><b>The name itself.</b> I need it for the first version, because the length of a tag's link depends on it. A hardware scanner reads a tag in one read only if the link after <code>https://</code> is 36 characters or fewer, the token's id included. The example in your decision of 9 July, <code>play.aboutlastnightgame.com</code>, fits with a short path.</li>
-        <li><b>When it is put into service, with its certificate.</b> You placed this with the players' phones work on 12 September. Since 13 November more depends on it. Every tag's link holds the name. What a device has stored is tied to the address it reached the backend at, so a change of address later means adding every device to the kit again. And an iPhone and an Android phone cannot be tried on a real tag until the name is in service. I recommend before the cutover, as its own piece of work after the first version. From you it needs access to the name's domain, and the renewal at home between events that you decided on 9 July.</li>
-      </ul></li>
+        <li>The build rewires today's screens to the new engine, about 6,500 lines, and the tool's new pages replace them after show-ready.</li>
+        <li>Or the build leaves the tool alone. Then, from the cutover until its new pages exist, the config tool does not work with the new engine. A change to ALN's cues or values is made in the pack's files and published with a command.</li>
+      </ul>
+      I recommend leaving it alone. Rewiring is the double work your ruling of 20 November is meant to avoid, and ALN does not need the tool at a session.</li>
     <li><b>The hardware list</b>, in the roadmap's section 8, to confirm or correct. And one fact: any device you expect to use soon that is not in ALN's kit.</li>
     <li><b>Five readings of mine, to correct if wrong.</b>
       <ul class="plain">
@@ -716,11 +729,15 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
         <li>The reviews you agreed for the hardening block apply to each area: its design is attacked before building, each task gets a reviewer and a tester who tries to break it, and one review of everything comes before the venue rehearsal.</li>
         <li>A phone's credential "lasts for one session". I read that as: it is not carried into the next session, and a phone is given one even when no session exists, so that it can show a memory.</li>
       </ul></li>
-    <li><b>One small placement to approve.</b> You put off removing the Wi-Fi password from today's repository on 12 September, and it has no place in the roadmap. I propose it goes with the other secrets: changed before an outside person uses the system, and removed from the files and their history before anything is public.</li>
+    <li><b>One small placement to approve.</b> You put off removing the Wi-Fi password from today's repository on 12 September, and it has no place in the roadmap. I propose it is changed when blue is retired, because blue's scanners hold the old one, and removed from the files and their history before anything is public.</li>
     <li><b>Three needs when the build starts.</b> A few session files from real ALN sessions on blue, with the report the GM downloaded for each, and which pack and which of blue's versions each ran. Your go-ahead to create the engine's repository. And green built and through its hardware pass at home before the hardware scanner's tests are due.</li>
   </ol>
-  <p><b>Coming to you later:</b> how a device is added to a kit. It is yours to decide, and it comes with its options in the first version's detailed design. It now also covers a game with no backend: where its pages are kept, and what answers a tag's link there.</p>
-  <p><b>To know, with nothing to decide.</b> By your roadmap the GM scanner's redesign comes after show-ready. So GMs get today's layout at the cutover, with what your decisions add, such as the "not confirmed" mark. One fact is new: the build has to write the game screens new, and the redesign then writes them again. I would keep your order, because a changed instrument in a GM's hands at the cutover is the risk your show-ready conditions exist for. The order stands unless you change it.</p>
+  <p><b>Coming to you as design, each with its options:</b></p>
+  <ul class="plain">
+    <li>How a device is added to a kit, in the first version's detailed design. It also covers a game with no backend: where its pages are kept, and what answers a tag's link there.</li>
+    <li>The GM scanner's layout, before any area builds its screens.</li>
+    <li>Six decisions about the config tool's structure, before its pages are built.</li>
+  </ul>
   <p><b>Not asked of you:</b> how today's code is moved, where the code is kept, the order of the areas and how the engine is released. Those are my engineering calls. They are in the roadmap's section 7 with the reason for each, and you can overrule any of them.</p>
 
 </section>

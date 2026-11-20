@@ -25,37 +25,50 @@ before acting.
   `docs/plans/architecture-pass/DECISIONS.md`. Working log
   (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
-- **Latest, 2026-11-20: the owner asked about everything the roadmap
-  puts off until after show-ready.** On reading the third drafts, word
-  for word: "Let's think about all of the things that are currently
-  being put off until after show-ready in our roadmap. We need to
-  think about each individually. Are there good engineering reasons
-  why they're being put off until after show-ready, OR are we putting
-  them off because that's how the earlier plan suggested it even
-  though saving that work for AFTER show-ready means extra development
-  work and rewriting stuff we're already building while working on our
-  improved engine architecture? Does the question make sense?" The
-  agent had written "The order of the current roadmap stands" and
-  examined none of it. That order was set in September by value for a
-  run with a calendar, on an engine that was being kept; neither holds
-  now. The agent's item-by-item analysis, with what was checked, is
-  `docs/plans/architecture-pass/design/2026-11-20-what-is-put-off-until-after-show-ready.md`.
-  Its finding: eight items are put off by habit and cost double work
-  (the GM scanner's redesign; advancing a phase by hand and cue times
-  set from a phase; applying a published pack with no restart; three
-  shortcuts parked under config tool pages; the roster, notes and
-  accusation; the transfer between accounts, which the agent itself
-  had parked on 2026-11-13; changing the secrets; the web name in
-  service). Four are put off for a reason but owe something small in
-  the build (choices on a player's device and two-token actions; the
-  second game's capabilities; the config tool's pages; photos). The
-  rest are put off for a reason. **Nothing is decided: each move
-  changes an order or a ruling of the owner's. Do not change the two
-  drafts until the owner rules.** One fact is asked of the owner: what
-  the config tool is used for at ALN today. When the owner rules,
-  rework section 3 and section 5 of the roadmap draft and the tests'
-  areas, run the page script, and have the result checked before it
-  goes back to the owner.
+- **Latest, 2026-11-20: the owner moved eight items from after
+  show-ready into the build.** On reading the third drafts the owner
+  asked, word for word: "Let's think about all of the things that are
+  currently being put off until after show-ready in our roadmap. We
+  need to think about each individually. Are there good engineering
+  reasons why they're being put off until after show-ready, OR are we
+  putting them off because that's how the earlier plan suggested it
+  even though saving that work for AFTER show-ready means extra
+  development work and rewriting stuff we're already building while
+  working on our improved engine architecture? Does the question make
+  sense?" The agent had written "The order of the current roadmap
+  stands" and examined none of it. That order was set in September by
+  value for a run with a calendar, on an engine that was being kept;
+  neither holds now. The agent went through every item
+  (`docs/plans/architecture-pass/design/2026-11-20-what-is-put-off-until-after-show-ready.md`)
+  and recommended moving eight. The owner: "yes to all 8". The eight:
+  the GM scanner's redesign, with its layout designed with the owner
+  before any area builds its screens; advancing a phase by hand and
+  cue times set from a phase; a published pack taken up when the next
+  session is created, with no restart; three shortcuts about equipment
+  names (ledger L7, L12, L8); the roster, notes and the accusation;
+  the transfer between accounts, which the agent itself had put off on
+  2026-11-13; the secrets changed when green is set up for the new
+  engine; the web name in service before the cutover. Recorded in
+  `DECISIONS.md` ("Eight items move from after show-ready into the
+  build"). The owner also gave a fact: "With the game already stable
+  and installed at the venue, I haven't used the config tool in a
+  while, but I used it to set up the lighting and audio cues for ALN".
+  **The rule this leaves: an item waits until after show-ready only
+  for an engineering reason. Never carry an order over from an earlier
+  plan without examining it.** The fourth drafts apply the ruling
+  (`814b8bca`): the build has twelve pieces, the fourth being the GM
+  scanner's layout designed with the owner; every item that still
+  waits says why. One independent reader is checking the change.
+  **Wait for its completion notice, check its findings, fix what
+  holds, run `proposal/build_handover.py`, publish the page, and only
+  then answer the owner.** What is asked of the owner now is the
+  roadmap draft's section 11 and the page's last box: the sign-off;
+  the way back for the hardware scanners and how many spares exist;
+  the web name itself; whether the build rewires today's config tool
+  (recommended: no); the hardware list; five readings; the Wi-Fi
+  password; three needs. Design topics coming to the owner: how a
+  device is added to a kit; the GM scanner's layout; six decisions on
+  the config tool's structure.
 - **Now: the design of the messages between the backend and the
   devices, and the files, is settled (2026-11-13).** All by the owner:
   what a player sees after a scan, the same on the player scanner page
