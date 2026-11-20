@@ -131,3 +131,32 @@ fault came back in the second round after being fixed in the first:
 crediting the owner with something the owner did not rule. Whoever
 edits these two documents next should check every "the owner decided"
 against the record before writing it.
+
+## After the checks: what is put off until after show-ready (2026-11-20)
+
+On reading the third drafts the owner asked whether each item put
+after show-ready is there for an engineering reason, or only because
+the earlier plan had it there. The roadmap draft had said "The order
+of the current roadmap stands" and examined none of it. The agent went
+through every item, and the owner moved eight into the build ("yes to
+all 8"). The question word for word, the reasoning for every item and
+the owner's answer are in
+`2026-11-20-what-is-put-off-until-after-show-ready.md`. The fourth
+drafts apply it:
+
+- The roadmap draft's build has twelve pieces. The fourth is new: the
+  GM scanner's layout, designed with the owner before any area builds
+  its screens. The web name is put into service before the cutover.
+- The roster, notes and the accusation, the transfer between accounts,
+  advancing a phase by hand, cue times set from a phase, a published
+  pack taken up with no restart, and the end of three shortcuts about
+  equipment names are in the areas that build their parts.
+- The secrets are changed when green is set up for the new engine.
+- Every put-off item that stays after show-ready says why it waits.
+- New tests: 1.20 to 1.23, 4.27 to 4.29 and 5.20 to 5.27. Every test
+  that restarted the backend to apply a pack now creates the next
+  session.
+
+One decision came out of the owner's answer and is still open: whether
+the build rewires today's config tool to the new engine. The agent
+recommends not (the roadmap draft, section 11).

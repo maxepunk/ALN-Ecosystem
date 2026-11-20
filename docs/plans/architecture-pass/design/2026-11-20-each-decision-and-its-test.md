@@ -1,4 +1,4 @@
-# Each decision and its test (third draft, 2026-11-20)
+# Each decision and its test (fourth draft, 2026-11-20)
 
 Status: draft for the owner. It is the first of the five documents the
 design hands over. The list of the five is in the program document
@@ -8,9 +8,13 @@ decision asks for each rule "with a proof test in plain words (what to
 do, and what must happen)". Where the other four documents are is in
 the revised roadmap, section 12 (`2026-11-20-the-roadmap-revised.md`).
 
-This is the third draft. Three independent readers checked the first
+This is the fourth draft. Three independent readers checked the first
 two and found forty-two faults between them. What each one changed is
-in `2026-11-20-the-check-of-the-two-drafts.md`.
+in `2026-11-20-the-check-of-the-two-drafts.md`. On 2026-11-20 the
+owner moved eight items from after show-ready into the build
+(`2026-11-20-what-is-put-off-until-after-show-ready.md`). Their tests
+are rows 1.20 to 1.22, 4.27 to 4.29 and 5.20 to 5.27, and every row
+that used to restart the backend to apply a pack.
 
 ## How to read it
 
@@ -29,16 +33,19 @@ revised roadmap, section 3. The column names them like this:
 | cues and videos | Cues, the video queue and held items |
 | the hardware scanner's firmware | The hardware scanner's firmware |
 | the preflight | The preflight |
-| the config tool's link, the tag tools, the checks after a session, the report | Four parts of one area: the config tool's link to the engine, the tag tools, the checks after a session and the report |
+| the tag tools, the checks after a session, the report | Three parts of one area: the tag tools, the checks after a session and the report |
 | releasing and installing | Releasing and installing the engine, and ALN's content and settings in the new form |
 | moving ALN to the new engine | Moving ALN to the new engine |
+
+One piece of the build has no row of its own: the GM scanner's layout,
+which is design with the owner. The tests say what must be true
+whatever the layout is.
 
 Two words used in the rows:
 
 - **Publish a pack.** Run the command that checks the pack, stamps it
-  and makes it the pack in force. Until applying a pack without a
-  restart is built (the roadmap's row 8.6), the backend takes a
-  published pack up when it next starts, between sessions.
+  and makes it the pack in force. A session takes the pack in force
+  when it is created. Nothing is restarted.
 - **One read of a tag.** One command from the hardware scanner to the
   tag and the tag's reply, which is 60 bytes at most. A tag's link and
   id both fit in it when the link after `https://` is 36 characters
@@ -78,7 +85,7 @@ is the agent's reading, and the owner can correct it.
 | 1.4 | A score change by hand is a line with the amount, the account, the GM scanner it came from and the reason if one was typed. | Change a score by hand and type a reason. | One line with those four things. Every screen shows the new score. | a whole game session |
 | 1.5 | The record holds the game, what the room did and what went wrong, one line for each event a person would recognise. Decision note `0002`. | Run a short session: a GM's scan, a player's scan, a video that a rule asks for. Stop the stand-in video player by force. | From the record alone a person can say that each of those happened, in order, with its time. | the first version |
 | 1.6 | | Run a short session with a video, a cue, music that a GM pauses and a scanner that loses its connection. Stop the music player by force. | The same, for each of those. The record holds no stream of positions or volumes. No score depends on any of these lines. | cues and videos |
-| 1.7 | The record names the pack the session ran and holds the texts the players saw. | Play a session. Publish a pack with other wording and restart the backend. Read the first session's record. | It names the pack it ran. It holds the texts its players were shown. | a whole game session |
+| 1.7 | The record names the pack the session ran and holds the texts the players saw. | Play a session. Publish a pack with other wording and create the next session. Read the first session's record. | It names the pack it ran. It holds the texts its players were shown. | a whole game session |
 | 1.8 | Every screen is worked out from the record. The proposal's first change. | Connect a second GM scanner and a scoreboard page in the middle of a session. | Both show what the first GM scanner shows, at once. After every further scan all three agree. | the first version |
 | 1.9 | | Disconnect a GM scanner. On another, scan, delete a sale, change a score by hand and reset the scores. Reconnect the first. | It shows exactly what the GM scanner that stayed connected shows, on every game screen. | a whole game session |
 | 1.10 | | At the end of each area, run a scripted session. A test reads every value off each screen that area built: each score, each token marked as used, the session's state, each piece of equipment's row. A picture of each screen is kept. | Every value read off a screen equals what the record or the equipment's report says. A person looks through the pictures. Comparing pictures automatically stays out until it is sized, as the owner ruled on 2026-09-12 (ruling R22). The current roadmap had a separate piece of work for this, which it called the truth sweep. | each area that builds a screen |
@@ -89,10 +96,12 @@ is the agent's reading, and the owner can correct it.
 | 1.15 | Creating the next session wipes what the group's play produced. What is about the room stays. Decision note `0003`. | Finish a session with scores, accounts, a used token and a logged-in GM. Create the next session. | Scores, accounts and used tokens are gone from every GM scanner, the scoreboard page and the player scanner page. The GM is still logged in. The last session's record is whole. | the first version |
 | 1.16 | | The same with a changed volume, a chosen audio route and a connected Bluetooth speaker. | All three are as they were. | the room's equipment |
 | 1.17 | | Fire a once-only cue. Hold a video because the TV is down. Leave a cue running. End the session and create the next. | The once-only cue can fire again. No held item is left. No cue shows as running. | cues and videos |
-| 1.18 | The pack changes only when a new pack is applied, never in the middle of a session. Decision note `0003`. | Publish a changed pack while a session runs. Go on scanning. | The running session keeps its scoring, its texts and what each device is sent. Its record still names the pack it started with. | a whole game session |
+| 1.18 | The pack changes only when a new pack is applied, never in the middle of a session. Decision note `0003`. | Publish a changed pack while a session runs. Go on scanning. | The running session keeps its scoring, its texts and what each device is sent. Its record still names the pack it started with. The next session created runs the new pack, with nothing restarted. | a whole game session |
 | 1.19 | A backend runs one session at a time. Each line names the device, not a person. | Read the records of two sessions played one after the other. | Every line names a device. None names a person unless the game's rules put a name there. At no time were two sessions open. | the first version |
-| 1.20 | Moving value between two accounts is one action and one line. | As GM, move an amount from one account to another. | One line in the record. Both scores change together. It is undone as one. | later: with the GM scanner's redesign, where the owner placed it on 2026-11-13. Until then GMs make two score changes by hand. |
-| 1.21 | The roster, notes, photos and the accusation are lines of the record. Decision note `0002`. | | These tests are written when recording a session as it is played is designed. | later: recording a session as it is played |
+| 1.20 | Moving value between two accounts is one action and one line. The owner, 2026-11-13; moved into the build on 2026-11-20. | As GM, move an amount from one account to another. Then undo it. | One line in the record for the move. Both scores change together. Undone, both scores are back, by one more line. | a whole game session |
+| 1.21 | The roster, notes and the accusation are lines of the record. Decision note `0002`; moved into the build on 2026-11-20. | Before a session starts, enter the roster. During it, add two notes. At the end, enter the accusation. | The record holds each as a line, with its time and the device it came from. The session's file holds them. No score changes. | a whole game session |
+| 1.22 | | End the session. Add a note. Create the next session. Try to add a note to the ended one. | The first note is accepted into the ended session. The second is refused. | a whole game session |
+| 1.23 | Photos are lines of the record too. Decision note `0002`. | | These tests are written when sending and keeping photos is designed. The record's line for a photo is designed with the other lines, in the first version. | later: photos |
 
 ## 2. The messages and the files
 
@@ -105,9 +114,9 @@ is the agent's reading, and the owner can correct it.
 | 2.5 | | Turn the connection off. Scan an ordinary token and a video token. Turn it on. | The ordinary token shows the memory and nothing else. The video token shows "Video unavailable, rescan later". Both scans are stored and handed over. Neither starts a video when it arrives. | cues and videos |
 | 2.6 | | Do tests 2.1 and 2.2 on a hardware scanner. | The same on its screen, each time. | the hardware scanner's firmware; real devices |
 | 2.7 | | Do tests 2.3 to 2.5 on a hardware scanner. | The same on its screen, each time. | the hardware scanner's firmware, once cues and videos are built; real devices |
-| 2.8 | | Change the wording of a notice in the pack. Publish it and restart the backend. | The player scanner page shows the new wording. | a whole game session |
+| 2.8 | | Change the wording of a notice in the pack. Publish it and create the next session. | The player scanner page shows the new wording. | a whole game session |
 | 2.9 | | The same, then restart a hardware scanner. | It shows the new wording. It needed no cable. | the hardware scanner's firmware; real devices |
-| 2.10 | A device says which pack it holds and which version of the messages it speaks. One that is out of date is brought up to date, or named. | Publish a changed pack between sessions and restart the backend. Connect a GM scanner that holds the old one. | It fetches the new pack by itself before its first scan, and says so once. The GM can see which pack it runs. | a whole game session |
+| 2.10 | A device says which pack it holds and which version of the messages it speaks. One that is out of date is brought up to date, or named. | Publish a changed pack between sessions. Connect a GM scanner that holds the old one. | It fetches the new pack by itself before its first scan, and says so once. The GM can see which pack it runs. | a whole game session |
 | 2.11 | | The same with the player scanner page and the scoreboard page. | Each fetches the right pack by itself. | a whole game session |
 | 2.12 | | Make a pack fetch that never finishes. Make two fetches at once. | The first is given up after a set time, and the device keeps the whole pack it had. The second leaves one whole pack. These are the two tests the roadmap's row 8.5 names. | a whole game session |
 | 2.13 | | Give the backend a newer version of the pages while a GM scanner, a player scanner page and a scoreboard page still have the old pages open. | Each page reloads itself from the backend once, and then works. | a whole game session |
@@ -128,19 +137,19 @@ is the agent's reading, and the owner can correct it.
 | 2.28 | | With the same two credentials, try to fire a cue, play a video and change a volume. | Refused. | cues and videos |
 | 2.29 | The backend knows which devices are connected, with or without a session. The proposal's fourth change. | With no session, connect two GM scanners and a scoreboard page. | A GM scanner lists all three. | a whole game session |
 | 2.30 | | With no session, switch a hardware scanner on. | The GM scanner's list of devices shows it. | the hardware scanner's firmware; real devices |
-| 2.31 | A tag holds the web link first and the token's id second. Decision note `0005`. | Hold an iPhone and an Android phone to a tag written with the production's link first, with nothing open. | On both, the token's memory opens in the browser. | the web name in service; real devices. If the owner leaves the web name with players' own phones, this test goes there with it. |
+| 2.31 | A tag holds the web link first and the token's id second. Decision note `0005`. | Hold an iPhone and an Android phone to a tag written with the production's link first, with nothing open. | On both, the token's memory opens in the browser. | the web name in service; real devices |
 | 2.32 | | Hold a spare tag written with a link first, and one of today's tags, to a hardware scanner. | The same kind of id from both, each in one read of the tag. On the bench, the reading code is given the bytes of both. | the hardware scanner's firmware; real devices |
 | 2.33 | | Hold a spare tag written with a link first to a GM's device while the GM scanner is on screen. | The GM scanner takes it. No browser page opens. | a whole game session; real devices |
 | 2.34 | | Open a tag's link on a device that holds a staff credential. | The memory shows. No player scan is recorded. | a whole game session |
 | 2.35 | | Open the links of two tokens one after the other. Then open a link on a device with no credential. | Each shows its own token. The device with no credential gets a phone's credential and shows the token. | a whole game session |
-| 2.36 | | Read a tag written by the tag tool. | The link comes first and the id second. The link names the production, never one kit. It has no port number. Link and id fit in one read of the tag. | the tag tools. The link names the production once the owner has stated the name. |
+| 2.36 | | Read a tag written by the tag tool. | The link comes first and the id second. The link names the production, never one kit. It has no port number. Link and id fit in one read of the tag. | the tag tools |
 | 2.37 | | Give one token a code that cannot be guessed. Open its link with a wrong code. | Refused. ALN does not use this. The link's form leaves room for it from the first tag written. | later: players' own phones |
 | 2.38 | The hardware scanner takes its firmware over the air when it starts, never in a session. Decision note `0006`. | Put a newer firmware on the backend. Restart a scanner with no session running. | It updates and reports the new version. | the hardware scanner's firmware; real devices |
 | 2.39 | | The same with a session running. | It does not update. | the hardware scanner's firmware; real devices |
 | 2.40 | | Cut its power in the middle of an update. Then give it a firmware that starts and fails its own checks. | Both times it starts on the old firmware. | the hardware scanner's firmware; real devices |
 | 2.41 | | Start a scanner on the kit's network, which has no internet. Then point it at a computer that shows another certificate. | Its scans carry the right time, taken from the backend. It refuses the other computer and says so. | the hardware scanner's firmware; real devices |
 | 2.42 | | Change the certificate the backend shows, the way it changes when the production's web name is put into service. | Every scanner goes on working, and none needs a cable. | the hardware scanner's firmware; real devices |
-| 2.43 | The messages and the files are defined in one place, and every program is checked against the definition. The proposal's third change. | Change one message in the definition and change no program. | The engine's checks fail and name each of its programs that no longer agrees: the backend, the GM scanner, the player scanner page, the scoreboard page. The firmware's own checks fail too when they are run against the changed definition. The config tool joins the engine's check when its link is rebuilt. | the first version |
+| 2.43 | The messages and the files are defined in one place, and every program is checked against the definition. The proposal's third change. | Change one message in the definition and change no program. | The engine's checks fail and name each of its programs that no longer agrees: the backend, the GM scanner, the player scanner page, the scoreboard page. The firmware's own checks fail too when they are run against the changed definition. The config tool joins the engine's check when it is next built against the engine. | the first version |
 | 2.44 | | Give the backend a pack and a session's file that break the definition. | Each is refused, with the field named. | the first version |
 
 ## 3. Which device decides what
@@ -173,7 +182,7 @@ is the agent's reading, and the owner can correct it.
 | 4.1 | A designer designs the game's rules in the pack. Decision note `0011`. | Play a session with a toy pack scored its own way, and with three of ALN's tokens whose two verbs are written as pack rules. | The toy pack gives its own numbers. ALN's tokens give ALN's numbers. The engine's code holds neither game's formulas. | the first version |
 | 4.2 | | Play real ALN sessions from blue again through ALN's pack, with all its rules written as pack rules. | The same final scores as blue gave. This needs session files from blue. | a whole game session |
 | 4.3 | | Run a toy pack with a deposit that is doubled in the last ten minutes, a steal from another account, and a bonus for one of every colour. | It plays, with no change to the engine's code. | a whole game session |
-| 4.4 | | Change one number in a formula. Publish the pack and restart the backend. Start a session. | The new scoring applies in the backend. It applies the same in a GM scanner with no backend, once that GM scanner has fetched the pack. | the first version |
+| 4.4 | | Change one number in a formula. Publish the pack. Create a session. | The new scoring applies in the backend, with nothing restarted. It applies the same in a GM scanner with no backend, once that GM scanner has fetched the pack. | the first version |
 | 4.5 | | Publish a pack whose rule needs a capability the engine does not have. | Refused at publish and at start, with the capability named. | the first version |
 | 4.6 | | Publish a pack with a formula that uses an operation that does not exist, or reads a value no token carries. | Refused at publish, with the place named. A pack holds rules and formulas, never program code. | the first version |
 | 4.7 | | Publish a pack with a verb that gives points to one account and takes them from another, uses the token up and changes what is shown. | Accepted. Scanning with that verb does all of it. | the first version |
@@ -184,7 +193,7 @@ is the agent's reading, and the owner can correct it.
 | 4.12 | | With ALN's pack, scan a video token on a player scanner, then as GM. | The player's scan plays the video. The GM's scan does not. Both follow from ALN's pack, not from the engine's code. | cues and videos |
 | 4.13 | | Fire every cue of ALN's pack and of the toy pack. Then publish a pack whose cue would change a score. | No score, token or account changes. The pack is refused at publish. A cue never changes the game. | cues and videos |
 | 4.14 | | In the config tool, with no developer, write a verb and a formula and play it. | It plays. Until this is built, a pack's rules are written in the pack's files and pass the same checks. | later: the config tool's pages for previewing a game |
-| 4.15 | | Change a text, a picture and what a player's scan of one token does. Publish, restart the backend, restart a hardware scanner. | The scanner shows the new text and picture, and the scan does the new thing. No cable. Nothing a designer changes needs a hardware scanner re-flashed. | the hardware scanner's firmware; real devices |
+| 4.15 | | Change a text, a picture and what a player's scan of one token does. Publish, create the next session, restart a hardware scanner. | The scanner shows the new text and picture, and the scan does the new thing. No cable. Nothing a designer changes needs a hardware scanner re-flashed. | the hardware scanner's firmware; real devices |
 | 4.16 | A new capability is part of the engine. It is one file in a known place. Decision note `0009`. | As a drill, add one new operation for formulas. | One new file. No other file of the engine's code is edited. The toy pack uses it, in the backend and in a GM scanner with no backend alike. | the first version |
 | 4.17 | | As a drill, add a stand-in kind of equipment. | One new file. It shows on the GM scanner's health panel with no change to the GM scanner's code. It shows in the preflight when the preflight is built. | the room's equipment |
 | 4.18 | After a restart the background comes back by itself. What was cut off is listed for the GM. Decision note `0010`. | Restart the backend in the middle of a session. | The session, the scores and the GMs' logins are back. Nobody logs in again. | the first version |
@@ -196,6 +205,9 @@ is the agent's reading, and the owner can correct it.
 | 4.24 | | Run the engine's whole test set on a computer where an installed backend is running. | The installed backend's programs, files and screen are exactly as before. | the room's equipment |
 | 4.25 | | Start a second copy that asks for the real TV, speakers and lights while the installed backend holds them. | Refused, with the reason. Only one copy at a time holds the real equipment. | the room's equipment |
 | 4.26 | The backend is assembled in one place. A restart follows the same steps as a normal start. The proposal's seventh change. | Play music. Start over between groups, each way a GM can: end the session and create the next, and reset the system where the GM scanner still has that button. Start a playlist. Fire a cue that waits for a music event. | Each time, the music panel shows the new track and the cue fires once. | cues and videos |
+| 4.27 | A designer's rules say who may do a verb, and on which kind of device. Decision note `0011`. | With a toy pack that gives a player's device a verb worth points, do it on the player scanner page. | The points change as the pack's rule says. The record holds the scan with the device it came from. | a whole game session |
+| 4.28 | | The same on a hardware scanner. | The same. The scanner shows what the backend's reply says to show. | the hardware scanner's firmware; real devices |
+| 4.29 | A new capability is part of the engine, also when it keeps state of its own. Decision note `0009`. | As a drill, add a capability that keeps a count of its own from scan to scan, and a toy rule that reads the count. | One new file. The count is in the record. It is right after a restart of the backend, and the same in a GM scanner with no backend. | the first version |
 
 ## 5. Rulings from before the pass that the build must still meet
 
@@ -225,7 +237,14 @@ checked.
 | 5.17 | Anything held for a piece of equipment is dropped when the session ends. Pin P13. | Hold a video because the TV is down. End the session. | No held item is left. | cues and videos |
 | 5.18 | The report's structure is fixed in the engine and its wording comes from the pack. The ★ marks a place ALN's Director Console reads. The owner, 2026-08-29. | Download the report after a scripted session with ALN's pack. | It has the fixed structure, with ALN's wording. Each ★ is where the Director Console expects it. The test that pins the report's form passes. Its times agree with each other. | the report |
 | 5.19 | The checks after a session find scoring that does not add up, videos that did not play and scans counted twice. | Run them on the record of a clean scripted session, and on one with a wrong score planted. | The clean one passes. The planted fault is named. They read the record and nothing else. | the checks after a session |
-| 5.20 | A designer changes a game's values in the config tool, applies the change and plays it. The roadmap, section 2.4. | In the config tool, change one of ALN's base values. Publish. Restart the backend. Sell a token of that value. | The new value is scored. The config tool wrote none of the backend's own files and holds no copy of the backend's secret. | the config tool's link |
+| 5.20 | A designer changes a game's values, applies the change and plays it. The roadmap, section 2.4. Applying needs no restart since 2026-11-20. | Change one of ALN's base values in the pack's files. Publish. Create a session. Sell a token of that value. | The new value is scored. From the change to the sale took under two minutes, the measure the owner set on 2026-09-04. | the first version |
+| 5.21 | | The same, with the value changed in the config tool. | The same. The config tool wrote none of the backend's own files and holds no copy of the backend's secret. | later: the config tool's pages. In the build only if the owner has today's config tool rewired (the roadmap draft, section 11). |
+| 5.22 | A GM can advance the game to its next phase by hand. The owner, 2026-08-22; moved into the build on 2026-11-20. | With a toy pack in three phases, where the second starts on an event that never comes, press the control to advance. Pause and resume the session. Restart the backend. | The second phase starts. The record holds a line for it, with the device it came from. The phase is the same after the pause and after the restart. | a whole game session |
+| 5.23 | A cue's time can be set from the start of a phase. The owner, 2026-08-22; moved into the build on 2026-11-20. | With a cue set to fire two minutes into the second phase, advance to the second phase by hand. | The cue fires two minutes later, once. | cues and videos |
+| 5.24 | Each kind of equipment a pack names is tied to real equipment by the installation's settings, with no fallback. The owner's rulings of 2026-08-29 and 2026-09-04; moved into the build on 2026-11-20. | With the lights installed, leave one of the pack's lighting looks tied to no scene. Fire a cue that uses it. | That look shows as a fault and is named. No scene name written in the pack is used. | the room's equipment |
+| 5.25 | | Leave the idle loop's video tied to no file. | The idle loop counts as not installed and shows grey. The engine's own settings supply no file. | the room's equipment |
+| 5.26 | | Read ALN's pack. Fire its cue that plays the police sounds. | The pack names no speaker. The cue names a kind of sound output, the installation's settings tie it to the Bluetooth speaker, and the sound plays there. | cues and videos |
+| 5.27 | The secrets in today's repository are changed before an outside person touches the system. The owner, 2026-09-05; changed when green is set up for the new engine since 2026-11-20. | On green, set up for the new engine, try the Home Assistant token and the admin password that are in today's repository. | Both are refused. | moving ALN to the new engine; real devices |
 
 ## 6. Faults recorded in today's engine, as tests
 
@@ -332,7 +351,7 @@ played, and players' own phones.
 |---|---|
 | The session's record only grows. `0001` | Recording a session adds its notes and photos as lines. Scans from players' phones are added in order. A game with no backend keeps the same kind of record on the GM scanner. |
 | One record for the game, the room and what went wrong. `0002` | The roster, notes, photos and the accusation already have their place. The report and the checks after a session read one file. |
-| What belongs to a session, an installation and the production. `0003` | A changed pack is taken up between sessions and never inside one, which is what applying it without a restart needs. A rehearsal has its own session and its own settings. |
+| What belongs to a session, an installation and the production. `0003` | A published pack is taken up when the next session is created and never inside one, so the config tool's editor needs only a button to apply a change. A rehearsal has its own session and its own settings. |
 | Every device shows a credential. `0004` | A player's phone gets one with nothing to type. The pack can then say what a phone may do. |
 | A tag holds the link first. `0005` | Both kinds of phone open a token by themselves. |
 | The hardware scanner takes firmware over the air. `0006` | A change to the messages for phones or for the second game reaches every hardware scanner with no cable. |
@@ -354,7 +373,12 @@ played, and players' own phones.
   installation with no backend are kept. Both are the owner's
   decision, made in the first version's detailed design. Tests 2.25,
   2.26 and 3.16 say only what must be true afterwards.
-- The redesign of the GM scanner's screens, and the transfer between
-  accounts that the owner placed with it.
+- The layout of the GM scanner's screens. It is designed with the
+  owner before the areas that build them. The tests here say what
+  must be true whatever the layout is.
+- Choosing among several verbs on a player's device, and actions that
+  take two tokens. They wait for the second game's design. The form of
+  a rule is written in the first version so that a verb of two steps
+  fits.
 - Whether paper documents join the pack. The owner left this open on
   2026-11-01, and nothing in the build depends on it.
