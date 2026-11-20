@@ -76,11 +76,58 @@ sections 1, 3 and 4, and the state page.
 
 ## The second check
 
-Two independent readers with different angles check the second
-drafts, as the method the owner ratified asks ("two reviewers with
-different angles, a checker for each finding"). One reads them against
-the owner's recorded rulings and against the sixteen findings above.
-The other reads them as an engineer who has to build from them. Their
-findings, and what each changed, are recorded here when both have
-finished. Until this section holds them, the second drafts have not
-been through their check.
+Two independent readers with different angles checked the second
+drafts (`b08defec`), as the method the owner ratified asks ("two
+reviewers with different angles, a checker for each finding"). Both
+were a strong model one step below the session's own, at high effort.
+One read the drafts against the owner's recorded rulings and against
+the sixteen findings above. The other read them as an engineer who
+has to build from them with nobody to ask. They returned twelve and
+fourteen findings. The agent checked each against the record or the
+code it cites. All twenty-six held, and the third drafts answer them.
+
+### Against the owner's rulings (twelve)
+
+| No. | The finding | What it changed |
+|---|---|---|
+| 1 | The first version was credited to the owner "2026-11-13 and 2026-11-20". On 2026-11-20 the owner asked why it exists; the owner's "yeah" confirmed the missing connection and ruled nothing about the first version. The state page warns of exactly this fault. | The credit is the order of 2026-11-13 only. What the first version holds and why it comes second is in the roadmap draft's section 7, as the agent's engineering call. |
+| 2 | The web name's area stood after the firmware, which needed it, while section 11 recommended it after the first version. Tests and the cutover assumed the owner's answer. | The area is third. The roadmap draft says what leaves the build if the owner keeps the name with players' own phones, and show-ready says so too. |
+| 3 | Section 1 restated the roadmap's rules shorter than they are, and the sign-off said the amended roadmap would state them that way. Sub-rules on kits, media, firmware work and privacy were dropped, and so were rulings on the later config tool pages and the second game. | The roadmap's own text stays word for word; only a title gains its rule's first sentence. Section 1 now carries the sub-rules, and section 5 the rulings. |
+| 4 | Removing the secret from today's repository and its history had become conditional. The Wi-Fi password the owner put off on 2026-09-12 was in neither draft. | The removal stands as ruled, before anything is public. The Wi-Fi password is proposed to go with the other secrets, for the owner to approve. |
+| 5 | The tests document named the wrong rows for the four reproductions the program document names. | Corrected: tests 1.1, 1.12, 4.26 and 6.1. |
+| 6 | Section 12 credited the owner with reading one condition as overtaken, which is the agent's call. It said the second check had happened before it had. Two sentences on when the build ends disagreed. | Credited to the agent's call. The sentence on the check is now true. The two sentences agree. |
+| 7 | Two rulings made for the hardening block (parallel work, R15; reviews, R26) were applied to the whole build without saying it was a reading. | Both are among the five readings in section 11. Ruling R17 is cited for trying work on green at home. |
+| 8 | "Players never have accounts" could be read as ALN's accounts. | "A player never has a login or a user account of their own." |
+| 9 | The word "team" in the messages (ledger L4) and two changes to who may do what were moved out of the players' phones work with no row saying so. | A row in section 2's table. |
+| 10 | Six findings the cause analysis set aside as plain fixes had no home, and neither had the September pieces called the final wiring and the close review. | Section 7 of the tests document names the area for each plain fix. Section 2 of the roadmap draft places the two pieces. |
+| 11 | Two tests were in the wrong area: a set bonus in the first version, and "every program reports the new version" before the firmware has a version. | Test 4.9 is split into 4.9 and 4.10. Test 4.16 no longer speaks of versions; test 6.23 does. |
+| 12 | Wording: "GM tablet"; area nicknames in the tests' last column; "fitted to the one pattern"; the GM scanner's layout asked as a question though the roadmap orders it. | "A device that runs the GM scanner". The column uses the areas' own names. The layout is under "To know, with nothing to decide". |
+
+### As the engineer who builds from them (fourteen)
+
+| No. | The finding | What it changed |
+|---|---|---|
+| 1 | The firmware's check of the backend's certificate, and the length of a tag's link, need the web name's decision whether or not the name is in service before the cutover. A certificate changed later could leave every scanner refusing the backend. | The name itself is a need of the first version. The firmware's area designs what the firmware trusts so that the certificate can change with no cable (test 2.42). |
+| 2 | Show-ready and the cutover assumed the web name was in service. | As finding 2 above. Test 2.33 moved to a whole game session, which now builds the GM scanner reading a tag whenever it is on screen. |
+| 3 | Tests used "publish" from the first version on, but only a late area built publishing. | The first version builds the command that publishes a pack. The tests document defines "publish a pack", and says the backend takes a published pack up when it next starts. |
+| 4 | The room's equipment and cues needed each other, and a whole game session needed the TV. "Start over" was built in one area and tested in another. | What the TV shows, and playing a video at a GM's command, are in the room's equipment. A whole game session builds the scoreboard page, not the TV. Tests 5.5 and 5.6 are split. Test 6.21 uses ending a session and creating the next; test 4.26 covers both ways of starting over. |
+| 5 | Seven rows could not pass in their area. | Tests 2.6 and 2.7, 2.21 and 2.22, 4.9 and 4.10, 5.16 and 6.19 are split or reassigned. The firmware's area builds the backend's part that offers a firmware file. Test 2.43 says each repository's own checks fail. |
+| 6 | A phone's credential "lasts for one session", yet a phone must work with no session and hand over a stored scan after the end. | Test 2.24 states a reading, which is also the fifth reading in section 11. |
+| 7 | A game with no backend had no place to serve its pages from. | It joins the owner's decision on how a device is added to a kit. The release area builds those pages as a set of files. The cutover replaces ALN's public copies. A row in the hardware list. |
+| 8 | The first version's list of what is built did not match its eleven steps. Its stand-in was a sound player, which is one short process for each sound and has nothing to restart. | Session and account controls, the publish command and the firmware's two files are in the list. The stand-in is the video player. |
+| 9 | The test bench could not convert blue's sessions before the record's form exists. | The bench keeps the files and blue's final scores. The converter is built in a whole game session. |
+| 10 | Missing work: ALN's installation settings in the new form; whether the config tool's screen for ALN's values is kept; no tests for the tools and release areas; a spare backend taking over; September leftovers. | The release area builds ALN's settings. The screen is kept. Tests 3.18, 5.18 to 5.20 and 6.27. A whole game session builds the take-over. The census, the tidying of documents, the border check and the review after the rehearsal are placed; the recount of the lost audit reports is set aside with its reason. |
+| 11 | Four thin reasons in section 7: "moved across with its tests", though the tests reach inside the code; the GPL as a reason for the firmware's own repository; a wrong test cited for the release; the new repository resting on the secret alone. | Each reason rewritten. The owner's rule on pinning today's behaviour first is applied to the kept equipment code as well as the firmware. |
+| 12 | The hardware list understated what the backend's computer needs. | The row names the programs, the one operating system the guide covers, the video format and the browser. |
+| 13 | The claim about which areas can be built side by side was partly wrong. | Restated from the areas' needs, and marked as a reading. |
+| 14 | The ten most ambiguous test rows. | Each reworded: tests 1.10, 1.15, 2.16, 2.25, 2.29, 2.32, 2.36, 3.6, 4.15 and 6.9, and the rule on which pack a test uses. |
+
+## What the three checks show
+
+Forty-two findings in two rounds. In the second round the faults had
+moved from contradicting the owner to the plan not holding together:
+tests placed before the parts they need, and work with no area. One
+fault came back in the second round after being fixed in the first:
+crediting the owner with something the owner did not rule. Whoever
+edits these two documents next should check every "the owner decided"
+against the record before writing it.

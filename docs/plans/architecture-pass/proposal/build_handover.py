@@ -186,11 +186,13 @@ def doc_roadmap():
     out = [f'<article class="doc" id="roadmap-revised"><h3>{inline(title)}</h3>', render_blocks(intro)]
     for sec_title, blocks in sections:
         folded = sec_title.split(".")[0] in ("9", "10", "12")
+        # An area is a level-3 heading, any lead-in paragraphs, then one list.
+        # A paragraph that comes after an area's list belongs to the section, not to that area.
         subs, head, n = [], [], 0
         for b in blocks:
             if b[0] == "h" and b[1] == 3:
                 subs.append((b[2], []))
-            elif subs and not (b[0] == "p" and b[1].startswith("Areas that do not need each other")):
+            elif subs and subs[-1][0] is not None and not (b[0] == "p" and any(x[0] == "list" for x in subs[-1][1])):
                 subs[-1][1].append(b)
             elif subs:
                 subs.append((None, [b]))
