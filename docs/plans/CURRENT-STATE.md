@@ -121,7 +121,20 @@ before acting.
   a limit on what a designer may design. Say "designer", never "maker".
   The working note, with what the owner's records say:
   `docs/plans/architecture-pass/design/2026-11-13-how-the-engine-is-extended.md`.
-  **With the owner again, and the last design topic: how today's code
+  **The last design topic was sent back a second time (2026-11-20).**
+  The owner, on the second writing: "I don't understand why a 'thin
+  first version'. I get the feeling that you're missing a connection
+  somewhere to the big picture of what we're working on. Generally, the
+  choices you're asking me about feel arbitrary and pattern-matchy
+  instead of grounded in what we're trying to accomplish and good
+  engineering practices." Nothing on this topic is decided. Do not put
+  "beside or in place" or the repositories to the owner as menus again.
+  "Thin first version" was never the owner's decision: it is an agent's
+  reading of 2026-11-01. Before answering, re-read the goal (section 1
+  below), `ROADMAP.md` sections 1, 3, 4 and 10 and the program
+  document, and derive how the build runs from what it is for. The
+  history of the two earlier attempts follows.
+  **Earlier, with the owner again, and the last design topic: how today's code
   moves to the new design.** History, because it carries three rules.
   The agent first put two decisions on 2026-11-13 and the owner sent
   them back: "These decisions don't yet feel like they're fully
