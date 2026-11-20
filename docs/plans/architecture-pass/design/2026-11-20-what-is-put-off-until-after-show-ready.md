@@ -1,10 +1,10 @@
 # What is put off until after show-ready, item by item (2026-11-20)
 
-Status: the agent's analysis, put to the owner on 2026-11-20. Nothing
-here is decided. The third drafts of the two handover documents
-(`2026-11-20-the-roadmap-revised.md`,
-`2026-11-20-each-decision-and-its-test.md`) are not changed until the
-owner rules.
+Status: decided by the owner on 2026-11-20. All eight items of the
+first group move into the build. The owner's answer is at the end.
+The two handover documents (`2026-11-20-the-roadmap-revised.md`,
+`2026-11-20-each-decision-and-its-test.md`) are reworked to it as
+their fourth drafts.
 
 ## The owner's question, word for word
 
@@ -180,3 +180,50 @@ five troubles the current order leaves for afterwards.
 Whether each item of the first group moves into the build. Each one
 changes an order or a ruling the owner made. And one fact: what the
 owner uses the config tool for at ALN today.
+
+## The owner's answer (2026-11-20)
+
+Word for word:
+
+> yes to all 8
+> With the game already stable and installed at the venue, I haven't
+> used the config tool in a while, but I used it to set up the
+> lighting and audio cues for ALN
+
+So all eight items of the first group are built in the build:
+
+1. The GM scanner's redesign. Its layout is designed with the owner
+   before any area builds a screen of the GM scanner beyond the first
+   version's.
+2. Advancing a phase by hand, and cue times set from a phase.
+3. A published pack is taken up when the next session is created, with
+   no restart of the backend.
+4. The three shortcuts about equipment names are removed when the
+   room's equipment is rebuilt.
+5. The roster, notes and the accusation.
+6. The transfer between accounts. This changes the decision of
+   2026-11-13 that it is built "with the GM scanner's redesign, not
+   before": the redesign is now in the build, and the transfer with
+   it.
+7. The secrets are changed when green is set up for the new engine.
+8. The production's web name is put into service before the cutover.
+
+What follows from the owner's fact about the config tool, and is not
+decided. ALN does not need the config tool at a session, and the last
+use was to set up ALN's lighting and audio cues. The agent's
+recommendation, to put to the owner: the build does not rewire
+today's config tool to the new engine. After the cutover, and until
+the tool's new pages are built, a change to ALN's cues or values is
+made in the pack's files and published with the command. That avoids
+rewiring about 6,500 lines that the new pages then replace. Its cost:
+for that time the config tool does not work with the new engine.
+
+The four items of the second group keep their place after show-ready.
+What each owes in the build goes into the build: a player's device
+doing a verb that changes points, shown with the toy pack; the form of
+a rule leaving room for a verb with two steps; one trial of adding a
+capability that keeps state of its own in the record; a sketch of the
+screen that edits a rule, made when the rule's form is designed; the
+record's line for a photo designed with the other lines. These are
+the agent's engineering additions, stated to the owner on 2026-11-20
+and not objected to.

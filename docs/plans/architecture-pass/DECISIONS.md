@@ -215,15 +215,21 @@ History:
 Moving value from one entity to another (in ALN, money between
 accounts) becomes one action on the GM scanner (pick the two accounts,
 type the amount once) and one line in the session record. The two sides
-always match, and it is undone as one. It is built with the GM
-scanner's redesign (`docs/plans/ROADMAP.md` row 8.17), not before.
-Until then GMs make two separate score adjustments, as today.
+always match, and it is undone as one. It is built in the build, with
+the GM scanner's redesigned screens (see "Eight items move from after
+show-ready into the build" below).
 
-Made 2026-11-13.
+Made 2026-11-13. Its place changed 2026-11-20.
 
 History:
 - 2026-11-13. The owner said GMs move money between accounts by hand as
-  part of play in ALN, and answered "yes" to making it one action.
+  part of play in ALN, and answered "yes" to making it one action. The
+  agent's recommendation, which that "yes" covered, placed it "with the
+  GM scanner's redesign (`docs/plans/ROADMAP.md` row 8.17), not
+  before", with two separate score adjustments until then. The agent
+  gave no engineering reason for the wait.
+- 2026-11-20. The owner moved the redesign and the transfer into the
+  build ("yes to all 8").
 
 **How the backend keeps a session's data is settled**
 
@@ -626,6 +632,65 @@ Made 2026-11-12.
 History:
 - 2026-11-12. The owner's comment on change 7. It answers the question
   "where may a rehearsal run while a session is live", which is closed.
+
+**Eight items move from after show-ready into the build**
+
+The order of work across show-ready is set by engineering reasons, not
+by the order the roadmap had in September. That order was chosen by
+what would help a run with a calendar, on an engine that was being
+kept; neither holds now. Eight items the roadmap put after show-ready
+are built in the build, because putting them off would mean building
+something twice:
+
+1. The GM scanner's redesign (`docs/plans/ROADMAP.md` row 8.17). Its
+   layout is designed with the owner before any area builds a screen
+   of the GM scanner beyond the first version's.
+2. A control to advance the phase by hand, and cue times set from a
+   phase (the ruling Q-5-1 of 2026-08-22 had filed them under row
+   8.17).
+3. A published pack is taken up when the next session is created, with
+   no restart of the backend (row 8.6). The mechanics editor still
+   never ships without it, which was the purpose of pairing the two.
+4. Three shortcuts about equipment names are removed when the room's
+   equipment is rebuilt: lights falling back to scene names in the
+   pack (ledger L7), the idle loop's file read from the engine's
+   settings (L12), and a speaker named in ALN's pack (L8, row 8.2).
+5. The roster, notes and the accusation, from the work the roadmap
+   calls the capture block. Photos keep their place after show-ready.
+6. The transfer between accounts.
+7. The secrets in today's repository are changed when green is set up
+   for the new engine, and not only before the previewable state.
+8. The production's web name is put into service, with its
+   certificate, before the cutover (row 8.19).
+
+Four other items keep their place after show-ready, for reasons: what
+a player chooses on their own device and actions that take two tokens;
+the second game's capabilities; the config tool's pages; photos. The
+full reasoning for every item is in
+`design/2026-11-20-what-is-put-off-until-after-show-ready.md`.
+
+Made 2026-11-20.
+
+History:
+- 2026-11-20. The agent's third draft of the revised roadmap said "The
+  order of the current roadmap stands" and examined none of it. The
+  owner: "Let's think about all of the things that are currently being
+  put off until after show-ready in our roadmap. We need to think
+  about each individually. Are there good engineering reasons why
+  they're being put off until after show-ready, OR are we putting them
+  off because that's how the earlier plan suggested it even though
+  saving that work for AFTER show-ready means extra development work
+  and rewriting stuff we're already building while working on our
+  improved engine architecture?" The agent went through each item and
+  recommended moving eight. The owner: "yes to all 8".
+
+**What the owner uses the config tool for at ALN**
+
+A fact from the owner, not a decision: "With the game already stable
+and installed at the venue, I haven't used the config tool in a
+while, but I used it to set up the lighting and audio cues for ALN".
+
+Recorded 2026-11-20.
 
 **Extension is designed from the kinds of addition, not from one game**
 
