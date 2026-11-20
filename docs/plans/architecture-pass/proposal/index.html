@@ -606,6 +606,7 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
 <section id="move">
   <h2>How today's code moves to the new design</h2>
   <div class="prose">
+  <p class="choice"><b>20 November.</b> You told me the choices in this section felt arbitrary and matched to patterns, not grounded in what we are trying to accomplish. You were right. This section stays as my engineering working-out. It asks nothing of you, and I am redoing it in the roadmap's own terms.</p>
   <p>This is the last topic of the design. On 13 November you sent my first two decisions on it back as not fully considered. This is the considered version. I waited for the research to finish and read all of it. One independent reader then challenged my answer and found fourteen things wrong or missing. They are fixed here, and two of my recommendations changed because of them.</p>
 
   <h3>1. What the "thin first version" is</h3>
@@ -778,14 +779,14 @@ code { font-family: var(--font-mono); font-size: .86em; overflow-wrap: anywhere;
     <li>After a restart, the session, the clock, the GMs' logins, the music, the TV, the lights and the volumes come back by themselves. A video or a cue that was cut off, or that came due while the backend was down, is listed for the GM to run or drop.</li>
   </ul>
   <p>Nothing more is needed from you on this.</p>
-  <p><b>Now, and the last of the design: how today's code moves to the new design.</b> You sent my first two decisions on this back as not fully considered. The considered version is the section above this box. It asks you for this:</p>
+  <p><b>Now, and the last of the design: how the build runs.</b> On 20 November you told me that the choices I had put to you here felt arbitrary and matched to patterns. How the code is moved and where it is kept are engineering choices. They are mine to make and to justify from the design, and nothing is asked of you on them.</p>
+  <p>The frame is what you ratified on 30 October. The build changes the engine to follow the design one area at a time, each area with its tests written first, and it ends when every test passes on the test rig. It is the engine work that must land before green can replace blue. I owe you two things that say this plainly: each of your decisions with its test in plain words, and the revised roadmap.</p>
+  <p>Two things from the section above still stand:</p>
   <ul class="plain">
-    <li><b>Decision 1.</b> Build beside today's code for the backend, the GM scanner, the player scanner page and the scoreboard, and change the firmware in place. Or change everything in place.</li>
-    <li><b>Decision 2.</b> The repositories, in three parts: one repository for the engine's web programs and the code they share; the firmware in its own; and a new repository created now.</li>
     <li><b>A need.</b> A few session files from real ALN sessions on blue, the report the GM downloaded for each, and which pack and which of blue's versions each ran.</li>
     <li><b>To know.</b> Going back to blue after the cutover is no longer only a swap of computers. And one decision of yours comes before the first version: how a device is added to a kit.</li>
   </ul>
-  <p>After these the design is done, and I write the build plan.</p>
+
 </section>
 
 <footer class="prose">

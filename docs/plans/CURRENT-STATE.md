@@ -66,8 +66,8 @@ before acting.
   the record, built with the GM scanner's redesign (ROADMAP row 8.17).
   Stated to the owner and not objected to: corrections stay visible in
   the record. The owner also confirmed how ALN runs while this work is
-  done and the order of work. The page is version 30 (version id
-  1794588207-3df3; source
+  done and the order of work. The page is version 31 (version id
+  1795159533-7747; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
   and its last box lists what is decided and what is next. **Two rules
   from the owner on 2026-11-13.** (1) Never ask the owner whether a
@@ -140,7 +140,14 @@ before acting.
   of show-ready); it ends when every rule's test passes on the rig.
   The design half hands over each decision with a proof test in plain
   words, and the revised roadmap. Tie everything said about the build
-  to that and to the roadmap's states and pains. Before answering, re-read the goal (section 1
+  to that and to the roadmap's states and pains. On 2026-11-20 the
+  agent answered the owner along those lines, took back both menus
+  (how the code is moved and where it is kept are the agent's
+  engineering choices, to be justified from the design and recorded),
+  and said what it owes next: every decision with its proof test in
+  plain words, and the revised roadmap. It asked the owner one thing:
+  whether that is the connection the owner felt was missing. Wait for
+  the answer before writing either. Before answering, re-read the goal (section 1
   below), `ROADMAP.md` sections 1, 3, 4 and 10 and the program
   document, and derive how the build runs from what it is for. The
   history of the two earlier attempts follows.
