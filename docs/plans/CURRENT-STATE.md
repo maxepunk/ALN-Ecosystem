@@ -146,8 +146,17 @@ before acting.
   engineering choices, to be justified from the design and recorded),
   and said what it owes next: every decision with its proof test in
   plain words, and the revised roadmap. It asked the owner one thing:
-  whether that is the connection the owner felt was missing. Wait for
-  the answer before writing either. Before answering, re-read the goal (section 1
+  whether that is the connection the owner felt was missing. The
+  owner: "yeah". **So the work now is those two documents:** every
+  decision with its proof test in plain words (what to do, and what
+  must happen), and the revised roadmap (the build's areas in order by
+  what stands on what, what each gives the GM and the technician,
+  where September's paused pieces land, show-ready restated, the later
+  blocks after it). Write both from the ratified program document and
+  `ROADMAP.md` itself, read first. Have one independent reader check
+  them against the owner's recorded rulings before they go to the
+  owner: the agent has contradicted a ruling in each of its last three
+  attempts on this topic. Before answering, re-read the goal (section 1
   below), `ROADMAP.md` sections 1, 3, 4 and 10 and the program
   document, and derive how the build runs from what it is for. The
   history of the two earlier attempts follows.
