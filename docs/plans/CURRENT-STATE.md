@@ -66,8 +66,8 @@ before acting.
   the record, built with the GM scanner's redesign (ROADMAP row 8.17).
   Stated to the owner and not objected to: corrections stay visible in
   the record. The owner also confirmed how ALN runs while this work is
-  done and the order of work. The page is version 31 (version id
-  1795159533-7747; source
+  done and the order of work. The page is version 32 (version id
+  1795163308-6331; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
   and its last box lists what is decided and what is next. **Two rules
   from the owner on 2026-11-13.** (1) Never ask the owner whether a
@@ -161,37 +161,64 @@ before acting.
   `docs/plans/architecture-pass/design/2026-11-20-each-decision-and-its-test.md`
   and
   `docs/plans/architecture-pass/design/2026-11-20-the-roadmap-revised.md`.
-  One independent reader (a strong model one step below the session's
-  own, high effort) checked them the same day and returned sixteen
-  findings. The agent checked each against the record it cites, and
-  all sixteen held: four were again a ruling of the owner's
-  contradicted or dropped (the transfer between accounts put in the
-  build; the pull request rule changed; the end-to-end first version
-  gone; the secrets' change moved to the release), and three were a
-  decision of the owner's written as settled or left out (the way
-  back to blue; green's hardware pass; the conditions for ending the
-  design). Both documents were rewritten as second drafts and pushed
-  (`b08defec`), and the findings with what each changed are in
+  Three independent readers then checked the drafts in two rounds
+  (each a strong model one step below the session's own, at high
+  effort), and found forty-two faults. The agent checked every one
+  against the record or the code it cites, and all held. Round one,
+  sixteen findings: four were again a ruling of the owner's
+  contradicted or dropped, and three a decision of the owner's written
+  as settled or left out. Round two, twenty-six findings from two
+  readers with different angles, as the ratified method asks: most
+  were the plan not holding together (tests placed before the parts
+  they need, two areas that needed each other, "publish" used before
+  anything built it, work in no area), and one fault came back,
+  crediting the owner with a ruling on the first version that the
+  owner did not make on 2026-11-20. Every finding and what it changed
+  is in
   `docs/plans/architecture-pass/design/2026-11-20-the-check-of-the-two-drafts.md`.
-  The build is now eleven areas, each building a part together with
-  the screens that show it, with the end-to-end first version second.
-  Every test names the area that makes it passable. **Two more
-  independent readers with different angles are checking the second
-  drafts** (the ratified method asks for two reviewers and a check of
-  each finding): one against the owner's rulings, one as an engineer
-  who must build from them. **Wait for both completion notices. Check
-  each finding against the records, fix what holds, write the findings
-  into the check's record, put both documents on the proposal page in
-  place of the section "How today's code moves", and only then bring
-  them to the owner.** What the roadmap draft's section 11 lists as
-  the owner's: the sign-off; the way back for the hardware scanners
-  at the cutover (recommended: scanners of the new engine's own); when
-  the production gets its web name and certificate (recommended:
-  before the cutover); the GM scanner keeping today's layout at the
-  cutover, which the current roadmap's order already gives; how a
-  device is added to a kit, in the first version's detailed design;
-  the hardware list; two readings to correct if wrong; three needs
-  when the build starts. `ROADMAP.md` itself is not edited before
+  **The third drafts are pushed (`ce06b99e`) and on the proposal page
+  as version 32, in place of the section "How today's code moves".**
+  The page section is made from the two Markdown files by
+  `docs/plans/architecture-pass/proposal/build_handover.py`; change
+  the Markdown and run the script, never edit that part of the page by
+  hand. The build is eleven areas, each building a part together with
+  the screens that show it: the test bench; the first version, end to
+  end; the production's web name put into service (third, if the owner
+  places it before the cutover); a whole game session; the room's
+  equipment; cues, the video queue and held items; the hardware
+  scanner's firmware; the preflight; the config tool's link, the tag
+  tools, the checks after a session and the report; releasing and
+  installing, with ALN's content and settings in the new form; moving
+  ALN to the new engine. Every test names the area that makes it
+  passable. **The owner has the two documents and has not answered
+  yet.** What is asked, as the page's last box and the roadmap draft's
+  section 11 put it: (1) sign off or send back; (2) the way back to
+  blue for the hardware scanners (recommended: the new engine gets
+  scanners of its own; a fact needed: how many spares exist); (3) the
+  production's web name, in two parts: the name itself, needed for the
+  first version because a tag's link must be 36 characters or fewer
+  after `https://`, and when it is put into service (recommended:
+  before the cutover); (4) the hardware list, to confirm or correct;
+  (5) five readings of the agent's to correct if wrong (a pull request
+  for each repository an area touches; real-device tests proven on
+  green at home; areas built side by side; the September review rules
+  for each area; what "a phone's credential lasts for one session"
+  means); (6) the Wi-Fi password placed with the other secrets; (7)
+  three needs when the build starts (session files from blue; the
+  go-ahead to create the engine's repository; green through its
+  hardware pass before the firmware's tests are due). Coming to the
+  owner later, in the first version's detailed design: how a device is
+  added to a kit, which now also covers where the pages of an
+  installation with no backend are kept. Told to the owner, with
+  nothing to decide: the redesign of the GM scanner stays after
+  show-ready, and the build writes the game screens new in today's
+  layout. **When the owner answers:** write the answers word for word
+  into the check's record and `DECISIONS.md`, correct the two Markdown
+  files, run the script and publish. On a sign-off, amend
+  `ROADMAP.md` in place (its own text for the rules stays; a title
+  gains its rule's first sentence before it), and the next work is the
+  first two areas' detailed designs. Before writing "the owner
+  decided" anywhere, open the record: that fault came back twice. `ROADMAP.md` itself is not edited before
   the sign-off. Before answering, re-read the goal (section 1
   below), `ROADMAP.md` sections 1, 3, 4 and 10 and the program
   document, and derive how the build runs from what it is for. The
