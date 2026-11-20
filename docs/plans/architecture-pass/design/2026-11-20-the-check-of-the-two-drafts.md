@@ -160,3 +160,26 @@ drafts apply it:
 One decision came out of the owner's answer and is still open: whether
 the build rewires today's config tool to the new engine. The agent
 recommends not (the roadmap draft, section 11).
+
+## The check of the fourth drafts
+
+One independent reader (a strong model one step below the session's
+own, at high effort) read what the fourth drafts changed (`ce06b99e`
+to `814b8bca`) against the owner's ruling and the records. Thirteen
+findings. The agent checked each, and all held.
+
+| No. | The finding | What it changed |
+|---|---|---|
+| 1 | The plan was already built on the agent's recommendation to leave today's config tool alone, which is still the owner's decision. Test 5.20 had dropped "in the config tool" from the owner's rule. The recommendation left out that part of the tool's use is the installation's settings. | The area with the tag tools says what is done there if the owner has the tool rewired, and what a technician does if not, settings included. Tests 5.20 and 5.21 and the row for shortcut L15 hold both cases. |
+| 2 | The new time for changing the secrets covered green only. Blue keeps them after the cutover. | The roadmap draft says blue keeps them while it is the way back, and that blue must be wiped before the previewable state. |
+| 3 | Test 5.24 fired a cue in an area before cues exist. Test 5.26 needed ALN's cues in the new form before anything put them there. | Test 5.24 asks for the look from the GM scanner. The roadmap draft says ALN's pack is put into the new form part by part, its cues in cues and videos. |
+| 4 | The tests document's section 8 still called applying a pack and recording a session later work. | Rewritten. |
+| 5 | The roadmap draft's section 12 named a check of the fourth drafts that was not yet recorded. | This section is that record. |
+| 6 | "Each screen is built once" was not true of the first version's GM scanner page. | The roadmap draft says that page is bare and is replaced, that the parts under it are kept, and why the first version does not wait for the layout. |
+| 7 | The layout piece left out the owner's method of 2026-09-04: one layer at a time, each ratified before the next, names shared with the config tool. | The piece has a "How" line that states it. |
+| 8 | The four reasons to wait were credited to the owner. They are the agent's. | The owner's question and ruling are credited to the owner, and the four reasons to the agent. |
+| 9 | "No device ever changes the address" contradicted the cutover. The router's new setting and the key for renewing the certificate were in no piece. Test 2.42 named the wrong change. | Reworded. The web name piece and the way back name the router's setting and the key. Test 2.42 is about the renewal. |
+| 10 | What a player sees when a token opens on their own phone, and the code on a tag, had dropped out of the work after show-ready. | Both are in the list again, with what the build already covers. |
+| 11 | The tests document's opening named the wrong rows. The two trials of adding a capability were in no list of what is built. | Corrected. The first version's list names both trials. |
+| 12 | The test of advancing a phase left out the end of a session and the next session. | Added to test 5.22. |
+| 13 | Wording: "the design of the redesign", and ragged lines. | Fixed. |

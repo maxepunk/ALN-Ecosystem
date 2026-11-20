@@ -13,8 +13,9 @@ two and found forty-two faults between them. What each one changed is
 in `2026-11-20-the-check-of-the-two-drafts.md`. On 2026-11-20 the
 owner moved eight items from after show-ready into the build
 (`2026-11-20-what-is-put-off-until-after-show-ready.md`). Their tests
-are rows 1.20 to 1.22, 4.27 to 4.29 and 5.20 to 5.27, and every row
-that used to restart the backend to apply a pack.
+are rows 1.20 to 1.22, 2.31, 5.20 and 5.22 to 5.27, and every row
+that used to restart the backend to apply a pack. Rows 1.23 and 4.27
+to 4.29 are what the build owes to items that stay after show-ready.
 
 ## How to read it
 
@@ -33,7 +34,7 @@ revised roadmap, section 3. The column names them like this:
 | cues and videos | Cues, the video queue and held items |
 | the hardware scanner's firmware | The hardware scanner's firmware |
 | the preflight | The preflight |
-| the tag tools, the checks after a session, the report | Three parts of one area: the tag tools, the checks after a session and the report |
+| the tag tools, the checks after a session, the report | Three parts of one area: the tag tools, the checks after a session and the report. Today's config tool is rewired in the same area if the owner decides so. |
 | releasing and installing | Releasing and installing the engine, and ALN's content and settings in the new form |
 | moving ALN to the new engine | Moving ALN to the new engine |
 
@@ -148,7 +149,7 @@ is the agent's reading, and the owner can correct it.
 | 2.39 | | The same with a session running. | It does not update. | the hardware scanner's firmware; real devices |
 | 2.40 | | Cut its power in the middle of an update. Then give it a firmware that starts and fails its own checks. | Both times it starts on the old firmware. | the hardware scanner's firmware; real devices |
 | 2.41 | | Start a scanner on the kit's network, which has no internet. Then point it at a computer that shows another certificate. | Its scans carry the right time, taken from the backend. It refuses the other computer and says so. | the hardware scanner's firmware; real devices |
-| 2.42 | | Change the certificate the backend shows, the way it changes when the production's web name is put into service. | Every scanner goes on working, and none needs a cable. | the hardware scanner's firmware; real devices |
+| 2.42 | | Renew the backend's certificate, as happens about every three months. | Every scanner goes on working, and none needs a cable. | the hardware scanner's firmware; real devices |
 | 2.43 | The messages and the files are defined in one place, and every program is checked against the definition. The proposal's third change. | Change one message in the definition and change no program. | The engine's checks fail and name each of its programs that no longer agrees: the backend, the GM scanner, the player scanner page, the scoreboard page. The firmware's own checks fail too when they are run against the changed definition. The config tool joins the engine's check when it is next built against the engine. | the first version |
 | 2.44 | | Give the backend a pack and a session's file that break the definition. | Each is refused, with the field named. | the first version |
 
@@ -237,13 +238,13 @@ checked.
 | 5.17 | Anything held for a piece of equipment is dropped when the session ends. Pin P13. | Hold a video because the TV is down. End the session. | No held item is left. | cues and videos |
 | 5.18 | The report's structure is fixed in the engine and its wording comes from the pack. The ★ marks a place ALN's Director Console reads. The owner, 2026-08-29. | Download the report after a scripted session with ALN's pack. | It has the fixed structure, with ALN's wording. Each ★ is where the Director Console expects it. The test that pins the report's form passes. Its times agree with each other. | the report |
 | 5.19 | The checks after a session find scoring that does not add up, videos that did not play and scans counted twice. | Run them on the record of a clean scripted session, and on one with a wrong score planted. | The clean one passes. The planted fault is named. They read the record and nothing else. | the checks after a session |
-| 5.20 | A designer changes a game's values, applies the change and plays it. The roadmap, section 2.4. Applying needs no restart since 2026-11-20. | Change one of ALN's base values in the pack's files. Publish. Create a session. Sell a token of that value. | The new value is scored. From the change to the sale took under two minutes, the measure the owner set on 2026-09-04. | the first version |
-| 5.21 | | The same, with the value changed in the config tool. | The same. The config tool wrote none of the backend's own files and holds no copy of the backend's secret. | later: the config tool's pages. In the build only if the owner has today's config tool rewired (the roadmap draft, section 11). |
-| 5.22 | A GM can advance the game to its next phase by hand. The owner, 2026-08-22; moved into the build on 2026-11-20. | With a toy pack in three phases, where the second starts on an event that never comes, press the control to advance. Pause and resume the session. Restart the backend. | The second phase starts. The record holds a line for it, with the device it came from. The phase is the same after the pause and after the restart. | a whole game session |
+| 5.20 | A designer changes a game's values in the config tool, applies the change and plays it. The roadmap, section 2.4. Applying needs no restart since 2026-11-20. | Change one of ALN's base values in the pack's files, which is how it is done until the config tool is built against the new engine. Publish. Create a session. Sell a token of that value. | The new value is scored. From the change to the sale took under two minutes, the measure the owner set on 2026-09-04. | the first version |
+| 5.21 | | The same, with the value changed in the config tool. | The same. The config tool wrote none of the backend's own files and holds no copy of the backend's secret. | the area with the tag tools, if the owner has today's config tool rewired (the roadmap draft, section 11). Otherwise later: the config tool's pages. |
+| 5.22 | A GM can advance the game to its next phase by hand. The owner, 2026-08-22; moved into the build on 2026-11-20. | With a toy pack in three phases, where the second starts on an event that never comes, press the control to advance. Pause and resume the session. Restart the backend. End the session and press the control again. Create the next session. | The second phase starts. The record holds a line for it, with the device it came from. The phase is the same after the pause and after the restart. After the end the control is refused. The next session starts in its first phase. | a whole game session |
 | 5.23 | A cue's time can be set from the start of a phase. The owner, 2026-08-22; moved into the build on 2026-11-20. | With a cue set to fire two minutes into the second phase, advance to the second phase by hand. | The cue fires two minutes later, once. | cues and videos |
-| 5.24 | Each kind of equipment a pack names is tied to real equipment by the installation's settings, with no fallback. The owner's rulings of 2026-08-29 and 2026-09-04; moved into the build on 2026-11-20. | With the lights installed, leave one of the pack's lighting looks tied to no scene. Fire a cue that uses it. | That look shows as a fault and is named. No scene name written in the pack is used. | the room's equipment |
+| 5.24 | Each kind of equipment a pack names is tied to real equipment by the installation's settings, with no fallback. The owner's rulings of 2026-08-29 and 2026-09-04; moved into the build on 2026-11-20. | With the lights installed, leave one of the pack's lighting looks tied to no scene. Ask for that look from the GM scanner. | That look shows as a fault and is named. No scene name written in the pack is used. | the room's equipment |
 | 5.25 | | Leave the idle loop's video tied to no file. | The idle loop counts as not installed and shows grey. The engine's own settings supply no file. | the room's equipment |
-| 5.26 | | Read ALN's pack. Fire its cue that plays the police sounds. | The pack names no speaker. The cue names a kind of sound output, the installation's settings tie it to the Bluetooth speaker, and the sound plays there. | cues and videos |
+| 5.26 | | Read ALN's pack. On the rig, fire its cue that plays the police sounds. | The pack names no speaker. The cue names a kind of sound output. The installation's settings tie that kind to a speaker, and the sound plays there. | cues and videos |
 | 5.27 | The secrets in today's repository are changed before an outside person touches the system. The owner, 2026-09-05; changed when green is set up for the new engine since 2026-11-20. | On green, set up for the new engine, try the Home Assistant token and the admin password that are in today's repository. | Both are refused. | moving ALN to the new engine; real devices |
 
 ## 6. Faults recorded in today's engine, as tests
@@ -343,13 +344,16 @@ writes the code it is in:
 
 The design also ends only when "every rule says how it serves the
 planned capabilities and standalone games". The planned capabilities
-are: applying a changed pack without restarting the backend, a
-rehearsal on a copy of the backend, recording a session as it is
-played, and players' own phones.
+named when that was decided are: applying a changed pack without
+restarting the backend, a rehearsal on a copy of the backend,
+recording a session as it is played, and players' own phones. Since
+2026-11-20 the first is built in the build, and so is the third
+except for photos. The table says what each decision gives to them
+and to the work that still comes after.
 
 | Decision | What it gives the work after the build |
 |---|---|
-| The session's record only grows. `0001` | Recording a session adds its notes and photos as lines. Scans from players' phones are added in order. A game with no backend keeps the same kind of record on the GM scanner. |
+| The session's record only grows. `0001` | The roster, notes and the accusation are lines of it, and photos are added as lines later. Scans from players' phones are added in order. A game with no backend keeps the same kind of record on the GM scanner. |
 | One record for the game, the room and what went wrong. `0002` | The roster, notes, photos and the accusation already have their place. The report and the checks after a session read one file. |
 | What belongs to a session, an installation and the production. `0003` | A published pack is taken up when the next session is created and never inside one, so the config tool's editor needs only a button to apply a change. A rehearsal has its own session and its own settings. |
 | Every device shows a credential. `0004` | A player's phone gets one with nothing to type. The pack can then say what a phone may do. |
@@ -358,7 +362,7 @@ played, and players' own phones.
 | A GM scanner carries on without the backend. `0007` | The same rules code runs in the backend, in a GM scanner and in a rehearsal's copy. |
 | A game with no backend. `0008` | Standalone games are a kind of installation, not a mode a GM picks. A pack says whether it can be played that way. |
 | A new capability is part of the engine. `0009` | What the second game needs is added once, in a known place, and every designer can use it. |
-| What comes back after a restart. `0010` | A rehearsal's copy and the installed backend start by the same steps. Applying a changed pack can use those steps too. |
+| What comes back after a restart. `0010` | A rehearsal's copy and the installed backend start by the same steps. |
 | A designer designs the rules in the pack. `0011` | The config tool's editor edits rules and formulas as pack data, and a designer plays the change. Actions that take two tokens are verbs like any other. |
 | The pack says what each kind of device is sent. | A game can show different players different things. A phone is sent only what it may show. |
 | A device that is out of date fetches the right pack by itself. | Applying a changed pack reaches every device with nothing done by hand. |

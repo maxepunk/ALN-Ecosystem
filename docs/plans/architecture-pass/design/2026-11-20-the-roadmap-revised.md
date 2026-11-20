@@ -137,16 +137,17 @@ rule's test passes on the rig". A few tests need a real hardware
 scanner, phone or tag, which the rig does not have. Where those are
 proven is a reading of the agent's (section 11).
 
-The order of work across show-ready is set by engineering reasons
-(the owner, 2026-11-20). The current roadmap's order was chosen in
+On 2026-11-20 the owner asked whether each item the current roadmap
+places after show-ready is there for an engineering reason, or only
+because the earlier plan had it there. That order was chosen in
 September by what would help a run with a calendar, on an engine that
-was being kept. Neither holds now. So an item waits until after
-show-ready only if one of these is true: it needs something that
-exists only after the cutover; nothing uses it yet and its form
+was being kept. Neither holds now. The agent went through every item
+and counted four reasons to wait as real: the item needs something
+that exists only after the cutover; nothing uses it yet and its form
 depends on a design that is not made; it only adds to what the build
-makes; or it adds risk to the cutover. Eight items had none of these
-and move into the build. They are marked "moved, 2026-11-20" in the
-table.
+makes; or it adds risk to the cutover. Eight items had none of these.
+The owner moved all eight into the build. They are marked "moved,
+2026-11-20" in the table.
 
 Items of the current roadmap that the owner's decisions moved or
 answered:
@@ -162,7 +163,7 @@ answered:
 | Row 8.6, applying a changed pack without restarting the backend, as one deliverable with the mechanics editor | Moved, 2026-11-20. A published pack is taken up when the next session is created, with no restart. The mechanics editor comes after show-ready and still never ships without it. | owner, 2026-11-20 |
 | The capture block: recording a session as it is played | The file a finished session is handed over in is built in the build: the session's record is that file. Moved, 2026-11-20: the roster, notes and the accusation. Photos, and somewhere to keep them, stay after show-ready. | `docs/adr/0001`, `0002`; owner, 2026-11-20 |
 | Three shortcuts that waited for config tool pages: lights falling back to scene names in the pack, the idle loop's file read from the engine's settings, and a speaker named in ALN's pack (row 8.2) | Moved, 2026-11-20. Removed when the room's equipment is rebuilt. | owner, 2026-11-20 |
-| The secrets in today's repository are changed before the previewable state | Moved, 2026-11-20. They are changed when green is set up for the new engine, which is earlier. | owner, 2026-11-20 |
+| The secrets in today's repository are changed before the previewable state | Moved, 2026-11-20. Green is set up for the new engine with secrets of its own, so from the cutover the ones in the repository open nothing on the production's computer. Blue keeps them while it is kept as the way back. They open nothing at all once blue is wiped, which must still be before the previewable state. | owner, 2026-09-05 and 2026-11-20 |
 | Row 8.19, the web name and certificate, placed with the players' phones work | Moved, 2026-11-20. Put into service before the cutover. The name itself is needed in the first version, because every tag's link holds it. | `docs/adr/0005`; owner, 2026-11-20 |
 | Row 8.5, what a GM scanner does when its pack is out of date | Decided: every device fetches the right pack by itself. Built in the build, with the row's two tests (test 2.12). | owner, 2026-11-13 |
 | Row 8.11, whether the kit's own machines get a credential | Answered yes. The row's other half, how a device is added to a kit, moves from the players' phones work to the first version's detailed design. It is the owner's decision there. | `docs/adr/0004` |
@@ -181,6 +182,11 @@ Every area is checked against ALN: ALN's pack, ALN's real sessions
 from blue, and ALN's room. Every area is also checked against a toy
 game that is scored differently from ALN, so that nothing in the
 engine depends on ALN's rules.
+
+ALN's pack is put into the new form part by part, each part in the
+area that builds what it needs: its rules in a whole game session,
+its names for equipment in the room's equipment, its cues in cues and
+videos. The release area completes it.
 
 Each area opens with its detailed design. The design comes to the
 owner with the area's size and with whatever in it is the owner's to
@@ -223,17 +229,21 @@ Earlier records call this "the thin first version".
   session takes the pack in force when it is created, with no restart
   of the backend. The messages, in one definition with a version, the
   form of a tag's link included. Credentials, and how a device is
-  added to a kit. The backend assembled in one place. A GM scanner
-  page with the first form of its controls: logging in, creating,
-  starting and ending a session, creating an account, scanning. It
-  keeps its own copy of the record and of the rules, carries on with
-  no connection and hands over what it stored. A scoreboard page that
+  added to a kit. The backend assembled in one place. A bare GM scanner
+  page with a handful of controls: logging in, creating, starting and
+  ending a session, creating an account, scanning. Under it, the GM
+  scanner's own copy of the record and of the rules, carrying on with
+  no connection, and handing over what it stored. Those parts are
+  kept. The bare page is replaced when the screens are built to the
+  layout. A scoreboard page that
   is told what to show. The player scanner page opened from a link. A
   stand-in video player driven the way all equipment will be, with its
   restart after a crash and the GM's list of what was cut off. The
   same GM scanner page working in an installation with no backend. The
   firmware's two files that build and read messages, changed to the
-  definition.
+  definition. Two trials of adding a capability, each as one new file:
+  a new operation for formulas, and a capability that keeps state of
+  its own.
 - **What a person can do with it.**
   1. Start the backend on a laptop with a pack of three tokens.
   2. Open the GM scanner page on a phone, log in, create a session and
@@ -277,8 +287,8 @@ Earlier records call this "the thin first version".
   connection never stops a scan. No ALN session runs on it.
 - **Paused in September and built here.** Credentials on every
   connection.
-- **Moved into the build on 2026-11-20.**
-  A published pack taken up with no restart.
+- **Moved into the build on 2026-11-20.** A published pack taken up
+  with no restart.
 
 ### The production's web name put into service, with its certificate
 
@@ -289,14 +299,18 @@ roadmap had it with the players' phones work (row 8.19).
   own network; the backend's computer answers for the name on that
   network; the public name points at the backend's address once; the
   certificate is issued through the domain's DNS and renewed at home
-  between events. The devices that run the GM scanner and the second
-  scoreboard reach the backend with no warning. One spare tag and two
-  phones confirm what the research on tags says.
+  between events. The kit's router gets one new setting, which names
+  the backend's computer as the place that answers names on the kit's
+  network. The backend's computer holds the key that renews the
+  certificate; it is a secret and is never put in a repository. The
+  devices that run the GM scanner and the second scoreboard reach the
+  backend with no warning. One spare tag and two phones confirm what
+  the research on tags says.
 - **Needs.** The first version. From the owner: the name itself, and
   access to its domain.
 - **Gives.** Players: an iPhone and an Android phone scan a token the
-  same way. The GM: no certificate warning. The cutover: no device
-  ever changes the address it reaches the backend at.
+  same way. The GM: no certificate warning. After the cutover, no
+  device has to change the address it reaches the backend at.
 
 ### The GM scanner's layout, designed with the owner
 
@@ -309,18 +323,26 @@ This piece is design. It builds nothing that is kept.
   action. The roster before a session, notes during it and the
   accusation at the end. Advancing a phase. The panels for the room,
   the cues, the videos and held items, and the preflight. What a GM
-  sees when the connection or the backend is gone. It is made as
-  drawings and a model the owner can click through, against the
-  owner's real show flows, by the method the owner ruled for the
-  tools on 2026-09-04: each element is decided for the final design
-  first (`docs/plans/2026-09-04-ux-foundation.md`).
-- **Needs.** Nothing built. The owner's time.
+  sees when the connection or the backend is gone.
+- **How.** By the method the owner set for the tools on 2026-09-04
+  (`docs/plans/2026-09-04-ux-foundation.md`, section 0). The design
+  goes one layer at a time, and the owner ratifies each layer before
+  the next is opened: who uses the GM scanner and in which of the
+  owner's real show flows; what it must do; how it is organised; the
+  layout of each screen; its look. No layer is worked on while one
+  above it is open. Drawings and a model the owner can click through
+  come with the layout of each screen. Its names are shared with the
+  config tool through the glossary.
+- **Needs.** Nothing built. The owner's time, over several
+  conversations.
 - **Gives.** The answer to the fourth trouble, decided once. Four
   areas build the GM scanner's screens to it.
 - **Why here.** Every area after it builds a screen of the GM
-  scanner. The first version's page does not wait for it.
-- **Moved into the build on 2026-11-20.** The
-  design of the GM scanner's redesign (row 8.17).
+  scanner. It can start as soon as this revision is signed off, and
+  it runs beside the test bench and the first version, whose bare
+  page does not wait for it.
+- **Moved into the build on 2026-11-20.** Designing the GM scanner's
+  new layout (row 8.17).
 
 ### A whole game session on the GM scanner, the scoreboard page and the player scanner page
 
@@ -355,9 +377,9 @@ This piece is design. It builds nothing that is kept.
 - **Paused in September and built here.** A GM scanner fixing its own
   out-of-date pack. The truth sweep's purpose, for the scoring,
   transaction and session screens.
-- **Moved into the build on 2026-11-20.** The
-  redesigned game screens. The transfer between accounts. Advancing a
-  phase by hand. The roster, notes and the accusation.
+- **Moved into the build on 2026-11-20.** The redesigned game
+  screens. The transfer between accounts. Advancing a phase by hand.
+  The roster, notes and the accusation.
 
 ### The room's equipment, each piece driven the same way and shown as it really is
 
@@ -390,10 +412,10 @@ This piece is design. It builds nothing that is kept.
   and the GM's buttons for a fault. The check of the installation's
   settings file. The fixes to "not installed" that were lost during
   the pause. The host file.
-- **Moved into the build on 2026-11-20.**
-  The end of three shortcuts: lights falling back to scene names in
-  the pack, the idle loop's file read from the engine's settings, and
-  a speaker named in ALN's pack.
+- **Moved into the build on 2026-11-20.** Lights no longer fall back
+  to scene names in the pack. The idle loop's file is no longer read
+  from the engine's settings. Sound outputs are named by kind, so
+  that ALN's pack need not name a speaker.
 
 ### Cues, the video queue and held items
 
@@ -406,15 +428,16 @@ This piece is design. It builds nothing that is kept.
   of a video token plays its video is a pack rule. A cue never changes
   the game. The GM's list of what a restart cut off or missed,
   complete. Held items dropped when the session ends, or when the
-  piece they wait for is put out of service. The panels for these,
-  built to the new layout.
+  piece they wait for is put out of service. ALN's cues in the new
+  form; the one that named a speaker names a kind of sound output.
+  The panels for these, built to the new layout.
 - **Needs.** A whole game session, and the room's equipment.
 - **Gives.** The GM: the show's panels show what is really happening,
   and after a restart the GM sees what was skipped.
 - **Paused in September and built here.** Held items that expire. The
   truth sweep's purpose, for the show's panels.
-- **Moved into the build on 2026-11-20.** Cue
-  times set from a phase.
+- **Moved into the build on 2026-11-20.** Cue times set from a
+  phase. The end of the speaker named in ALN's pack.
 
 ### The hardware scanner's firmware
 
@@ -470,10 +493,21 @@ This piece is design. It builds nothing that is kept.
   stays pinned by a test, the ★ included, until ALN's Director Console
   reads the session's file (row 8.10). It can be downloaded in a game
   with no backend too.
-- **Today's config tool.** Whether it is rewired to the new engine
-  here is the owner's decision (section 11). The agent recommends not.
+- **Today's config tool.** Whether it is rewired to the new engine is
+  the owner's decision (section 11). If it is, that is done here. The
+  tool publishes a pack with the first version's command and saves an
+  installation's settings through the engine's definitions. It stops
+  writing the backend's files and signing logins with the backend's
+  secret. Its screens for cues, for audio routes and for ALN's base
+  values and type multipliers are kept. If it is not, then from the
+  cutover until the tool's new pages exist, a change to ALN's cues or
+  values is made in the pack's files and published with the command.
+  A change to the installation's settings, such as an audio route, is
+  made in its file and takes effect when the backend next starts.
 - **Needs.** A whole game session, and cues and videos.
-- **Gives.** The director: the same report, from one record.
+- **Gives.** The director: the same report, from one record. If the
+  config tool is rewired: the technician and the designer keep a
+  working config tool at the cutover.
 
 ### Releasing and installing the engine, and ALN's content and settings in the new form
 
@@ -499,8 +533,7 @@ This piece is design. It builds nothing that is kept.
 - **Needs.** Every area above.
 - **Gives.** The technician: updating a kit and going back are one
   step each.
-- **Moved into the build on 2026-11-20.**
-  Changing the secrets.
+- **Moved into the build on 2026-11-20.** Changing the secrets.
 
 ### Moving ALN to the new engine
 
@@ -517,7 +550,9 @@ This piece is design. It builds nothing that is kept.
   keeps for a game with no backend are replaced with the new ones.
   After the cutover blue stays frozen for the first events. The tags
   are rewritten with the link first once the owner calls the new
-  engine good.
+  engine good. Blue is then wiped, as the current roadmap says. That
+  ends the last use of the secrets that are in today's repository, and
+  it must come before the previewable state.
 - **Needs.** Every area above.
 
 Which areas could be built at the same time follows from the needs
@@ -582,8 +617,11 @@ item, moved or not, is in
   recorded in the project is left without someone named to remove it.
 - **Players' own phones.** What is left after the build: choosing
   among several verbs on a player's device, actions that take two
-  tokens, which phones are accepted, and how many phones one kit can
-  carry. Why it waits: the current roadmap says the first form of
+  tokens, a code on each tag that cannot be guessed for a game that
+  wants one, which phones are accepted, and how many phones one kit
+  can carry. What a player sees when a token opens on their own phone
+  is the player scanner page, which the build builds. Anything beyond
+  that waits for a game that asks for it. Why it waits: the current roadmap says the first form of
   these "is specified by the second game's tap grammar", which is not
   designed yet, and the last two need real phones in play.
 - **The second game.** The capabilities it needs that the engine does
@@ -639,6 +677,12 @@ What going back to blue now takes, part by part:
   Open blue's address again. This is immediate. The new engine is
   reached at the production's web name and blue at its fixed address
   and port, and a browser keeps each address's data apart.
+- **The kit's router.** It gets one new setting when the web name is
+  put into service: the backend's computer answers names on the kit's
+  network. Blue is reached at its fixed address and uses no names.
+  Whether the setting can stay when blue is swapped back in is tried
+  at the rehearsal. If it cannot, changing it back is a step of the
+  way back.
 - **The hardware scanners.** Each needs blue's firmware flashed back
   by USB, with a laptop. Or blue keeps a set of its own that is never
   flashed. This is a decision for the owner (section 11).
@@ -683,7 +727,11 @@ design, and its reason is given. The owner can overrule any of them.
   builds one part together with the screens that show it, so that each
   area's tests can pass when the area is finished. The GM scanner's
   layout is designed before any of those screens is built, so that
-  each is built once.
+  each is built once, to the layout. The first version's GM scanner
+  page is the one exception. It is a bare page with a handful of
+  controls, made to prove the parts under it. Those parts are kept
+  and the bare page is replaced. Waiting for the layout before the
+  first version would hold up proving that the central parts fit.
 - **Today's code.** Where one of the owner's decisions changed how a
   part works, that part is written to the decision. So the session
   store, how a scan is handled, the messages, the GM scanner's own
@@ -757,7 +805,7 @@ there (the roadmap's rule 2.2).
 | Row | The item | Where it stands after this revision |
 |---|---|---|
 | 8.1 | Checking that the media a pack names exists, and showing what a pack needs | The page that manages packs, in the config tool's pages for previewing a game. The preflight separately checks that named files are present. |
-| 8.2 | A speaker named inside ALN's pack, which the owner ruled is to be removed | Removed in the build, in the room's equipment (the owner, 2026-11-20). |
+| 8.2 | A speaker named inside ALN's pack, which the owner ruled is to be removed | Removed in the build (the owner, 2026-11-20). The room's equipment builds sound outputs named by kind. ALN's cue is changed in cues and videos, where ALN's cues are put in the new form. |
 | 8.3 | Where the idle loop's video is named | The pack's half goes with row 8.1, as before. Its tie to a real file is built in the room's equipment. |
 | 8.4 | A view that answers "what does bringing this hardware unlock?" | A later piece of work on venue tools, as before. |
 | 8.5 | A GM scanner whose pack is out of date, and two tests | Answered and built in the build: a whole game session, test 2.12. |
@@ -798,10 +846,10 @@ is left without someone named to remove it. After this revision:
 | L3: the player scanner page reads the pack only to show which one it has | The build. The page is sent what the pack says its kind may show. |
 | L4: the word "team" stays in the messages | The build. The messages are written new and use the engine's word, entity. The current roadmap had this with the players' phones work. |
 | L7: lighting falls back to scene names written in the pack | The build, in the room's equipment (the owner, 2026-11-20). ALN's installation settings already tie each look to a scene. |
-| L8: a speaker named in ALN's pack | The build, in the room's equipment (the owner, 2026-11-20). The pack names a kind of sound output, and the installation's settings tie it to the speaker. |
+| L8: a speaker named in ALN's pack | The build (the owner, 2026-11-20). The room's equipment builds sound outputs named by kind, and ALN's cue is changed in cues and videos. The pack names a kind of sound output, and the installation's settings tie it to the speaker. |
 | L12: the idle loop's file is read from the engine's settings when the installation's settings do not name it | The build, in the room's equipment (the owner, 2026-11-20). An idle loop with no tie counts as not installed, as the owner ruled on 2026-09-04. |
 | L14: the tag tools load fonts from the internet | The build, when the tag tools are rebuilt. |
-| L15: publishing from the config tool writes into the pack's folder with no record of the change | The publish command of the first version replaces that way of publishing. A record of each publish is built with the page that manages packs. |
+| L15: publishing from the config tool writes into the pack's folder with no record of the change | If the owner has today's config tool rewired (section 11), when its publishing is rebuilt. If not, the publish command of the first version takes that way of publishing's place. Either way a record of each publish is built with the page that manages packs. |
 | L13: ALN's wording inside the report's fixed structure | Row 8.10, as before. |
 | L16: a throwaway first try at the page that manages packs | That page, as before. |
 
@@ -843,8 +891,10 @@ is left without someone named to remove it. After this revision:
    6,500 lines, and the tool's new pages replace them after
    show-ready. Or the build leaves the tool alone. Then, from the
    cutover until its new pages exist, the config tool does not work
-   with the new engine, and a change to ALN's cues or values is made
-   in the pack's files and published with the command. Recommended:
+   with the new engine. A change to ALN's cues or values is made in
+   the pack's files and published with the command. A change to the
+   installation's settings, such as an audio route, is made in its
+   file and takes effect when the backend next starts. Recommended:
    leave it alone. Rewiring is the double work the owner's ruling of
    2026-11-20 is meant to avoid, and ALN does not need the tool at a
    session.
@@ -907,6 +957,6 @@ ends. Where each stands:
 |---|---|
 | Every finding and every fix made on blue is assigned to a rule, or set aside with a reason | The tests document, section 7. |
 | Every rule says how it serves the planned capabilities and standalone games | The tests document, section 8. |
-| The review's blocking findings are resolved | The method names a review by two reviewers with different angles, with each finding checked (`../DECISIONS.md`, "The design half's method and tools"). One independent reader checked the first drafts, two with different angles checked the second, and one checked the fourth. The agent checked every finding against the records. Each finding and what it changed is in `2026-11-20-the-check-of-the-two-drafts.md`. |
+| The review's blocking findings are resolved | The method names a review by two reviewers with different angles, with each finding checked (`../DECISIONS.md`, "The design half's method and tools"). One independent reader checked the first drafts, two with different angles checked the second, and one checked what the fourth changed. The agent checked every finding against the records. Each finding and what it changed is in `2026-11-20-the-check-of-the-two-drafts.md`. |
 | Every question has a rule and a test | Overtaken: the rules go by decision. The agent's call of 2026-11-02. |
 | The rig reproduces each finding marked for proof | The owner decided on 2026-11-01 that the rig is built when building starts. Reading that as overtaking this condition is the agent's call of 2026-11-02, which the owner can overrule. The findings become tests of the areas (the tests document, section 6). |
