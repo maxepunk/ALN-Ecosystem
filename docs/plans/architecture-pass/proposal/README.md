@@ -5,6 +5,20 @@ old site at https://claude.ai/artifact/RzL2FzCZ4eESSNMYwkkKPL. It is
 the single source: there is no second copy of its text. Each
 change's "Where this is in the code" list holds its evidence.
 
+One part of the page is the exception. The section "The two documents
+the design hands over" (since 2026-11-20) shows two Markdown files,
+`../design/2026-11-20-the-roadmap-revised.md` and
+`../design/2026-11-20-each-decision-and-its-test.md`. Those files are
+the source. `build_handover.py` writes them into `index.html` between
+the comments `handover:begin` and `handover:end`. Never edit that part
+of the page by hand: change the Markdown file and run
+
+    python3 docs/plans/architecture-pass/proposal/build_handover.py
+
+then publish the page. The few paragraphs above the first comment, and
+the box "Where we are" at the end of the page, are written by hand and
+speak to the owner as "you".
+
 How it was made, following the skill `improve-codebase-architecture`:
 
 1. The agent read what the engine is supposed to be
