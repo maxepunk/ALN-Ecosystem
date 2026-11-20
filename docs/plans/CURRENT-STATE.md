@@ -162,14 +162,36 @@ before acting.
   and
   `docs/plans/architecture-pass/design/2026-11-20-the-roadmap-revised.md`.
   One independent reader (a strong model one step below the session's
-  own, high effort) was started on them the same day. **Wait for its
-  completion notice. Then check its findings, fix what holds, put both
-  documents on the proposal page in place of the section "How today's
-  code moves", and only then bring them to the owner.** The roadmap
-  draft's section 8 lists what is the owner's: the sign-off; whether
-  the GM scanner keeps today's layout at the cutover; when the kit gets
-  its real name and certificate; how a device is added to a kit; two
-  needs when the build starts. `ROADMAP.md` itself is not edited before
+  own, high effort) checked them the same day and returned sixteen
+  findings. The agent checked each against the record it cites, and
+  all sixteen held: four were again a ruling of the owner's
+  contradicted or dropped (the transfer between accounts put in the
+  build; the pull request rule changed; the end-to-end first version
+  gone; the secrets' change moved to the release), and three were a
+  decision of the owner's written as settled or left out (the way
+  back to blue; green's hardware pass; the conditions for ending the
+  design). Both documents were rewritten as second drafts and pushed
+  (`b08defec`), and the findings with what each changed are in
+  `docs/plans/architecture-pass/design/2026-11-20-the-check-of-the-two-drafts.md`.
+  The build is now eleven areas, each building a part together with
+  the screens that show it, with the end-to-end first version second.
+  Every test names the area that makes it passable. **Two more
+  independent readers with different angles are checking the second
+  drafts** (the ratified method asks for two reviewers and a check of
+  each finding): one against the owner's rulings, one as an engineer
+  who must build from them. **Wait for both completion notices. Check
+  each finding against the records, fix what holds, write the findings
+  into the check's record, put both documents on the proposal page in
+  place of the section "How today's code moves", and only then bring
+  them to the owner.** What the roadmap draft's section 11 lists as
+  the owner's: the sign-off; the way back for the hardware scanners
+  at the cutover (recommended: scanners of the new engine's own); when
+  the production gets its web name and certificate (recommended:
+  before the cutover); the GM scanner keeping today's layout at the
+  cutover, which the current roadmap's order already gives; how a
+  device is added to a kit, in the first version's detailed design;
+  the hardware list; two readings to correct if wrong; three needs
+  when the build starts. `ROADMAP.md` itself is not edited before
   the sign-off. Before answering, re-read the goal (section 1
   below), `ROADMAP.md` sections 1, 3, 4 and 10 and the program
   document, and derive how the build runs from what it is for. The
