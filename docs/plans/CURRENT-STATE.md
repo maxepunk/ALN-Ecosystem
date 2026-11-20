@@ -25,6 +25,37 @@ before acting.
   `docs/plans/architecture-pass/DECISIONS.md`. Working log
   (git-ignored):
   `.superpowers/sdd/2026-10-30-architecture-pass/progress.md`.
+- **Latest, 2026-11-20: the owner asked about everything the roadmap
+  puts off until after show-ready.** On reading the third drafts, word
+  for word: "Let's think about all of the things that are currently
+  being put off until after show-ready in our roadmap. We need to
+  think about each individually. Are there good engineering reasons
+  why they're being put off until after show-ready, OR are we putting
+  them off because that's how the earlier plan suggested it even
+  though saving that work for AFTER show-ready means extra development
+  work and rewriting stuff we're already building while working on our
+  improved engine architecture? Does the question make sense?" The
+  agent had written "The order of the current roadmap stands" and
+  examined none of it. That order was set in September by value for a
+  run with a calendar, on an engine that was being kept; neither holds
+  now. The agent's item-by-item analysis, with what was checked, is
+  `docs/plans/architecture-pass/design/2026-11-20-what-is-put-off-until-after-show-ready.md`.
+  Its finding: eight items are put off by habit and cost double work
+  (the GM scanner's redesign; advancing a phase by hand and cue times
+  set from a phase; applying a published pack with no restart; three
+  shortcuts parked under config tool pages; the roster, notes and
+  accusation; the transfer between accounts, which the agent itself
+  had parked on 2026-11-13; changing the secrets; the web name in
+  service). Four are put off for a reason but owe something small in
+  the build (choices on a player's device and two-token actions; the
+  second game's capabilities; the config tool's pages; photos). The
+  rest are put off for a reason. **Nothing is decided: each move
+  changes an order or a ruling of the owner's. Do not change the two
+  drafts until the owner rules.** One fact is asked of the owner: what
+  the config tool is used for at ALN today. When the owner rules,
+  rework section 3 and section 5 of the roadmap draft and the tests'
+  areas, run the page script, and have the result checked before it
+  goes back to the owner.
 - **Now: the design of the messages between the backend and the
   devices, and the files, is settled (2026-11-13).** All by the owner:
   what a player sees after a scan, the same on the player scanner page
