@@ -55,13 +55,20 @@ before acting.
   while, but I used it to set up the lighting and audio cues for ALN".
   **The rule this leaves: an item waits until after show-ready only
   for an engineering reason. Never carry an order over from an earlier
-  plan without examining it.** The fourth drafts apply the ruling
-  (`814b8bca`): the build has twelve pieces, the fourth being the GM
-  scanner's layout designed with the owner; every item that still
-  waits says why. One independent reader is checking the change.
-  **Wait for its completion notice, check its findings, fix what
-  holds, run `proposal/build_handover.py`, publish the page, and only
-  then answer the owner.** What is asked of the owner now is the
+  plan without examining it.** The fourth drafts apply the ruling:
+  the build has twelve pieces, the fourth being the GM scanner's
+  layout designed with the owner; every item that still waits says
+  why. One independent reader checked the change and found thirteen
+  faults, all of which held and are fixed (`8fb55e35`; the record is
+  the last section of
+  `docs/plans/architecture-pass/design/2026-11-20-the-check-of-the-two-drafts.md`).
+  Its main finding: the draft's structure had already assumed the
+  agent's own recommendation on the config tool, which is the owner's
+  decision. **The fourth drafts are on the proposal page as version
+  33, and the owner has not answered yet.** When the owner answers,
+  write the answers word for word into the records, correct the two
+  Markdown files, run `proposal/build_handover.py` and publish. What
+  is asked of the owner now is the
   roadmap draft's section 11 and the page's last box: the sign-off;
   the way back for the hardware scanners and how many spares exist;
   the web name itself; whether the build rewires today's config tool
@@ -110,8 +117,8 @@ before acting.
   the record, built with the GM scanner's redesign (ROADMAP row 8.17).
   Stated to the owner and not objected to: corrections stay visible in
   the record. The owner also confirmed how ALN runs while this work is
-  done and the order of work. The page is version 32 (version id
-  1795163308-6331; source
+  done and the order of work. The page is version 33 (version id
+  1795192888-3569; source
   `docs/plans/architecture-pass/proposal/index.html`); it is the plan,
   and its last box lists what is decided and what is next. **Two rules
   from the owner on 2026-11-13.** (1) Never ask the owner whether a
