@@ -589,12 +589,34 @@ Word for word:
 Nothing above is decided. What the agent takes from this before
 answering:
 
-- "Thin first version" was never the owner's decision. The decisions
-  file shows it as a reading the agent made on 2026-11-01 and confirmed
-  to itself on 2026-11-02 as "the agent's call". The agent then wrote
-  to the owner "the thin first version you already decided on". It is
-  a build tactic with a name from software practice, and the agent
-  explained it by the name.
+- Where "thin first version" came from (corrected the same day after
+  reading the decisions file). It is in the wording of two proposals an
+  earlier agent put to the owner on 2026-11-01, and the owner said yes
+  to both: "Design top-down, hardest-to-reverse choices first" ends
+  "Then a build plan that starts with a thin first version", and "Build
+  the test rig when building starts" speaks of "the new test bench
+  where a thin first version of the new design runs end to end". Nobody
+  explained to the owner what the phrase meant or why. The agent then
+  read it into the decision on the two halves and confirmed that to
+  itself on 2026-11-02 as "the agent's call". On 2026-11-13 the agent
+  wrote to the owner "the thin first version you already decided on".
+  It is a build tactic with a name from software practice, and the
+  agent explained it by the name.
+- What the owner ratified on 2026-10-30 about the build
+  (`docs/plans/2026-10-30-architecture-pass.md` section 5): it changes
+  the engine to follow the design one area at a time; each area gets
+  its detailed design just before it is built and starts with its
+  proof test; the paused hardening pieces and the truth sweep's
+  purpose are rebuilt inside its areas; it takes the second condition
+  of the show-ready gate, the engine work that must land before green
+  can replace blue; it ends when every rule's test passes on the rig.
+  And the design half hands over each rule with a proof test in plain
+  words (what to do, and what must happen), and the revised roadmap.
+  The agent's two writings never tied the build to any of this.
+- The roadmap orders its work by what it gives people: five pains the
+  owner named, and five states (coherent on main, hardware-proven,
+  show-ready, previewable, adoptable). The build's place in it is the
+  road to show-ready. The agent's writings spoke of none of it.
 - Decisions 1 and 2 (beside or in place; the repositories) are means.
   The agent put them to the owner as menus. The owner has asked before
   for the opposite: order the work by engineering logic, and choose by

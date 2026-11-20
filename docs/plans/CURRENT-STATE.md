@@ -129,8 +129,18 @@ before acting.
   instead of grounded in what we're trying to accomplish and good
   engineering practices." Nothing on this topic is decided. Do not put
   "beside or in place" or the repositories to the owner as menus again.
-  "Thin first version" was never the owner's decision: it is an agent's
-  reading of 2026-11-01. Before answering, re-read the goal (section 1
+  "Thin first version" entered the record on 2026-11-01 inside two
+  proposals of an earlier agent that the owner said yes to; it was
+  never explained to the owner, and the agent later told the owner it
+  was the owner's own decision. What the owner did ratify about the
+  build (the program document, section 5): one area at a time, each
+  with its detailed design and its proof test first; the paused
+  hardening pieces rebuilt inside the areas; it is the engine work
+  that must land before green can replace blue (the second condition
+  of show-ready); it ends when every rule's test passes on the rig.
+  The design half hands over each decision with a proof test in plain
+  words, and the revised roadmap. Tie everything said about the build
+  to that and to the roadmap's states and pains. Before answering, re-read the goal (section 1
   below), `ROADMAP.md` sections 1, 3, 4 and 10 and the program
   document, and derive how the build runs from what it is for. The
   history of the two earlier attempts follows.
